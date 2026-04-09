@@ -600,8 +600,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {canvasTheme !== "global" && THEMES[canvasTheme] && (
         <style>{`
           .nm-canvas-area {
-            ${Object.entries(THEMES[canvasTheme].vars).map(([k,v])=>`${k}: ${v};`).join('
-            ')}
+            ${Object.entries(THEMES[canvasTheme].vars).map(([k,v])=>`${k}: ${v};`).join(' ')}
           }
         `}</style>
       )}
