@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import { Router } from "express";
 import { body, param, validationResult } from "express-validator";
 import { query, withTransaction } from "../db/pool.js";
@@ -154,16 +153,14 @@ router.post(
 
       await withTransaction(async (client) => {
         // Upsert all nodes
-        const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
         for (const n of nodes || []) {
-          const nid = uuidRe.test(n.id) ? n.id : randomUUID();
           await client.query(
             `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, z_index)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
              ON CONFLICT (id) DO UPDATE SET
                title=$4, x=$5, y=$6, w=$7, h=$8,
                properties=$9, custom_props=$10, notes=$11, z_index=$12`,
-            [nid, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
+            [n.id, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
              JSON.stringify(n.properties || {}),
              JSON.stringify(n.customProps || {}),
              n.notes || "", n.z_index || 0]
@@ -182,13 +179,11 @@ router.post(
 
         // Delete removed nodes
         if (nodes?.length > 0) {
-          const keepIds = nodes.map((n) => n.id).filter(id => uuidRe.test(id));
-          if (keepIds.length > 0) {
-            await client.query(
-              `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
-              [mapId, keepIds]
-            );
-          }
+          const keepIds = nodes.map((n) => n.id);
+          await client.query(
+            `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
+            [mapId, keepIds]
+          );
         }
 
         await client.query("UPDATE maps SET updated_at=NOW() WHERE id=$1", [mapId]);
