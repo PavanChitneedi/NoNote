@@ -598,7 +598,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden"}}>
 
       {/* ── Topbar ── */}
-      <div style={{height:50,background:"var(--bg2)",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:4,padding:"0 8px",flexShrink:0,overflowX:"auto"}}>
+      <div onKeyDown={e=>e.stopPropagation()} style={{height:50,background:"var(--bg2)",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:4,padding:"0 8px",flexShrink:0,overflowX:"auto"}}>
         {/* Logo */}
         <span onClick={onHome} title="Home" style={{fontSize:20,cursor:"pointer",flexShrink:0,userSelect:"none",padding:"0 4px"}}>⬡</span>
         <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
@@ -885,6 +885,44 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
       {showChat&&<LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"} onClose={()=>setShowChat(false)}/>}
       {showTheme&&<ThemePicker onClose={()=>setShowTheme(false)}/>}
+
+      {showCanvasTheme&&(
+        <div
+          onClick={()=>setShowCanvasTheme(false)}
+          style={{position:"fixed",inset:0,background:"rgba(0,0,0,0.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:1000,padding:16}}
+        >
+          <div onClick={e=>e.stopPropagation()}
+            style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,padding:22,width:"100%",maxWidth:360}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
+              <div>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>🎨 Canvas Theme</div>
+                <div style={{fontSize:11,color:"var(--text4)",marginTop:2}}>Affects only the drawing canvas background</div>
+              </div>
+              <button onClick={()=>setShowCanvasTheme(false)} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:22,lineHeight:1}}>×</button>
+            </div>
+            <div style={{display:"flex",flexDirection:"column",gap:8}}>
+              {[{id:"global",label:"Use Global Theme",icon:"🌐"},...Object.entries(THEMES).map(([id,t])=>({id,label:t.name,icon:t.icon}))].map(t=>(
+                <div key={t.id}
+                  onClick={()=>{setCanvasTheme(t.id);setShowCanvasTheme(false);}}
+                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:9,cursor:"pointer",
+                    border:`2px solid ${canvasTheme===t.id?"var(--accent)":"var(--border)"}`,
+                    background:canvasTheme===t.id?"var(--accent2)22":"var(--bg3)",transition:"all .12s"}}>
+                  <span style={{fontSize:20}}>{t.icon}</span>
+                  <span style={{fontSize:13,fontWeight:600,color:"var(--text)",flex:1}}>{t.label}</span>
+                  {THEMES[t.id]&&(
+                    <div style={{display:"flex",gap:4}}>
+                      {["--bg","--accent","--success"].map(v=>(
+                        <div key={v} style={{width:12,height:12,borderRadius:3,background:THEMES[t.id].vars[v]}}/>
+                      ))}
+                    </div>
+                  )}
+                  {canvasTheme===t.id&&<span style={{color:"var(--accent)",fontSize:16,marginLeft:4}}>✓</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
 
       <style>{`
