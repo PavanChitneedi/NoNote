@@ -704,7 +704,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               setDrawingEdge(d=>({...d,mouseX:(e.clientX-rect.left)*s+canvasRef.current.scrollLeft*s,mouseY:(e.clientY-rect.top)*s+canvasRef.current.scrollTop*s}));
             }
           }}
-          style={{flex:1,position:"relative",overflow:"auto",cursor:mode==="connect"?"crosshair":"default",backgroundImage:"radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px)",backgroundSize:`${28*zoom}px ${28*zoom}px`,WebkitOverflowScrolling:"touch"}}
+          style={{
+            flex:1, position:"relative", overflow:"auto",
+            cursor: mode==="connect" ? "crosshair" : "default",
+            backgroundColor: (canvasTheme !== "global" && THEMES[canvasTheme]) ? THEMES[canvasTheme].vars["--bg"] : "var(--bg)",
+            backgroundImage: `radial-gradient(circle, ${(canvasTheme !== "global" && THEMES[canvasTheme]) ? THEMES[canvasTheme].vars["--canvas-dot"] : "var(--canvas-dot)"} 1px, transparent 1px)`,
+            backgroundSize: `${28*zoom}px ${28*zoom}px`,
+            WebkitOverflowScrolling: "touch"
+          }}
         >
           {/* Zoom wrapper */}
           <div style={{width:4000*zoom,height:3000*zoom,position:"relative",transformOrigin:"0 0"}}>
