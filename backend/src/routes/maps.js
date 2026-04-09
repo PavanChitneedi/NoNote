@@ -1,0 +1,244 @@
+import { Router } from "express";
+import { body, param, validationResult } from "express-validator";
+import { query, withTransaction } from "../db/pool.js";
+import { authenticate, mapPermission } from "../middleware/auth.js";
+
+const router = Router();
+const validate = (req, res, next) => {
+  const e = validationResult(req);
+  if (!e.isEmpty()) return res.status(400).json({ errors: e.array() });
+  next();
+};
+
+// ── GET /api/maps ─────────────────────────────────────────────
+router.get("/", authenticate, async (req, res) => {
+  try {
+    const { rows } = await query(
+      `SELECT m.id, m.title, m.description, m.is_public, m.created_at, m.updated_at,
+              u.display_name as owner_name, u.avatar_color as owner_color,
+              mc.permission,
+              (SELECT COUNT(*) FROM map_nodes WHERE map_id = m.id) as node_count
+       FROM maps m
+       JOIN users u ON u.id = m.owner_id
+       LEFT JOIN map_collaborators mc ON mc.map_id = m.id AND mc.user_id = $1
+       WHERE m.owner_id = $1 OR mc.user_id = $1
+         OR (m.is_public AND $2 = ANY(ARRAY['owner','admin']::text[]))
+       ORDER BY m.updated_at DESC`,
+      [req.user.id, req.user.role]
+    );
+    res.json({ maps: rows });
+  } catch (err) {
+    console.error("[maps] list error:", err);
+    res.status(500).json({ error: "Failed to fetch maps" });
+  }
+});
+
+// ── POST /api/maps ────────────────────────────────────────────
+router.post(
+  "/",
+  authenticate,
+  [body("title").trim().isLength({ min: 1, max: 200 })],
+  validate,
+  async (req, res) => {
+    try {
+      const { title, description = "" } = req.body;
+      const { rows } = await query(
+        `INSERT INTO maps (title, description, owner_id)
+         VALUES ($1, $2, $3) RETURNING *`,
+        [title, description, req.user.id]
+      );
+      res.status(201).json({ map: rows[0] });
+    } catch (err) {
+      console.error("[maps] create error:", err);
+      res.status(500).json({ error: "Failed to create map" });
+    }
+  }
+);
+
+// ── GET /api/maps/:mapId ──────────────────────────────────────
+router.get(
+  "/:mapId",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const { mapId } = req.params;
+      const [mapRes, nodesRes, edgesRes, collabRes] = await Promise.all([
+        query(
+          `SELECT m.*, u.display_name as owner_name, u.avatar_color as owner_color
+           FROM maps m JOIN users u ON u.id = m.owner_id WHERE m.id = $1`,
+          [mapId]
+        ),
+        query("SELECT * FROM map_nodes WHERE map_id = $1 ORDER BY z_index, created_at", [mapId]),
+        query(
+          `SELECT me.*, fn.title as from_title, tn.title as to_title
+           FROM map_edges me
+           JOIN map_nodes fn ON fn.id = me.from_node
+           JOIN map_nodes tn ON tn.id = me.to_node
+           WHERE me.map_id = $1`,
+          [mapId]
+        ),
+        query(
+          `SELECT mc.*, u.display_name, u.email, u.avatar_color
+           FROM map_collaborators mc JOIN users u ON u.id = mc.user_id
+           WHERE mc.map_id = $1`,
+          [mapId]
+        ),
+      ]);
+
+      if (!mapRes.rows[0]) return res.status(404).json({ error: "Map not found" });
+
+      res.json({
+        map:           mapRes.rows[0],
+        nodes:         nodesRes.rows,
+        edges:         edgesRes.rows,
+        collaborators: collabRes.rows,
+      });
+    } catch (err) {
+      console.error("[maps] get error:", err);
+      res.status(500).json({ error: "Failed to fetch map" });
+    }
+  }
+);
+
+// ── PUT /api/maps/:mapId ──────────────────────────────────────
+router.put(
+  "/:mapId",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const { title, description, is_public } = req.body;
+      const { rows } = await query(
+        `UPDATE maps SET
+           title       = COALESCE($2, title),
+           description = COALESCE($3, description),
+           is_public   = COALESCE($4, is_public)
+         WHERE id = $1 RETURNING *`,
+        [req.params.mapId, title, description, is_public]
+      );
+      res.json({ map: rows[0] });
+    } catch (err) {
+      console.error("[maps] update error:", err);
+      res.status(500).json({ error: "Failed to update map" });
+    }
+  }
+);
+
+// ── DELETE /api/maps/:mapId ───────────────────────────────────
+router.delete(
+  "/:mapId",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("owner"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      await query("DELETE FROM maps WHERE id = $1", [req.params.mapId]);
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[maps] delete error:", err);
+      res.status(500).json({ error: "Failed to delete map" });
+    }
+  }
+);
+
+// ── Bulk save (nodes + edges) ─────────────────────────────────
+router.post(
+  "/:mapId/save",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const { nodes, edges } = req.body;
+      const { mapId } = req.params;
+
+      await withTransaction(async (client) => {
+        // Upsert all nodes
+        for (const n of nodes || []) {
+          await client.query(
+            `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, z_index)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+             ON CONFLICT (id) DO UPDATE SET
+               title=$4, x=$5, y=$6, w=$7, h=$8,
+               properties=$9, custom_props=$10, notes=$11, z_index=$12`,
+            [n.id, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
+             JSON.stringify(n.properties || {}),
+             JSON.stringify(n.customProps || {}),
+             n.notes || "", n.z_index || 0]
+          );
+        }
+
+        // Sync edges: delete all, re-insert
+        await client.query("DELETE FROM map_edges WHERE map_id = $1", [mapId]);
+        for (const e of edges || []) {
+          await client.query(
+            `INSERT INTO map_edges (id, map_id, from_node, to_node, label, style, color)
+             VALUES ($1,$2,$3,$4,$5,$6,$7)`,
+            [e.id, mapId, e.from, e.to, e.label || "", e.style || "arrow", e.color || "#58a6ff"]
+          );
+        }
+
+        // Delete removed nodes
+        if (nodes?.length > 0) {
+          const keepIds = nodes.map((n) => n.id);
+          await client.query(
+            `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
+            [mapId, keepIds]
+          );
+        }
+
+        await client.query("UPDATE maps SET updated_at=NOW() WHERE id=$1", [mapId]);
+      });
+
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[maps] save error:", err);
+      res.status(500).json({ error: "Failed to save map" });
+    }
+  }
+);
+
+// ── Collaborators ─────────────────────────────────────────────
+router.post(
+  "/:mapId/collaborators",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("admin"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const { email, permission = "viewer" } = req.body;
+      const { rows: users } = await query(
+        "SELECT id FROM users WHERE email = $1", [email]
+      );
+      if (!users[0]) return res.status(404).json({ error: "User not found" });
+
+      await query(
+        `INSERT INTO map_collaborators (map_id, user_id, permission, invited_by)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (map_id, user_id) DO UPDATE SET permission = $3`,
+        [req.params.mapId, users[0].id, permission, req.user.id]
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      console.error("[maps] collab error:", err);
+      res.status(500).json({ error: "Failed to add collaborator" });
+    }
+  }
+);
+
+router.delete(
+  "/:mapId/collaborators/:userId",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("admin"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      await query(
+        "DELETE FROM map_collaborators WHERE map_id=$1 AND user_id=$2",
+        [req.params.mapId, req.params.userId]
+      );
+      res.json({ ok: true });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to remove collaborator" });
+    }
+  }
+);
+
+export default router;

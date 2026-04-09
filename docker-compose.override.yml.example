@@ -1,0 +1,47 @@
+# ── Local development overrides ───────────────────────────────
+# Automatically loaded by `docker compose up` alongside docker-compose.yml
+# DO NOT commit .env to git
+
+version: "3.9"
+
+services:
+  # Expose Postgres directly for local DB tools (TablePlus, DBeaver etc.)
+  postgres:
+    ports:
+      - "5432:5432"
+
+  # Expose Redis directly for local inspection
+  redis:
+    ports:
+      - "6379:6379"
+
+  # Backend with hot-reload via bind mount
+  backend:
+    build:
+      context: ./backend
+      target: base           # use base stage for dev
+    command: ["node", "--watch", "src/index.js"]
+    environment:
+      NODE_ENV: development
+    volumes:
+      - ./backend/src:/app/src:ro
+    ports:
+      - "3001:3001"          # expose API directly for Postman/curl
+
+  # Frontend with Vite dev server instead of built image
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    volumes:
+      - ./frontend/src:/app/src:ro
+      - ./frontend/index.html:/app/index.html:ro
+    ports:
+      - "5173:5173"
+
+  # Nginx serves HTTP only in dev (no TLS hassle)
+  nginx:
+    volumes:
+      - ./nginx/nginx.dev.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "8080:80"
