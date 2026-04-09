@@ -179,11 +179,13 @@ router.post(
 
         // Delete removed nodes
         if (nodes?.length > 0) {
-          const keepIds = nodes.map((n) => n.id);
-          await client.query(
-            `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
-            [mapId, keepIds]
-          );
+          const keepIds = nodes.map((n) => n.id).filter(id => uuidRe.test(id));
+          if (keepIds.length > 0) {
+            await client.query(
+              `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
+              [mapId, keepIds]
+            );
+          }
         }
 
         await client.query("UPDATE maps SET updated_at=NOW() WHERE id=$1", [mapId]);
