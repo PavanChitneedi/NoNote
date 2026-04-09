@@ -596,6 +596,166 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden"}}>
+
+      {/* ── Topbar ── */}
+      <div style={{height:50,background:"var(--bg2)",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:4,padding:"0 8px",flexShrink:0,overflowX:"auto"}}>
+        {/* Logo */}
+        <span onClick={onHome} title="Home" style={{fontSize:20,cursor:"pointer",flexShrink:0,userSelect:"none",padding:"0 4px"}}>⬡</span>
+        <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
+        <div style={{width:1,height:22,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
+        <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",whiteSpace:"nowrap",maxWidth:140,overflow:"hidden",textOverflow:"ellipsis"}}>{mapMeta?.title}</span>
+        <div style={{width:1,height:22,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
+
+        {canEdit&&<>
+          <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
+          <button onClick={()=>{setMode("connect");}} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
+          {mode==="connect"&&["arrow","line","dashed","bidirectional"].map(s=>(
+            <button key={s} onClick={()=>setEdgeStyle(s)} style={tbtn(edgeStyle===s,"#6C63FF")}>{s}</button>
+          ))}
+          {mode==="connect"&&drawingEdge&&<span style={{fontSize:11,color:"#f78166",padding:"0 5px",animation:"pulse 1s infinite",flexShrink:0}}>● click target</span>}
+          <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
+          <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-layout (Ctrl+Enter)">⊞ LAYOUT</button>
+          <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
+          <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
+          {selected&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑</button>}
+          {selectedNode&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties">✏</button>}
+        </>}
+
+        <div style={{flex:1}}/>
+        {/* Save status */}
+        {saveMsg&&<span style={{fontSize:11,color:saveMsgColor,flexShrink:0,whiteSpace:"nowrap"}}>{saveMsg}</span>}
+
+        {/* Zoom controls */}
+        <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0,border:"1px solid var(--border)",borderRadius:7,padding:"0 4px",margin:"0 4px"}}>
+          <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 7px"}}>−</button>
+          <span onClick={()=>setZoom(1)} title="Reset zoom (Ctrl+0)" style={{fontSize:11,color:"var(--text3)",cursor:"pointer",minWidth:36,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
+          <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 7px"}}>＋</button>
+        </div>
+
+        {/* Canvas theme */}
+        <div style={{position:"relative",flexShrink:0}}>
+          <button
+            onClick={e=>{e.stopPropagation();setShowCanvasTheme(v=>!v);}}
+            style={tbtn(canvasTheme!=="global","#6C63FF")} title="Canvas theme"
+          >
+            {canvasTheme==="global"?THEMES[themeName]?.icon||"🌐":"🎨"} CANVAS
+          </button>
+          {showCanvasTheme&&(
+            <>
+              {/* Backdrop — below dropdown */}
+              <div
+                style={{position:"fixed",inset:0,zIndex:199}}
+                onClick={e=>{e.stopPropagation();setShowCanvasTheme(false);}}
+              />
+              {/* Dropdown — above backdrop */}
+              <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:8,zIndex:200,minWidth:200,boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}>
+                <div style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:2,padding:"4px 10px 8px"}}>CANVAS THEME</div>
+                {CANVAS_THEMES.map(t=>(
+                  <div key={t.id}
+                    onClick={e=>{e.stopPropagation();setCanvasTheme(t.id);setShowCanvasTheme(false);}}
+                    style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",borderRadius:7,cursor:"pointer",background:canvasTheme===t.id?"var(--accent2)25":"transparent",fontSize:13,color:canvasTheme===t.id?"var(--accent)":"var(--text)",transition:"background .1s"}}>
+                    <span style={{fontSize:16}}>{t.icon}</span>
+                    <span>{t.label}</span>
+                    {canvasTheme===t.id&&<span style={{marginLeft:"auto",color:"var(--accent)",fontSize:14}}>✓</span>}
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+
+        <button onClick={()=>setShowVersions(true)} style={tbtn(false)} title="Version history (V)">🕐</button>
+        <button onClick={()=>setShowChat(true)}      style={tbtn(false,"#6C63FF")}>💬</button>
+        <button onClick={()=>setShowExport(true)}    style={tbtn(false,"#238636")}>↗</button>
+
+        {/* Keyboard shortcuts tooltip */}
+        {!isMobile&&<span title={"⌨ Shortcuts\nESC = select/cancel\nSpace = quick note\nDel = delete\nCtrl+Z/Y = undo/redo\nCtrl+Enter = auto-layout\nCtrl+±/0 = zoom\nN = new note  C = connect  S = select\nV = version history"}
+          style={{fontSize:11,color:"var(--text4)",cursor:"help",flexShrink:0,padding:"0 4px",borderBottom:"1px dashed var(--text4)"}}>⌨</span>}
+      </div>
+
+
+
+      {/* ── Main area — canvas theme class applied here ── */}
+      <div className="nm-canvas-area" style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
+
+        {/* Sidebar desktop */}
+        {!isMobile&&<NodeSidebar cats={cats} activeCat={activeCat} setActiveCat={setActiveCat} addNode={addNode} canEdit={canEdit}/>}
+
+        {/* Mobile sidebar */}
+        {isMobile&&showSidebar&&(
+          <div style={{position:"absolute",inset:0,zIndex:50,display:"flex"}}>
+            <div style={{flex:1,background:"rgba(0,0,0,.6)"}} onClick={()=>setShowSidebar(false)}/>
+            <div style={{width:220,background:"var(--bg2)",borderLeft:"1px solid var(--border)",overflow:"auto",display:"flex",flexDirection:"column"}}>
+              <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <span style={{fontSize:12,fontWeight:700,color:"var(--accent)"}}>Add Node</span>
+                <button onClick={()=>setShowSidebar(false)} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20}}>×</button>
+              </div>
+              <NodeSidebar cats={cats} activeCat={activeCat} setActiveCat={setActiveCat} addNode={addNode} canEdit={canEdit} inline/>
+            </div>
+          </div>
+        )}
+
+        {/* ── Canvas ── */}
+        <div ref={canvasRef}
+          onClick={()=>{setSelected(null);setSelType(null);if(drawingEdge)setDrawingEdge(null);}}
+          onMouseMove={e=>{
+            if(drawingEdge&&canvasRef.current){
+              const rect=canvasRef.current.getBoundingClientRect(); const s=1/zoom;
+              setDrawingEdge(d=>({...d,mouseX:(e.clientX-rect.left)*s+canvasRef.current.scrollLeft*s,mouseY:(e.clientY-rect.top)*s+canvasRef.current.scrollTop*s}));
+            }
+          }}
+          style={{flex:1,position:"relative",overflow:"auto",cursor:mode==="connect"?"crosshair":"default",backgroundImage:"radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px)",backgroundSize:`${28*zoom}px ${28*zoom}px`,WebkitOverflowScrolling:"touch"}}
+        >
+          {/* Zoom wrapper */}
+          <div style={{width:4000*zoom,height:3000*zoom,position:"relative",transformOrigin:"0 0"}}>
+            <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
+
+              {/* SVG edges */}
+              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
+                <defs>
+                  <marker id="nm-a"  markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><polygon points="0 0, 9 3.5, 0 7" fill="var(--accent)" opacity=".85"/></marker>
+                  <marker id="nm-a2" markerWidth="9" markerHeight="7" refX="1" refY="3.5" orient="auto-start-reverse"><polygon points="9 0, 0 3.5, 9 7" fill="var(--accent)" opacity=".85"/></marker>
+                </defs>
+
+                {/* Live arrow preview */}
+                {drawingEdge&&(()=>{
+                  const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn)return null;
+                  const fx=fn.x+fn.w/2,fy=fn.y+fn.h/2,tx=drawingEdge.mouseX,ty=drawingEdge.mouseY,cx=(fx+tx)/2;
+                  return <path d={`M ${fx} ${fy} C ${cx} ${fy}, ${cx} ${ty}, ${tx} ${ty}`}
+                    stroke="var(--accent)" strokeWidth="2" fill="none" strokeDasharray="6,4" opacity=".7" markerEnd="url(#nm-a)"/>;
+                })()}
+
+                {edges.map(edge=>{
+                  const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to); if(!f||!t)return null;
+                  const mid={x:(f.x+f.w/2+t.x+t.w/2)/2,y:(f.y+f.h/2+t.y+t.h/2)/2};
+                  const isSel=selected===edge.id&&selType==="edge";
+                  return (
+                    <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
+                      <path d={getPath(f,t)} stroke="transparent" strokeWidth="14" fill="none"/>
+                      <path d={getPath(f,t)} stroke={isSel?"var(--danger)":edge.color||"var(--accent)"} strokeWidth={isSel?2.5:1.8}
+                        fill="none" opacity=".7" strokeDasharray={edge.style==="dashed"?"7,5":"none"}
+                        markerEnd={edge.style!=="line"?"url(#nm-a)":undefined}
+                        markerStart={edge.style==="bidirectional"?"url(#nm-a2)":undefined}
+                      />
+                      {isSel&&canEdit&&(
+                        <g style={{cursor:"pointer",pointerEvents:"all"}}
+                          onClick={e=>{e.stopPropagation();applyEdges(es=>es.filter(ex=>ex.id!==edge.id));setSelected(null);setSelType(null);}}>
+                          <circle cx={mid.x} cy={mid.y} r="11" fill="var(--danger)"/>
+                          <text x={mid.x} y={mid.y+4.5} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">×</text>
+                        </g>
+                      )}
+                      {edge.label&&!isSel&&<text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="monospace">{edge.label}</text>}
+                      {isSel&&(
+                        <foreignObject x={mid.x-54} y={mid.y+16} width="108" height="28">
+                          <input value={edge.label||""} placeholder="label"
+                            onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
+                            onClick={e=>e.stopPropagation()}
+                            style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:5,padding:"3px 6px",color:"var(--text)",fontSize:11,fontFamily:"monospace",outline:"none"}}/>
+                        </foreignObject>
+                      )}
+                    </g>
+                  );
+                })}
               </svg>
 
               {/* Nodes */}
@@ -718,38 +878,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
       {showChat&&<LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"} onClose={()=>setShowChat(false)}/>}
       {showTheme&&<ThemePicker onClose={()=>setShowTheme(false)}/>}
-
-      {/* Canvas theme picker modal */}
-      {showCanvasTheme&&(
-        <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:400}} onClick={()=>setShowCanvasTheme(false)}>
-          <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,padding:20,width:380}} onClick={e=>e.stopPropagation()}>
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-              <div>
-                <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>🎨 Canvas Theme</div>
-                <div style={{fontSize:11,color:"var(--text4)",marginTop:2}}>Changes only the drawing canvas background</div>
-              </div>
-              <button onClick={()=>setShowCanvasTheme(false)} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20}}>×</button>
-            </div>
-            <div style={{display:"flex",flexDirection:"column",gap:8}}>
-              {[{id:"global",label:"Use Global Theme",icon:"🌐",desc:"Follows your app-wide theme"},...Object.entries(THEMES).map(([id,t])=>({id,label:t.name,icon:t.icon,desc:id}))].map(t=>(
-                <div key={t.id} onClick={()=>{setCanvasTheme(t.id);setShowCanvasTheme(false);}}
-                  style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderRadius:9,cursor:"pointer",border:`2px solid ${canvasTheme===t.id?"var(--accent)":"var(--border)"}`,background:canvasTheme===t.id?"var(--accent2)18":"var(--bg3)",transition:"all .12s"}}>
-                  <span style={{fontSize:20}}>{t.icon}</span>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{t.label}</div>
-                    {THEMES[t.id]&&<div style={{display:"flex",gap:4,marginTop:4}}>
-                      {["--bg","--bg2","--accent","--success"].map(v=>(
-                        <div key={v} style={{width:14,height:14,borderRadius:3,background:THEMES[t.id].vars[v]}}/>
-                      ))}
-                    </div>}
-                  </div>
-                  {canvasTheme===t.id&&<span style={{color:"var(--accent)",fontSize:18}}>✓</span>}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
 
       <style>{`
