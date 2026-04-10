@@ -124,8 +124,8 @@ function autoLayout(nodes, edges) {
     for (let i = 0; i < result.length; i++) {
       for (let j = i + 1; j < result.length; j++) {
         const a = result[i], b = result[j];
-        const aw = a.w||DEF_W, ah = a.h||DEF_H;
-        const bw = b.w||DEF_W, bh = b.h||DEF_H;
+        const aw = a.w||DEF_W, ah = Math.max(a.h||DEF_H, nodeHeightsRef?.current?.[a.id]||0);
+        const bw = b.w||DEF_W, bh = Math.max(b.h||DEF_H, nodeHeightsRef?.current?.[b.id]||0);
         const gapX = b.x - (a.x + aw);
         const gapY = b.y - (a.y + ah);
         const gapBX = a.x - (b.x + bw);
@@ -321,7 +321,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [globalCollapsed,setGlobalCollapsed]= useState(false); // collapse all / expand all
 
   const canvasRef   = useRef(null);
-  const nodesRef    = useRef([]);  // live ref for box-select (avoids stale closure)
+  const nodesRef      = useRef([]);        // live ref for box-select
+  const nodeHeightsRef= useRef({});       // actual rendered height per node id
   const saveTimer   = useRef(null);
   const versionTimer= useRef(null);
   const notesTimers = useRef({});
@@ -397,6 +398,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // Keep nodesRef in sync with nodes state
   useEffect(()=>{ nodesRef.current = nodes; },[nodes]);
 
+  // ── Actual collision dimensions (uses rendered height, not stored h) ──
+  const collW = (n) => n?.collapsed ? COL_W : (n?.w || DEF_W);
+  const collH = (n) => {
+    if (!n) return DEF_H;
+    if (n.collapsed) return COL_H;
+    // Use measured DOM height if available, else fall back to stored h
+    // Add 2px for border
+    return Math.max(n.h || DEF_H, (nodeHeightsRef.current[n.id] || 0));
+  };
+
   // ── Load ───────────────────────────────────────────────────
   useEffect(()=>{
     setLoading(true);
@@ -451,16 +462,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const adx=e.code==="ArrowLeft"?-step:e.code==="ArrowRight"?step:0;
         const ady=e.code==="ArrowUp"?-step:e.code==="ArrowDown"?step:0;
         applyNodes(ns=>{
-          const GAP=6;
+          const GAP=14;
           const others=ns.filter(n=>!selected.has(n.id));
           return ns.map(n=>{
             if(!selected.has(n.id)) return n;
             let nx=n.x+adx, ny=n.y+ady;
-            const dw=n.collapsed?COL_W:(n.w||DEF_W);
-            const dh=n.collapsed?COL_H:(n.h||DEF_H);
+            const dw=collW(n);
+            const dh=collH(n);
             for(const o of others){
-              const ow=o.collapsed?COL_W:(o.w||DEF_W);
-              const oh=o.collapsed?COL_H:(o.h||DEF_H);
+              const ow=collW(o);
+              const oh=collH(o);
               if(nx<o.x+ow+GAP && nx+dw>o.x-GAP && ny<o.y+oh+GAP && ny+dh>o.y-GAP){
                 if(adx>0) nx=o.x-GAP-dw;
                 if(adx<0) nx=o.x+ow+GAP;
@@ -532,7 +543,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
         const canvasY=(cy-rect.top)*s+el.scrollTop*s;
         const dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
-        const GAP=10;
+        const GAP=14; // 14px minimum gap between any two node edges
         const fixedNodes=nodesRef.current.filter(n=>!dragging.ids.includes(n.id));
 
         // Axis-separated collision: X then Y, each fully resolved.
@@ -542,16 +553,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         for(const id of dragging.ids){
           const start=dragging.startPositions[id]; if(!start) continue;
           const base=nodesRef.current.find(n=>n.id===id); if(!base) continue;
-          const nw=base.collapsed?COL_W:(base.w||DEF_W);
-          const nh=base.collapsed?COL_H:(base.h||DEF_H);
+          const nw=collW(base);
+          const nh=collH(base);
 
           // Step 1: apply X delta, keep Y unchanged (old position)
           let tx=Math.max(0,start.x+dx);
           const oy=start.y; // old Y — unchanged during X pass
 
           for(const o of fixedNodes){
-            const ow=o.collapsed?COL_W:(o.w||DEF_W);
-            const oh=o.collapsed?COL_H:(o.h||DEF_H);
+            const ow=collW(o);
+            const oh=collH(o);
             // Full Y overlap check with old Y
             if(oy+nh<=o.y||oy>=o.y+oh) continue; // no Y overlap — skip
             // Full X overlap check
@@ -566,8 +577,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           let ty=Math.max(0,start.y+dy);
 
           for(const o of fixedNodes){
-            const ow=o.collapsed?COL_W:(o.w||DEF_W);
-            const oh=o.collapsed?COL_H:(o.h||DEF_H);
+            const ow=collW(o);
+            const oh=collH(o);
             // Full X overlap check with resolved tx
             if(tx+nw<=o.x||tx>=o.x+ow) continue; // no X overlap — skip
             // Full Y overlap check
@@ -619,7 +630,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           const sel=new Set();
           // Use nodesRef (live ref) so selection is not stale
           nodesRef.current.forEach(n=>{
-            const nw=n.collapsed?COL_W:n.w, nh=n.collapsed?COL_H:n.h;
+            const nw=collW(n), nh=collH(n);
             if(n.x<x2&&n.x+nw>x1&&n.y<y2&&n.y+nh>y1) sel.add(n.id);
           });
           setSelected(sel);
@@ -1065,6 +1076,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 return (
                   <div key={node.id}
                     className="nn-node"
+                    ref={el=>{ if(el) nodeHeightsRef.current[node.id]=el.getBoundingClientRect().height/zoom; }}
                     onMouseDown={e=>{e.stopPropagation();if(editingTitle!==node.id)startDrag(e.clientX,e.clientY,node.id);}}
                     onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
                     onClick={e=>handleNodeClick(e,node.id)}
