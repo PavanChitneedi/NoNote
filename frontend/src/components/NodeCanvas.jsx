@@ -45,16 +45,17 @@ const DP = {
 
 // ── Edge style definitions ────────────────────────────────────
 const EDGE_STYLES = {
-  arrow:         { label:"Arrow",          icon:"→",  desc:"Directed arrow" },
-  bidirectional: { label:"Both-way",       icon:"↔",  desc:"Arrow both ends" },
-  line:          { label:"Plain line",     icon:"—",  desc:"No arrowhead" },
-  dashed:        { label:"Dashed",         icon:"- →", desc:"Dashed with arrow" },
-  "dashed-line": { label:"Dashed plain",   icon:"---", desc:"Dashed no arrow" },
-  dotted:        { label:"Dotted",         icon:"···→",desc:"Dotted with arrow" },
-  thick:         { label:"Thick",          icon:"━→",  desc:"Bold arrow" },
-  double:        { label:"Double",         icon:"⇒",   desc:"Double line arrow" },
-  curved:        { label:"Curved",         icon:"↝",   desc:"Extra-curved" },
-  orthogonal:    { label:"Orthogonal",     icon:"⌐→",  desc:"Right-angle routing" },
+  arrow:         { label:"Arrow",       icon:"→",   strokeW:2,    dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"Directed arrow" },
+  bidirectional: { label:"Both ways",   icon:"↔",   strokeW:2,    dash:"none", mEnd:"nn-arr",  mStart:"nn-arr-r", desc:"Arrow on both ends" },
+  line:          { label:"Line",        icon:"—",   strokeW:2,    dash:"none", mEnd:null,       mStart:null,       desc:"No arrowhead" },
+  dashed:        { label:"Dashed →",    icon:"⇢",   strokeW:2,    dash:"7,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dashed with arrow" },
+  "dashed-bi":   { label:"Dashed ↔",   icon:"⇿",   strokeW:2,    dash:"7,5",  mEnd:"nn-arr",  mStart:"nn-arr-r", desc:"Dashed bidirectional" },
+  "dashed-line": { label:"Dashed line", icon:"- -", strokeW:2,    dash:"7,5",  mEnd:null,       mStart:null,       desc:"Dashed, no arrow" },
+  dotted:        { label:"Dotted →",    icon:"···→",strokeW:2,    dash:"2,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dotted with arrow" },
+  thick:         { label:"Thick →",     icon:"━→",  strokeW:4,    dash:"none", mEnd:"nn-tk",   mStart:null,       desc:"Bold arrow" },
+  "thick-bi":    { label:"Thick ↔",    icon:"⟺",   strokeW:4,    dash:"none", mEnd:"nn-tk",   mStart:"nn-tk-r",  desc:"Bold bidirectional" },
+  double:        { label:"Double →",    icon:"⇒",   strokeW:1.5,  dash:"none", mEnd:"nn-dbl",  mStart:null,       desc:"Double chevron" },
+  "double-bi":   { label:"Double ↔",   icon:"⇔",   strokeW:1.5,  dash:"none", mEnd:"nn-dbl",  mStart:"nn-dbl-r", desc:"Double bidirectional" },
 };
 
 const DEF_W=220, DEF_H=96, GRP_W=340, GRP_H=240;
@@ -336,6 +337,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [selEdge,      setSelEdge]      = useState(null);
   const [mode,         setMode]         = useState("select");
   const [edgeStyle,    setEdgeStyle]    = useState("arrow");
+  const [edgeColor,    setEdgeColor]    = useState("var(--accent)");
+  const [showConnPanel,setShowConnPanel]= useState(false);
   const [dragging,     setDragging]     = useState(null);
   const [resizing,     setResizing]     = useState(null);
   const [drawingEdge,  setDrawingEdge]  = useState(null);
@@ -715,7 +718,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           const clickY=(e.clientY-rect.top)*s+el.scrollTop*s;
           const toAnchor=snapToAnchor(toNode,tnw,tnh,clickX,clickY) || {side:"auto"};
           applyEdges(es=>[...es,{
-            id:makeId(), from:drawingEdge.fromId, to:id, label:"", style:edgeStyle, color:"var(--accent)",
+            id:makeId(), from:drawingEdge.fromId, to:id, label:"", style:edgeStyle, color:edgeColor,
             fromAnchor:drawingEdge.fromAnchor||{side:"auto"},
             toAnchor,
           }]);
@@ -985,15 +988,27 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {editMode&&canEdit&&<>
           <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
           <button onClick={()=>setMode("connect")} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
-          {mode==="connect"&&(
-            <select value={edgeStyle} onChange={e=>setEdgeStyle(e.target.value)}
-              style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--text2)",fontSize:11,padding:"4px 8px",cursor:"pointer",fontFamily:"var(--font-ui)",outline:"none"}}>
-              {Object.entries(EDGE_STYLES).map(([k,v])=>(
-                <option key={k} value={k}>{v.icon} {v.label}</option>
-              ))}
-            </select>
-          )}
-          {mode==="connect"&&drawingEdge&&<span style={{fontSize:11,color:"#f78166",padding:"0 5px",animation:"pulse 1s infinite",flexShrink:0}}>● click target</span>}
+          {mode==="connect"&&(<>
+            {/* Connection style button → opens floating panel */}
+            <button onClick={()=>setShowConnPanel(v=>!v)}
+              style={{...tbtn(showConnPanel,"#6C63FF"),display:"flex",alignItems:"center",gap:5,padding:"5px 10px"}}>
+              <span style={{fontSize:14}}>{EDGE_STYLES[edgeStyle]?.icon||"→"}</span>
+              <span style={{fontSize:10,color:"var(--text3)"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
+              <span style={{fontSize:9,color:"var(--text4)"}}>▾</span>
+            </button>
+            {/* Color swatch */}
+            <div style={{position:"relative",flexShrink:0}}>
+              <div style={{width:22,height:22,borderRadius:"50%",background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}
+                title="Edge color">
+                <input type="color" defaultValue="#58a6ff"
+                  onChange={e=>setEdgeColor(e.target.value)}
+                  style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
+              </div>
+            </div>
+            <button onClick={()=>setEdgeColor("var(--accent)")} title="Reset color"
+              style={{...tbtn(false),fontSize:9,padding:"3px 6px",color:"var(--text4)"}}>↺</button>
+            {drawingEdge&&<span style={{fontSize:11,color:"#f78166",padding:"0 5px",animation:"pulse 1s infinite",flexShrink:0}}>● click target</span>}
+          </>)}
           <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
           <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ AUTO LAYOUT</button>
           <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
@@ -1046,6 +1061,77 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </div>
         )}
 
+        {/* ── Connection Style Panel (floating) ── */}
+        {showConnPanel&&mode==="connect"&&(
+          <div style={{
+            position:"fixed",top:60,left:"50%",transform:"translateX(-50%)",
+            background:"var(--bg2)",border:"1px solid var(--border2)",
+            borderRadius:"var(--radius-lg)",zIndex:300,
+            boxShadow:"0 8px 32px rgba(0,0,0,.45)",
+            width:520,maxWidth:"95vw",
+          }} onClick={e=>e.stopPropagation()}>
+            <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8}}>
+              <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>Connection Style</span>
+              <button onClick={()=>setShowConnPanel(false)}
+                style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+            </div>
+            <div style={{padding:"12px 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
+              {Object.entries(EDGE_STYLES).map(([k,def])=>{
+                const sel=edgeStyle===k;
+                return (
+                  <button key={k} onClick={()=>setEdgeStyle(k)}
+                    style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
+                      borderRadius:"var(--radius-md)",cursor:"pointer",textAlign:"left",
+                      border:`2px solid ${sel?"var(--accent)":"var(--border)"}`,
+                      background:sel?"color-mix(in srgb,var(--accent) 15%,transparent)":"var(--bg3)",
+                      transition:"border-color .1s,background .1s"}}>
+                    <svg width="44" height="20" style={{flexShrink:0,overflow:"visible"}}>
+                      <defs>
+                        <marker id={`pe-${k}`} markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                          <polygon points="0 0,8 3,0 6" fill={sel?"var(--accent)":"var(--text3)"}/>
+                        </marker>
+                        <marker id={`ps-${k}`} markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto-start-reverse">
+                          <polygon points="8 0,0 3,8 6" fill={sel?"var(--accent)":"var(--text3)"}/>
+                        </marker>
+                      </defs>
+                      <line x1="4" y1="10" x2="40" y2="10"
+                        stroke={sel?"var(--accent)":"var(--text3)"}
+                        strokeWidth={def.strokeW>2?3.5:1.8}
+                        strokeDasharray={def.dash==="none"?"none":def.dash}
+                        markerEnd={def.mEnd?`url(#pe-${k})`:undefined}
+                        markerStart={def.mStart?`url(#ps-${k})`:undefined}
+                      />
+                    </svg>
+                    <div>
+                      <div style={{fontSize:11,fontWeight:600,color:sel?"var(--accent)":"var(--text)",lineHeight:1.3}}>{def.label}</div>
+                      <div style={{fontSize:9,color:"var(--text4)",marginTop:1}}>{def.desc}</div>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+            <div style={{padding:"10px 16px",borderTop:"1px solid var(--border2)",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1,marginRight:2}}>COLOR</span>
+              {["var(--accent)","#58a6ff","#f78166","#3fb950","#d2a8ff","#ffa657","#ff7b72","#39d353","#8b949e"].map(c=>(
+                <div key={c} onClick={()=>setEdgeColor(c)} title={c}
+                  style={{width:20,height:20,borderRadius:"50%",flexShrink:0,cursor:"pointer",transition:"transform .1s",
+                    background:c==="var(--accent)"?"var(--accent)":c,
+                    border:`2.5px solid ${edgeColor===c?"var(--text)":"transparent"}`,
+                    transform:edgeColor===c?"scale(1.25)":"scale(1)"}}/>
+              ))}
+              <div style={{position:"relative",width:20,height:20,borderRadius:"50%",overflow:"hidden",
+                background:"conic-gradient(red,yellow,lime,cyan,blue,magenta,red)",
+                border:"1px dashed var(--border)",cursor:"pointer",flexShrink:0}} title="Custom color">
+                <input type="color" onChange={e=>setEdgeColor(e.target.value)}
+                  style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}}/>
+              </div>
+              <button onClick={()=>setEdgeColor("var(--accent)")} title="Reset to theme color"
+                style={{marginLeft:"auto",background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                  color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"3px 8px",fontFamily:"var(--font-ui)"}}>Reset</button>
+            </div>
+          </div>
+        )}
+
         {/* ── Canvas ── */}
         <div ref={canvasRef}
           onMouseDown={handleCanvasMouseDown}
@@ -1086,20 +1172,28 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {/* Edge SVG — before nodes in DOM = renders BEHIND nodes. No zIndex to preserve DOM stacking. */}
               <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
                 <defs>
-                  {/* Standard arrow tip */}
-                  <marker id="nn-a"   markerWidth="10" markerHeight="8"  refX="10" refY="4"   orient="auto"><polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/></marker>
-                  <marker id="nn-a-r" markerWidth="10" markerHeight="8"  refX="0"  refY="4"   orient="auto-start-reverse"><polygon points="10 0, 0 4, 10 8" fill="var(--accent)"/></marker>
-                  {/* Thick arrow */}
-                  <marker id="nn-tk"  markerWidth="10" markerHeight="10" refX="10" refY="5"   orient="auto"><polygon points="0 0, 10 5, 0 10" fill="var(--accent)"/></marker>
-                  <marker id="nn-tk-r"markerWidth="10" markerHeight="10" refX="0"  refY="5"   orient="auto-start-reverse"><polygon points="10 0, 0 5, 10 10" fill="var(--accent)"/></marker>
-                  {/* Double arrow (open) */}
-                  <marker id="nn-dbl" markerWidth="14" markerHeight="10" refX="14" refY="5"   orient="auto">
-                    <polyline points="0 1, 7 5, 0 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-                    <polyline points="5 1, 12 5, 5 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+                  {/* Standard arrow — nn-arr / nn-arr-r */}
+                  <marker id="nn-arr"   markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+                    <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
                   </marker>
-                  <marker id="nn-dbl-r" markerWidth="14" markerHeight="10" refX="0" refY="5" orient="auto-start-reverse">
-                    <polyline points="14 1, 7 5, 14 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-                    <polyline points="9 1, 2 5, 9 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+                  <marker id="nn-arr-r" markerWidth="10" markerHeight="8" refX="0"  refY="4" orient="auto-start-reverse">
+                    <polygon points="10 0, 0 4, 10 8" fill="var(--accent)"/>
+                  </marker>
+                  {/* Thick arrow — nn-tk / nn-tk-r */}
+                  <marker id="nn-tk"    markerWidth="12" markerHeight="10" refX="12" refY="5" orient="auto">
+                    <polygon points="0 0, 12 5, 0 10" fill="var(--accent)"/>
+                  </marker>
+                  <marker id="nn-tk-r"  markerWidth="12" markerHeight="10" refX="0"  refY="5" orient="auto-start-reverse">
+                    <polygon points="12 0, 0 5, 12 10" fill="var(--accent)"/>
+                  </marker>
+                  {/* Double chevron — nn-dbl / nn-dbl-r */}
+                  <marker id="nn-dbl"   markerWidth="14" markerHeight="10" refX="13" refY="5" orient="auto">
+                    <polyline points="0 1, 6 5, 0 9"  fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
+                    <polyline points="5 1, 11 5, 5 9" fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
+                  </marker>
+                  <marker id="nn-dbl-r" markerWidth="14" markerHeight="10" refX="1"  refY="5" orient="auto-start-reverse">
+                    <polyline points="14 1, 8 5, 14 9"  fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
+                    <polyline points="9 1, 3 5,  9 9"   fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
                   </marker>
                 </defs>
 
@@ -1119,7 +1213,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   const ctrl=Math.max(50,dist*0.4);
                   const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
                   return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-20}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
-                    stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-a)"/>;
+                    stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
                 })()}
 
                 {/* Edges */}
@@ -1133,19 +1227,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
                       <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
                       {(()=>{
-                        const s=edge.style||"arrow";
+                        const def=EDGE_STYLES[edge.style]||EDGE_STYLES.arrow;
                         const ec=isSel?"var(--danger)":(edge.color||"var(--accent)");
-                        const sw=isSel?3:(s==="thick"?4:2);
-                        const da=s==="dashed"?"7,5":s==="dashed-line"?"7,5":s==="dotted"?"2,4":s==="double"?"none":"none";
-                        const mEnd=s==="line"||s==="dashed-line"?undefined:s==="thick"?"url(#nn-tk)":s==="double"?"url(#nn-dbl)":"url(#nn-a)";
-                        const mStart=(s==="bidirectional")?(s==="thick"?"url(#nn-tk-r)":s==="double"?"url(#nn-dbl-r)":"url(#nn-a-r)"):undefined;
-                        // Double line: render two parallel paths
-                        if(s==="double") return(<>
-                          <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
-                          <path d={path} stroke={ec} strokeWidth="1.5" fill="none" opacity={isSel?1:.9} markerEnd="url(#nn-dbl)" markerStart={mStart}/>
-                        </>);
+                        const sw=isSel?3:def.strokeW;
+                        const da=def.dash==="none"?"none":def.dash;
+                        const mEnd=def.mEnd?`url(#${def.mEnd})`:undefined;
+                        const mStart=def.mStart?`url(#${def.mStart})`:undefined;
                         return(
-                          <path d={path} stroke={ec} strokeWidth={sw} fill="none" opacity={isSel?1:.9}
+                          <path d={path} stroke={ec} strokeWidth={sw} fill="none" opacity={isSel?1:.92}
                             strokeDasharray={da}
                             markerEnd={mEnd}
                             markerStart={mStart}
@@ -1322,7 +1411,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                               if(drawingEdge.fromId!==node.id){
                                 applyEdges(es=>[...es,{
                                   id:makeId(),from:drawingEdge.fromId,to:node.id,
-                                  label:"",style:edgeStyle,color:"var(--accent)",
+                                  label:"",style:edgeStyle,color:edgeColor,
                                   fromAnchor:drawingEdge.fromAnchor||{side:"auto"},
                                   toAnchor:{side:a.side,t:a.t},
                                 }]);
