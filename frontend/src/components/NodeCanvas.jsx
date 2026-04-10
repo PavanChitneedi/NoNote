@@ -532,50 +532,50 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
         const canvasY=(cy-rect.top)*s+el.scrollTop*s;
         const dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
+        const GAP=10;
+        const fixedNodes=nodesRef.current.filter(n=>!dragging.ids.includes(n.id));
 
-        // 1. Apply move freely
-        const GAP=8;
-        let moved=nodesRef.current.map(n=>{
-          if(!dragging.ids.includes(n.id)) return n;
-          const start=dragging.startPositions[n.id];
-          return start?{...n,x:Math.max(0,start.x+dx),y:Math.max(0,start.y+dy)}:n;
-        });
+        // Axis-separated collision: test X and Y independently.
+        // This prevents corner-case partial overlaps by blocking each axis individually.
+        const resolvedPositions={};
 
-        // 2. Push dragged nodes out of fixed nodes — iterate until clean
-        const fixedNodes=moved.filter(n=>!dragging.ids.includes(n.id));
-        for(let iter=0;iter<30;iter++){
-          let anyOverlap=false;
-          moved=moved.map(n=>{
-            if(!dragging.ids.includes(n.id)) return n;
-            const nw=n.collapsed?COL_W:(n.w||DEF_W);
-            const nh=n.collapsed?COL_H:(n.h||DEF_H);
-            let {x,y}=n;
-            for(const o of fixedNodes){
-              const ow=o.collapsed?COL_W:(o.w||DEF_W);
-              const oh=o.collapsed?COL_H:(o.h||DEF_H);
-              // Check overlap with gap
-              if(x+nw+GAP<=o.x||x>=o.x+ow+GAP||y+nh+GAP<=o.y||y>=o.y+oh+GAP) continue;
-              // Amount of overlap on each axis
-              const fromRight =x+nw+GAP-o.x;    // n right edge into o left
-              const fromLeft  =o.x+ow+GAP-x;    // o right edge into n left
-              const fromBottom=y+nh+GAP-o.y;    // n bottom into o top
-              const fromTop   =o.y+oh+GAP-y;    // o bottom into n top
-              // Resolve on smallest penetration axis
-              const minX=Math.min(fromRight,fromLeft);
-              const minY=Math.min(fromBottom,fromTop);
-              if(minX<=minY){
-                if(fromRight<fromLeft){ x=o.x-nw-GAP; } else { x=o.x+ow+GAP; }
-              } else {
-                if(fromBottom<fromTop){ y=o.y-nh-GAP; } else { y=o.y+oh+GAP; }
-              }
-              anyOverlap=true;
-            }
-            return {...n,x:Math.max(0,x),y:Math.max(0,y)};
-          });
-          if(!anyOverlap) break;
+        for(const id of dragging.ids){
+          const start=dragging.startPositions[id]; if(!start) continue;
+          const base=nodesRef.current.find(n=>n.id===id); if(!base) continue;
+          const nw=base.collapsed?COL_W:(base.w||DEF_W);
+          const nh=base.collapsed?COL_H:(base.h||DEF_H);
+
+          // Step 1: try X movement, keep old Y
+          let tx=Math.max(0,start.x+dx), ty=start.y;
+          for(const o of fixedNodes){
+            const ow=o.collapsed?COL_W:(o.w||DEF_W);
+            const oh=o.collapsed?COL_H:(o.h||DEF_H);
+            // Do they overlap on Y? (using old Y)
+            if(ty+nh<=o.y||ty>=o.y+oh) continue;
+            // They share Y space — clamp X so no X overlap
+            if(tx<o.x&&tx+nw>o.x-GAP)        tx=o.x-nw-GAP;   // coming from left
+            else if(tx>o.x&&tx<o.x+ow+GAP)   tx=o.x+ow+GAP;   // coming from right
+          }
+
+          // Step 2: try Y movement, use clamped X from step 1
+          ty=Math.max(0,start.y+dy);
+          for(const o of fixedNodes){
+            const ow=o.collapsed?COL_W:(o.w||DEF_W);
+            const oh=o.collapsed?COL_H:(o.h||DEF_H);
+            // Do they overlap on X? (use clamped tx)
+            if(tx+nw<=o.x||tx>=o.x+ow) continue;
+            // They share X space — clamp Y so no Y overlap
+            if(ty<o.y&&ty+nh>o.y-GAP)        ty=o.y-nh-GAP;   // coming from above
+            else if(ty>o.y&&ty<o.y+oh+GAP)   ty=o.y+oh+GAP;   // coming from below
+          }
+
+          resolvedPositions[id]={x:Math.max(0,tx),y:Math.max(0,ty)};
         }
 
-        setNodes(moved);
+        setNodes(ns=>ns.map(n=>{
+          const rp=resolvedPositions[n.id];
+          return rp?{...n,...rp}:n;
+        }));
       }
       if(resizing&&canvasRef.current){
         const s=1/zoom;
