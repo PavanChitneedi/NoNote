@@ -63,6 +63,7 @@ const mkNode = (type, x, y) => ({
 // ── Auto-layout — topological layers, centered, no overlap ──
 function autoLayout(nodes, edges) {
   if (!nodes.length) return nodes;
+  try {
   // Always use EXPANDED sizes for layout — so collapse→layout→expand never overlaps
   const H_PAD = 80, V_PAD = 80;
   const START_X = 100, START_Y = 100;
@@ -107,14 +108,14 @@ function autoLayout(nodes, edges) {
       posMap[id] = { x, y };
       x += nodeW(n) + H_PAD;
     });
-    const maxH = Math.max(...layer.map(id => nodeH(nodeById(id))));
+    const maxH = layer.length ? Math.max(...layer.map(id => nodeH(nodeById(id)))) : DEF_H;
     y += maxH + V_PAD;
   });
 
   const fallbackY = y;
   let result = nodes.map((n, i) => ({
     ...n,
-    ...(posMap[n.id] || { x: START_X, y: fallbackY + i * (DEF_H + H_PAD) }),
+    ...(posMap[n.id] || { x: START_X + (i % 4) * (DEF_W + 80), y: fallbackY + Math.floor(i / 4) * (DEF_H + 80) }),
   }));
 
   // Force-separation — push overlapping nodes apart until clean
@@ -149,6 +150,10 @@ function autoLayout(nodes, edges) {
   }
 
   return result;
+  } catch(err) {
+    console.error("[autoLayout] crash:", err);
+    return nodes; // return unchanged on any error
+  }
 }
 
 // ── Edge start/end point on node rectangle edge ─────────────────
