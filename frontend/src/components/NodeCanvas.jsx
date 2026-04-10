@@ -63,10 +63,12 @@ const mkNode = (type, x, y) => ({
 // ── Auto-layout — topological layers, centered, no overlap ──
 function autoLayout(nodes, edges) {
   if (!nodes.length) return nodes;
-  const H_PAD = 60, V_PAD = 60;
+  // Always use EXPANDED sizes for layout — so collapse→layout→expand never overlaps
+  const H_PAD = 80, V_PAD = 80;
   const START_X = 100, START_Y = 100;
-  const nodeW = n => n?.collapsed ? COL_W : (n?.w || DEF_W);
-  const nodeH = n => n?.collapsed ? COL_H : (n?.h || DEF_H);
+  // Always use full (expanded) size regardless of current collapse state
+  const nodeW = n => n?.w || DEF_W;
+  const nodeH = n => n?.h || DEF_H;
   const nodeById = id => nodes.find(n => n.id === id);
 
   // Build adjacency for topological sort
@@ -92,14 +94,13 @@ function autoLayout(nodes, edges) {
     }));
     q = next;
   }
-  // Cyclic / isolated nodes → extra layers
+  // Cyclic / isolated nodes — place in extra rows
   nodes.filter(n => !vis.has(n.id)).forEach(n => layers.push([n.id]));
 
-  // Position each layer — centered horizontally
+  // Position each layer left-to-right, stack layers top-to-bottom
   const posMap = {};
   let y = START_Y;
   layers.forEach(layer => {
-    const totalW = layer.reduce((s, id) => s + nodeW(nodeById(id)), 0) + H_PAD * (layer.length - 1);
     let x = START_X;
     layer.forEach(id => {
       const n = nodeById(id);
@@ -110,9 +111,8 @@ function autoLayout(nodes, edges) {
     y += maxH + V_PAD;
   });
 
-  // Guard: any node without a position gets placed in a safe fallback spot
-  const fallbackX = START_X, fallbackY = y;
-  return nodes.map(n => ({ ...n, ...(posMap[n.id] || { x: fallbackX, y: fallbackY }) }));
+  const fallbackY = y;
+  return nodes.map((n, i) => ({ ...n, ...(posMap[n.id] || { x: START_X, y: fallbackY + i * (DEF_H + H_PAD) }) }));
 }
 
 // ── Edge start/end point on node rectangle edge ───────────────
@@ -152,21 +152,35 @@ async function exportAsPNG(nodes, edges, mapTitle) {
   // dot grid
   ctx.fillStyle=cs.getPropertyValue("--canvas-dot").trim()||"#21262d";
   for(let gx=0;gx<W;gx+=28)for(let gy=0;gy<H;gy+=28){ctx.beginPath();ctx.arc(gx,gy,1,0,Math.PI*2);ctx.fill();}
-  // edges
-  ctx.strokeStyle=acc; ctx.lineWidth=1.8; ctx.globalAlpha=0.7;
+  // edges — orthogonal bezier (same logic as canvas)
+  ctx.strokeStyle=acc; ctx.lineWidth=2; ctx.globalAlpha=0.85;
+  const pngFaceNormal=(pt,node,nw,nh)=>{
+    const eps=1;
+    if(Math.abs(pt.y-node.y)<eps)       return {dx:0,dy:-1};
+    if(Math.abs(pt.y-(node.y+nh))<eps)  return {dx:0,dy:1};
+    if(Math.abs(pt.x-node.x)<eps)       return {dx:-1,dy:0};
+    return {dx:1,dy:0};
+  };
   edges.forEach(e=>{
     const f=nodes.find(n=>n.id===e.from),t=nodes.find(n=>n.id===e.to); if(!f||!t)return;
-    const tcx=t.x+(t.collapsed?COL_W:t.w)/2, tcy=t.y+(t.collapsed?COL_H:t.h)/2;
-    const fcx=f.x+(f.collapsed?COL_W:f.w)/2, fcy=f.y+(f.collapsed?COL_H:f.h)/2;
+    const fw=f.collapsed?COL_W:f.w, fh=f.collapsed?COL_H:f.h;
+    const tw=t.collapsed?COL_W:t.w, th=t.collapsed?COL_H:t.h;
+    const tcx=t.x+tw/2, tcy=t.y+th/2, fcx=f.x+fw/2, fcy=f.y+fh/2;
     const fp=rectEdgePoint(f,tcx,tcy), tp=rectEdgePoint(t,fcx,fcy);
-    const cx=(fp.x-minX+tp.x-minX)/2;
-    ctx.beginPath();ctx.moveTo(fp.x-minX,fp.y-minY);
-    ctx.bezierCurveTo(cx,fp.y-minY,cx,tp.y-minY,tp.x-minX,tp.y-minY);
+    const n1=pngFaceNormal(fp,f,fw,fh), n2=pngFaceNormal(tp,t,tw,th);
+    const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
+    const ctrl=Math.max(60,dist*0.4);
+    const c1x=fp.x+n1.dx*ctrl, c1y=fp.y+n1.dy*ctrl;
+    const c2x=tp.x+n2.dx*ctrl, c2y=tp.y+n2.dy*ctrl;
+    ctx.beginPath();
+    ctx.moveTo(fp.x-minX,fp.y-minY);
+    ctx.bezierCurveTo(c1x-minX,c1y-minY,c2x-minX,c2y-minY,tp.x-minX,tp.y-minY);
     ctx.setLineDash(e.style==="dashed"?[7,5]:[]);ctx.stroke();
-    const angle=Math.atan2(tp.y-fp.y,tp.x-fp.x);
+    // Arrowhead perpendicular to arrival face
+    const angle=Math.atan2(tp.y-c2y,tp.x-c2x);
     ctx.save();ctx.translate(tp.x-minX,tp.y-minY);ctx.rotate(angle);
-    ctx.beginPath();ctx.moveTo(-8,-5);ctx.lineTo(0,0);ctx.lineTo(-8,5);
-    ctx.fillStyle=acc;ctx.globalAlpha=0.9;ctx.fill();ctx.restore();
+    ctx.beginPath();ctx.moveTo(-9,-5);ctx.lineTo(0,0);ctx.lineTo(-9,5);
+    ctx.fillStyle=acc;ctx.globalAlpha=1;ctx.fill();ctx.restore();
   });
   ctx.globalAlpha=1;ctx.setLineDash([]);
   // nodes
@@ -643,19 +657,36 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setSelected(new Set([node.id])); setQuickPos(null); setQuickText("");
   };
 
-  // ── Edge path (rect-edge to rect-edge) ───────────────────
+  // ── Edge path — orthogonal bezier, arrows perpendicular to node edge ──
   const getEdgePath=(fromNode,toNode)=>{
-    const tcx=toNode.x+(toNode.collapsed?COL_W:toNode.w)/2;
-    const tcy=toNode.y+(toNode.collapsed?COL_H:toNode.h)/2;
-    const fcx=fromNode.x+(fromNode.collapsed?COL_W:fromNode.w)/2;
-    const fcy=fromNode.y+(fromNode.collapsed?COL_H:fromNode.h)/2;
-    // Start point: edge of fromNode toward toNode center
+    const fw=fromNode.collapsed?COL_W:fromNode.w, fh=fromNode.collapsed?COL_H:fromNode.h;
+    const tw=toNode.collapsed?COL_W:toNode.w,   th=toNode.collapsed?COL_H:toNode.h;
+    const fcx=fromNode.x+fw/2, fcy=fromNode.y+fh/2;
+    const tcx=toNode.x+tw/2,   tcy=toNode.y+th/2;
+    // Points on rectangle edges
     const fp=rectEdgePoint(fromNode,tcx,tcy);
-    // End point: edge of toNode toward fromNode center
     const tp=rectEdgePoint(toNode,fcx,fcy);
-    // Smooth bezier control: horizontal midpoint
-    const cx=(fp.x+tp.x)/2;
-    return {path:`M ${fp.x} ${fp.y} C ${cx} ${fp.y}, ${cx} ${tp.y}, ${tp.x} ${tp.y}`,fp,tp};
+    // Determine which face fp and tp are on, then set control points
+    // perpendicular to that face (outward normal direction)
+    const getFaceNormal=(pt,node,nw,nh,cx,cy)=>{
+      const eps=1;
+      if(Math.abs(pt.y-(node.y))<eps)       return {dx:0,dy:-1}; // top face
+      if(Math.abs(pt.y-(node.y+nh))<eps)    return {dx:0,dy:1};  // bottom face
+      if(Math.abs(pt.x-(node.x))<eps)       return {dx:-1,dy:0}; // left face
+      return {dx:1,dy:0};                                          // right face
+    };
+    const fn1=getFaceNormal(fp,fromNode,fw,fh,fcx,fcy);
+    const fn2=getFaceNormal(tp,toNode,tw,th,tcx,tcy);
+    // Control point distance scales with edge length
+    const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
+    const ctrl=Math.max(60, dist*0.4);
+    const c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
+    const c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
+    return {
+      path:`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`,
+      fp, tp,
+      c1:{x:c1x,y:c1y}, c2:{x:c2x,y:c2y}
+    };
   };
 
   // ── LLM export ─────────────────────────────────────────────
@@ -909,26 +940,26 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       </div>
                     )}
 
-                    {/* Bottom-right: resize + collapse/expand icons */}
+                    {/* Bottom-right corner icons — order: reset | collapse | resize(rightmost) */}
                     {canEdit&&editMode&&(
                       <div style={{position:"absolute",bottom:4,right:4,display:"flex",gap:3,alignItems:"center"}}>
-                        {/* Collapse/Expand icon */}
+                        {/* Reset size (leftmost) */}
+                        {isSel&&(
+                          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();resetSize(node.id);}}
+                            title="Reset to default size" style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text4)",cursor:"pointer",fontSize:9,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center"}}>⊡</button>
+                        )}
+                        {/* Collapse/Expand (middle) */}
                         <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
                           title={node.collapsed?"Expand node (⊞)":"Collapse node (⊟)"}
                           style={{background:"none",border:`1px solid ${t.color}40`,borderRadius:"var(--radius-xs)",color:t.color,cursor:"pointer",fontSize:12,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",opacity:0,transition:"opacity .15s"}} className="nn-collapse-btn">
                           {node.collapsed?"⊞":"⊟"}
                         </button>
-                        {/* Resize handle */}
+                        {/* Resize handle (rightmost — directly in the corner) */}
                         {!isGroup&&isSel&&(
                           <div onMouseDown={e=>startResize(e,node.id)}
-                            style={{width:16,height:16,cursor:"nwse-resize",display:"flex",alignItems:"center",justifyContent:"center",opacity:.7}} title="Drag to resize">
-                            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 10 L10 2 M6 10 L10 6" stroke="var(--accent)" strokeWidth="1.5"/></svg>
+                            style={{width:16,height:16,cursor:"nwse-resize",display:"flex",alignItems:"center",justifyContent:"center",opacity:.8}} title="Drag to resize">
+                            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 10 L10 2 M6 10 L10 6" stroke="var(--accent)" strokeWidth="1.8"/></svg>
                           </div>
-                        )}
-                        {/* Reset size */}
-                        {isSel&&(
-                          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();resetSize(node.id);}}
-                            title="Reset size" style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text4)",cursor:"pointer",fontSize:9,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center"}}>⊡</button>
                         )}
                       </div>
                     )}
@@ -948,8 +979,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 {drawingEdge&&(()=>{
                   const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
                   const fp=rectEdgePoint(fn,drawingEdge.mouseX,drawingEdge.mouseY);
-                  const cx=(fp.x+drawingEdge.mouseX)/2;
-                  return <path d={`M ${fp.x} ${fp.y} C ${cx} ${fp.y}, ${cx} ${drawingEdge.mouseY}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
+                  // Perpendicular exit from source node
+                  const fw=fn.collapsed?COL_W:fn.w, fh=fn.collapsed?COL_H:fn.h;
+                  const eps=1;
+                  let ndx=0,ndy=0;
+                  if(Math.abs(fp.y-fn.y)<eps)ndy=-1;
+                  else if(Math.abs(fp.y-(fn.y+fh))<eps)ndy=1;
+                  else if(Math.abs(fp.x-fn.x)<eps)ndx=-1;
+                  else ndx=1;
+                  const dist=Math.sqrt((drawingEdge.mouseX-fp.x)**2+(drawingEdge.mouseY-fp.y)**2);
+                  const ctrl=Math.max(50,dist*0.4);
+                  const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
+                  return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-30}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
                     stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-a)"/>;
                 })()}
 
