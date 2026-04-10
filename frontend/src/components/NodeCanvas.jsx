@@ -535,8 +535,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const GAP=10;
         const fixedNodes=nodesRef.current.filter(n=>!dragging.ids.includes(n.id));
 
-        // Axis-separated collision: test X and Y independently.
-        // This prevents corner-case partial overlaps by blocking each axis individually.
+        // Axis-separated collision: X then Y, each fully resolved.
+        // Key: full AABB overlap check on each axis, resolve by minimum penetration.
         const resolvedPositions={};
 
         for(const id of dragging.ids){
@@ -545,28 +545,37 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           const nw=base.collapsed?COL_W:(base.w||DEF_W);
           const nh=base.collapsed?COL_H:(base.h||DEF_H);
 
-          // Step 1: try X movement, keep old Y
-          let tx=Math.max(0,start.x+dx), ty=start.y;
+          // Step 1: apply X delta, keep Y unchanged (old position)
+          let tx=Math.max(0,start.x+dx);
+          const oy=start.y; // old Y — unchanged during X pass
+
           for(const o of fixedNodes){
             const ow=o.collapsed?COL_W:(o.w||DEF_W);
             const oh=o.collapsed?COL_H:(o.h||DEF_H);
-            // Do they overlap on Y? (using old Y)
-            if(ty+nh<=o.y||ty>=o.y+oh) continue;
-            // They share Y space — clamp X so no X overlap
-            if(tx<o.x&&tx+nw>o.x-GAP)        tx=o.x-nw-GAP;   // coming from left
-            else if(tx>o.x&&tx<o.x+ow+GAP)   tx=o.x+ow+GAP;   // coming from right
+            // Full Y overlap check with old Y
+            if(oy+nh<=o.y||oy>=o.y+oh) continue; // no Y overlap — skip
+            // Full X overlap check
+            if(tx+nw<=o.x||tx>=o.x+ow) continue; // no X overlap — skip
+            // Resolve X: push toward smallest penetration side
+            const pLeft  = tx+nw - o.x;   // penetration through o's left face
+            const pRight = o.x+ow - tx;   // penetration through o's right face
+            if(pLeft<=pRight){ tx=o.x-nw-GAP; } else { tx=o.x+ow+GAP; }
           }
 
-          // Step 2: try Y movement, use clamped X from step 1
-          ty=Math.max(0,start.y+dy);
+          // Step 2: apply Y delta, use resolved X from step 1
+          let ty=Math.max(0,start.y+dy);
+
           for(const o of fixedNodes){
             const ow=o.collapsed?COL_W:(o.w||DEF_W);
             const oh=o.collapsed?COL_H:(o.h||DEF_H);
-            // Do they overlap on X? (use clamped tx)
-            if(tx+nw<=o.x||tx>=o.x+ow) continue;
-            // They share X space — clamp Y so no Y overlap
-            if(ty<o.y&&ty+nh>o.y-GAP)        ty=o.y-nh-GAP;   // coming from above
-            else if(ty>o.y&&ty<o.y+oh+GAP)   ty=o.y+oh+GAP;   // coming from below
+            // Full X overlap check with resolved tx
+            if(tx+nw<=o.x||tx>=o.x+ow) continue; // no X overlap — skip
+            // Full Y overlap check
+            if(ty+nh<=o.y||ty>=o.y+oh) continue; // no Y overlap — skip
+            // Resolve Y: push toward smallest penetration side
+            const pTop    = ty+nh - o.y;   // penetration through o's top face
+            const pBottom = o.y+oh - ty;   // penetration through o's bottom face
+            if(pTop<=pBottom){ ty=o.y-nh-GAP; } else { ty=o.y+oh+GAP; }
           }
 
           resolvedPositions[id]={x:Math.max(0,tx),y:Math.max(0,ty)};
