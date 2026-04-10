@@ -169,7 +169,37 @@ function rectEdgePoint(node, nw, nh, targetX, targetY) {
   return { x: cx + dx*s, y: cy + dy*s };
 }
 
-// ── PNG export ────────────────────────────────────────────────
+// ── Anchor system ────────────────────────────────────────────
+// anchor: { side: "top"|"bottom"|"left"|"right"|"auto", t: 0-1 }
+// t=0.5 is midpoint of that side. "auto" means compute from direction.
+function anchorToPoint(node, nw, nh, anchor) {
+  const {side, t=0.5} = anchor;
+  switch(side) {
+    case "top":    return {x: node.x + nw*t, y: node.y,      normal:{dx:0, dy:-1}};
+    case "bottom": return {x: node.x + nw*t, y: node.y + nh, normal:{dx:0, dy:1}};
+    case "left":   return {x: node.x,        y: node.y+nh*t, normal:{dx:-1,dy:0}};
+    case "right":  return {x: node.x + nw,   y: node.y+nh*t, normal:{dx:1, dy:0}};
+    default:       return null; // "auto" — use rectEdgePoint
+  }
+}
+
+// Snap a canvas-space click position to the nearest border anchor {side,t}
+function snapToAnchor(node, nw, nh, cx, cy) {
+  // distances to each face
+  const dTop    = Math.abs(cy - node.y);
+  const dBottom = Math.abs(cy - (node.y + nh));
+  const dLeft   = Math.abs(cx - node.x);
+  const dRight  = Math.abs(cx - (node.x + nw));
+  const minD = Math.min(dTop, dBottom, dLeft, dRight);
+  const SNAP_DIST = Math.min(nw, nh) * 0.3; // snap zone = 30% of smallest dim
+  if (minD > SNAP_DIST) return null; // too far from any edge — use auto
+  if      (minD === dTop)    return {side:"top",    t: Math.min(1,Math.max(0,(cx-node.x)/nw))};
+  else if (minD === dBottom) return {side:"bottom", t: Math.min(1,Math.max(0,(cx-node.x)/nw))};
+  else if (minD === dLeft)   return {side:"left",   t: Math.min(1,Math.max(0,(cy-node.y)/nh))};
+  else                       return {side:"right",  t: Math.min(1,Math.max(0,(cy-node.y)/nh))};
+}
+
+// ── PNG export ────────────────────────────────────────────────────
 async function exportAsPNG(nodes, edges, mapTitle) {
   if(!nodes.length){alert("No nodes to export.");return;}
   const PAD=60;
@@ -661,14 +691,34 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     if(mode==="connect"){
       if(drawingEdge){
         if(drawingEdge.fromId!==id){
-          applyEdges(es=>[...es,{id:makeId(),from:drawingEdge.fromId,to:id,label:"",style:edgeStyle,color:"var(--accent)"}]);
+          const toNode=nodes.find(n=>n.id===id);
+          const tnw=collW(toNode), tnh=collH(toNode);
+          const el=canvasRef.current;
+          const rect=el.getBoundingClientRect(); const s=1/zoom;
+          const clickX=(e.clientX-rect.left)*s+el.scrollLeft*s;
+          const clickY=(e.clientY-rect.top)*s+el.scrollTop*s;
+          const toAnchor=snapToAnchor(toNode,tnw,tnh,clickX,clickY) || {side:"auto"};
+          applyEdges(es=>[...es,{
+            id:makeId(), from:drawingEdge.fromId, to:id, label:"", style:edgeStyle, color:"var(--accent)",
+            fromAnchor:drawingEdge.fromAnchor||{side:"auto"},
+            toAnchor,
+          }]);
         }
         setDrawingEdge(null);
       } else {
         const node=nodes.find(n=>n.id===id);
-        const cx=node.x+(node.collapsed?COL_W:node.w)/2;
-        const cy=node.y+(node.collapsed?COL_H:node.h)/2;
-        setDrawingEdge({fromId:id,mouseX:cx,mouseY:cy});
+        const nw=collW(node), nh=collH(node);
+        // Compute click position in canvas space
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const clickX=(e.clientX-rect.left)*s+el.scrollLeft*s;
+        const clickY=(e.clientY-rect.top)*s+el.scrollTop*s;
+        // Snap to border anchor if near an edge, else auto
+        const anchor=snapToAnchor(node,nw,nh,clickX,clickY) || {side:"auto"};
+        const startPt = anchor.side!=="auto"
+          ? anchorToPoint(node,nw,nh,anchor)
+          : {x:node.x+nw/2, y:node.y+nh/2};
+        setDrawingEdge({fromId:id,mouseX:startPt.x,mouseY:startPt.y,fromAnchor:anchor});
       }
       return;
     }
@@ -790,32 +840,50 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── Edge path — orthogonal bezier, arrows perpendicular to node edge ──
   // Uses actual rendered dimensions (collW/collH) for precise edge exit points
-  const getEdgePath=(fromNode,toNode)=>{
+  const getEdgePath=(fromNode,toNode,edge={})=>{
     const fw=collW(fromNode), fh=collH(fromNode);
     const tw=collW(toNode),   th=collH(toNode);
     const fcx=fromNode.x+fw/2, fcy=fromNode.y+fh/2;
     const tcx=toNode.x+tw/2,   tcy=toNode.y+th/2;
-    // Exit points on actual rectangle edges
-    const fp=rectEdgePoint(fromNode,fw,fh,tcx,tcy);
-    const tp=rectEdgePoint(toNode,tw,th,fcx,fcy);
-    // Face normal at each exit point (outward perpendicular)
-    const getFaceNormal=(pt,node,nw,nh)=>{
-      const eps=2;
-      if(Math.abs(pt.y - node.y)       < eps) return {dx:0,dy:-1}; // top
-      if(Math.abs(pt.y -(node.y+nh))   < eps) return {dx:0,dy:1};  // bottom
-      if(Math.abs(pt.x - node.x)       < eps) return {dx:-1,dy:0}; // left
-      return {dx:1,dy:0};                                            // right
-    };
-    const fn1=getFaceNormal(fp,fromNode,fw,fh);
-    const fn2=getFaceNormal(tp,toNode,tw,th);
+
+    // Use manual anchor if set, else auto-compute from direction
+    let fp, fn1;
+    if(edge.fromAnchor && edge.fromAnchor.side!=="auto"){
+      const a=anchorToPoint(fromNode,fw,fh,edge.fromAnchor);
+      fp=a; fn1=a.normal;
+    } else {
+      fp=rectEdgePoint(fromNode,fw,fh,tcx,tcy);
+      const getFaceNormal=(pt,node,nw,nh)=>{
+        const eps=2;
+        if(Math.abs(pt.y-node.y)<eps)     return {dx:0,dy:-1};
+        if(Math.abs(pt.y-(node.y+nh))<eps)return {dx:0,dy:1};
+        if(Math.abs(pt.x-node.x)<eps)     return {dx:-1,dy:0};
+        return {dx:1,dy:0};
+      };
+      fn1=getFaceNormal(fp,fromNode,fw,fh);
+    }
+
+    let tp, fn2;
+    if(edge.toAnchor && edge.toAnchor.side!=="auto"){
+      const a=anchorToPoint(toNode,tw,th,edge.toAnchor);
+      tp=a; fn2=a.normal;
+    } else {
+      tp=rectEdgePoint(toNode,tw,th,fcx,fcy);
+      const getFaceNormal=(pt,node,nw,nh)=>{
+        const eps=2;
+        if(Math.abs(pt.y-node.y)<eps)     return {dx:0,dy:-1};
+        if(Math.abs(pt.y-(node.y+nh))<eps)return {dx:0,dy:1};
+        if(Math.abs(pt.x-node.x)<eps)     return {dx:-1,dy:0};
+        return {dx:1,dy:0};
+      };
+      fn2=getFaceNormal(tp,toNode,tw,th);
+    }
+
     const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
     const ctrl=Math.max(60, dist*0.4);
     const c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
     const c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
-    return {
-      path:`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`,
-      fp, tp,
-    };
+    return {path:`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`, fp, tp};
   };
 
   // ── LLM export ─────────────────────────────────────────────
@@ -1024,7 +1092,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 {edges.map(edge=>{
                   const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
                   if(!f||!t) return null;
-                  const {path,fp,tp}=getEdgePath(f,t);
+                  const {path,fp,tp}=getEdgePath(f,t,edge);
                   const mid={x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
                   const isSel=selEdge===edge.id;
                   return (
@@ -1053,6 +1121,42 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           />
                         </foreignObject>
                       )}
+                      {/* Draggable endpoint handles — shown on selected edge */}
+                      {isSel&&canEdit&&(()=>{
+                        const handleDrag=(isFrom)=>(ev)=>{
+                          ev.stopPropagation();
+                          const onMove=(mv)=>{
+                            if(!canvasRef.current) return;
+                            const el=canvasRef.current;
+                            const rect=el.getBoundingClientRect(); const s=1/zoom;
+                            const cx=(mv.clientX-rect.left)*s+el.scrollLeft*s;
+                            const cy=(mv.clientY-rect.top)*s+el.scrollTop*s;
+                            const hoveredNode=nodesRef.current.find(n=>{
+                              const nw=collW(n),nh=collH(n);
+                              return cx>=n.x&&cx<=n.x+nw&&cy>=n.y&&cy<=n.y+nh;
+                            });
+                            if(hoveredNode){
+                              const nw=collW(hoveredNode),nh=collH(hoveredNode);
+                              const newAnchor=snapToAnchor(hoveredNode,nw,nh,cx,cy)||{side:"auto"};
+                              applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{
+                                ...ex,
+                                ...(isFrom?{from:hoveredNode.id,fromAnchor:newAnchor}:{to:hoveredNode.id,toAnchor:newAnchor}),
+                              }));
+                            }
+                          };
+                          const onUp=()=>{ window.removeEventListener("mousemove",onMove); window.removeEventListener("mouseup",onUp); };
+                          window.addEventListener("mousemove",onMove);
+                          window.addEventListener("mouseup",onUp);
+                        };
+                        return (<>
+                          <circle cx={fp.x} cy={fp.y} r="7" fill="var(--success)" stroke="var(--bg2)" strokeWidth="2.5"
+                            style={{cursor:"grab",pointerEvents:"all"}} title="Drag to reattach source"
+                            onMouseDown={handleDrag(true)}/>
+                          <circle cx={tp.x} cy={tp.y} r="7" fill="var(--accent)" stroke="var(--bg2)" strokeWidth="2.5"
+                            style={{cursor:"grab",pointerEvents:"all"}} title="Drag to reattach target"
+                            onMouseDown={handleDrag(false)}/>
+                        </>);
+                      })()}
                     </g>
                   );
                 })}
@@ -1134,6 +1238,50 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         />
                       </div>
                     )}
+
+                    {/* Anchor dots — shown in connect mode for precise connection placement */}
+                    {mode==="connect"&&canEdit&&!isCollapsed&&(()=>{
+                      const nw2=collW(node), nh2=collH(node);
+                      const anchors=[
+                        {side:"top",    t:0.5, ax:node.x+nw2*0.5, ay:node.y},
+                        {side:"bottom", t:0.5, ax:node.x+nw2*0.5, ay:node.y+nh2},
+                        {side:"left",   t:0.5, ax:node.x,         ay:node.y+nh2*0.5},
+                        {side:"right",  t:0.5, ax:node.x+nw2,     ay:node.y+nh2*0.5},
+                      ];
+                      return anchors.map(a=>(
+                        <div key={a.side}
+                          onMouseDown={e=>e.stopPropagation()}
+                          onClick={e=>{
+                            e.stopPropagation();
+                            if(drawingEdge){
+                              if(drawingEdge.fromId!==node.id){
+                                applyEdges(es=>[...es,{
+                                  id:makeId(),from:drawingEdge.fromId,to:node.id,
+                                  label:"",style:edgeStyle,color:"var(--accent)",
+                                  fromAnchor:drawingEdge.fromAnchor||{side:"auto"},
+                                  toAnchor:{side:a.side,t:a.t},
+                                }]);
+                              }
+                              setDrawingEdge(null);
+                            } else {
+                              setDrawingEdge({fromId:node.id,mouseX:a.ax,mouseY:a.ay,fromAnchor:{side:a.side,t:a.t}});
+                            }
+                          }}
+                          style={{
+                            position:"absolute",
+                            left:a.ax-node.x-7, top:a.ay-node.y-7,
+                            width:14, height:14, borderRadius:"50%",
+                            background:drawingEdge?"var(--success)":"var(--accent)",
+                            border:"2px solid var(--bg2)",
+                            cursor:"crosshair", zIndex:30,
+                            boxShadow:"0 0 6px var(--accent)",
+                            transition:"transform .1s",
+                          }}
+                          onMouseEnter={e=>e.currentTarget.style.transform="scale(1.4)"}
+                          onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
+                        />
+                      ));
+                    })()}
 
                     {/* Bottom-right corner icons — order: reset | collapse | resize(rightmost) */}
                     {canEdit&&editMode&&(
