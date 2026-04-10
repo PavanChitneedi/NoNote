@@ -60,44 +60,71 @@ const mkNode = (type, x, y) => ({
   properties: { ...(DP[type]||{}) }, customProps: {},
 });
 
-// ── Auto-layout ───────────────────────────────────────────────
+// ── Auto-layout — topological layers, centered, no overlap ──
 function autoLayout(nodes, edges) {
   if (!nodes.length) return nodes;
-  const PAD=80, inDeg={}, adj={};
-  nodes.forEach(n=>{ inDeg[n.id]=0; adj[n.id]=[]; });
-  edges.forEach(e=>{ if(inDeg[e.to]!==undefined){inDeg[e.to]++;adj[e.from]?.push(e.to);} });
-  const layers=[]; let q=nodes.filter(n=>inDeg[n.id]===0).map(n=>n.id);
-  const vis=new Set();
-  while(q.length){
-    layers.push([...q]); q.forEach(id=>vis.add(id));
-    const next=[];
-    q.forEach(id=>adj[id]?.forEach(tid=>{if(!vis.has(tid)){inDeg[tid]--;if(inDeg[tid]===0)next.push(tid);}}));
-    q=next;
-  }
-  nodes.filter(n=>!vis.has(n.id)).forEach(n=>{ if(!layers[layers.length-1]?.includes(n.id)) layers.push([n.id]); });
-  const posMap={};
-  let y=100;
-  layers.forEach(layer=>{
-    const totalW=layer.reduce((sum,id)=>{ const n=nodes.find(n=>n.id===id); return sum+(n?.collapsed?COL_W:n?.w||DEF_W)+PAD; },0)-PAD;
-    let x=Math.max(100,(4000-totalW)/2);
-    layer.forEach(id=>{
-      const n=nodes.find(n=>n.id===id);
-      const w=n?.collapsed?COL_W:n?.w||DEF_W;
-      posMap[id]={x,y}; x+=w+PAD;
-    });
-    const maxH=Math.max(...layer.map(id=>{ const n=nodes.find(n=>n.id===id); return n?.collapsed?COL_H:n?.h||DEF_H; }));
-    y+=maxH+PAD;
+  const H_PAD = 60, V_PAD = 60;
+  const START_X = 100, START_Y = 100;
+  const nodeW = n => n?.collapsed ? COL_W : (n?.w || DEF_W);
+  const nodeH = n => n?.collapsed ? COL_H : (n?.h || DEF_H);
+  const nodeById = id => nodes.find(n => n.id === id);
+
+  // Build adjacency for topological sort
+  const inDeg = {}, adj = {};
+  nodes.forEach(n => { inDeg[n.id] = 0; adj[n.id] = []; });
+  edges.forEach(e => {
+    if (inDeg[e.to] !== undefined && inDeg[e.from] !== undefined) {
+      inDeg[e.to]++;
+      adj[e.from].push(e.to);
+    }
   });
-  return nodes.map(n=>({ ...n, ...(posMap[n.id]||{}) }));
+
+  // Kahn topo sort → layers
+  const layers = [];
+  let q = nodes.filter(n => inDeg[n.id] === 0).map(n => n.id);
+  const vis = new Set();
+  while (q.length) {
+    layers.push([...q]);
+    q.forEach(id => vis.add(id));
+    const next = [];
+    q.forEach(id => adj[id]?.forEach(tid => {
+      if (!vis.has(tid)) { inDeg[tid]--; if (inDeg[tid] === 0) next.push(tid); }
+    }));
+    q = next;
+  }
+  // Cyclic / isolated nodes → extra layers
+  nodes.filter(n => !vis.has(n.id)).forEach(n => layers.push([n.id]));
+
+  // Position each layer — centered horizontally
+  const posMap = {};
+  let y = START_Y;
+  layers.forEach(layer => {
+    const totalW = layer.reduce((s, id) => s + nodeW(nodeById(id)), 0) + H_PAD * (layer.length - 1);
+    let x = START_X;
+    layer.forEach(id => {
+      const n = nodeById(id);
+      posMap[id] = { x, y };
+      x += nodeW(n) + H_PAD;
+    });
+    const maxH = Math.max(...layer.map(id => nodeH(nodeById(id))));
+    y += maxH + V_PAD;
+  });
+
+  // Guard: any node without a position gets placed in a safe fallback spot
+  const fallbackX = START_X, fallbackY = y;
+  return nodes.map(n => ({ ...n, ...(posMap[n.id] || { x: fallbackX, y: fallbackY }) }));
 }
 
 // ── Edge start/end point on node rectangle edge ───────────────
 function rectEdgePoint(node, targetX, targetY) {
-  const cx = node.x + node.w/2, cy = node.y + node.h/2;
+  // Use actual rendered size (collapsed or not)
+  const nw = node.collapsed ? COL_W : node.w;
+  const nh = node.collapsed ? COL_H : node.h;
+  const cx = node.x + nw/2, cy = node.y + nh/2;
   const dx = targetX - cx, dy = targetY - cy;
   if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return { x:cx, y:cy };
-  const hw = (node.collapsed ? COL_W : node.w)/2;
-  const hh = (node.collapsed ? COL_H : node.h)/2;
+  const hw = nw/2, hh = nh/2;
+  // Find intersection of ray from center to target with rectangle edge
   const sx = Math.abs(dx)>0.001 ? hw/Math.abs(dx) : Infinity;
   const sy = Math.abs(dy)>0.001 ? hh/Math.abs(dy) : Infinity;
   const s  = Math.min(sx, sy);
@@ -216,6 +243,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [drawingEdge,  setDrawingEdge]  = useState(null);
   // Box-select
   const [boxSel,       setBoxSel]       = useState(null); // {startX,startY,endX,endY}
+  const boxSelRef = useRef(null); // live ref for window mousemove handler
   const [saveState,    setSaveState]    = useState("idle");
   const [saveMsg,      setSaveMsg]      = useState("");
   const [loading,      setLoading]      = useState(true);
@@ -238,10 +266,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     () => localStorage.getItem(`nn_canvas_${mapId}`) || "global"
   );
   // Undo/redo
-  const [canUndo, setCanUndo] = useState(false);
-  const [canRedo, setCanRedo] = useState(false);
+  const [canUndo,      setCanUndo]      = useState(false);
+  const [canRedo,      setCanRedo]      = useState(false);
+  const [globalCollapsed,setGlobalCollapsed]= useState(false); // collapse all / expand all
 
   const canvasRef   = useRef(null);
+  const nodesRef    = useRef([]);  // live ref for box-select (avoids stale closure)
   const saveTimer   = useRef(null);
   const versionTimer= useRef(null);
   const notesTimers = useRef({});
@@ -297,21 +327,25 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     }, 1000);
   }, [mapId,canEdit]);
 
-  const applyNodes = useCallback((fn) => {
+  // applyNodes: save + history. Pass skipHistory=true during live drag.
+  const applyNodes = useCallback((fn, skipHistory=false) => {
     setNodes(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
-      setEdges(es=>{ scheduleSave(next,es); pushHistory(next,es); return es; });
+      setEdges(es=>{ scheduleSave(next,es); if(!skipHistory)pushHistory(next,es); return es; });
       return next;
     });
   }, [scheduleSave,pushHistory]);
 
-  const applyEdges = useCallback((fn) => {
+  const applyEdges = useCallback((fn, skipHistory=false) => {
     setEdges(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
-      setNodes(ns=>{ scheduleSave(ns,next); pushHistory(ns,next); return ns; });
+      setNodes(ns=>{ scheduleSave(ns,next); if(!skipHistory)pushHistory(ns,next); return ns; });
       return next;
     });
   }, [scheduleSave,pushHistory]);
+
+  // Keep nodesRef in sync with nodes state
+  useEffect(()=>{ nodesRef.current = nodes; },[nodes]);
 
   // ── Load ───────────────────────────────────────────────────
   useEffect(()=>{
@@ -428,6 +462,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
         const canvasY=(cy-rect.top)*s+el.scrollTop*s;
         const dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
+        // Use setNodes directly — no history during drag (history pushed on mouseUp)
         setNodes(ns=>ns.map(n=>{
           if(!dragging.ids.includes(n.id)) return n;
           const start=dragging.startPositions[n.id];
@@ -436,14 +471,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
       if(resizing&&canvasRef.current){
         const s=1/zoom;
+        // Use setNodes directly — no history during resize
         setNodes(ns=>ns.map(n=>n.id===resizing.id?{...n,w:Math.max(160,resizing.origW+(cx-resizing.startX)*s),h:Math.max(60,resizing.origH+(cy-resizing.startY)*s)}:n));
       }
-      if(boxSel&&canvasRef.current){
+      if(boxSelRef.current&&canvasRef.current){
         const el=canvasRef.current;
         const rect=el.getBoundingClientRect(); const s=1/zoom;
         const mx=(cx-rect.left)*s+el.scrollLeft*s;
         const my=(cy-rect.top)*s+el.scrollTop*s;
-        setBoxSel(b=>({...b,endX:mx,endY:my}));
+        const updated={...boxSelRef.current,endX:mx,endY:my};
+        boxSelRef.current=updated;
+        setBoxSel(updated);
       }
       if(drawingEdge&&canvasRef.current){
         const el=canvasRef.current;
@@ -452,22 +490,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
     };
     const onUp=()=>{
-      if(dragging){setNodes(ns=>{setEdges(es=>{scheduleSave(ns,es);pushHistory(ns,es);return es;});return ns;});}
-      if(resizing){setNodes(ns=>{setEdges(es=>{scheduleSave(ns,es);pushHistory(ns,es);return es;});return ns;});}
-      if(boxSel){
-        // Finalize box selection
-        const {startX,startY,endX,endY}=boxSel;
+      // Push ONE history entry when drag/resize ends (not during)
+      if(dragging||resizing){
+        setNodes(ns=>{setEdges(es=>{scheduleSave(ns,es);pushHistory(ns,es);return es;});return ns;});
+      }
+      if(boxSelRef.current){
+        const {startX,startY,endX,endY}=boxSelRef.current;
         const x1=Math.min(startX,endX),y1=Math.min(startY,endY);
         const x2=Math.max(startX,endX),y2=Math.max(startY,endY);
         if(Math.abs(x2-x1)>5||Math.abs(y2-y1)>5){
           const sel=new Set();
-          nodes.forEach(n=>{
+          // Use nodesRef (live ref) so selection is not stale
+          nodesRef.current.forEach(n=>{
             const nw=n.collapsed?COL_W:n.w, nh=n.collapsed?COL_H:n.h;
             if(n.x<x2&&n.x+nw>x1&&n.y<y2&&n.y+nh>y1) sel.add(n.id);
           });
           setSelected(sel);
         }
-        setBoxSel(null);
+        boxSelRef.current=null; setBoxSel(null);
       }
       setDragging(null); setResizing(null);
     };
@@ -481,7 +521,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       window.removeEventListener("touchmove",onMove);
       window.removeEventListener("touchend",onUp);
     };
-  },[dragging,resizing,drawingEdge,boxSel,scheduleSave,pushHistory,zoom,nodes]);
+  },[dragging,resizing,drawingEdge,scheduleSave,pushHistory,zoom,nodes]);
 
   // ── Node click ────────────────────────────────────────────
   const handleNodeClick=useCallback((e,id)=>{
@@ -521,12 +561,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Canvas mousedown — start box select ───────────────────
   const handleCanvasMouseDown=useCallback((e)=>{
     if(mode!=="select"||!canEdit) return;
-    if(e.target!==e.currentTarget&&e.target.closest(".nn-node")) return;
+    // Only start box-select if clicking directly on canvas background (not a node/edge)
+    const target=e.target;
+    if(target.closest(".nn-node")) return;
+    if(target.tagName==="path"||target.tagName==="text"||target.closest("circle")||target.closest("polygon")||target.closest("foreignObject")) return;
+    // Only start box-select on true canvas background
     const el=canvasRef.current; if(!el) return;
     const rect=el.getBoundingClientRect(); const s=1/zoom;
     const x=(e.clientX-rect.left)*s+el.scrollLeft*s;
     const y=(e.clientY-rect.top)*s+el.scrollTop*s;
-    setBoxSel({startX:x,startY:y,endX:x,endY:y});
+    const bs={startX:x,startY:y,endX:x,endY:y};
+    boxSelRef.current=bs; setBoxSel(bs);
     setSelected(new Set()); setSelEdge(null);
   },[mode,canEdit,zoom]);
 
@@ -562,6 +607,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const deleteCustom =(id,k)=>applyNodes(ns=>ns.map(n=>{if(n.id!==id)return n;const c={...n.customProps};delete c[k];return{...n,customProps:c};}));
   const resetSize    =(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,w:n.type==="group"?GRP_W:DEF_W,h:n.type==="group"?GRP_H:DEF_H}:n));
   const toggleCollapse=(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,collapsed:!n.collapsed}:n));
+  const collapseAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:true}))); setGlobalCollapsed(true); };
+  const expandAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:false}))); setGlobalCollapsed(false); };
   const updateNotes  =(id,val)=>{
     setNodes(ns=>ns.map(n=>n.id===id?{...n,notes:val}:n));
     clearTimeout(notesTimers.current[id]);
@@ -571,7 +618,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   };
 
   // ── Auto-layout ────────────────────────────────────────────
-  const handleAutoLayout=useCallback(()=>{applyNodes(ns=>autoLayout(ns,edges));},[edges,applyNodes]);
+  const handleAutoLayout=useCallback(()=>{
+    applyNodes(ns=>autoLayout(ns,edges));
+    // Scroll to origin so nodes are visible
+    setTimeout(()=>{
+      if(canvasRef.current) canvasRef.current.scrollTo({left:0,top:0,behavior:"smooth"});
+    },80);
+  },[edges,applyNodes,zoom]);
 
   // ── Restore version ────────────────────────────────────────
   const handleRestore=(ns,es)=>{
@@ -596,8 +649,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const tcy=toNode.y+(toNode.collapsed?COL_H:toNode.h)/2;
     const fcx=fromNode.x+(fromNode.collapsed?COL_W:fromNode.w)/2;
     const fcy=fromNode.y+(fromNode.collapsed?COL_H:fromNode.h)/2;
+    // Start point: edge of fromNode toward toNode center
     const fp=rectEdgePoint(fromNode,tcx,tcy);
+    // End point: edge of toNode toward fromNode center
     const tp=rectEdgePoint(toNode,fcx,fcy);
+    // Smooth bezier control: horizontal midpoint
     const cx=(fp.x+tp.x)/2;
     return {path:`M ${fp.x} ${fp.y} C ${cx} ${fp.y}, ${cx} ${tp.y}, ${tp.x} ${tp.y}`,fp,tp};
   };
@@ -691,11 +747,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           {mode==="connect"&&drawingEdge&&<span style={{fontSize:11,color:"#f78166",padding:"0 5px",animation:"pulse 1s infinite",flexShrink:0}}>● click target</span>}
           <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
           <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ AUTO LAYOUT</button>
+          <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
+            {globalCollapsed?"⊞ EXPAND ALL":"⊟ COLLAPSE ALL"}
+          </button>
           <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
           <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
           {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑{selected.size>1?` (${selected.size})`:""}</button>}
           {selectedNode&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties">✏ PROPS</button>}
-          {selected.size>0&&<button onClick={()=>selected.forEach(id=>toggleCollapse(id))} style={tbtn(false,"#9C27B0")} title="Toggle collapse">⊟</button>}
+
         </>}
 
         <div style={{flex:1}}/>
@@ -741,7 +800,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {/* ── Canvas ── */}
         <div ref={canvasRef}
           onMouseDown={handleCanvasMouseDown}
-          onClick={()=>{if(!boxSel){setSelected(new Set());setSelEdge(null);if(drawingEdge)setDrawingEdge(null);}}}
+          onClick={e=>{
+            // Don't clear selection if we just finished a box-select drag
+            if(e.target.closest(".nn-node")) return;
+            if(e.target.tagName==="path"||e.target.tagName==="text") return;
+            setSelected(new Set());setSelEdge(null);
+            if(drawingEdge)setDrawingEdge(null);
+          }}
           onMouseMove={e=>{
             if(drawingEdge&&canvasRef.current){
               const el=canvasRef.current; const rect=el.getBoundingClientRect(); const s=1/zoom;
@@ -760,66 +825,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
             <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
 
-              {/* SVG layer */}
-              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
-                <defs>
-                  <marker id="nn-a"  markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto"><polygon points="0 0, 9 3.5, 0 7" fill="var(--accent)" opacity=".85"/></marker>
-                  <marker id="nn-a2" markerWidth="9" markerHeight="7" refX="1" refY="3.5" orient="auto-start-reverse"><polygon points="9 0, 0 3.5, 9 7" fill="var(--accent)" opacity=".85"/></marker>
-                </defs>
-
-                {/* Live arrow while drawing */}
-                {drawingEdge&&(()=>{
-                  const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
-                  const fp=rectEdgePoint(fn,drawingEdge.mouseX,drawingEdge.mouseY);
-                  const cx=(fp.x+drawingEdge.mouseX)/2;
-                  return <path d={`M ${fp.x} ${fp.y} C ${cx} ${fp.y}, ${cx} ${drawingEdge.mouseY}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
-                    stroke="var(--accent)" strokeWidth="2" fill="none" strokeDasharray="6,4" opacity=".75" markerEnd="url(#nn-a)"/>;
-                })()}
-
-                {/* Edges */}
-                {edges.map(edge=>{
-                  const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
-                  if(!f||!t) return null;
-                  const {path,fp,tp}=getEdgePath(f,t);
-                  const mid={x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
-                  const isSel=selEdge===edge.id;
-                  return (
-                    <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
-                      <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
-                      <path d={path}
-                        stroke={isSel?"var(--danger)":edge.color||"var(--accent)"}
-                        strokeWidth={isSel?2.5:1.8} fill="none" opacity={isSel?1:.75}
-                        strokeDasharray={edge.style==="dashed"?"7,5":"none"}
-                        markerEnd={edge.style!=="line"?"url(#nn-a)":undefined}
-                        markerStart={edge.style==="bidirectional"?"url(#nn-a2)":undefined}
-                      />
-                      {isSel&&(
-                        <g style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>{e.stopPropagation();applyEdges(es=>es.filter(ex=>ex.id!==edge.id));setSelEdge(null);}}>
-                          <circle cx={mid.x} cy={mid.y} r="11" fill="var(--danger)"/>
-                          <text x={mid.x} y={mid.y+4.5} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">×</text>
-                        </g>
-                      )}
-                      {edge.label&&!isSel&&<text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>}
-                      {isSel&&(
-                        <foreignObject x={mid.x-55} y={mid.y+16} width="110" height="28">
-                          <input value={edge.label||""} placeholder="label"
-                            onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
-                            onClick={e=>e.stopPropagation()}
-                            style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:5,padding:"3px 7px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}
-                          />
-                        </foreignObject>
-                      )}
-                    </g>
-                  );
-                })}
-
-                {/* Box selection rectangle */}
-                {boxRect&&boxRect.w>2&&boxRect.h>2&&(
+              {/* Box selection rect — behind nodes */}
+              {boxRect&&boxRect.w>2&&boxRect.h>2&&(
+                <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:1}}>
                   <rect x={boxRect.x} y={boxRect.y} width={boxRect.w} height={boxRect.h}
                     fill="var(--accent2)" fillOpacity="0.08"
                     stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="5,3"/>
-                )}
-              </svg>
+                </svg>
+              )}
 
               {/* Nodes */}
               {nodes.map(node=>{
@@ -876,11 +889,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           {node.title}
                         </span>
                       )}
-                      {/* Collapse button */}
-                      {canEdit&&editMode&&isSel&&(
-                        <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
-                          title="Collapse node" style={{background:"none",border:"none",color:`${t.color}99`,cursor:"pointer",fontSize:13,padding:"0 2px",flexShrink:0}}>⊟</button>
-                      )}
                       <span style={{fontSize:9,color:"var(--text4)",letterSpacing:1.2,fontWeight:700,flexShrink:0}}>{t.label.toUpperCase()}</span>
                     </div>
 
@@ -901,21 +909,88 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       </div>
                     )}
 
-                    {/* Resize handle */}
-                    {canEdit&&editMode&&isSel&&!isGroup&&(
-                      <div onMouseDown={e=>startResize(e,node.id)}
-                        style={{position:"absolute",bottom:0,right:0,width:16,height:16,cursor:"nwse-resize",display:"flex",alignItems:"center",justifyContent:"center",opacity:.7}} title="Resize">
-                        <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 10 L10 2 M6 10 L10 6" stroke="var(--accent)" strokeWidth="1.5"/></svg>
+                    {/* Bottom-right: resize + collapse/expand icons */}
+                    {canEdit&&editMode&&(
+                      <div style={{position:"absolute",bottom:4,right:4,display:"flex",gap:3,alignItems:"center"}}>
+                        {/* Collapse/Expand icon */}
+                        <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
+                          title={node.collapsed?"Expand node (⊞)":"Collapse node (⊟)"}
+                          style={{background:"none",border:`1px solid ${t.color}40`,borderRadius:"var(--radius-xs)",color:t.color,cursor:"pointer",fontSize:12,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",opacity:0,transition:"opacity .15s"}} className="nn-collapse-btn">
+                          {node.collapsed?"⊞":"⊟"}
+                        </button>
+                        {/* Resize handle */}
+                        {!isGroup&&isSel&&(
+                          <div onMouseDown={e=>startResize(e,node.id)}
+                            style={{width:16,height:16,cursor:"nwse-resize",display:"flex",alignItems:"center",justifyContent:"center",opacity:.7}} title="Drag to resize">
+                            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 10 L10 2 M6 10 L10 6" stroke="var(--accent)" strokeWidth="1.5"/></svg>
+                          </div>
+                        )}
+                        {/* Reset size */}
+                        {isSel&&(
+                          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();resetSize(node.id);}}
+                            title="Reset size" style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text4)",cursor:"pointer",fontSize:9,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center"}}>⊡</button>
+                        )}
                       </div>
-                    )}
-                    {/* Reset size */}
-                    {canEdit&&editMode&&isSel&&(
-                      <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();resetSize(node.id);}}
-                        title="Reset size" style={{position:"absolute",top:4,right:isSel?22:4,background:"var(--bg3)",border:"none",borderRadius:"var(--radius-xs)",color:"var(--text4)",cursor:"pointer",fontSize:9,padding:"1px 5px",fontFamily:"var(--font-ui)"}}>⊡</button>
                     )}
                   </div>
                 );
               })}
+
+
+              {/* Edge SVG — placed after nodes in DOM so edges appear above them */}
+              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:20}}>
+                <defs>
+                  <marker id="nn-a"  markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="var(--accent)" opacity="1"/></marker>
+                  <marker id="nn-a2" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto-start-reverse"><polygon points="10 0, 0 4, 10 8" fill="var(--accent)" opacity="1"/></marker>
+                </defs>
+
+                {/* Live arrow while drawing */}
+                {drawingEdge&&(()=>{
+                  const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
+                  const fp=rectEdgePoint(fn,drawingEdge.mouseX,drawingEdge.mouseY);
+                  const cx=(fp.x+drawingEdge.mouseX)/2;
+                  return <path d={`M ${fp.x} ${fp.y} C ${cx} ${fp.y}, ${cx} ${drawingEdge.mouseY}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
+                    stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-a)"/>;
+                })()}
+
+                {/* Edges */}
+                {edges.map(edge=>{
+                  const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
+                  if(!f||!t) return null;
+                  const {path,fp,tp}=getEdgePath(f,t);
+                  const mid={x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
+                  const isSel=selEdge===edge.id;
+                  return (
+                    <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
+                      <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
+                      <path d={path}
+                        stroke={isSel?"var(--danger)":edge.color||"var(--accent)"}
+                        strokeWidth={isSel?3:2} fill="none" opacity={isSel?1:.9}
+                        strokeDasharray={edge.style==="dashed"?"7,5":"none"}
+                        markerEnd={edge.style!=="line"?"url(#nn-a)":undefined}
+                        markerStart={edge.style==="bidirectional"?"url(#nn-a2)":undefined}
+                      />
+                      {isSel&&(
+                        <g style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>{e.stopPropagation();applyEdges(es=>es.filter(ex=>ex.id!==edge.id));setSelEdge(null);}}>
+                          <circle cx={mid.x} cy={mid.y} r="11" fill="var(--danger)"/>
+                          <text x={mid.x} y={mid.y+4.5} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">×</text>
+                        </g>
+                      )}
+                      {edge.label&&!isSel&&<text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>}
+                      {isSel&&(
+                        <foreignObject x={mid.x-55} y={mid.y+16} width="110" height="28">
+                          <input value={edge.label||""} placeholder="label"
+                            onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
+                            onClick={e=>e.stopPropagation()}
+                            style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:5,padding:"3px 7px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}
+                          />
+                        </foreignObject>
+                      )}
+                    </g>
+                  );
+                })}
+
+              </svg>
 
               {/* Quick Capture */}
               {quickPos&&canEdit&&editMode&&(
@@ -976,6 +1051,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
         .nn-node:hover { z-index: 10; }
+        .nn-node:hover .nn-collapse-btn { opacity: 0.8 !important; }
+        .nn-node .nn-collapse-btn:hover { opacity: 1 !important; }
       `}</style>
     </div>
   );
@@ -1011,10 +1088,13 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
       <span style={{fontSize:10,fontWeight:700,color:t.color,textAlign:"center",lineHeight:1.2,padding:"0 4px",maxWidth:COL_W-8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
         {node.title}
       </span>
-      {/* Expand button */}
-      {canEdit&&isSel&&(
+      {/* ⊞ Expand icon — top-right of collapsed node */}
+      {canEdit&&(
         <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onToggleCollapse(e);}}
-          title="Expand" style={{position:"absolute",top:2,right:2,background:"none",border:"none",color:`${t.color}99`,cursor:"pointer",fontSize:11,padding:0}}>⊞</button>
+          title="Expand node (⊞)"
+          style={{position:"absolute",top:2,right:2,background:"none",border:`1px solid ${t.color}60`,borderRadius:3,color:t.color,cursor:"pointer",fontSize:11,width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>
+          ⊞
+        </button>
       )}
       {/* Hover tooltip */}
       {hovered&&(propEntries.length>0||node.notes)&&(
@@ -1080,7 +1160,10 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
       <div style={{padding:"11px 14px",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,background:"var(--bg2)",zIndex:1}}>
         <span style={{fontSize:16}}>{t.icon}</span>
         <span style={{fontSize:11,color:t.color,fontWeight:700,flex:1}}>{t.label.toUpperCase()}</span>
-        <button onClick={onToggleCollapse} title={node.collapsed?"Expand":"Collapse"} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:14}}>{node.collapsed?"⊞":"⊟"}</button>
+        <button onClick={onToggleCollapse} title={node.collapsed?"Expand node":"Collapse node"}
+          style={{background:node.collapsed?"var(--success)18":"var(--bg3)",border:`1px solid ${node.collapsed?"var(--success)":"var(--border)"}`,borderRadius:5,color:node.collapsed?"var(--success)":"var(--text3)",cursor:"pointer",fontSize:10,padding:"3px 9px",fontFamily:"inherit",fontWeight:700}}>
+          {node.collapsed?"▶ EXPAND":"◀ COLLAPSE"}
+        </button>
         <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
       </div>
       <div style={{padding:"13px 14px",display:"flex",flexDirection:"column",gap:11}}>
