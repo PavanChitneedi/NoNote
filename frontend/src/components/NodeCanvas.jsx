@@ -43,6 +43,20 @@ const DP = {
   queue:{Type:"SQS",MaxSize:"",DLQ:""},cdn:{Provider:"CloudFront",Origin:"",TTL:""},
 };
 
+// ── Edge style definitions ────────────────────────────────────
+const EDGE_STYLES = {
+  arrow:         { label:"Arrow",          icon:"→",  desc:"Directed arrow" },
+  bidirectional: { label:"Both-way",       icon:"↔",  desc:"Arrow both ends" },
+  line:          { label:"Plain line",     icon:"—",  desc:"No arrowhead" },
+  dashed:        { label:"Dashed",         icon:"- →", desc:"Dashed with arrow" },
+  "dashed-line": { label:"Dashed plain",   icon:"---", desc:"Dashed no arrow" },
+  dotted:        { label:"Dotted",         icon:"···→",desc:"Dotted with arrow" },
+  thick:         { label:"Thick",          icon:"━→",  desc:"Bold arrow" },
+  double:        { label:"Double",         icon:"⇒",   desc:"Double line arrow" },
+  curved:        { label:"Curved",         icon:"↝",   desc:"Extra-curved" },
+  orthogonal:    { label:"Orthogonal",     icon:"⌐→",  desc:"Right-angle routing" },
+};
+
 const DEF_W=220, DEF_H=96, GRP_W=340, GRP_H=240;
 const COL_W=72,  COL_H=72; // collapsed node size
 
@@ -455,6 +469,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const es=data.edges.map(e=>({
         id:e.id,from:e.from_node,to:e.to_node,
         label:e.label,style:e.style,color:e.color,
+        fromAnchor:e.from_anchor||null,
+        toAnchor:e.to_anchor||null,
       }));
       setNodes(ns); setEdges(es); pushHistory(ns,es);
     }).catch(console.error).finally(()=>setLoading(false));
@@ -824,7 +840,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Restore version ────────────────────────────────────────
   const handleRestore=(ns,es)=>{
     const mappedN=ns.map(n=>({id:n.id,type:n.node_type||n.type,x:n.x,y:n.y,w:n.w,h:n.h,title:n.title,notes:n.notes||"",collapsed:false,properties:n.properties||{},customProps:n.custom_props||n.customProps||{}}));
-    const mappedE=es.map(e=>({id:e.id,from:e.from_node||e.from,to:e.to_node||e.to,label:e.label||"",style:e.style||"arrow",color:e.color||"var(--accent)"}));
+    const mappedE=es.map(e=>({id:e.id,from:e.from_node||e.from,to:e.to_node||e.to,label:e.label||"",style:e.style||"arrow",color:e.color||"var(--accent)",fromAnchor:e.from_anchor||e.fromAnchor||null,toAnchor:e.to_anchor||e.toAnchor||null}));
     setNodes(mappedN);setEdges(mappedE);pushHistory(mappedN,mappedE);scheduleSave(mappedN,mappedE);
   };
 
@@ -969,9 +985,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {editMode&&canEdit&&<>
           <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
           <button onClick={()=>setMode("connect")} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
-          {mode==="connect"&&["arrow","line","dashed","bidirectional"].map(s=>(
-            <button key={s} onClick={()=>setEdgeStyle(s)} style={tbtn(edgeStyle===s,"#6C63FF")}>{s}</button>
-          ))}
+          {mode==="connect"&&(
+            <select value={edgeStyle} onChange={e=>setEdgeStyle(e.target.value)}
+              style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--text2)",fontSize:11,padding:"4px 8px",cursor:"pointer",fontFamily:"var(--font-ui)",outline:"none"}}>
+              {Object.entries(EDGE_STYLES).map(([k,v])=>(
+                <option key={k} value={k}>{v.icon} {v.label}</option>
+              ))}
+            </select>
+          )}
           {mode==="connect"&&drawingEdge&&<span style={{fontSize:11,color:"#f78166",padding:"0 5px",animation:"pulse 1s infinite",flexShrink:0}}>● click target</span>}
           <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
           <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ AUTO LAYOUT</button>
@@ -1065,8 +1086,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {/* Edge SVG — before nodes in DOM = renders BEHIND nodes. No zIndex to preserve DOM stacking. */}
               <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
                 <defs>
-                  <marker id="nn-a"  markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/></marker>
-                  <marker id="nn-a2" markerWidth="10" markerHeight="8" refX="0"  refY="4" orient="auto-start-reverse"><polygon points="10 0, 0 4, 10 8" fill="var(--accent)"/></marker>
+                  {/* Standard arrow tip */}
+                  <marker id="nn-a"   markerWidth="10" markerHeight="8"  refX="10" refY="4"   orient="auto"><polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/></marker>
+                  <marker id="nn-a-r" markerWidth="10" markerHeight="8"  refX="0"  refY="4"   orient="auto-start-reverse"><polygon points="10 0, 0 4, 10 8" fill="var(--accent)"/></marker>
+                  {/* Thick arrow */}
+                  <marker id="nn-tk"  markerWidth="10" markerHeight="10" refX="10" refY="5"   orient="auto"><polygon points="0 0, 10 5, 0 10" fill="var(--accent)"/></marker>
+                  <marker id="nn-tk-r"markerWidth="10" markerHeight="10" refX="0"  refY="5"   orient="auto-start-reverse"><polygon points="10 0, 0 5, 10 10" fill="var(--accent)"/></marker>
+                  {/* Double arrow (open) */}
+                  <marker id="nn-dbl" markerWidth="14" markerHeight="10" refX="14" refY="5"   orient="auto">
+                    <polyline points="0 1, 7 5, 0 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+                    <polyline points="5 1, 12 5, 5 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+                  </marker>
+                  <marker id="nn-dbl-r" markerWidth="14" markerHeight="10" refX="0" refY="5" orient="auto-start-reverse">
+                    <polyline points="14 1, 7 5, 14 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+                    <polyline points="9 1, 2 5, 9 9" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+                  </marker>
                 </defs>
 
                 {/* Live arrow while drawing */}
@@ -1098,13 +1132,26 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   return (
                     <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
                       <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
-                      <path d={path}
-                        stroke={isSel?"var(--danger)":edge.color||"var(--accent)"}
-                        strokeWidth={isSel?3:2} fill="none" opacity={isSel?1:.9}
-                        strokeDasharray={edge.style==="dashed"?"7,5":"none"}
-                        markerEnd={edge.style!=="line"?"url(#nn-a)":undefined}
-                        markerStart={edge.style==="bidirectional"?"url(#nn-a2)":undefined}
-                      />
+                      {(()=>{
+                        const s=edge.style||"arrow";
+                        const ec=isSel?"var(--danger)":(edge.color||"var(--accent)");
+                        const sw=isSel?3:(s==="thick"?4:2);
+                        const da=s==="dashed"?"7,5":s==="dashed-line"?"7,5":s==="dotted"?"2,4":s==="double"?"none":"none";
+                        const mEnd=s==="line"||s==="dashed-line"?undefined:s==="thick"?"url(#nn-tk)":s==="double"?"url(#nn-dbl)":"url(#nn-a)";
+                        const mStart=(s==="bidirectional")?(s==="thick"?"url(#nn-tk-r)":s==="double"?"url(#nn-dbl-r)":"url(#nn-a-r)"):undefined;
+                        // Double line: render two parallel paths
+                        if(s==="double") return(<>
+                          <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
+                          <path d={path} stroke={ec} strokeWidth="1.5" fill="none" opacity={isSel?1:.9} markerEnd="url(#nn-dbl)" markerStart={mStart}/>
+                        </>);
+                        return(
+                          <path d={path} stroke={ec} strokeWidth={sw} fill="none" opacity={isSel?1:.9}
+                            strokeDasharray={da}
+                            markerEnd={mEnd}
+                            markerStart={mStart}
+                          />
+                        );
+                      })()}
                       {isSel&&(
                         <g style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>{e.stopPropagation();applyEdges(es=>es.filter(ex=>ex.id!==edge.id));setSelEdge(null);}}>
                           <circle cx={mid.x} cy={mid.y} r="11" fill="var(--danger)"/>

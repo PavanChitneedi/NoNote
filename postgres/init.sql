@@ -73,14 +73,16 @@ CREATE INDEX idx_map_nodes_map_id ON map_nodes(map_id);
 
 -- ── Map edges ─────────────────────────────────────────────────
 CREATE TABLE map_edges (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  map_id      UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
-  from_node   UUID NOT NULL REFERENCES map_nodes(id) ON DELETE CASCADE,
-  to_node     UUID NOT NULL REFERENCES map_nodes(id) ON DELETE CASCADE,
-  label       TEXT NOT NULL DEFAULT '',
-  style       TEXT NOT NULL DEFAULT 'arrow',
-  color       TEXT NOT NULL DEFAULT '#58a6ff',
-  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  map_id       UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+  from_node    UUID NOT NULL REFERENCES map_nodes(id) ON DELETE CASCADE,
+  to_node      UUID NOT NULL REFERENCES map_nodes(id) ON DELETE CASCADE,
+  label        TEXT NOT NULL DEFAULT '',
+  style        TEXT NOT NULL DEFAULT 'arrow',
+  color        TEXT NOT NULL DEFAULT '#58a6ff',
+  from_anchor  JSONB,
+  to_anchor    JSONB,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_map_edges_map_id ON map_edges(map_id);
@@ -177,3 +179,7 @@ CREATE TABLE map_versions (
 );
 
 CREATE INDEX idx_map_versions_map_id ON map_versions(map_id);
+
+-- ── Migration: add anchor columns to map_edges if not exists ──
+ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS from_anchor JSONB;
+ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS to_anchor   JSONB;
