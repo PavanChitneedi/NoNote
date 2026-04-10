@@ -124,8 +124,8 @@ function autoLayout(nodes, edges) {
     for (let i = 0; i < result.length; i++) {
       for (let j = i + 1; j < result.length; j++) {
         const a = result[i], b = result[j];
-        const aw = a.w||DEF_W, ah = Math.max(a.h||DEF_H, nodeHeightsRef?.current?.[a.id]||0);
-        const bw = b.w||DEF_W, bh = Math.max(b.h||DEF_H, nodeHeightsRef?.current?.[b.id]||0);
+        const aw = a.w||DEF_W, ah = a.h||DEF_H;
+        const bw = b.w||DEF_W, bh = b.h||DEF_H;
         const gapX = b.x - (a.x + aw);
         const gapY = b.y - (a.y + ah);
         const gapBX = a.x - (b.x + bw);
@@ -756,11 +756,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback(()=>{
-    applyNodes(ns=>autoLayout(ns,edges));
-    // Scroll to origin so nodes are visible
-    setTimeout(()=>{
-      if(canvasRef.current) canvasRef.current.scrollTo({left:0,top:0,behavior:"smooth"});
-    },80);
+    applyNodes(ns=>{
+      const laid=autoLayout(ns,edges);
+      // Scroll to show nodes after a tick
+      setTimeout(()=>{
+        if(canvasRef.current) canvasRef.current.scrollTo({left:0,top:0,behavior:"smooth"});
+      },100);
+      return laid;
+    });
   },[edges,applyNodes,zoom]);
 
   // ── Restore version ────────────────────────────────────────
