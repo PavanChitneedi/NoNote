@@ -27,7 +27,7 @@ export default function LoginPage() {
         <div style={{ background:"var(--bg2)", border:`1px solid var(--border)`, borderRadius:16, padding:"36px 30px", boxShadow:"0 24px 80px var(--shadow)" }}>
           <div style={{ textAlign:"center", marginBottom:30 }}>
             <div style={{ fontSize:38 }}>⬡</div>
-            <div style={{ fontSize:24, fontWeight:700, color:"var(--accent)", letterSpacing:2, marginTop:8 }}>NodeMap</div>
+            <div style={{ fontSize:24, fontWeight:700, color:"var(--accent)", letterSpacing:2, marginTop:8 }}>NoNote</div>
             <div style={{ fontSize:11, color:"var(--text4)", marginTop:5, letterSpacing:1 }}>ARCHITECTURE · MIND MAPPING · DIAGRAMS</div>
           </div>
 

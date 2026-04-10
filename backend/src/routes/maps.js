@@ -1,3 +1,4 @@
+import { randomUUID as _uuid } from 'crypto';
 import { Router } from "express";
 import { body, param, validationResult } from "express-validator";
 import { query, withTransaction } from "../db/pool.js";
@@ -151,39 +152,56 @@ router.post(
       const { nodes, edges } = req.body;
       const { mapId } = req.params;
 
+      const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      // Build id map: frontend-id → real UUID (generate if needed)
+      const idMap = {};
+      for (const n of nodes || []) {
+        idMap[n.id] = UUID_RE.test(n.id) ? n.id : _uuid();
+      }
+      for (const e of edges || []) {
+        if (!idMap[e.id]) idMap[e.id] = UUID_RE.test(e.id) ? e.id : _uuid();
+      }
+
       await withTransaction(async (client) => {
-        // Upsert all nodes
+        // Upsert all nodes with real UUIDs
         for (const n of nodes || []) {
+          const nodeId = idMap[n.id];
           await client.query(
             `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, z_index)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
              ON CONFLICT (id) DO UPDATE SET
                title=$4, x=$5, y=$6, w=$7, h=$8,
                properties=$9, custom_props=$10, notes=$11, z_index=$12`,
-            [n.id, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
+            [nodeId, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
              JSON.stringify(n.properties || {}),
              JSON.stringify(n.customProps || {}),
              n.notes || "", n.z_index || 0]
           );
         }
 
-        // Sync edges: delete all, re-insert
+        // Sync edges: delete all, re-insert with real UUIDs
         await client.query("DELETE FROM map_edges WHERE map_id = $1", [mapId]);
         for (const e of edges || []) {
+          const edgeId   = idMap[e.id]   || _uuid();
+          const fromNode = idMap[e.from]  || e.from;
+          const toNode   = idMap[e.to]    || e.to;
+          if (!UUID_RE.test(fromNode) || !UUID_RE.test(toNode)) continue; // skip orphaned
           await client.query(
             `INSERT INTO map_edges (id, map_id, from_node, to_node, label, style, color)
              VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-            [e.id, mapId, e.from, e.to, e.label || "", e.style || "arrow", e.color || "#58a6ff"]
+            [edgeId, mapId, fromNode, toNode, e.label || "", e.style || "arrow", e.color || "#58a6ff"]
           );
         }
 
         // Delete removed nodes
         if (nodes?.length > 0) {
-          const keepIds = nodes.map((n) => n.id);
-          await client.query(
-            `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
-            [mapId, keepIds]
-          );
+          const keepIds = Object.values(idMap).filter(id => UUID_RE.test(id));
+          if (keepIds.length > 0) {
+            await client.query(
+              `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
+              [mapId, keepIds]
+            );
+          }
         }
 
         await client.query("UPDATE maps SET updated_at=NOW() WHERE id=$1", [mapId]);

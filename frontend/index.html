@@ -1,32 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <meta name="theme-color" content="#0d1117" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>NodeMap</title>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="theme-color" content="#0d1117"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <title>NoNote</title>
+  <!-- Google Fonts for design system -->
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Nunito:wght@400;600;700&family=DM+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet"/>
   <style>
     :root {
+      /* Theme defaults */
       --bg:#0d1117; --bg2:#161b22; --bg3:#21262d;
       --border:#30363d; --border2:#21262d;
       --text:#e6edf3; --text2:#c9d1d9; --text3:#7d8590; --text4:#484f58;
       --accent:#58a6ff; --accent2:#1f6feb;
       --success:#3fb950; --danger:#f78166;
       --canvas-dot:#21262d; --node-bg:#161b22; --shadow:rgba(0,0,0,0.5);
+      /* Design defaults */
+      --font-ui:'JetBrains Mono','Fira Code',monospace;
+      --font-node:'JetBrains Mono','Fira Code',monospace;
+      --font-weight-ui:700;
+      --font-weight-node:600;
+      --radius-xs:4px; --radius-sm:6px; --radius-md:8px;
+      --radius-lg:10px; --radius-node:10px; --radius-btn:6px;
+      --topbar-h:48px; --node-header-h:34px;
+      --node-pad:8px 10px; --node-body-pad:6px 10px 8px;
+      --node-border-w:2px; --btn-pad:5px 10px;
+      --sidebar-w:178px; --props-w:268px;
+      --letter-space:0.3px;
+      --shadow-node:0 2px 12px rgba(0,0,0,0.4);
+      --shadow-node-sel:0 0 0 3px rgba(88,166,255,0.25),0 6px 28px rgba(0,0,0,0.5);
+      --transition-all:all 0.12s;
+      --line-height:1.5;
+      --app-font-size:13px;
     }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body, #root { height: 100%; width: 100%; overflow: hidden; }
-    body { background: var(--bg); color: var(--text); font-family: 'JetBrains Mono', 'Fira Code', 'Courier New', monospace; -webkit-font-smoothing: antialiased; font-size: 13px; }
-    ::-webkit-scrollbar { width: 5px; height: 5px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-    input, textarea, button, select { font-family: inherit; }
-    button { transition: opacity .15s; }
-    button:hover { opacity: .88; }
-    button:disabled { opacity: .4; cursor: not-allowed !important; }
+    *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
+    html, body, #root { height:100%; width:100%; overflow:hidden; }
+    body {
+      background:var(--bg); color:var(--text);
+      font-family:var(--font-ui);
+      font-size:var(--app-font-size);
+      line-height:var(--line-height);
+      letter-spacing:var(--letter-space);
+      -webkit-font-smoothing:antialiased;
+    }
+    ::-webkit-scrollbar { width:5px; height:5px; }
+    ::-webkit-scrollbar-track { background:var(--bg); }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+    input, textarea, button, select { font-family:var(--font-ui); }
+    button { transition:var(--transition-all); }
+    button:hover:not(:disabled) { opacity:0.85; }
+    button:disabled { opacity:0.4; cursor:not-allowed !important; }
   </style>
 </head>
 <body>
