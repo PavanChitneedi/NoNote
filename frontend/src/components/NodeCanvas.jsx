@@ -151,18 +151,15 @@ function autoLayout(nodes, edges) {
   return result;
 }
 
-// ── Edge start/end point on node rectangle edge ───────────────
-function rectEdgePoint(node, targetX, targetY) {
-  // Use actual rendered size (collapsed or not)
-  const nw = node.collapsed ? COL_W : node.w;
-  const nh = node.collapsed ? COL_H : node.h;
+// ── Edge start/end point on node rectangle edge ─────────────────
+// nw/nh are the ACTUAL rendered dimensions (not just stored node.w/node.h)
+function rectEdgePoint(node, nw, nh, targetX, targetY) {
   const cx = node.x + nw/2, cy = node.y + nh/2;
-  const dx = targetX - cx, dy = targetY - cy;
+  const dx = targetX - cx,  dy = targetY - cy;
   if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return { x:cx, y:cy };
   const hw = nw/2, hh = nh/2;
-  // Find intersection of ray from center to target with rectangle edge
-  const sx = Math.abs(dx)>0.001 ? hw/Math.abs(dx) : Infinity;
-  const sy = Math.abs(dy)>0.001 ? hh/Math.abs(dy) : Infinity;
+  const sx = Math.abs(dx) > 0.001 ? hw / Math.abs(dx) : Infinity;
+  const sy = Math.abs(dy) > 0.001 ? hh / Math.abs(dy) : Infinity;
   const s  = Math.min(sx, sy);
   return { x: cx + dx*s, y: cy + dy*s };
 }
@@ -202,7 +199,9 @@ async function exportAsPNG(nodes, edges, mapTitle) {
     const fw=f.collapsed?COL_W:f.w, fh=f.collapsed?COL_H:f.h;
     const tw=t.collapsed?COL_W:t.w, th=t.collapsed?COL_H:t.h;
     const tcx=t.x+tw/2, tcy=t.y+th/2, fcx=f.x+fw/2, fcy=f.y+fh/2;
-    const fp=rectEdgePoint(f,tcx,tcy), tp=rectEdgePoint(t,fcx,fcy);
+    const ffw=f.collapsed?COL_W:f.w, ffh=f.collapsed?COL_H:f.h;
+    const ttw=t.collapsed?COL_W:t.w, tth=t.collapsed?COL_H:t.h;
+    const fp=rectEdgePoint(f,ffw,ffh,tcx,tcy), tp=rectEdgePoint(t,ttw,tth,fcx,fcy);
     const n1=pngFaceNormal(fp,f,fw,fh), n2=pngFaceNormal(tp,t,tw,th);
     const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
     const ctrl=Math.max(60,dist*0.4);
@@ -782,26 +781,25 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   };
 
   // ── Edge path — orthogonal bezier, arrows perpendicular to node edge ──
+  // Uses actual rendered dimensions (collW/collH) for precise edge exit points
   const getEdgePath=(fromNode,toNode)=>{
-    const fw=fromNode.collapsed?COL_W:fromNode.w, fh=fromNode.collapsed?COL_H:fromNode.h;
-    const tw=toNode.collapsed?COL_W:toNode.w,   th=toNode.collapsed?COL_H:toNode.h;
+    const fw=collW(fromNode), fh=collH(fromNode);
+    const tw=collW(toNode),   th=collH(toNode);
     const fcx=fromNode.x+fw/2, fcy=fromNode.y+fh/2;
     const tcx=toNode.x+tw/2,   tcy=toNode.y+th/2;
-    // Points on rectangle edges
-    const fp=rectEdgePoint(fromNode,tcx,tcy);
-    const tp=rectEdgePoint(toNode,fcx,fcy);
-    // Determine which face fp and tp are on, then set control points
-    // perpendicular to that face (outward normal direction)
-    const getFaceNormal=(pt,node,nw,nh,cx,cy)=>{
-      const eps=1;
-      if(Math.abs(pt.y-(node.y))<eps)       return {dx:0,dy:-1}; // top face
-      if(Math.abs(pt.y-(node.y+nh))<eps)    return {dx:0,dy:1};  // bottom face
-      if(Math.abs(pt.x-(node.x))<eps)       return {dx:-1,dy:0}; // left face
-      return {dx:1,dy:0};                                          // right face
+    // Exit points on actual rectangle edges
+    const fp=rectEdgePoint(fromNode,fw,fh,tcx,tcy);
+    const tp=rectEdgePoint(toNode,tw,th,fcx,fcy);
+    // Face normal at each exit point (outward perpendicular)
+    const getFaceNormal=(pt,node,nw,nh)=>{
+      const eps=2;
+      if(Math.abs(pt.y - node.y)       < eps) return {dx:0,dy:-1}; // top
+      if(Math.abs(pt.y -(node.y+nh))   < eps) return {dx:0,dy:1};  // bottom
+      if(Math.abs(pt.x - node.x)       < eps) return {dx:-1,dy:0}; // left
+      return {dx:1,dy:0};                                            // right
     };
-    const fn1=getFaceNormal(fp,fromNode,fw,fh,fcx,fcy);
-    const fn2=getFaceNormal(tp,toNode,tw,th,tcx,tcy);
-    // Control point distance scales with edge length
+    const fn1=getFaceNormal(fp,fromNode,fw,fh);
+    const fn2=getFaceNormal(tp,toNode,tw,th);
     const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
     const ctrl=Math.max(60, dist*0.4);
     const c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
@@ -809,7 +807,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     return {
       path:`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`,
       fp, tp,
-      c1:{x:c1x,y:c1y}, c2:{x:c2x,y:c2y}
     };
   };
 
@@ -989,8 +986,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </svg>
               )}
 
-              {/* Edge SVG — before nodes so edges render BEHIND nodes (standard diagram behaviour) */}
-              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:20}}>
+              {/* Edge SVG — before nodes in DOM = renders BEHIND nodes. No zIndex to preserve DOM stacking. */}
+              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
                 <defs>
                   <marker id="nn-a"  markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/></marker>
                   <marker id="nn-a2" markerWidth="10" markerHeight="8" refX="0"  refY="4" orient="auto-start-reverse"><polygon points="10 0, 0 4, 10 8" fill="var(--accent)"/></marker>
@@ -999,19 +996,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 {/* Live arrow while drawing */}
                 {drawingEdge&&(()=>{
                   const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
-                  const fp=rectEdgePoint(fn,drawingEdge.mouseX,drawingEdge.mouseY);
-                  // Perpendicular exit from source node
-                  const fw=fn.collapsed?COL_W:fn.w, fh=fn.collapsed?COL_H:fn.h;
-                  const eps=1;
+                  const fw=collW(fn), fh=collH(fn);
+                  const fp=rectEdgePoint(fn,fw,fh,drawingEdge.mouseX,drawingEdge.mouseY);
+                  // Face normal for perpendicular exit
+                  const eps=2;
                   let ndx=0,ndy=0;
-                  if(Math.abs(fp.y-fn.y)<eps)ndy=-1;
-                  else if(Math.abs(fp.y-(fn.y+fh))<eps)ndy=1;
-                  else if(Math.abs(fp.x-fn.x)<eps)ndx=-1;
-                  else ndx=1;
+                  if(Math.abs(fp.y-fn.y)<eps)       ndy=-1;
+                  else if(Math.abs(fp.y-(fn.y+fh))<eps) ndy=1;
+                  else if(Math.abs(fp.x-fn.x)<eps)  ndx=-1;
+                  else                               ndx=1;
                   const dist=Math.sqrt((drawingEdge.mouseX-fp.x)**2+(drawingEdge.mouseY-fp.y)**2);
                   const ctrl=Math.max(50,dist*0.4);
                   const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
-                  return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-30}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
+                  return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-20}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
                     stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-a)"/>;
                 })()}
 
