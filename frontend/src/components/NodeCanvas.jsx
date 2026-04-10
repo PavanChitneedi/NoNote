@@ -1239,17 +1239,35 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       </div>
                     )}
 
-                    {/* Anchor dots — shown in connect mode for precise connection placement */}
+                    {/* Anchor dots — multiple per side in connect mode */}
                     {mode==="connect"&&canEdit&&!isCollapsed&&(()=>{
                       const nw2=collW(node), nh2=collH(node);
-                      const anchors=[
-                        {side:"top",    t:0.5, ax:node.x+nw2*0.5, ay:node.y},
-                        {side:"bottom", t:0.5, ax:node.x+nw2*0.5, ay:node.y+nh2},
-                        {side:"left",   t:0.5, ax:node.x,         ay:node.y+nh2*0.5},
-                        {side:"right",  t:0.5, ax:node.x+nw2,     ay:node.y+nh2*0.5},
-                      ];
+                      // Generate N anchor points per side based on node size
+                      // More points on longer sides
+                      const hCount = Math.max(3, Math.min(7, Math.floor(nw2/60))); // horizontal sides
+                      const vCount = Math.max(3, Math.min(7, Math.floor(nh2/50))); // vertical sides
+                      const anchors=[];
+                      // Top & Bottom: hCount points evenly spaced
+                      for(let i=0;i<hCount;i++){
+                        const t=(i+1)/(hCount+1);
+                        anchors.push({side:"top",    t, ax:node.x+nw2*t, ay:node.y,       key:`top-${i}`});
+                        anchors.push({side:"bottom", t, ax:node.x+nw2*t, ay:node.y+nh2,   key:`bot-${i}`});
+                      }
+                      // Left & Right: vCount points evenly spaced
+                      for(let i=0;i<vCount;i++){
+                        const t=(i+1)/(vCount+1);
+                        anchors.push({side:"left",   t, ax:node.x,       ay:node.y+nh2*t, key:`lft-${i}`});
+                        anchors.push({side:"right",  t, ax:node.x+nw2,   ay:node.y+nh2*t, key:`rgt-${i}`});
+                      }
+                      // Corners too
+                      anchors.push({side:"top",    t:0,   ax:node.x,      ay:node.y,      key:"tl"});
+                      anchors.push({side:"top",    t:1,   ax:node.x+nw2,  ay:node.y,      key:"tr"});
+                      anchors.push({side:"bottom", t:0,   ax:node.x,      ay:node.y+nh2,  key:"bl"});
+                      anchors.push({side:"bottom", t:1,   ax:node.x+nw2,  ay:node.y+nh2,  key:"br"});
+
+                      const DOT=8; // dot radius
                       return anchors.map(a=>(
-                        <div key={a.side}
+                        <div key={a.key}
                           onMouseDown={e=>e.stopPropagation()}
                           onClick={e=>{
                             e.stopPropagation();
@@ -1269,16 +1287,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           }}
                           style={{
                             position:"absolute",
-                            left:a.ax-node.x-7, top:a.ay-node.y-7,
-                            width:14, height:14, borderRadius:"50%",
+                            left:a.ax-node.x-DOT, top:a.ay-node.y-DOT,
+                            width:DOT*2, height:DOT*2, borderRadius:"50%",
                             background:drawingEdge?"var(--success)":"var(--accent)",
                             border:"2px solid var(--bg2)",
                             cursor:"crosshair", zIndex:30,
-                            boxShadow:"0 0 6px var(--accent)",
-                            transition:"transform .1s",
+                            boxShadow:`0 0 5px var(--accent)`,
+                            transition:"transform .1s, opacity .1s",
+                            opacity:0.85,
                           }}
-                          onMouseEnter={e=>e.currentTarget.style.transform="scale(1.4)"}
-                          onMouseLeave={e=>e.currentTarget.style.transform="scale(1)"}
+                          onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.5)";e.currentTarget.style.opacity="1";}}
+                          onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.opacity="0.85";}}
                         />
                       ));
                     })()}
