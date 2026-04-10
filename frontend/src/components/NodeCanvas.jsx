@@ -444,13 +444,33 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if(mod&&e.code==="Equal"){e.preventDefault();setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)));return;}
       if(mod&&e.code==="Minus"){e.preventDefault();setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)));return;}
       if(mod&&e.code==="Digit0"){e.preventDefault();setZoom(1);return;}
-      // Arrow keys: move selected nodes
+      // Arrow keys: move selected nodes (with collision prevention)
       if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)&&selected.size>0){
         e.preventDefault();
-        const d=e.shiftKey?20:4;
-        const dx=e.code==="ArrowLeft"?-d:e.code==="ArrowRight"?d:0;
-        const dy=e.code==="ArrowUp"?-d:e.code==="ArrowDown"?d:0;
-        applyNodes(ns=>ns.map(n=>selected.has(n.id)?{...n,x:n.x+dx,y:n.y+dy}:n));
+        const step=e.shiftKey?20:4;
+        const adx=e.code==="ArrowLeft"?-step:e.code==="ArrowRight"?step:0;
+        const ady=e.code==="ArrowUp"?-step:e.code==="ArrowDown"?step:0;
+        applyNodes(ns=>{
+          const GAP=6;
+          const others=ns.filter(n=>!selected.has(n.id));
+          return ns.map(n=>{
+            if(!selected.has(n.id)) return n;
+            let nx=n.x+adx, ny=n.y+ady;
+            const dw=n.collapsed?COL_W:(n.w||DEF_W);
+            const dh=n.collapsed?COL_H:(n.h||DEF_H);
+            for(const o of others){
+              const ow=o.collapsed?COL_W:(o.w||DEF_W);
+              const oh=o.collapsed?COL_H:(o.h||DEF_H);
+              if(nx<o.x+ow+GAP && nx+dw>o.x-GAP && ny<o.y+oh+GAP && ny+dh>o.y-GAP){
+                if(adx>0) nx=o.x-GAP-dw;
+                if(adx<0) nx=o.x+ow+GAP;
+                if(ady>0) ny=o.y-GAP-dh;
+                if(ady<0) ny=o.y+oh+GAP;
+              }
+            }
+            return {...n,x:Math.max(0,nx),y:Math.max(0,ny)};
+          });
+        });
         return;
       }
       if(e.code==="KeyN"&&canEdit){addNode("note");return;}
@@ -511,12 +531,53 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const rect=el.getBoundingClientRect(); const s=1/zoom;
         const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
         const canvasY=(cy-rect.top)*s+el.scrollTop*s;
-        const dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
-        // Use setNodes directly — no history during drag (history pushed on mouseUp)
+        let dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
+
+        // ── Collision prevention: clamp dx/dy so dragged nodes never overlap others ──
+        const GAP=6; // minimum gap between any two nodes
+        const liveNodes=nodesRef.current;
+        const nonDragged=liveNodes.filter(n=>!dragging.ids.includes(n.id));
+
+        for(const id of dragging.ids){
+          const start=dragging.startPositions[id]; if(!start) continue;
+          const dragN=liveNodes.find(n=>n.id===id); if(!dragN) continue;
+          const dw=dragN.collapsed?COL_W:(dragN.w||DEF_W);
+          const dh=dragN.collapsed?COL_H:(dragN.h||DEF_H);
+
+          for(const other of nonDragged){
+            const ow=other.collapsed?COL_W:(other.w||DEF_W);
+            const oh=other.collapsed?COL_H:(other.h||DEF_H);
+
+            // Proposed position
+            const nx=start.x+dx, ny=start.y+dy;
+
+            // Quick AABB check — are they overlapping at this proposed position?
+            const xOver=(nx < other.x+ow+GAP) && (nx+dw > other.x-GAP);
+            const yOver=(ny < other.y+oh+GAP) && (ny+dh > other.y-GAP);
+            if(!xOver||!yOver) continue;
+
+            // How much we overlap on each axis
+            const overlapR=nx+dw-(other.x-GAP);   // dragged extends past other's left
+            const overlapL=(other.x+ow+GAP)-nx;   // other extends past dragged's left
+            const overlapB=ny+dh-(other.y-GAP);   // dragged extends past other's top
+            const overlapT=(other.y+oh+GAP)-ny;   // other extends past dragged's top
+
+            // Push back along the axis of smallest overlap
+            if(Math.min(overlapR,overlapL)<=Math.min(overlapB,overlapT)){
+              // Resolve on X axis
+              if(overlapR<overlapL){ dx-=overlapR; } else { dx+=overlapL; }
+            } else {
+              // Resolve on Y axis
+              if(overlapB<overlapT){ dy-=overlapB; } else { dy+=overlapT; }
+            }
+          }
+        }
+        // ── End collision prevention ──
+
         setNodes(ns=>ns.map(n=>{
           if(!dragging.ids.includes(n.id)) return n;
           const start=dragging.startPositions[n.id];
-          return start?{...n,x:start.x+dx,y:start.y+dy}:n;
+          return start?{...n,x:Math.max(0,start.x+dx),y:Math.max(0,start.y+dy)}:n;
         }));
       }
       if(resizing&&canvasRef.current){
