@@ -112,7 +112,43 @@ function autoLayout(nodes, edges) {
   });
 
   const fallbackY = y;
-  return nodes.map((n, i) => ({ ...n, ...(posMap[n.id] || { x: START_X, y: fallbackY + i * (DEF_H + H_PAD) }) }));
+  let result = nodes.map((n, i) => ({
+    ...n,
+    ...(posMap[n.id] || { x: START_X, y: fallbackY + i * (DEF_H + H_PAD) }),
+  }));
+
+  // Force-separation — push overlapping nodes apart until clean
+  const MIN_GAP = 24;
+  for (let iter = 0; iter < 120; iter++) {
+    let moved = false;
+    for (let i = 0; i < result.length; i++) {
+      for (let j = i + 1; j < result.length; j++) {
+        const a = result[i], b = result[j];
+        const aw = a.w||DEF_W, ah = a.h||DEF_H;
+        const bw = b.w||DEF_W, bh = b.h||DEF_H;
+        const gapX = b.x - (a.x + aw);
+        const gapY = b.y - (a.y + ah);
+        const gapBX = a.x - (b.x + bw);
+        const gapBY = a.y - (b.y + bh);
+        const overlapX = gapX < MIN_GAP && gapBX < MIN_GAP;
+        const overlapY = gapY < MIN_GAP && gapBY < MIN_GAP;
+        if (overlapX && overlapY) {
+          // Push along the smaller overlap axis
+          const pushRight = MIN_GAP - gapX;
+          const pushDown  = MIN_GAP - gapY;
+          if (pushRight <= pushDown) {
+            result[j] = { ...result[j], x: result[j].x + pushRight };
+          } else {
+            result[j] = { ...result[j], y: result[j].y + pushDown };
+          }
+          moved = true;
+        }
+      }
+    }
+    if (!moved) break;
+  }
+
+  return result;
 }
 
 // ── Edge start/end point on node rectangle edge ───────────────
@@ -594,7 +630,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     if(!canEdit) return;
     const el=canvasRef.current; if(!el) return;
     const s=1/zoom;
-    const node=mkNode(type,(el.scrollLeft+el.clientWidth/2)*s-110,(el.scrollTop+el.clientHeight/2)*s-48);
+    const baseX=(el.scrollLeft+el.clientWidth/2)*s-110;
+    const baseY=(el.scrollTop+el.clientHeight/2)*s-48;
+    // Offset from any node already close to the center so they don't stack
+    const cur = nodesRef.current;
+    let ox=0, oy=0;
+    for(let tries=0; tries<20; tries++){
+      const clash = cur.some(n=>Math.abs(n.x-(baseX+ox))<(n.w||DEF_W)+20 && Math.abs(n.y-(baseY+oy))<(n.h||DEF_H)+20);
+      if(!clash) break;
+      ox += (DEF_W+30); if(ox > 600){ ox=0; oy += (DEF_H+30); }
+    }
+    const node=mkNode(type, baseX+ox, baseY+oy);
     applyNodes(ns=>[...ns,node]);
     setSelected(new Set([node.id])); setSelEdge(null);
     setShowSidebar(false);
@@ -865,6 +911,71 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </svg>
               )}
 
+              {/* Edge SVG — before nodes so edges render BEHIND nodes (standard diagram behaviour) */}
+              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:20}}>
+                <defs>
+                  <marker id="nn-a"  markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/></marker>
+                  <marker id="nn-a2" markerWidth="10" markerHeight="8" refX="0"  refY="4" orient="auto-start-reverse"><polygon points="10 0, 0 4, 10 8" fill="var(--accent)"/></marker>
+                </defs>
+
+                {/* Live arrow while drawing */}
+                {drawingEdge&&(()=>{
+                  const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
+                  const fp=rectEdgePoint(fn,drawingEdge.mouseX,drawingEdge.mouseY);
+                  // Perpendicular exit from source node
+                  const fw=fn.collapsed?COL_W:fn.w, fh=fn.collapsed?COL_H:fn.h;
+                  const eps=1;
+                  let ndx=0,ndy=0;
+                  if(Math.abs(fp.y-fn.y)<eps)ndy=-1;
+                  else if(Math.abs(fp.y-(fn.y+fh))<eps)ndy=1;
+                  else if(Math.abs(fp.x-fn.x)<eps)ndx=-1;
+                  else ndx=1;
+                  const dist=Math.sqrt((drawingEdge.mouseX-fp.x)**2+(drawingEdge.mouseY-fp.y)**2);
+                  const ctrl=Math.max(50,dist*0.4);
+                  const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
+                  return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-30}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
+                    stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-a)"/>;
+                })()}
+
+                {/* Edges */}
+                {edges.map(edge=>{
+                  const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
+                  if(!f||!t) return null;
+                  const {path,fp,tp}=getEdgePath(f,t);
+                  const mid={x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
+                  const isSel=selEdge===edge.id;
+                  return (
+                    <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
+                      <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
+                      <path d={path}
+                        stroke={isSel?"var(--danger)":edge.color||"var(--accent)"}
+                        strokeWidth={isSel?3:2} fill="none" opacity={isSel?1:.9}
+                        strokeDasharray={edge.style==="dashed"?"7,5":"none"}
+                        markerEnd={edge.style!=="line"?"url(#nn-a)":undefined}
+                        markerStart={edge.style==="bidirectional"?"url(#nn-a2)":undefined}
+                      />
+                      {isSel&&(
+                        <g style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>{e.stopPropagation();applyEdges(es=>es.filter(ex=>ex.id!==edge.id));setSelEdge(null);}}>
+                          <circle cx={mid.x} cy={mid.y} r="11" fill="var(--danger)"/>
+                          <text x={mid.x} y={mid.y+4.5} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">×</text>
+                        </g>
+                      )}
+                      {edge.label&&!isSel&&<text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>}
+                      {isSel&&(
+                        <foreignObject x={mid.x-55} y={mid.y+16} width="110" height="28">
+                          <input value={edge.label||""} placeholder="label"
+                            onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
+                            onClick={e=>e.stopPropagation()}
+                            style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:5,padding:"3px 7px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}
+                          />
+                        </foreignObject>
+                      )}
+                    </g>
+                  );
+                })}
+
+              </svg>
+
               {/* Nodes */}
               {nodes.map(node=>{
                 const t=NT[node.type]||NT.note;
@@ -967,71 +1078,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 );
               })}
 
-
-              {/* Edge SVG — placed after nodes in DOM so edges appear above them */}
-              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:20}}>
-                <defs>
-                  <marker id="nn-a"  markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><polygon points="0 0, 10 4, 0 8" fill="var(--accent)" opacity="1"/></marker>
-                  <marker id="nn-a2" markerWidth="10" markerHeight="8" refX="1" refY="4" orient="auto-start-reverse"><polygon points="10 0, 0 4, 10 8" fill="var(--accent)" opacity="1"/></marker>
-                </defs>
-
-                {/* Live arrow while drawing */}
-                {drawingEdge&&(()=>{
-                  const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
-                  const fp=rectEdgePoint(fn,drawingEdge.mouseX,drawingEdge.mouseY);
-                  // Perpendicular exit from source node
-                  const fw=fn.collapsed?COL_W:fn.w, fh=fn.collapsed?COL_H:fn.h;
-                  const eps=1;
-                  let ndx=0,ndy=0;
-                  if(Math.abs(fp.y-fn.y)<eps)ndy=-1;
-                  else if(Math.abs(fp.y-(fn.y+fh))<eps)ndy=1;
-                  else if(Math.abs(fp.x-fn.x)<eps)ndx=-1;
-                  else ndx=1;
-                  const dist=Math.sqrt((drawingEdge.mouseX-fp.x)**2+(drawingEdge.mouseY-fp.y)**2);
-                  const ctrl=Math.max(50,dist*0.4);
-                  const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
-                  return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-30}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
-                    stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-a)"/>;
-                })()}
-
-                {/* Edges */}
-                {edges.map(edge=>{
-                  const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
-                  if(!f||!t) return null;
-                  const {path,fp,tp}=getEdgePath(f,t);
-                  const mid={x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
-                  const isSel=selEdge===edge.id;
-                  return (
-                    <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
-                      <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
-                      <path d={path}
-                        stroke={isSel?"var(--danger)":edge.color||"var(--accent)"}
-                        strokeWidth={isSel?3:2} fill="none" opacity={isSel?1:.9}
-                        strokeDasharray={edge.style==="dashed"?"7,5":"none"}
-                        markerEnd={edge.style!=="line"?"url(#nn-a)":undefined}
-                        markerStart={edge.style==="bidirectional"?"url(#nn-a2)":undefined}
-                      />
-                      {isSel&&(
-                        <g style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>{e.stopPropagation();applyEdges(es=>es.filter(ex=>ex.id!==edge.id));setSelEdge(null);}}>
-                          <circle cx={mid.x} cy={mid.y} r="11" fill="var(--danger)"/>
-                          <text x={mid.x} y={mid.y+4.5} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">×</text>
-                        </g>
-                      )}
-                      {edge.label&&!isSel&&<text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>}
-                      {isSel&&(
-                        <foreignObject x={mid.x-55} y={mid.y+16} width="110" height="28">
-                          <input value={edge.label||""} placeholder="label"
-                            onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
-                            onClick={e=>e.stopPropagation()}
-                            style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:5,padding:"3px 7px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}
-                          />
-                        </foreignObject>
-                      )}
-                    </g>
-                  );
-                })}
-
-              </svg>
 
               {/* Quick Capture */}
               {quickPos&&canEdit&&editMode&&(
