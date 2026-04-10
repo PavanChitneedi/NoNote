@@ -531,54 +531,51 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const rect=el.getBoundingClientRect(); const s=1/zoom;
         const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
         const canvasY=(cy-rect.top)*s+el.scrollTop*s;
-        let dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
+        const dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
 
-        // ── Collision prevention: clamp dx/dy so dragged nodes never overlap others ──
-        const GAP=6; // minimum gap between any two nodes
-        const liveNodes=nodesRef.current;
-        const nonDragged=liveNodes.filter(n=>!dragging.ids.includes(n.id));
-
-        for(const id of dragging.ids){
-          const start=dragging.startPositions[id]; if(!start) continue;
-          const dragN=liveNodes.find(n=>n.id===id); if(!dragN) continue;
-          const dw=dragN.collapsed?COL_W:(dragN.w||DEF_W);
-          const dh=dragN.collapsed?COL_H:(dragN.h||DEF_H);
-
-          for(const other of nonDragged){
-            const ow=other.collapsed?COL_W:(other.w||DEF_W);
-            const oh=other.collapsed?COL_H:(other.h||DEF_H);
-
-            // Proposed position
-            const nx=start.x+dx, ny=start.y+dy;
-
-            // Quick AABB check — are they overlapping at this proposed position?
-            const xOver=(nx < other.x+ow+GAP) && (nx+dw > other.x-GAP);
-            const yOver=(ny < other.y+oh+GAP) && (ny+dh > other.y-GAP);
-            if(!xOver||!yOver) continue;
-
-            // How much we overlap on each axis
-            const overlapR=nx+dw-(other.x-GAP);   // dragged extends past other's left
-            const overlapL=(other.x+ow+GAP)-nx;   // other extends past dragged's left
-            const overlapB=ny+dh-(other.y-GAP);   // dragged extends past other's top
-            const overlapT=(other.y+oh+GAP)-ny;   // other extends past dragged's top
-
-            // Push back along the axis of smallest overlap
-            if(Math.min(overlapR,overlapL)<=Math.min(overlapB,overlapT)){
-              // Resolve on X axis
-              if(overlapR<overlapL){ dx-=overlapR; } else { dx+=overlapL; }
-            } else {
-              // Resolve on Y axis
-              if(overlapB<overlapT){ dy-=overlapB; } else { dy+=overlapT; }
-            }
-          }
-        }
-        // ── End collision prevention ──
-
-        setNodes(ns=>ns.map(n=>{
+        // 1. Apply move freely
+        const GAP=8;
+        let moved=nodesRef.current.map(n=>{
           if(!dragging.ids.includes(n.id)) return n;
           const start=dragging.startPositions[n.id];
           return start?{...n,x:Math.max(0,start.x+dx),y:Math.max(0,start.y+dy)}:n;
-        }));
+        });
+
+        // 2. Push dragged nodes out of fixed nodes — iterate until clean
+        const fixedNodes=moved.filter(n=>!dragging.ids.includes(n.id));
+        for(let iter=0;iter<30;iter++){
+          let anyOverlap=false;
+          moved=moved.map(n=>{
+            if(!dragging.ids.includes(n.id)) return n;
+            const nw=n.collapsed?COL_W:(n.w||DEF_W);
+            const nh=n.collapsed?COL_H:(n.h||DEF_H);
+            let {x,y}=n;
+            for(const o of fixedNodes){
+              const ow=o.collapsed?COL_W:(o.w||DEF_W);
+              const oh=o.collapsed?COL_H:(o.h||DEF_H);
+              // Check overlap with gap
+              if(x+nw+GAP<=o.x||x>=o.x+ow+GAP||y+nh+GAP<=o.y||y>=o.y+oh+GAP) continue;
+              // Amount of overlap on each axis
+              const fromRight =x+nw+GAP-o.x;    // n right edge into o left
+              const fromLeft  =o.x+ow+GAP-x;    // o right edge into n left
+              const fromBottom=y+nh+GAP-o.y;    // n bottom into o top
+              const fromTop   =o.y+oh+GAP-y;    // o bottom into n top
+              // Resolve on smallest penetration axis
+              const minX=Math.min(fromRight,fromLeft);
+              const minY=Math.min(fromBottom,fromTop);
+              if(minX<=minY){
+                if(fromRight<fromLeft){ x=o.x-nw-GAP; } else { x=o.x+ow+GAP; }
+              } else {
+                if(fromBottom<fromTop){ y=o.y-nh-GAP; } else { y=o.y+oh+GAP; }
+              }
+              anyOverlap=true;
+            }
+            return {...n,x:Math.max(0,x),y:Math.max(0,y)};
+          });
+          if(!anyOverlap) break;
+        }
+
+        setNodes(moved);
       }
       if(resizing&&canvasRef.current){
         const s=1/zoom;
