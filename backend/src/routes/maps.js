@@ -187,12 +187,13 @@ router.post(
           const toNode   = idMap[e.to]    || e.to;
           if (!UUID_RE.test(fromNode) || !UUID_RE.test(toNode)) continue; // skip orphaned
           await client.query(
-            `INSERT INTO map_edges (id, map_id, from_node, to_node, label, style, color, from_anchor, to_anchor)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
-            [edgeId, mapId, fromNode, toNode,
+            `INSERT INTO map_edges (id, map_id, from_node, to_node, label, style, color, from_anchor, to_anchor, mid_off)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+[edgeId, mapId, fromNode, toNode,
              e.label || "", e.style || "arrow", e.color || "#58a6ff",
              e.fromAnchor ? JSON.stringify(e.fromAnchor) : null,
-             e.toAnchor   ? JSON.stringify(e.toAnchor)   : null]
+             e.toAnchor   ? JSON.stringify(e.toAnchor)   : null,
+             e.midOff     ? JSON.stringify(e.midOff)     : null]
           );
         }
 

@@ -45,18 +45,31 @@ const DP = {
 
 // ── Edge style definitions ────────────────────────────────────
 const EDGE_STYLES = {
-  arrow:         { label:"Arrow",       icon:"→",   strokeW:2,    dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"Directed arrow" },
-  bidirectional: { label:"Both ways",   icon:"↔",   strokeW:2,    dash:"none", mEnd:"nn-arr",  mStart:"nn-arr-r", desc:"Arrow on both ends" },
-  line:          { label:"Line",        icon:"—",   strokeW:2,    dash:"none", mEnd:null,       mStart:null,       desc:"No arrowhead" },
-  dashed:        { label:"Dashed →",    icon:"⇢",   strokeW:2,    dash:"7,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dashed with arrow" },
-  "dashed-bi":   { label:"Dashed ↔",   icon:"⇿",   strokeW:2,    dash:"7,5",  mEnd:"nn-arr",  mStart:"nn-arr-r", desc:"Dashed bidirectional" },
-  "dashed-line": { label:"Dashed line", icon:"- -", strokeW:2,    dash:"7,5",  mEnd:null,       mStart:null,       desc:"Dashed, no arrow" },
-  dotted:        { label:"Dotted →",    icon:"···→",strokeW:2,    dash:"2,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dotted with arrow" },
-  thick:         { label:"Thick →",     icon:"━→",  strokeW:4,    dash:"none", mEnd:"nn-tk",   mStart:null,       desc:"Bold arrow" },
-  "thick-bi":    { label:"Thick ↔",    icon:"⟺",   strokeW:4,    dash:"none", mEnd:"nn-tk",   mStart:"nn-tk-r",  desc:"Bold bidirectional" },
-  double:        { label:"Double →",    icon:"⇒",   strokeW:1.5,  dash:"none", mEnd:"nn-dbl",  mStart:null,       desc:"Double chevron" },
-  "double-bi":   { label:"Double ↔",   icon:"⇔",   strokeW:1.5,  dash:"none", mEnd:"nn-dbl",  mStart:"nn-dbl-r", desc:"Double bidirectional" },
+  // Basic
+  arrow:         { label:"Arrow",        section:"Basic",   strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"One-way arrow" },
+  bidirectional: { label:"Both ways",    section:"Basic",   strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Arrow on both ends" },
+  line:          { label:"Plain line",   section:"Basic",   strokeW:2,   dash:"none", mEnd:null,       mStart:null,       desc:"No arrowhead" },
+  // Dashed
+  dashed:        { label:"Dashed →",     section:"Dashed",  strokeW:2,   dash:"8,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dashed with arrow" },
+  "dashed-bi":   { label:"Dashed ↔",    section:"Dashed",  strokeW:2,   dash:"8,5",  mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Dashed bidirectional" },
+  "dashed-line": { label:"Dashed line",  section:"Dashed",  strokeW:2,   dash:"8,5",  mEnd:null,       mStart:null,       desc:"Dashed, no arrow" },
+  // Dotted
+  dotted:        { label:"Dotted →",     section:"Dotted",  strokeW:2,   dash:"2,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dotted with arrow" },
+  "dotted-bi":   { label:"Dotted ↔",    section:"Dotted",  strokeW:2,   dash:"2,5",  mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Dotted bidirectional" },
+  "dotted-line": { label:"Dotted line",  section:"Dotted",  strokeW:2,   dash:"2,5",  mEnd:null,       mStart:null,       desc:"Dotted, no arrow" },
+  // Bold
+  thick:         { label:"Bold →",       section:"Bold",    strokeW:4,   dash:"none", mEnd:"nn-tk",   mStart:null,       desc:"Bold arrow" },
+  "thick-bi":    { label:"Bold ↔",       section:"Bold",    strokeW:4,   dash:"none", mEnd:"nn-tk",   mStart:"nn-tk",    desc:"Bold bidirectional" },
+  // Double
+  double:        { label:"Double →",     section:"Double",  strokeW:1.5, dash:"none", mEnd:"nn-dbl",  mStart:null,       desc:"Double chevron" },
+  "double-bi":   { label:"Double ↔",    section:"Double",  strokeW:1.5, dash:"none", mEnd:"nn-dbl",  mStart:"nn-dbl",   desc:"Double bidirectional" },
+  // Wavy / special
+  wave:          { label:"Wave →",       section:"Special", strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"Wavy / animated", wave:true },
+  "wave-bi":     { label:"Wave ↔",      section:"Special", strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Wavy bidirectional", wave:true },
 };
+
+// Sections order for the panel
+const EDGE_SECTIONS = ["Basic","Dashed","Dotted","Bold","Double","Special"];
 
 const DEF_W=220, DEF_H=96, GRP_W=340, GRP_H=240;
 const COL_W=72,  COL_H=72; // collapsed node size
@@ -339,6 +352,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [edgeStyle,    setEdgeStyle]    = useState("arrow");
   const [edgeColor,    setEdgeColor]    = useState("var(--accent)");
   const [showConnPanel,setShowConnPanel]= useState(false);
+  const [draggingMid,  setDraggingMid]  = useState(null); // {edgeId, startX, startY, origOffset}
   const [dragging,     setDragging]     = useState(null);
   const [resizing,     setResizing]     = useState(null);
   const [drawingEdge,  setDrawingEdge]  = useState(null);
@@ -474,6 +488,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         label:e.label,style:e.style,color:e.color,
         fromAnchor:e.from_anchor||null,
         toAnchor:e.to_anchor||null,
+        midOff:e.mid_off||null,
       }));
       setNodes(ns); setEdges(es); pushHistory(ns,es);
     }).catch(console.error).finally(()=>setLoading(false));
@@ -900,9 +915,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
     const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
     const ctrl=Math.max(60, dist*0.4);
-    const c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
-    const c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
-    return {path:`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`, fp, tp};
+    let c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
+    let c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
+
+    // Apply manual midpoint offset if set (pulls the bezier curve)
+    if(edge.midOff){
+      const mx=(fp.x+tp.x)/2+edge.midOff.dx;
+      const my=(fp.y+tp.y)/2+edge.midOff.dy;
+      c1x=fp.x*0.3+mx*0.7; c1y=fp.y*0.3+my*0.7;
+      c2x=tp.x*0.3+mx*0.7; c2y=tp.y*0.3+my*0.7;
+    }
+
+    // Midpoint on the bezier at t=0.5 (for handle placement)
+    const midX=0.125*(fp.x+tp.x) + 0.375*(c1x+c2x);
+    const midY=0.125*(fp.y+tp.y) + 0.375*(c1y+c2y);
+    return {path:`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`, fp, tp, mid:{x:midX,y:midY}};
   };
 
   // ── LLM export ─────────────────────────────────────────────
@@ -1062,72 +1089,100 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         )}
 
         {/* ── Connection Style Panel (floating) ── */}
+        {/* ── Connection Style Panel (floating) ── */}
         {showConnPanel&&mode==="connect"&&(
           <div style={{
-            position:"fixed",top:60,left:"50%",transform:"translateX(-50%)",
+            position:"fixed",top:56,left:"50%",transform:"translateX(-50%)",
             background:"var(--bg2)",border:"1px solid var(--border2)",
             borderRadius:"var(--radius-lg)",zIndex:300,
-            boxShadow:"0 8px 32px rgba(0,0,0,.45)",
-            width:520,maxWidth:"95vw",
+            boxShadow:"0 12px 40px rgba(0,0,0,.55)",
+            width:580,maxWidth:"96vw",maxHeight:"80vh",overflow:"auto",
           }} onClick={e=>e.stopPropagation()}>
-            <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8}}>
-              <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>Connection Style</span>
+
+            {/* Header */}
+            <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center"}}>
+              <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>⤳ Connection Style</span>
               <button onClick={()=>setShowConnPanel(false)}
-                style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+                style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1,padding:"0 4px"}}>×</button>
             </div>
-            <div style={{padding:"12px 16px",display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))",gap:8}}>
-              {Object.entries(EDGE_STYLES).map(([k,def])=>{
-                const sel=edgeStyle===k;
-                return (
-                  <button key={k} onClick={()=>setEdgeStyle(k)}
-                    style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",
-                      borderRadius:"var(--radius-md)",cursor:"pointer",textAlign:"left",
-                      border:`2px solid ${sel?"var(--accent)":"var(--border)"}`,
-                      background:sel?"color-mix(in srgb,var(--accent) 15%,transparent)":"var(--bg3)",
-                      transition:"border-color .1s,background .1s"}}>
-                    <svg width="44" height="20" style={{flexShrink:0,overflow:"visible"}}>
-                      <defs>
-                        <marker id={`pe-${k}`} markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                          <polygon points="0 0,8 3,0 6" fill={sel?"var(--accent)":"var(--text3)"}/>
-                        </marker>
-                        <marker id={`ps-${k}`} markerWidth="8" markerHeight="6" refX="0" refY="3" orient="auto-start-reverse">
-                          <polygon points="8 0,0 3,8 6" fill={sel?"var(--accent)":"var(--text3)"}/>
-                        </marker>
-                      </defs>
-                      <line x1="4" y1="10" x2="40" y2="10"
-                        stroke={sel?"var(--accent)":"var(--text3)"}
-                        strokeWidth={def.strokeW>2?3.5:1.8}
-                        strokeDasharray={def.dash==="none"?"none":def.dash}
-                        markerEnd={def.mEnd?`url(#pe-${k})`:undefined}
-                        markerStart={def.mStart?`url(#ps-${k})`:undefined}
-                      />
-                    </svg>
-                    <div>
-                      <div style={{fontSize:11,fontWeight:600,color:sel?"var(--accent)":"var(--text)",lineHeight:1.3}}>{def.label}</div>
-                      <div style={{fontSize:9,color:"var(--text4)",marginTop:1}}>{def.desc}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-            <div style={{padding:"10px 16px",borderTop:"1px solid var(--border2)",display:"flex",gap:8,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1,marginRight:2}}>COLOR</span>
-              {["var(--accent)","#58a6ff","#f78166","#3fb950","#d2a8ff","#ffa657","#ff7b72","#39d353","#8b949e"].map(c=>(
+
+            {/* Sections */}
+            {EDGE_SECTIONS.map(section=>{
+              const sectionStyles=Object.entries(EDGE_STYLES).filter(([,d])=>d.section===section);
+              return(
+                <div key={section} style={{padding:"10px 14px"}}>
+                  <div style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:2,marginBottom:8}}>
+                    {section.toUpperCase()}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
+                    {sectionStyles.map(([k,def])=>{
+                      const sel=edgeStyle===k;
+                      const ec=sel?"var(--accent)":"var(--text3)";
+                      const sw=def.strokeW>2?3.5:1.8;
+                      const da=def.dash==="none"?undefined:def.dash;
+                      return(
+                        <button key={k} onClick={()=>setEdgeStyle(k)}
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",
+                            borderRadius:"var(--radius-md)",cursor:"pointer",textAlign:"left",
+                            border:`1.5px solid ${sel?"var(--accent)":"var(--border)"}`,
+                            background:sel?"color-mix(in srgb,var(--accent) 12%,transparent)":"var(--bg3)",
+                            transition:"all .12s",outline:"none"}}>
+                          {/* Inline SVG preview */}
+                          <svg width="48" height="20" viewBox="0 0 48 20" style={{flexShrink:0}}>
+                            <defs>
+                              <marker id={`p-e-${k}`} markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto">
+                                <polygon points="0 0,6 2.5,0 5" fill={ec}/>
+                              </marker>
+                              <marker id={`p-s-${k}`} markerWidth="6" markerHeight="5" refX="0" refY="2.5" orient="auto-start-reverse">
+                                <polygon points="0 0,6 2.5,0 5" fill={ec}/>
+                              </marker>
+                            </defs>
+                            {def.wave?(
+                              <path d="M 4 10 Q 16 2 24 10 Q 32 18 44 10"
+                                stroke={ec} strokeWidth={sw} fill="none"
+                                markerEnd={def.mEnd?`url(#p-e-${k})`:undefined}
+                                markerStart={def.mStart?`url(#p-s-${k})`:undefined}/>
+                            ):(
+                              <line x1="4" y1="10" x2="44" y2="10"
+                                stroke={ec} strokeWidth={sw}
+                                strokeDasharray={da}
+                                markerEnd={def.mEnd?`url(#p-e-${k})`:undefined}
+                                markerStart={def.mStart?`url(#p-s-${k})`:undefined}/>
+                            )}
+                          </svg>
+                          <div style={{minWidth:0}}>
+                            <div style={{fontSize:11,fontWeight:600,color:sel?"var(--accent)":"var(--text)",
+                              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{def.label}</div>
+                            <div style={{fontSize:9,color:"var(--text4)",marginTop:1}}>{def.desc}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* Color strip */}
+            <div style={{padding:"10px 16px",borderTop:"1px solid var(--border2)",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+              <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1,marginRight:4}}>COLOR</span>
+              {["var(--accent)","#58a6ff","#f78166","#3fb950","#d2a8ff","#ffa657","#ff7b72","#39d353","#8b949e","#ff6ec7"].map(c=>(
                 <div key={c} onClick={()=>setEdgeColor(c)} title={c}
-                  style={{width:20,height:20,borderRadius:"50%",flexShrink:0,cursor:"pointer",transition:"transform .1s",
+                  style={{width:20,height:20,borderRadius:"50%",flexShrink:0,cursor:"pointer",
                     background:c==="var(--accent)"?"var(--accent)":c,
-                    border:`2.5px solid ${edgeColor===c?"var(--text)":"transparent"}`,
-                    transform:edgeColor===c?"scale(1.25)":"scale(1)"}}/>
+                    boxShadow:edgeColor===c?"0 0 0 2.5px var(--bg2), 0 0 0 4px var(--text)":"none",
+                    transform:edgeColor===c?"scale(1.2)":"scale(1)",transition:"transform .1s,box-shadow .1s"}}/>
               ))}
+              {/* Custom */}
               <div style={{position:"relative",width:20,height:20,borderRadius:"50%",overflow:"hidden",
                 background:"conic-gradient(red,yellow,lime,cyan,blue,magenta,red)",
-                border:"1px dashed var(--border)",cursor:"pointer",flexShrink:0}} title="Custom color">
+                border:"1px solid var(--border)",cursor:"pointer",flexShrink:0}} title="Custom">
                 <input type="color" onChange={e=>setEdgeColor(e.target.value)}
                   style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}}/>
               </div>
-              <button onClick={()=>setEdgeColor("var(--accent)")} title="Reset to theme color"
+              <button onClick={()=>setEdgeColor("var(--accent)")}
                 style={{marginLeft:"auto",background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
-                  color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"3px 8px",fontFamily:"var(--font-ui)"}}>Reset</button>
+                  color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"3px 10px",fontFamily:"var(--font-ui)"}}>Reset</button>
             </div>
           </div>
         )}
@@ -1172,28 +1227,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {/* Edge SVG — before nodes in DOM = renders BEHIND nodes. No zIndex to preserve DOM stacking. */}
               <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
                 <defs>
-                  {/* Standard arrow — nn-arr / nn-arr-r */}
-                  <marker id="nn-arr"   markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto">
+                  {/* Standard filled arrow — end tip */}
+                  <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
                     <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
                   </marker>
-                  <marker id="nn-arr-r" markerWidth="10" markerHeight="8" refX="0"  refY="4" orient="auto-start-reverse">
-                    <polygon points="10 0, 0 4, 10 8" fill="var(--accent)"/>
+                  {/* Bold filled arrow — end tip */}
+                  <marker id="nn-tk"  markerWidth="8"  markerHeight="7" refX="8"  refY="3.5" orient="auto" markerUnits="strokeWidth">
+                    <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
                   </marker>
-                  {/* Thick arrow — nn-tk / nn-tk-r */}
-                  <marker id="nn-tk"    markerWidth="12" markerHeight="10" refX="12" refY="5" orient="auto">
-                    <polygon points="0 0, 12 5, 0 10" fill="var(--accent)"/>
-                  </marker>
-                  <marker id="nn-tk-r"  markerWidth="12" markerHeight="10" refX="0"  refY="5" orient="auto-start-reverse">
-                    <polygon points="12 0, 0 5, 12 10" fill="var(--accent)"/>
-                  </marker>
-                  {/* Double chevron — nn-dbl / nn-dbl-r */}
-                  <marker id="nn-dbl"   markerWidth="14" markerHeight="10" refX="13" refY="5" orient="auto">
-                    <polyline points="0 1, 6 5, 0 9"  fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
-                    <polyline points="5 1, 11 5, 5 9" fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
-                  </marker>
-                  <marker id="nn-dbl-r" markerWidth="14" markerHeight="10" refX="1"  refY="5" orient="auto-start-reverse">
-                    <polyline points="14 1, 8 5, 14 9"  fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
-                    <polyline points="9 1, 3 5,  9 9"   fill="none" stroke="var(--accent)" strokeWidth="1.8"/>
+                  {/* Double chevron — end tip */}
+                  <marker id="nn-dbl" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto" markerUnits="strokeWidth">
+                    <polyline points="0 1, 5 4, 0 7"  fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+                    <polyline points="4 1, 9 4, 4 7"  fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
                   </marker>
                 </defs>
 
@@ -1220,8 +1265,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 {edges.map(edge=>{
                   const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
                   if(!f||!t) return null;
-                  const {path,fp,tp}=getEdgePath(f,t,edge);
-                  const mid={x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
+                  const result=getEdgePath(f,t,edge); const {path,fp,tp}=result;
+                  const mid=result.mid||{x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
                   const isSel=selEdge===edge.id;
                   return (
                     <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
@@ -1232,9 +1277,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         const sw=isSel?3:def.strokeW;
                         const da=def.dash==="none"?"none":def.dash;
                         const mEnd=def.mEnd?`url(#${def.mEnd})`:undefined;
+                        // Bidirectional: use auto-start-reverse trick — same marker at start
                         const mStart=def.mStart?`url(#${def.mStart})`:undefined;
+                        // Wave style: generate wavy path via extra control points
+                        const usePath = def.wave ? (() => {
+                          const dx=tp.x-fp.x, dy=tp.y-fp.y;
+                          const len=Math.sqrt(dx*dx+dy*dy)||1;
+                          const px=-dy/len*18, py=dx/len*18; // perpendicular offset
+                          const thirds=4;
+                          let d=`M ${fp.x} ${fp.y}`;
+                          for(let i=1;i<=thirds;i++){
+                            const t1=(i*2-1)/(thirds*2), t2=i/thirds;
+                            const sign=(i%2===1?1:-1);
+                            d+=` Q ${fp.x+dx*t1+px*sign} ${fp.y+dy*t1+py*sign}, ${fp.x+dx*t2} ${fp.y+dy*t2}`;
+                          }
+                          return d;
+                        })() : path;
                         return(
-                          <path d={path} stroke={ec} strokeWidth={sw} fill="none" opacity={isSel?1:.92}
+                          <path d={usePath} stroke={ec} strokeWidth={sw} fill="none" opacity={isSel?1:.92}
                             strokeDasharray={da}
                             markerEnd={mEnd}
                             markerStart={mStart}
@@ -1257,6 +1317,38 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           />
                         </foreignObject>
                       )}
+                      {/* Midpoint drag handle — shown on every edge (diamond shape) */}
+                      {canEdit&&(()=>{
+                        const isThisEdgeSel=isSel;
+                        const onMidDown=(ev)=>{
+                          ev.stopPropagation();
+                          const origOff=edge.midOff||{dx:0,dy:0};
+                          const startX=ev.clientX, startY=ev.clientY;
+                          const onMove=(mv)=>{
+                            const el=canvasRef.current; if(!el) return;
+                            const s=1/zoom;
+                            const ddx=(mv.clientX-startX)*s, ddy=(mv.clientY-startY)*s;
+                            applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,midOff:{dx:origOff.dx+ddx,dy:origOff.dy+ddy}}));
+                          };
+                          const onUp=()=>{window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp);};
+                          window.addEventListener("mousemove",onMove);
+                          window.addEventListener("mouseup",onUp);
+                        };
+                        // Only show on hover (via opacity) or always when selected
+                        return(
+                          <g style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={onMidDown}
+                             opacity={isThisEdgeSel?1:0} className="nn-mid-handle">
+                            <circle cx={mid.x} cy={mid.y} r="10" fill="transparent"/>
+                            <rect x={mid.x-5} y={mid.y-5} width="10" height="10" rx="2"
+                              fill="var(--bg2)" stroke={edge.color||"var(--accent)"} strokeWidth="1.5"
+                              transform={`rotate(45,${mid.x},${mid.y})`}/>
+                            {/* Reset midpoint on dbl-click */}
+                            <circle cx={mid.x} cy={mid.y} r="10" fill="transparent"
+                              onDoubleClick={ev=>{ev.stopPropagation();applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,midOff:null}));}}/>
+                          </g>
+                        );
+                      })()}
+
                       {/* Draggable endpoint handles — shown on selected edge */}
                       {isSel&&canEdit&&(()=>{
                         const handleDrag=(isFrom)=>(ev)=>{
@@ -1527,6 +1619,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         .nn-node:hover { z-index: 10; }
         .nn-node:hover .nn-collapse-btn { opacity: 0.8 !important; }
         .nn-node .nn-collapse-btn:hover { opacity: 1 !important; }
+        g:hover .nn-mid-handle { opacity: 1 !important; }
+        .nn-mid-handle { transition: opacity .15s; }
       `}</style>
     </div>
   );

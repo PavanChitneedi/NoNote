@@ -82,6 +82,7 @@ CREATE TABLE map_edges (
   color        TEXT NOT NULL DEFAULT '#58a6ff',
   from_anchor  JSONB,
   to_anchor    JSONB,
+  mid_off      JSONB,
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -183,3 +184,4 @@ CREATE INDEX idx_map_versions_map_id ON map_versions(map_id);
 -- ── Migration: add anchor columns to map_edges if not exists ──
 ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS from_anchor JSONB;
 ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS to_anchor   JSONB;
+ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS mid_off     JSONB;
