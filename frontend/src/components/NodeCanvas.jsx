@@ -504,6 +504,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showChat,     setShowChat]     = useState(false);
   const [showAppearance,setShowAppearance]=useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [showExportMenu,  setShowExportMenu]  = useState(false);
+  const [showAppMenu,     setShowAppMenu]     = useState(false);
+  const [showConnDropdown,setShowConnDropdown]= useState(false);
   const [showSearch,   setShowSearch]   = useState(false);
   const [searchQuery,  setSearchQuery]  = useState("");
   const [searchField,  setSearchField]  = useState("all"); // all|title|notes|props
@@ -1181,285 +1184,378 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
 
       {/* ── Topbar ── */}
-      <div
-        onKeyDown={e=>e.stopPropagation()}
-        style={{height:"var(--topbar-h)",background:"var(--bg2)",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:4,padding:"0 8px",flexShrink:0,overflowX:"auto"}}
-      >
-        <span onClick={onHome} title="Home" style={{fontSize:20,cursor:"pointer",flexShrink:0,padding:"0 4px",userSelect:"none"}}>⬡</span>
-        <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
-        <div style={{width:1,height:22,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
-        <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",whiteSpace:"nowrap",maxWidth:150,overflow:"hidden",textOverflow:"ellipsis"}}>{mapMeta?.title}</span>
-        <div style={{width:1,height:22,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
+      <div style={{
+        height:"var(--topbar-h)",background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
+        display:"flex",alignItems:"center",flexShrink:0,overflow:"visible",
+        position:"relative",zIndex:10,padding:"0 6px",
+      }}>
 
-        {/* Edit / View mode */}
-        {canEdit&&(
-          <button onClick={()=>setEditMode(v=>!v)} style={tbtn(!editMode,"var(--success)")} title="Toggle edit/view mode (E)">
-            {editMode?"✏ EDIT":"👁 VIEW"}
-          </button>
-        )}
+        {/* ═══ LEFT GROUP ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+          <span onClick={onHome} title="Home" style={{fontSize:18,cursor:"pointer",padding:"0 4px",userSelect:"none"}}>⬡</span>
+          <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
+          <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
+          <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",maxWidth:100,overflow:"hidden",
+            textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mapMeta?.title}</span>
+          <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
 
-        {editMode&&canEdit&&<>
-          <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
-          <button onClick={()=>setMode("connect")} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
-          {mode==="connect"&&(<>
-            {/* Connection style button → opens floating panel */}
-            <button onClick={()=>setShowConnPanel(v=>!v)}
-              style={{...tbtn(showConnPanel,"#6C63FF"),display:"flex",alignItems:"center",gap:5,padding:"5px 10px"}}>
-              <span style={{fontSize:14}}>{EDGE_STYLES[edgeStyle]?.icon||"→"}</span>
-              <span style={{fontSize:10,color:"var(--text3)"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
-              <span style={{fontSize:9,color:"var(--text4)"}}>▾</span>
+          {canEdit&&(
+            <button onClick={()=>setEditMode(v=>!v)} style={tbtn(!editMode,"var(--success)")} title="Toggle edit/view (E)">
+              {editMode?"✏ EDIT":"👁 VIEW"}
             </button>
-            {/* Color swatch */}
-            <div style={{position:"relative",flexShrink:0}}>
-              <div style={{width:22,height:22,borderRadius:"50%",background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}
-                title="Edge color">
-                <input type="color" defaultValue="#58a6ff"
-                  onChange={e=>setEdgeColor(e.target.value)}
-                  style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
+          )}
+
+          {editMode&&canEdit&&<>
+            <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
+            <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
+
+            {/* Connection style dropdown */}
+            {mode==="connect"&&(
+              <div style={{position:"relative"}}>
+                <button onClick={()=>setShowConnDropdown(v=>!v)}
+                  style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:4}}>
+                  <span style={{fontSize:13}}>{EDGE_STYLES[edgeStyle]?.icon||"→"}</span>
+                  <span style={{fontSize:9,color:"var(--text3)",maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
+                  <span style={{fontSize:8,opacity:.7}}>▾</span>
+                </button>
+                {showConnDropdown&&(
+                  <>
+                    <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
+                    <div style={{position:"fixed",top:48,zIndex:501,background:"var(--bg2)",
+                      border:"1px solid var(--accent)",borderRadius:"0 var(--radius-md) var(--radius-md) var(--radius-md)",
+                      boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:220,overflow:"hidden"}}>
+                      {Object.entries(EDGE_STYLES).reduce((acc,[key,style])=>{
+                        if(!acc.sections[style.section]) acc.sections[style.section]=[];
+                        acc.sections[style.section].push([key,style]);
+                        return acc;
+                      },{sections:{}}) && Object.entries(
+                        Object.entries(EDGE_STYLES).reduce((acc,[key,style])=>{
+                          if(!acc[style.section]) acc[style.section]=[];
+                          acc[style.section].push([key,style]);
+                          return acc;
+                        },{})
+                      ).map(([section,styles])=>(
+                        <div key={section}>
+                          <div style={{padding:"5px 10px 2px",fontSize:8,fontWeight:700,letterSpacing:1,
+                            color:"var(--text4)",background:"var(--bg3)"}}>{section.toUpperCase()}</div>
+                          {styles.map(([key,style])=>(
+                            <div key={key} onClick={()=>{setEdgeStyle(key);setShowConnDropdown(false);}}
+                              style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",cursor:"pointer",
+                                background:edgeStyle===key?"var(--accent2)22":"transparent",
+                                borderLeft:edgeStyle===key?"2px solid var(--accent2)":"2px solid transparent"}}
+                              onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                              onMouseLeave={e=>e.currentTarget.style.background=edgeStyle===key?"var(--accent2)22":"transparent"}>
+                              <span style={{fontSize:16,flexShrink:0}}>{style.icon}</span>
+                              <div>
+                                <div style={{fontSize:11,fontWeight:600,color:edgeStyle===key?"var(--accent)":"var(--text)"}}>{style.label}</div>
+                                <div style={{fontSize:9,color:"var(--text4)"}}>{style.desc}</div>
+                              </div>
+                              {edgeStyle===key&&<span style={{marginLeft:"auto",color:"var(--accent)",fontSize:12}}>✓</span>}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                      {/* Color picker */}
+                      <div style={{padding:"8px 12px",borderTop:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8}}>
+                        <span style={{fontSize:10,color:"var(--text4)"}}>Color</span>
+                        <div style={{width:22,height:22,borderRadius:"50%",background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,
+                          border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}>
+                          <input type="color" defaultValue="#58a6ff" onChange={e=>setEdgeColor(e.target.value)}
+                            style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
+                        </div>
+                        <button onClick={()=>setEdgeColor("var(--accent)")}
+                          style={{fontSize:9,background:"none",border:"1px solid var(--border)",borderRadius:3,
+                            padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>Reset</button>
+                      </div>
+                    </div>
+                  </>
+                )}
+                {drawingEdge&&<span style={{fontSize:10,color:"#f78166",marginLeft:4,animation:"pulse 1s infinite"}}>● pick target</span>}
               </div>
-            </div>
-            <button onClick={()=>setEdgeColor("var(--accent)")} title="Reset color"
-              style={{...tbtn(false),fontSize:9,padding:"3px 6px",color:"var(--text4)"}}>↺</button>
-            {drawingEdge&&<span style={{fontSize:11,color:"#f78166",padding:"0 5px",animation:"pulse 1s infinite",flexShrink:0}}>● click target</span>}
-          </>)}
-          <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
-          <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ AUTO LAYOUT</button>
-          <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
-            {globalCollapsed?"⊞ EXPAND ALL":"⊟ COLLAPSE ALL"}
-          </button>
-          <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
-          <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
-          {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑{selected.size>1?` (${selected.size})`:""}</button>}
-          {selectedNode&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties">✏ PROPS</button>}
+            )}
 
-        </>}
+            <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
+            <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
+            <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ LAYOUT</button>
+            <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse/Expand all">
+              {globalCollapsed?"⊞":"⊟"}
+            </button>
+            <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
+            <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
+            <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
+            {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑{selected.size>1?` (${selected.size})`:""}</button>}
+            {selectedNode&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties">✏</button>}
+          </>}
+        </div>
 
-        {/* ── Topbar Search Pill ── */}
-        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",padding:"0 10px",minWidth:0}}
+        {/* ═══ CENTER — absolutely positioned search pill ═══ */}
+        <div style={{position:"absolute",left:"50%",transform:"translateX(-50%)",width:420,zIndex:20}}
           onKeyDown={e=>e.stopPropagation()}>
-          <div style={{position:"relative",width:"100%",maxWidth:480}}>
-
-            {/* Pill */}
-            <div style={{
-              display:"flex",alignItems:"center",gap:8,height:34,
-              background:showSearch?"var(--bg)":"var(--bg3)",
-              border:`1.5px solid ${showSearch?"var(--accent)":"var(--border)"}`,
-              borderRadius:"var(--radius-md)",
-              padding:"0 12px",cursor:"text",transition:"border-color .15s,background .15s",
-              boxShadow:showSearch?"0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)":"none",
-            }}
-              onClick={()=>{ setShowSearch(true); document.getElementById("nn-search-input")?.focus(); }}
-            >
-              <span style={{fontSize:12,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0}}>🔍</span>
-              <input
-                id="nn-search-input"
-                value={searchQuery}
-                onChange={e=>{ setSearchQuery(e.target.value); setShowSearch(true); }}
-                onFocus={()=>setShowSearch(true)}
-                onKeyDown={e=>{
-                  e.stopPropagation();
-                  if(e.key==="Escape"){ setShowSearch(false); setSearchQuery(""); e.target.blur(); }
-                  if(e.key==="Enter"&&searchResults.length>0){ scrollToNode(searchResults[0].node.id); setShowSearch(false); setSearchQuery(""); }
-                  if(e.key==="ArrowDown"&&searchResults.length>0){ e.preventDefault(); document.getElementById("nn-sr-0")?.focus(); }
-                }}
-                placeholder="Search in this map…"
-                style={{flex:1,background:"none",border:"none",outline:"none",
-                  color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",minWidth:0}}
-              />
-              {searchQuery.trim()&&(
-                <span style={{fontSize:10,fontWeight:700,color:searchResults.length?"var(--success)":"var(--danger)",
-                  background:searchResults.length?"color-mix(in srgb,var(--success) 15%,transparent)":"color-mix(in srgb,var(--danger) 15%,transparent)",
-                  padding:"2px 7px",borderRadius:10,flexShrink:0,whiteSpace:"nowrap"}}>
-                  {searchResults.length||"No"} result{searchResults.length!==1?"s":""}
-                </span>
-              )}
-              {searchQuery&&(
-                <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
-                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
-                    fontSize:15,lineHeight:1,padding:"0 2px",flexShrink:0}}>×</button>
-              )}
-              {!showSearch&&!searchQuery&&!isMobile&&(
-                <kbd style={{fontSize:9,color:"var(--text4)",background:"var(--bg2)",border:"1px solid var(--border)",
-                  borderRadius:3,padding:"1px 5px",flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
-              )}
-            </div>
+          <div style={{
+            display:"flex",alignItems:"center",gap:8,height:32,
+            background:showSearch?"var(--bg)":"var(--bg3)",
+            border:`1.5px solid ${showSearch?"var(--accent)":"var(--border)"}`,
+            borderRadius:showSearch?"var(--radius-md) var(--radius-md) 0 0":"var(--radius-md)",
+            padding:"0 12px",cursor:"text",transition:"border-color .15s,background .15s",
+            boxShadow:showSearch?"0 2px 0 var(--bg2)":"none",
+          }}
+            onClick={()=>{setShowSearch(true);document.getElementById("nn-search-input")?.focus();}}>
+            <span style={{fontSize:12,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0}}>🔍</span>
+            <input id="nn-search-input" value={searchQuery}
+              onChange={e=>{setSearchQuery(e.target.value);setShowSearch(true);}}
+              onFocus={()=>setShowSearch(true)}
+              onKeyDown={e=>{
+                e.stopPropagation();
+                if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");e.target.blur();}
+                if(e.key==="Enter"&&searchResults.length>0){scrollToNode(searchResults[0].node.id);setShowSearch(false);setSearchQuery("");}
+                if(e.key==="ArrowDown"&&searchResults.length>0){e.preventDefault();document.getElementById("nn-sr-0")?.focus();}
+              }}
+              placeholder="Search in this map…"
+              style={{flex:1,background:"none",border:"none",outline:"none",
+                color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",minWidth:0}}
+            />
+            {searchQuery.trim()&&(
+              <span style={{fontSize:10,fontWeight:700,
+                color:searchResults.length?"var(--success)":"var(--danger)",
+                padding:"1px 7px",borderRadius:10,flexShrink:0,whiteSpace:"nowrap",
+                background:searchResults.length?"#3fb95020":"#f7816620"}}>
+                {searchResults.length||"No"} result{searchResults.length!==1?"s":""}
+              </span>
+            )}
+            {searchQuery&&(
+              <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
+                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:15,lineHeight:1,padding:"0 2px",flexShrink:0}}>×</button>
+            )}
+            {!showSearch&&!searchQuery&&!isMobile&&(
+              <kbd style={{fontSize:9,color:"var(--text4)",background:"var(--bg2)",border:"1px solid var(--border)",
+                borderRadius:3,padding:"1px 5px",flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
+            )}
           </div>
         </div>
 
-        {/* Search backdrop + dropdown — fixed so it overlays everything correctly */}
-        {showSearch&&(
-          <>
-            <div style={{position:"fixed",inset:0,zIndex:500}}
-              onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
-            <div style={{
-              position:"fixed",
-              top:48, /* topbar height */
-              left:"50%",transform:"translateX(-50%)",
-              width:560,maxWidth:"92vw",
-              background:"var(--bg2)",
-              border:"1.5px solid var(--accent)",
-              borderRadius:"0 0 var(--radius-md) var(--radius-md)",
-              boxShadow:"0 12px 40px rgba(0,0,0,.55)",
-              zIndex:501,overflow:"hidden",
-            }}
-              onKeyDown={e=>e.stopPropagation()}
-              onClick={e=>e.stopPropagation()}>
+        {/* ═══ RIGHT GROUP ═══ */}
+        <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto",flexShrink:0}}>
+          {saveMsg&&<span style={{fontSize:10,color:saveMsgColor,whiteSpace:"nowrap",padding:"0 4px"}}>{saveMsg}</span>}
 
-              {/* Filter chips */}
-              <div style={{display:"flex",alignItems:"center",gap:5,padding:"8px 12px",
-                borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
-                <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)",marginRight:4,flexShrink:0}}>FILTER</span>
-                {[["all","All"],["title","Title"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
-                  <button key={id}
-                    onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
-                    style={{padding:"3px 11px",border:"1px solid",borderRadius:12,cursor:"pointer",
-                      fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",transition:"all .12s",
-                      borderColor:searchField===id?"var(--accent)":"var(--border)",
-                      background:searchField===id?"var(--accent)":"transparent",
-                      color:searchField===id?"#fff":"var(--text3)"}}>
-                    {lbl}
+          {/* Zoom */}
+          <div style={{display:"flex",alignItems:"center",gap:0,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
+            <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 7px",borderRadius:0}}>−</button>
+            <span onClick={()=>setZoom(1)} style={{fontSize:10,color:"var(--text3)",cursor:"pointer",minWidth:36,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
+            <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 7px",borderRadius:0}}>＋</button>
+          </div>
+
+          <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
+
+          {/* 💬 Chat — toggles right panel */}
+          <button onClick={()=>setShowChat(v=>!v)} style={tbtn(showChat,"#6C63FF")} title="AI Chat">💬</button>
+
+          {/* 🎨 Appearance dropdown */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowAppMenu(v=>!v)} style={tbtn(showAppMenu,"#6C63FF")} title="Appearance">
+              🎨 <span style={{fontSize:8,opacity:.7}}>▾</span>
+            </button>
+            {showAppMenu&&(
+              <>
+                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
+                <div style={{position:"fixed",top:48,right:0,zIndex:501,background:"var(--bg2)",
+                  border:"1px solid var(--border)",borderRadius:"var(--radius-md) 0 var(--radius-md) var(--radius-md)",
+                  boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:"6px",minWidth:160}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"4px 8px 6px"}}>APPEARANCE</div>
+                  <button onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
+                    style={{width:"100%",padding:"8px 10px",background:"none",border:"none",
+                      borderRadius:"var(--radius-sm)",color:"var(--text)",cursor:"pointer",
+                      fontSize:12,fontFamily:"var(--font-ui)",textAlign:"left",display:"flex",gap:8,alignItems:"center"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                    🎨 <span>Theme & Colors</span>
                   </button>
-                ))}
-                {searchQuery.trim()&&searchResults.length>0&&(
-                  <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",flexShrink:0,whiteSpace:"nowrap"}}>
-                    {searchResults.reduce((s,r)=>s+r.hits.length,0)} match{searchResults.reduce((s,r)=>s+r.hits.length,0)!==1?"es":""}
-                  </span>
-                )}
-              </div>
-
-              {/* Body */}
-              <div style={{maxHeight:420,overflowY:"auto"}}>
-                {!searchQuery.trim()?(
-                  <div style={{padding:"16px 14px"}}>
-                    <div style={{fontSize:11,color:"var(--text4)",fontWeight:700,letterSpacing:.5,marginBottom:10}}>SEARCH IN</div>
-                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                      {[["📝","Title","Node names"],["🗒️","Notes","Free-text content"],["⚙️","Properties","IP, Make, Model…"],["🏷️","Type","Router, Server…"]].map(([ic,k,v])=>(
-                        <div key={k}
-                          onClick={()=>{setSearchField(k.toLowerCase().slice(0,5));document.getElementById("nn-search-input")?.focus();}}
-                          style={{display:"flex",gap:9,padding:"9px 11px",background:"var(--bg3)",
-                            borderRadius:"var(--radius-sm)",cursor:"pointer",alignItems:"center",
-                            border:"1px solid var(--border)",transition:"border-color .12s"}}
-                          onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"}
-                          onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
-                          <span style={{fontSize:18}}>{ic}</span>
-                          <div>
-                            <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{k}</div>
-                            <div style={{fontSize:10,color:"var(--text4)"}}>{v}</div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    <div style={{marginTop:12,fontSize:10,color:"var(--text4)",textAlign:"center"}}>Start typing · Ctrl+F · ESC to close</div>
-                  </div>
-                ):searchResults.length===0?(
-                  <div style={{padding:"28px 16px",textAlign:"center"}}>
-                    <div style={{fontSize:30,marginBottom:10}}>🔎</div>
-                    <div style={{fontSize:14,fontWeight:700,color:"var(--text2)",marginBottom:5}}>No results for "{searchQuery}"</div>
-                    <div style={{fontSize:11,color:"var(--text4)"}}>Try a different keyword or field filter</div>
-                  </div>
-                ):(
-                  searchResults.map((r,i)=>{
-                    const t=r.t;
-                    const connCount=edges.filter(e=>e.from===r.node.id||e.to===r.node.id).length;
-                    return(
-                      <div key={r.node.id}
-                        id={`nn-sr-${i}`}
-                        tabIndex={0}
-                        onClick={()=>{ scrollToNode(r.node.id); setShowSearch(false); setSearchQuery(""); }}
-                        onKeyDown={e=>{
-                          e.stopPropagation();
-                          if(e.key==="Enter"){ scrollToNode(r.node.id); setShowSearch(false); setSearchQuery(""); }
-                          if(e.key==="ArrowDown") document.getElementById(`nn-sr-${i+1}`)?.focus();
-                          if(e.key==="ArrowUp") i===0?document.getElementById("nn-search-input")?.focus():document.getElementById(`nn-sr-${i-1}`)?.focus();
-                          if(e.key==="Escape"){ setShowSearch(false); setSearchQuery(""); }
-                        }}
-                        style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
-                          borderBottom:"1px solid var(--border2)",cursor:"pointer",outline:"none",
-                          transition:"background .1s"}}
-                        onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                        onFocus={e=>e.currentTarget.style.background="var(--bg3)"}
-                        onBlur={e=>e.currentTarget.style.background="transparent"}>
-
-                        {/* Icon circle */}
-                        <div style={{width:34,height:34,borderRadius:"50%",flexShrink:0,
-                          background:`color-mix(in srgb,${t.color} 15%,transparent)`,
-                          border:`1.5px solid color-mix(in srgb,${t.color} 50%,transparent)`,
-                          display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>
-                          {t.icon}
-                        </div>
-
-                        {/* Content */}
-                        <div style={{flex:1,minWidth:0}}>
-                          <div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:3}}>
-                            <span style={{fontSize:13,fontWeight:700,color:"var(--text)",
-                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                              {highlightText(r.node.title,searchQuery)}
-                            </span>
-                            <span style={{fontSize:9,fontWeight:700,color:t.color,
-                              background:`color-mix(in srgb,${t.color} 15%,transparent)`,
-                              padding:"1px 6px",borderRadius:10,flexShrink:0}}>
-                              {t.label}
-                            </span>
-                          </div>
-                          <div style={{display:"flex",flexDirection:"column",gap:1}}>
-                            {r.hits.slice(0,2).map((hit,j)=>(
-                              <div key={j} style={{display:"flex",gap:6,alignItems:"baseline"}}>
-                                <span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",
-                                  flexShrink:0,minWidth:46,letterSpacing:.3}}>
-                                  {hit.field.slice(0,8).toUpperCase()}
-                                </span>
-                                <span style={{fontSize:11,color:"var(--text3)",overflow:"hidden",
-                                  display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical"}}>
-                                  {highlightText(hit.snippet,searchQuery)}
-                                </span>
-                              </div>
-                            ))}
-                            {r.hits.length>2&&<span style={{fontSize:9,color:"var(--text4)"}}>+{r.hits.length-2} more</span>}
-                          </div>
-                          {connCount>0&&<div style={{marginTop:2,fontSize:9,color:"var(--text4)"}}>🔗 {connCount} connection{connCount!==1?"s":""}</div>}
-                        </div>
-
-                        <span style={{fontSize:13,color:"var(--text4)",flexShrink:0,opacity:.5}}>↗</span>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Footer */}
-              {searchResults.length>0&&searchQuery.trim()&&(
-                <div style={{display:"flex",gap:12,padding:"6px 14px",
-                  borderTop:"1px solid var(--border2)",background:"var(--bg3)",
-                  fontSize:9,color:"var(--text4)"}}>
-                  <span>↵ Jump</span><span>↑↓ Navigate</span><span>ESC Close</span>
-                  <span style={{marginLeft:"auto"}}>{searchResults.length}/{nodes.length} nodes</span>
+                  <button onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
+                    style={{width:"100%",padding:"8px 10px",background:"none",border:"none",
+                      borderRadius:"var(--radius-sm)",color:"var(--text)",cursor:"pointer",
+                      fontSize:12,fontFamily:"var(--font-ui)",textAlign:"left",display:"flex",gap:8,alignItems:"center"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="none"}>
+                    🖌 <span>Canvas Style</span>
+                  </button>
                 </div>
-              )}
-            </div>
-          </>
-        )}
+              </>
+            )}
+          </div>
 
-                {/* Save status — right of center */}
-        {saveMsg&&<span style={{fontSize:11,color:saveMsgColor,flexShrink:0,whiteSpace:"nowrap",padding:"0 4px"}}>{saveMsg}</span>}
+          {/* 🕐 History */}
+          <button onClick={()=>setShowVersions(true)} style={tbtn(false)} title="Version History (V)">🕐</button>
 
-        {/* Zoom */}
-        <div style={{display:"flex",alignItems:"center",gap:1,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
-          <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 8px",borderRadius:0}}>−</button>
-          <span onClick={()=>setZoom(1)} title="Reset zoom" style={{fontSize:11,color:"var(--text3)",cursor:"pointer",minWidth:40,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
-          <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 8px",borderRadius:0}}>＋</button>
+          {/* ↗ Export dropdown */}
+          <div style={{position:"relative"}}>
+            <button onClick={()=>setShowExportMenu(v=>!v)} style={tbtn(showExportMenu,"#238636")} title="Export">
+              ↗ <span style={{fontSize:8,opacity:.7}}>▾</span>
+            </button>
+            {showExportMenu&&(
+              <>
+                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
+                <div style={{position:"fixed",top:48,right:0,zIndex:501,background:"var(--bg2)",
+                  border:"1px solid var(--border)",borderRadius:"var(--radius-md) 0 var(--radius-md) var(--radius-md)",
+                  boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
+                  {[
+                    ["🤖","LLM Text","Paste into any AI","llm"],
+                    ["{ }","JSON","Raw map data","json"],
+                    ["🖼","PNG Image","Visual snapshot","png"],
+                  ].map(([ic,label,desc,id])=>(
+                    <div key={id} onClick={()=>{
+                      setShowExportMenu(false);
+                      if(id==="png") exportAsPNG(nodes,edges,mapMeta?.title);
+                      else setShowExport(true);
+                    }}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <span style={{fontSize:16,flexShrink:0,minWidth:22,textAlign:"center"}}>{ic}</span>
+                      <div>
+                        <div style={{fontSize:12,fontWeight:600,color:"var(--text)"}}>{label}</div>
+                        <div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+
+          {!isMobile&&<span title={"Shortcuts:\nESC=cancel  Space=quick note\nCtrl+F=search  Del=delete\nCtrl+Z/Y=undo/redo  Ctrl+A=select all\nCtrl+Enter=layout  Ctrl+±/0=zoom\nE=edit/view  V=versions"}
+            style={{fontSize:11,color:"var(--text4)",cursor:"help",flexShrink:0,
+              borderBottom:"1px dashed var(--text4)",padding:"0 4px"}}>⌨</span>}
         </div>
-
-        <button onClick={()=>setShowAppearance(true)} style={tbtn(false,"#6C63FF")} title="Appearance">🎨</button>
-        <button onClick={()=>setShowVersions(true)}   style={tbtn(false)}           title="Version history (V)">🕐</button>
-        <button onClick={()=>setShowChat(true)}        style={tbtn(false,"#6C63FF")}>💬</button>
-        <button onClick={()=>setShowExport(true)}      style={tbtn(false,"#238636")}>↗</button>
-
-        {!isMobile&&<span title={"Shortcuts:\nESC=cancel  Space=quick note\nDel=delete  Ctrl+Z/Y=undo/redo\nShift+click=multi-select  Ctrl+A=select all\nArrows=move selection  Ctrl+Enter=layout\nCtrl+±/0=zoom  E=edit/view  V=versions"}
-          style={{fontSize:11,color:"var(--text4)",cursor:"help",flexShrink:0,borderBottom:"1px dashed var(--text4)",padding:"0 4px"}}>⌨</span>}
       </div>
 
-      {/* ── Main area ── */}
+      {/* Search dropdown — fixed, centered under pill */}
+      {showSearch&&(
+        <>
+          <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
+          <div style={{
+            position:"fixed",top:48,left:"50%",transform:"translateX(-50%)",
+            width:480,maxWidth:"90vw",zIndex:501,
+            background:"var(--bg2)",border:"1.5px solid var(--accent)",
+            borderTop:"none",borderRadius:"0 0 var(--radius-md) var(--radius-md)",
+            boxShadow:"0 12px 40px rgba(0,0,0,.55)",overflow:"hidden",
+          }} onKeyDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+            {/* Filter chips */}
+            <div style={{display:"flex",alignItems:"center",gap:5,padding:"8px 12px",
+              borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
+              <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)",marginRight:4,flexShrink:0}}>FILTER</span>
+              {[["all","All"],["title","Title"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
+                <button key={id} onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
+                  style={{padding:"3px 11px",border:"1px solid",borderRadius:12,cursor:"pointer",
+                    fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",transition:"all .12s",
+                    borderColor:searchField===id?"var(--accent)":"var(--border)",
+                    background:searchField===id?"var(--accent)":"transparent",
+                    color:searchField===id?"#fff":"var(--text3)"}}>
+                  {lbl}
+                </button>
+              ))}
+              {searchQuery.trim()&&searchResults.length>0&&(
+                <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",flexShrink:0,whiteSpace:"nowrap"}}>
+                  {searchResults.reduce((s,r)=>s+r.hits.length,0)} match{searchResults.reduce((s,r)=>s+r.hits.length,0)!==1?"es":""}
+                </span>
+              )}
+            </div>
+            {/* Results body */}
+            <div style={{maxHeight:400,overflowY:"auto"}}>
+              {!searchQuery.trim()?(
+                <div style={{padding:"16px 14px"}}>
+                  <div style={{fontSize:11,color:"var(--text4)",fontWeight:700,letterSpacing:.5,marginBottom:10}}>SEARCH IN</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                    {[["📝","Title","Node names"],["🗒️","Notes","Free-text content"],["⚙️","Properties","IP, Make, Model…"],["🏷️","Type","Router, Server…"]].map(([ic,k,v])=>(
+                      <div key={k} onClick={()=>{setSearchField(k.toLowerCase().slice(0,5));document.getElementById("nn-search-input")?.focus();}}
+                        style={{display:"flex",gap:9,padding:"9px 11px",background:"var(--bg3)",borderRadius:"var(--radius-sm)",
+                          cursor:"pointer",alignItems:"center",border:"1px solid var(--border)",transition:"border-color .12s"}}
+                        onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"}
+                        onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
+                        <span style={{fontSize:18}}>{ic}</span>
+                        <div>
+                          <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{k}</div>
+                          <div style={{fontSize:10,color:"var(--text4)"}}>{v}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{marginTop:12,fontSize:10,color:"var(--text4)",textAlign:"center"}}>Start typing · Ctrl+F · ESC to close</div>
+                </div>
+              ):searchResults.length===0?(
+                <div style={{padding:"28px 16px",textAlign:"center"}}>
+                  <div style={{fontSize:30,marginBottom:8}}>🔎</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--text2)",marginBottom:5}}>No results for "{searchQuery}"</div>
+                  <div style={{fontSize:11,color:"var(--text4)"}}>Try a different keyword or field filter</div>
+                </div>
+              ):(
+                searchResults.map((r,i)=>{
+                  const t=r.t;
+                  const connCount=edges.filter(e=>e.from===r.node.id||e.to===r.node.id).length;
+                  return(
+                    <div key={r.node.id} id={`nn-sr-${i}`} tabIndex={0}
+                      onClick={()=>{scrollToNode(r.node.id);setShowSearch(false);setSearchQuery("");}}
+                      onKeyDown={e=>{
+                        e.stopPropagation();
+                        if(e.key==="Enter"){scrollToNode(r.node.id);setShowSearch(false);setSearchQuery("");}
+                        if(e.key==="ArrowDown") document.getElementById(`nn-sr-${i+1}`)?.focus();
+                        if(e.key==="ArrowUp") i===0?document.getElementById("nn-search-input")?.focus():document.getElementById(`nn-sr-${i-1}`)?.focus();
+                        if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");}
+                      }}
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
+                        borderBottom:"1px solid var(--border2)",cursor:"pointer",outline:"none",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                      onFocus={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onBlur={e=>e.currentTarget.style.background="transparent"}>
+                      <div style={{width:34,height:34,borderRadius:"50%",flexShrink:0,
+                        background:`${t.color}22`,border:`1.5px solid ${t.color}60`,
+                        display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>
+                        {t.icon}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:3}}>
+                          <span style={{fontSize:13,fontWeight:700,color:"var(--text)",
+                            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            {highlightText(r.node.title,searchQuery)}
+                          </span>
+                          <span style={{fontSize:9,fontWeight:700,color:t.color,
+                            background:`${t.color}22`,padding:"1px 6px",borderRadius:10,flexShrink:0}}>
+                            {t.label}
+                          </span>
+                        </div>
+                        {r.hits.slice(0,2).map((hit,j)=>(
+                          <div key={j} style={{display:"flex",gap:6,alignItems:"baseline"}}>
+                            <span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",flexShrink:0,minWidth:48,letterSpacing:.3}}>
+                              {hit.field.slice(0,8).toUpperCase()}
+                            </span>
+                            <span style={{fontSize:11,color:"var(--text3)",overflow:"hidden",
+                              display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical"}}>
+                              {highlightText(hit.snippet,searchQuery)}
+                            </span>
+                          </div>
+                        ))}
+                        {r.hits.length>2&&<span style={{fontSize:9,color:"var(--text4)"}}>+{r.hits.length-2} more</span>}
+                        {connCount>0&&<div style={{marginTop:2,fontSize:9,color:"var(--text4)"}}>🔗 {connCount} connection{connCount!==1?"s":""}</div>}
+                      </div>
+                      <span style={{fontSize:13,color:"var(--text4)",flexShrink:0,opacity:.5}}>↗</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {searchResults.length>0&&searchQuery.trim()&&(
+              <div style={{display:"flex",gap:12,padding:"6px 14px",borderTop:"1px solid var(--border2)",
+                background:"var(--bg3)",fontSize:9,color:"var(--text4)"}}>
+                <span>↵ Jump</span><span>↑↓ Navigate</span><span>ESC Close</span>
+                <span style={{marginLeft:"auto"}}>{searchResults.length}/{nodes.length} nodes</span>
+              </div>
+            )}
+          </div>
+        </>
+      )}
+
+
+            {/* ── Main area ── */}
       <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
 
         {/* Desktop sidebar */}
@@ -1992,6 +2088,27 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           />
         )}
 
+        {/* ── LLM Chat Panel (VS Code style right panel) ── */}
+        {showChat&&(
+          <div style={{
+            width:380,flexShrink:0,display:"flex",flexDirection:"column",
+            background:"var(--bg2)",borderLeft:"1px solid var(--border2)",
+            transition:"width .2s",overflow:"hidden",
+          }}>
+            {/* Panel header */}
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
+              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+              <span style={{fontSize:15}}>💬</span>
+              <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",flex:1,letterSpacing:.5}}>AI CHAT</span>
+              <button onClick={()=>setShowChat(false)}
+                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1,padding:"0 2px"}}>×</button>
+            </div>
+            <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
+              <LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"} onClose={()=>setShowChat(false)}/>
+            </div>
+          </div>
+        )}
+
         {/* Multi-select info bar */}
         {selected.size>1&&(
           <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",padding:"8px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"var(--shadow-node)",zIndex:30,fontSize:12,color:"var(--text2)"}}>
@@ -2005,7 +2122,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       </div>
 
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
-      {showChat&&<LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"} onClose={()=>setShowChat(false)}/>}
+
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
       {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="canvas"/>}
 

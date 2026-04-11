@@ -134,8 +134,10 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   return (
     <>
       <div style={{
-        position: "fixed", inset: 0, zIndex: 250,
+        width: 360, height: "100%",
         display: "flex", background: "#0d1117",
+        borderLeft: "1px solid #21262d",
+        flexShrink: 0, overflow: "hidden",
       }}>
         {/* Sidebar */}
         {(showSidebar || !isMobile) && (
@@ -148,12 +150,10 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
             ...(isMobile ? { position: "absolute", inset: 0, zIndex: 10 } : {}),
           }}>
             {/* Sidebar header */}
-            <div style={{ padding: "12px 14px", borderBottom: "1px solid #21262d", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 16 }}>💬</span>
-              <span style={{ fontSize: 12, fontWeight: 700, color: "#58a6ff", flex: 1, letterSpacing: 0.5 }}>AI Chat</span>
+            <div style={{ padding: "8px 14px", borderBottom: "1px solid #21262d", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#58a6ff", flex: 1, letterSpacing: 0.5 }}>CONVERSATIONS</span>
               <button onClick={() => setShowSettings(true)} title="Manage providers"
-                style={{ background: "none", border: "none", color: "#484f58", cursor: "pointer", fontSize: 15 }}>⚙</button>
-              <button onClick={onClose} style={{ background: "none", border: "none", color: "#484f58", cursor: "pointer", fontSize: 18 }}>×</button>
+                style={{ background: "none", border: "none", color: "#484f58", cursor: "pointer", fontSize: 14 }}>⚙</button>
             </div>
 
             {/* Provider selector */}
