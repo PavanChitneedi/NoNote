@@ -601,7 +601,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const ns=data.nodes.map(n=>({
         id:n.id,type:n.node_type,x:n.x,y:n.y,w:n.w,h:n.h,
         title:n.title,notes:n.notes,collapsed:false,
-        properties:n.properties,customProps:n.custom_props,
+        properties:n.properties||{},customProps:n.custom_props||{},
       }));
       const es=data.edges.map(e=>({
         id:e.id,from:e.from_node,to:e.to_node,
@@ -1948,7 +1948,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         </div>
         {Object.keys(node.properties||{}).length>0&&<>
           <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>TEMPLATE PROPERTIES</div>
-          {Object.entries(node.properties).map(([k,v])=>(
+          {Object.entries(node.properties||{}).map(([k,v])=>(
             <div key={k}>
               <label style={{fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:3,display:"block",color:`${t.color}cc`}}>{k.toUpperCase()}</label>
               <input value={v} onChange={e=>onUpdateProp(node.id,k,e.target.value)} disabled={!canEdit} style={inp()}/>
