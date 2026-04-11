@@ -1234,252 +1234,211 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
         </>}
 
-        {/* ── Gmail-style Search Bar ── */}
-        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",padding:"0 10px",minWidth:0}}>
-          <div style={{position:"relative",width:"100%",maxWidth:480}} onKeyDown={e=>e.stopPropagation()}>
+        {/* ── Topbar Search Pill ── */}
+        <div style={{flex:1,display:"flex",justifyContent:"center",alignItems:"center",padding:"0 10px",minWidth:0}}
+          onKeyDown={e=>e.stopPropagation()}>
+          <div style={{position:"relative",width:"100%",maxWidth:480}}>
 
-            {/* Search pill — always rendered, expands on focus */}
+            {/* Pill */}
             <div style={{
-              display:"flex",alignItems:"center",gap:8,
-              height:36,
+              display:"flex",alignItems:"center",gap:8,height:34,
               background:showSearch?"var(--bg)":"var(--bg3)",
-              border:`1.5px solid ${showSearch?"var(--accent)":"transparent"}`,
-              borderRadius:showSearch?"var(--radius-md) var(--radius-md) 0 0":"var(--radius-md)",
-              padding:"0 12px",
-              transition:"all .18s",
-              cursor:"text",
-              boxShadow:showSearch?"0 1px 0 var(--border2)":"none",
+              border:`1.5px solid ${showSearch?"var(--accent)":"var(--border)"}`,
+              borderRadius:"var(--radius-md)",
+              padding:"0 12px",cursor:"text",transition:"border-color .15s,background .15s",
+              boxShadow:showSearch?"0 0 0 3px color-mix(in srgb,var(--accent) 15%,transparent)":"none",
             }}
               onClick={()=>{ setShowSearch(true); document.getElementById("nn-search-input")?.focus(); }}
             >
-              {/* Icon — spins to X on focus */}
-              <span style={{fontSize:13,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0,transition:"color .15s",userSelect:"none"}}>
-                {showSearch?"🔍":"🔍"}
-              </span>
-
+              <span style={{fontSize:12,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0}}>🔍</span>
               <input
                 id="nn-search-input"
                 value={searchQuery}
                 onChange={e=>{ setSearchQuery(e.target.value); setShowSearch(true); }}
                 onFocus={()=>setShowSearch(true)}
                 onKeyDown={e=>{
+                  e.stopPropagation();
                   if(e.key==="Escape"){ setShowSearch(false); setSearchQuery(""); e.target.blur(); }
-                  if(e.key==="Enter"&&searchResults.length>0){ scrollToNode(searchResults[0].node.id); setShowSearch(false); }
-                  if(e.key==="ArrowDown"&&searchResults.length>0){
-                    e.preventDefault();
-                    document.getElementById("nn-result-0")?.focus();
-                  }
+                  if(e.key==="Enter"&&searchResults.length>0){ scrollToNode(searchResults[0].node.id); setShowSearch(false); setSearchQuery(""); }
+                  if(e.key==="ArrowDown"&&searchResults.length>0){ e.preventDefault(); document.getElementById("nn-sr-0")?.focus(); }
                 }}
                 placeholder="Search in this map…"
-                style={{
-                  flex:1,background:"none",border:"none",outline:"none",
-                  color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",
-                  cursor:"text",minWidth:0,
-                }}
+                style={{flex:1,background:"none",border:"none",outline:"none",
+                  color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",minWidth:0}}
               />
-
-              {/* Right side — result count OR kbd hint */}
-              {searchQuery.trim()?(
-                <div style={{display:"flex",alignItems:"center",gap:5,flexShrink:0}}>
-                  <span style={{
-                    fontSize:10,fontWeight:700,
-                    color:searchResults.length>0?"var(--success)":"var(--text4)",
-                    whiteSpace:"nowrap",
-                  }}>
-                    {searchResults.length>0?`${searchResults.length} result${searchResults.length!==1?"s":""}`:"No results"}
-                  </span>
-                  <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
-                    style={{background:"var(--bg3)",border:"none",borderRadius:"50%",width:16,height:16,
-                      display:"flex",alignItems:"center",justifyContent:"center",
-                      color:"var(--text4)",cursor:"pointer",fontSize:11,lineHeight:1,flexShrink:0}}>×</button>
-                </div>
-              ):(
-                !showSearch&&!isMobile&&(
-                  <kbd style={{fontSize:9,color:"var(--text4)",background:"var(--bg2)",
-                    border:"1px solid var(--border)",borderRadius:3,padding:"1px 5px",
-                    flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
-                )
+              {searchQuery.trim()&&(
+                <span style={{fontSize:10,fontWeight:700,color:searchResults.length?"var(--success)":"var(--danger)",
+                  background:searchResults.length?"color-mix(in srgb,var(--success) 15%,transparent)":"color-mix(in srgb,var(--danger) 15%,transparent)",
+                  padding:"2px 7px",borderRadius:10,flexShrink:0,whiteSpace:"nowrap"}}>
+                  {searchResults.length||"No"} result{searchResults.length!==1?"s":""}
+                </span>
+              )}
+              {searchQuery&&(
+                <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
+                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
+                    fontSize:15,lineHeight:1,padding:"0 2px",flexShrink:0}}>×</button>
+              )}
+              {!showSearch&&!searchQuery&&!isMobile&&(
+                <kbd style={{fontSize:9,color:"var(--text4)",background:"var(--bg2)",border:"1px solid var(--border)",
+                  borderRadius:3,padding:"1px 5px",flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
               )}
             </div>
-
-            {/* ── Dropdown ── */}
-            {showSearch&&(
-              <>
-                {/* Backdrop to close */}
-                <div style={{position:"fixed",inset:0,zIndex:398}}
-                  onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
-
-                <div style={{
-                  position:"absolute",top:"100%",left:0,right:0,zIndex:399,
-                  background:"var(--bg2)",
-                  border:"1.5px solid var(--accent)",
-                  borderTop:"1px solid var(--border2)",
-                  borderRadius:"0 0 var(--radius-md) var(--radius-md)",
-                  boxShadow:"0 8px 32px rgba(0,0,0,.45)",
-                  overflow:"hidden",
-                }}
-                  onClick={e=>e.stopPropagation()}>
-
-                  {/* Filter chips row */}
-                  <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",
-                    borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
-                    <span style={{fontSize:10,color:"var(--text4)",fontWeight:700,letterSpacing:.5,marginRight:2,flexShrink:0}}>FILTER</span>
-                    {[["all","All"],["title","Title"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
-                      <button key={id}
-                        onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
-                        style={{
-                          padding:"3px 10px",border:"none",borderRadius:12,cursor:"pointer",
-                          fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
-                          background:searchField===id?"var(--accent2)":"var(--bg2)",
-                          color:searchField===id?"#fff":"var(--text3)",
-                          transition:"all .12s",
-                        }}>
-                        {lbl}
-                      </button>
-                    ))}
-                    {searchQuery.trim()&&(
-                      <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",flexShrink:0}}>
-                        {searchResults.reduce((s,r)=>s+r.hits.length,0)} match{searchResults.reduce((s,r)=>s+r.hits.length,0)!==1?"es":""}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Results */}
-                  <div style={{maxHeight:380,overflow:"auto"}}>
-                    {!searchQuery.trim()?(
-                      /* Empty state — recent hint */
-                      <div style={{padding:"18px 16px"}}>
-                        <div style={{fontSize:11,color:"var(--text4)",fontWeight:700,letterSpacing:.5,marginBottom:10}}>SEARCH ACROSS</div>
-                        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                          {[["📝","Title","Node names"],["🗒️","Notes","Free-text content"],["⚙️","Properties","IP, Make, Model…"],["🏷️","Type","Router, Server…"]].map(([ic,k,v])=>(
-                            <div key={k} onClick={()=>{setSearchField(k.toLowerCase());document.getElementById("nn-search-input")?.focus();}}
-                              style={{display:"flex",gap:8,padding:"8px 10px",background:"var(--bg3)",
-                                borderRadius:"var(--radius-sm)",cursor:"pointer",alignItems:"flex-start",
-                                border:"1px solid var(--border)"}}
-                              onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"}
-                              onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
-                              <span style={{fontSize:16}}>{ic}</span>
-                              <div>
-                                <div style={{fontSize:11,fontWeight:700,color:"var(--text)"}}>{k}</div>
-                                <div style={{fontSize:10,color:"var(--text4)"}}>{v}</div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                        <div style={{marginTop:10,fontSize:10,color:"var(--text4)",textAlign:"center"}}>Start typing to search · ESC to close</div>
-                      </div>
-                    ):searchResults.length===0?(
-                      <div style={{padding:"24px 16px",textAlign:"center"}}>
-                        <div style={{fontSize:28,marginBottom:8}}>🔎</div>
-                        <div style={{fontSize:13,fontWeight:600,color:"var(--text2)",marginBottom:4}}>No results for "{searchQuery}"</div>
-                        <div style={{fontSize:11,color:"var(--text4)"}}>Try searching in a different field or check spelling</div>
-                      </div>
-                    ):(
-                      searchResults.map((r,i)=>{
-                        const t=r.t;
-                        const connCount=edges.filter(e=>e.from===r.node.id||e.to===r.node.id).length;
-                        return(
-                          <div key={r.node.id}
-                            id={`nn-result-${i}`}
-                            tabIndex={0}
-                            onClick={()=>{ scrollToNode(r.node.id); setShowSearch(false); }}
-                            onKeyDown={e=>{
-                              if(e.key==="Enter"){ scrollToNode(r.node.id); setShowSearch(false); }
-                              if(e.key==="ArrowDown") document.getElementById(`nn-result-${i+1}`)?.focus();
-                              if(e.key==="ArrowUp"){
-                                if(i===0) document.getElementById("nn-search-input")?.focus();
-                                else document.getElementById(`nn-result-${i-1}`)?.focus();
-                              }
-                              if(e.key==="Escape"){ setShowSearch(false); setSearchQuery(""); }
-                            }}
-                            style={{
-                              display:"flex",alignItems:"flex-start",gap:10,
-                              padding:"10px 14px",
-                              borderBottom:"1px solid var(--border2)",
-                              cursor:"pointer",outline:"none",
-                              transition:"background .1s",
-                            }}
-                            onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                            onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                            onFocus={e=>e.currentTarget.style.background="var(--bg3)"}
-                            onBlur={e=>e.currentTarget.style.background="transparent"}>
-
-                            {/* Left: type icon in colored circle */}
-                            <div style={{
-                              width:32,height:32,borderRadius:"50%",flexShrink:0,
-                              background:`${t.color}22`,border:`1.5px solid ${t.color}60`,
-                              display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,
-                            }}>
-                              {t.icon}
-                            </div>
-
-                            {/* Right: title + snippets */}
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:3}}>
-                                <span style={{fontSize:13,fontWeight:700,color:"var(--text)",
-                                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                                  {highlightText(r.node.title,searchQuery)}
-                                </span>
-                                <span style={{fontSize:9,color:t.color,fontWeight:700,
-                                  background:`${t.color}18`,padding:"1px 6px",borderRadius:10,
-                                  flexShrink:0,whiteSpace:"nowrap"}}>
-                                  {t.label}
-                                </span>
-                              </div>
-
-                              {/* Match snippets */}
-                              <div style={{display:"flex",flexDirection:"column",gap:2}}>
-                                {r.hits.slice(0,3).map((hit,j)=>(
-                                  <div key={j} style={{display:"flex",gap:5,alignItems:"baseline"}}>
-                                    <span style={{fontSize:9,fontWeight:700,letterSpacing:.3,
-                                      color:"var(--accent2)",flexShrink:0,minWidth:48,paddingTop:1}}>
-                                      {hit.field.slice(0,8).toUpperCase()}
-                                    </span>
-                                    <span style={{fontSize:11,color:"var(--text3)",overflow:"hidden",
-                                      display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical"}}>
-                                      {highlightText(hit.snippet,searchQuery)}
-                                    </span>
-                                  </div>
-                                ))}
-                                {r.hits.length>3&&(
-                                  <span style={{fontSize:9,color:"var(--text4)"}}>+{r.hits.length-3} more match{r.hits.length-3!==1?"es":""}</span>
-                                )}
-                              </div>
-
-                              {/* Meta row */}
-                              {connCount>0&&(
-                                <div style={{marginTop:3,fontSize:9,color:"var(--text4)",display:"flex",gap:6}}>
-                                  <span>🔗 {connCount} connection{connCount!==1?"s":""}</span>
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Jump arrow */}
-                            <span style={{fontSize:14,color:"var(--text4)",flexShrink:0,alignSelf:"center",opacity:.5}}>↗</span>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-
-                  {/* Footer */}
-                  {searchResults.length>0&&searchQuery.trim()&&(
-                    <div style={{
-                      display:"flex",gap:12,padding:"6px 14px",
-                      borderTop:"1px solid var(--border2)",
-                      background:"var(--bg3)",fontSize:9,color:"var(--text4)",
-                    }}>
-                      <span>↵ Jump to first</span>
-                      <span>↑↓ Navigate</span>
-                      <span>ESC Close</span>
-                      <span style={{marginLeft:"auto"}}>{searchResults.length} of {nodes.length} nodes match</span>
-                    </div>
-                  )}
-                </div>
-              </>
-            )}
           </div>
         </div>
+
+        {/* Search backdrop + dropdown — fixed so it overlays everything correctly */}
+        {showSearch&&(
+          <>
+            <div style={{position:"fixed",inset:0,zIndex:500}}
+              onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
+            <div style={{
+              position:"fixed",
+              top:48, /* topbar height */
+              left:"50%",transform:"translateX(-50%)",
+              width:560,maxWidth:"92vw",
+              background:"var(--bg2)",
+              border:"1.5px solid var(--accent)",
+              borderRadius:"0 0 var(--radius-md) var(--radius-md)",
+              boxShadow:"0 12px 40px rgba(0,0,0,.55)",
+              zIndex:501,overflow:"hidden",
+            }}
+              onKeyDown={e=>e.stopPropagation()}
+              onClick={e=>e.stopPropagation()}>
+
+              {/* Filter chips */}
+              <div style={{display:"flex",alignItems:"center",gap:5,padding:"8px 12px",
+                borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
+                <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)",marginRight:4,flexShrink:0}}>FILTER</span>
+                {[["all","All"],["title","Title"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
+                  <button key={id}
+                    onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
+                    style={{padding:"3px 11px",border:"1px solid",borderRadius:12,cursor:"pointer",
+                      fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",transition:"all .12s",
+                      borderColor:searchField===id?"var(--accent)":"var(--border)",
+                      background:searchField===id?"var(--accent)":"transparent",
+                      color:searchField===id?"#fff":"var(--text3)"}}>
+                    {lbl}
+                  </button>
+                ))}
+                {searchQuery.trim()&&searchResults.length>0&&(
+                  <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",flexShrink:0,whiteSpace:"nowrap"}}>
+                    {searchResults.reduce((s,r)=>s+r.hits.length,0)} match{searchResults.reduce((s,r)=>s+r.hits.length,0)!==1?"es":""}
+                  </span>
+                )}
+              </div>
+
+              {/* Body */}
+              <div style={{maxHeight:420,overflowY:"auto"}}>
+                {!searchQuery.trim()?(
+                  <div style={{padding:"16px 14px"}}>
+                    <div style={{fontSize:11,color:"var(--text4)",fontWeight:700,letterSpacing:.5,marginBottom:10}}>SEARCH IN</div>
+                    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
+                      {[["📝","Title","Node names"],["🗒️","Notes","Free-text content"],["⚙️","Properties","IP, Make, Model…"],["🏷️","Type","Router, Server…"]].map(([ic,k,v])=>(
+                        <div key={k}
+                          onClick={()=>{setSearchField(k.toLowerCase().slice(0,5));document.getElementById("nn-search-input")?.focus();}}
+                          style={{display:"flex",gap:9,padding:"9px 11px",background:"var(--bg3)",
+                            borderRadius:"var(--radius-sm)",cursor:"pointer",alignItems:"center",
+                            border:"1px solid var(--border)",transition:"border-color .12s"}}
+                          onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"}
+                          onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
+                          <span style={{fontSize:18}}>{ic}</span>
+                          <div>
+                            <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{k}</div>
+                            <div style={{fontSize:10,color:"var(--text4)"}}>{v}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div style={{marginTop:12,fontSize:10,color:"var(--text4)",textAlign:"center"}}>Start typing · Ctrl+F · ESC to close</div>
+                  </div>
+                ):searchResults.length===0?(
+                  <div style={{padding:"28px 16px",textAlign:"center"}}>
+                    <div style={{fontSize:30,marginBottom:10}}>🔎</div>
+                    <div style={{fontSize:14,fontWeight:700,color:"var(--text2)",marginBottom:5}}>No results for "{searchQuery}"</div>
+                    <div style={{fontSize:11,color:"var(--text4)"}}>Try a different keyword or field filter</div>
+                  </div>
+                ):(
+                  searchResults.map((r,i)=>{
+                    const t=r.t;
+                    const connCount=edges.filter(e=>e.from===r.node.id||e.to===r.node.id).length;
+                    return(
+                      <div key={r.node.id}
+                        id={`nn-sr-${i}`}
+                        tabIndex={0}
+                        onClick={()=>{ scrollToNode(r.node.id); setShowSearch(false); setSearchQuery(""); }}
+                        onKeyDown={e=>{
+                          e.stopPropagation();
+                          if(e.key==="Enter"){ scrollToNode(r.node.id); setShowSearch(false); setSearchQuery(""); }
+                          if(e.key==="ArrowDown") document.getElementById(`nn-sr-${i+1}`)?.focus();
+                          if(e.key==="ArrowUp") i===0?document.getElementById("nn-search-input")?.focus():document.getElementById(`nn-sr-${i-1}`)?.focus();
+                          if(e.key==="Escape"){ setShowSearch(false); setSearchQuery(""); }
+                        }}
+                        style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
+                          borderBottom:"1px solid var(--border2)",cursor:"pointer",outline:"none",
+                          transition:"background .1s"}}
+                        onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                        onMouseLeave={e=>e.currentTarget.style.background="transparent"}
+                        onFocus={e=>e.currentTarget.style.background="var(--bg3)"}
+                        onBlur={e=>e.currentTarget.style.background="transparent"}>
+
+                        {/* Icon circle */}
+                        <div style={{width:34,height:34,borderRadius:"50%",flexShrink:0,
+                          background:`color-mix(in srgb,${t.color} 15%,transparent)`,
+                          border:`1.5px solid color-mix(in srgb,${t.color} 50%,transparent)`,
+                          display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>
+                          {t.icon}
+                        </div>
+
+                        {/* Content */}
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:3}}>
+                            <span style={{fontSize:13,fontWeight:700,color:"var(--text)",
+                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                              {highlightText(r.node.title,searchQuery)}
+                            </span>
+                            <span style={{fontSize:9,fontWeight:700,color:t.color,
+                              background:`color-mix(in srgb,${t.color} 15%,transparent)`,
+                              padding:"1px 6px",borderRadius:10,flexShrink:0}}>
+                              {t.label}
+                            </span>
+                          </div>
+                          <div style={{display:"flex",flexDirection:"column",gap:1}}>
+                            {r.hits.slice(0,2).map((hit,j)=>(
+                              <div key={j} style={{display:"flex",gap:6,alignItems:"baseline"}}>
+                                <span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",
+                                  flexShrink:0,minWidth:46,letterSpacing:.3}}>
+                                  {hit.field.slice(0,8).toUpperCase()}
+                                </span>
+                                <span style={{fontSize:11,color:"var(--text3)",overflow:"hidden",
+                                  display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical"}}>
+                                  {highlightText(hit.snippet,searchQuery)}
+                                </span>
+                              </div>
+                            ))}
+                            {r.hits.length>2&&<span style={{fontSize:9,color:"var(--text4)"}}>+{r.hits.length-2} more</span>}
+                          </div>
+                          {connCount>0&&<div style={{marginTop:2,fontSize:9,color:"var(--text4)"}}>🔗 {connCount} connection{connCount!==1?"s":""}</div>}
+                        </div>
+
+                        <span style={{fontSize:13,color:"var(--text4)",flexShrink:0,opacity:.5}}>↗</span>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Footer */}
+              {searchResults.length>0&&searchQuery.trim()&&(
+                <div style={{display:"flex",gap:12,padding:"6px 14px",
+                  borderTop:"1px solid var(--border2)",background:"var(--bg3)",
+                  fontSize:9,color:"var(--text4)"}}>
+                  <span>↵ Jump</span><span>↑↓ Navigate</span><span>ESC Close</span>
+                  <span style={{marginLeft:"auto"}}>{searchResults.length}/{nodes.length} nodes</span>
+                </div>
+              )}
+            </div>
+          </>
+        )}
 
                 {/* Save status — right of center */}
         {saveMsg&&<span style={{fontSize:11,color:saveMsgColor,flexShrink:0,whiteSpace:"nowrap",padding:"0 4px"}}>{saveMsg}</span>}
@@ -1617,18 +1576,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"3px 10px",fontFamily:"var(--font-ui)"}}>Reset</button>
             </div>
           </div>
-        )}
-
-        {/* ── Search Panel ── */}
-        {showSearch&&(
-          <SearchPanel
-            query={searchQuery} setQuery={setSearchQuery}
-            field={searchField} setField={setSearchField}
-            results={searchResults}
-            onSelect={r=>{scrollToNode(r.node.id);}}
-            onClose={()=>{setShowSearch(false);setSearchQuery("");}}
-            nodes={nodes} edges={edges}
-          />
         )}
 
         {/* ── Canvas ── */}
