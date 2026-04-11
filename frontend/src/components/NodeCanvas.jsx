@@ -1221,8 +1221,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 {showConnDropdown&&(
                   <>
                     <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
-                    <div style={{position:"fixed",top:48,zIndex:501,background:"var(--bg2)",
-                      border:"1px solid var(--accent)",borderRadius:"0 var(--radius-md) var(--radius-md) var(--radius-md)",
+                    <div style={{position:"fixed",top:52,left:8,zIndex:501,background:"var(--bg2)",
+                      border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",
                       boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:220,overflow:"hidden"}}>
                       {Object.entries(EDGE_STYLES).reduce((acc,[key,style])=>{
                         if(!acc.sections[style.section]) acc.sections[style.section]=[];
@@ -1289,15 +1289,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         </div>
 
         {/* ═══ CENTER — absolutely positioned search pill ═══ */}
-        <div style={{position:"absolute",left:"50%",transform:"translateX(-50%)",width:420,zIndex:20}}
+        <div style={{position:"absolute",left:"50%",transform:"translateX(-50%)",width:480,maxWidth:"60vw",zIndex:20}}
           onKeyDown={e=>e.stopPropagation()}>
           <div style={{
-            display:"flex",alignItems:"center",gap:8,height:32,
+            display:"flex",alignItems:"center",gap:8,height:34,
             background:showSearch?"var(--bg)":"var(--bg3)",
             border:`1.5px solid ${showSearch?"var(--accent)":"var(--border)"}`,
-            borderRadius:showSearch?"var(--radius-md) var(--radius-md) 0 0":"var(--radius-md)",
+            borderRadius:"var(--radius-md)",
             padding:"0 12px",cursor:"text",transition:"border-color .15s,background .15s",
-            boxShadow:showSearch?"0 2px 0 var(--bg2)":"none",
+            boxShadow:showSearch?"0 0 0 3px #58a6ff20":"none",
           }}
             onClick={()=>{setShowSearch(true);document.getElementById("nn-search-input")?.focus();}}>
             <span style={{fontSize:12,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0}}>🔍</span>
@@ -1357,8 +1357,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {showAppMenu&&(
               <>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
-                <div style={{position:"fixed",top:48,right:0,zIndex:501,background:"var(--bg2)",
-                  border:"1px solid var(--border)",borderRadius:"var(--radius-md) 0 var(--radius-md) var(--radius-md)",
+                <div style={{position:"fixed",top:52,right:6,zIndex:501,background:"var(--bg2)",
+                  border:"1px solid var(--border)",borderRadius:"var(--radius-md)",
                   boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:"6px",minWidth:160}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"4px 8px 6px"}}>APPEARANCE</div>
                   <button onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
@@ -1393,8 +1393,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {showExportMenu&&(
               <>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
-                <div style={{position:"fixed",top:48,right:0,zIndex:501,background:"var(--bg2)",
-                  border:"1px solid var(--border)",borderRadius:"var(--radius-md) 0 var(--radius-md) var(--radius-md)",
+                <div style={{position:"fixed",top:52,right:6,zIndex:501,background:"var(--bg2)",
+                  border:"1px solid var(--border)",borderRadius:"var(--radius-md)",
                   boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
                   {[
@@ -1433,10 +1433,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         <>
           <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
           <div style={{
-            position:"fixed",top:48,left:"50%",transform:"translateX(-50%)",
-            width:480,maxWidth:"90vw",zIndex:501,
+            position:"fixed",top:52,left:"50%",transform:"translateX(-50%)",
+            width:480,maxWidth:"min(480px,94vw)",zIndex:501,
             background:"var(--bg2)",border:"1.5px solid var(--accent)",
-            borderTop:"none",borderRadius:"0 0 var(--radius-md) var(--radius-md)",
+            borderRadius:"var(--radius-md)",
             boxShadow:"0 12px 40px rgba(0,0,0,.55)",overflow:"hidden",
           }} onKeyDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
             {/* Filter chips */}
