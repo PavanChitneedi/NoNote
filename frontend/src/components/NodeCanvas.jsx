@@ -1808,8 +1808,8 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
 
 // ── Node Sidebar ──────────────────────────────────────────────
 function NodeSidebar({cats,addNode,canEdit,inline}){
-  const [search, setSearch]       = React.useState("");
-  const [collapsed, setCollapsed] = React.useState({});
+  const [search, setSearch]       = useState("");
+  const [collapsed, setCollapsed] = useState({});
 
   const toggle = cat => setCollapsed(p=>({...p,[cat]:!p[cat]}));
 
