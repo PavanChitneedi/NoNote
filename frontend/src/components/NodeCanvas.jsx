@@ -488,6 +488,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showChat,     setShowChat]     = useState(false);
   const [showAppearance,setShowAppearance]=useState(false);
   const [showVersions, setShowVersions] = useState(false);
+  const [showSearch,   setShowSearch]   = useState(false);
+  const [searchQuery,  setSearchQuery]  = useState("");
+  const [searchField,  setSearchField]  = useState("all"); // all|title|notes|props
+  const [searchHitIdx, setSearchHitIdx] = useState(0);
 
   // Quick capture
   const [quickPos,     setQuickPos]     = useState(null);
@@ -620,6 +624,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const tag=e.target.tagName;
       const isInput=["INPUT","TEXTAREA","SELECT"].includes(tag);
       if(e.code==="Escape"){
+        if(showSearch){setShowSearch(false);setSearchQuery("");return;}
         if(editingTitle){setEditingTitle(null);return;}
         if(quickPos){setQuickPos(null);setQuickText("");return;}
         if(drawingEdge){setDrawingEdge(null);return;}
@@ -677,11 +682,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if(e.code==="KeyS"&&canEdit){setMode("select");setDrawingEdge(null);return;}
       if(e.code==="KeyE"&&canEdit){setEditMode(v=>!v);return;}
       if(e.code==="KeyV"&&canEdit){setShowVersions(true);return;}
+      if(e.code==="KeyF"&&mod){e.preventDefault();setShowSearch(v=>!v);setSearchQuery("");return;}
       if(e.code==="KeyA"&&mod){e.preventDefault();setSelected(new Set(nodes.map(n=>n.id)));return;}
     };
     window.addEventListener("keydown",h);
     return ()=>window.removeEventListener("keydown",h);
-  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle]);
+  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch]);
 
   useEffect(()=>{if(quickPos)quickInpRef.current?.focus();},[quickPos]);
 
@@ -1083,12 +1089,58 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const selectedEdgeObj = selEdge ? edges.find(e=>e.id===selEdge) : null;
   const cats=useMemo(()=>SIDEBAR_CATS.filter(c=>Object.values(NT).some(t=>t.cat===c)),[]);
   const isMobile=window.innerWidth<768;
+
+  // ── Search ─────────────────────────────────────────────────
+  const searchResults = useMemo(()=>{
+    const q = searchQuery.trim().toLowerCase();
+    if(!q) return [];
+    return nodes.map(node=>{
+      const t = NT[node.type]||NT.note;
+      const hits = [];
+      const match = (field, text) => {
+        if(!text) return;
+        const s = String(text).toLowerCase();
+        const idx = s.indexOf(q);
+        if(idx>=0) hits.push({
+          field,
+          snippet: String(text).slice(Math.max(0,idx-30), idx+q.length+50),
+          matchStart: Math.max(0,idx-30)>0 ? idx+30 : idx,
+          matchLen: q.length,
+        });
+      };
+      if(searchField==="all"||searchField==="title")  match("Title",   node.title);
+      if(searchField==="all"||searchField==="notes")  match("Notes",   node.notes);
+      if(searchField==="all"||searchField==="type")   match("Type",    t.label);
+      if(searchField==="all"||searchField==="props"){
+        Object.entries(node.properties||{}).forEach(([k,v])=>match(k, v));
+        Object.entries(node.customProps||{}).forEach(([k,v])=>match(k, v));
+      }
+      if(!hits.length) return null;
+      return { node, t, hits };
+    }).filter(Boolean);
+  },[nodes, searchQuery, searchField]);
+
+  const scrollToNode = (nodeId) => {
+    const node = nodes.find(n=>n.id===nodeId);
+    if(!node||!canvasRef.current) return;
+    const el = canvasRef.current;
+    const nw = (node.collapsed?COL_W:node.w)*zoom;
+    const nh = (node.collapsed?COL_H:node.h)*zoom;
+    const targetX = node.x*zoom - el.clientWidth/2  + nw/2;
+    const targetY = node.y*zoom - el.clientHeight/2 + nh/2;
+    el.scrollTo({ left:Math.max(0,targetX), top:Math.max(0,targetY), behavior:"smooth" });
+    setSelected(new Set([nodeId]));
+    setSelEdge(null);
+  };
   const canvasBg = canvasTheme!=="global"&&THEMES[canvasTheme]
     ? THEMES[canvasTheme].vars["--bg"]
     : "var(--bg)";
   const canvasDot = canvasTheme!=="global"&&THEMES[canvasTheme]
     ? THEMES[canvasTheme].vars["--canvas-dot"]
     : "var(--canvas-dot)";
+
+  // ── Search hit IDs for canvas highlight ──────────────────────
+  const searchHitIds = useMemo(()=>new Set(searchResults.map(r=>r.node.id)),[searchResults]);
 
   // ── Box select rect ────────────────────────────────────────
   const boxRect = boxSel ? {
@@ -1177,6 +1229,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 8px",borderRadius:0}}>＋</button>
         </div>
 
+        <button onClick={()=>{setShowSearch(v=>!v);setSearchQuery("");}} style={tbtn(showSearch,"#238636")} title="Search (Ctrl+F)">🔍</button>
         <button onClick={()=>setShowAppearance(true)} style={tbtn(false,"#6C63FF")} title="Appearance">🎨</button>
         <button onClick={()=>setShowVersions(true)}   style={tbtn(false)}           title="Version history (V)">🕐</button>
         <button onClick={()=>setShowChat(true)}        style={tbtn(false,"#6C63FF")}>💬</button>
@@ -1303,6 +1356,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"3px 10px",fontFamily:"var(--font-ui)"}}>Reset</button>
             </div>
           </div>
+        )}
+
+        {/* ── Search Panel ── */}
+        {showSearch&&(
+          <SearchPanel
+            query={searchQuery} setQuery={setSearchQuery}
+            field={searchField} setField={setSearchField}
+            results={searchResults}
+            onSelect={r=>{scrollToNode(r.node.id);}}
+            onClose={()=>{setShowSearch(false);setSearchQuery("");}}
+            nodes={nodes} edges={edges}
+          />
         )}
 
         {/* ── Canvas ── */}
@@ -1545,7 +1610,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       cursor:mode==="connect"?"crosshair":canEdit&&editMode?"grab":"default",
                       userSelect:"none",overflow:"hidden",touchAction:"none",
                       transition:"border-color .12s,box-shadow .12s",
-                      outline:selected.size>1&&isSel?`2px solid var(--accent)`:"none",
+                      outline:searchHitIds.has(node.id)&&!isSel
+                        ? "2px solid var(--success)"
+                        : selected.size>1&&isSel
+                        ? "2px solid var(--accent)"
+                        : "none",
+                      outlineOffset:searchHitIds.has(node.id)&&!isSel ? "2px" : "0",
                     }}
                   >
                     {/* Header */}
@@ -1989,6 +2059,137 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// ── Search Panel ──────────────────────────────────────────────
+function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nodes,edges}){
+  const inputRef = useRef(null);
+  const [activeIdx, setActiveIdx] = useState(0);
+
+  useEffect(()=>{ setTimeout(()=>inputRef.current?.focus(),50); },[]);
+  useEffect(()=>{ setActiveIdx(0); },[results]);
+
+  const handleKey=(e)=>{
+    if(e.key==="ArrowDown"){e.preventDefault();setActiveIdx(i=>Math.min(i+1,results.length-1));}
+    if(e.key==="ArrowUp")  {e.preventDefault();setActiveIdx(i=>Math.max(i-1,0));}
+    if(e.key==="Enter"&&results[activeIdx]){e.preventDefault();onSelect(results[activeIdx]);}
+    if(e.key==="Escape"){onClose();}
+  };
+
+  const Hl=({text,q})=>{
+    if(!q||!text) return <span>{text}</span>;
+    const low=String(text).toLowerCase(), ql=q.toLowerCase();
+    const idx=low.indexOf(ql); if(idx<0) return <span>{text}</span>;
+    return <span>{String(text).slice(0,idx)}<mark style={{background:"var(--accent2)",color:"#fff",borderRadius:2,padding:"0 1px"}}>{String(text).slice(idx,idx+q.length)}</mark>{String(text).slice(idx+q.length)}</span>;
+  };
+
+  const FIELDS=[{id:"all",label:"All"},{id:"title",label:"Title"},{id:"notes",label:"Notes"},{id:"props",label:"Properties"},{id:"type",label:"Type"}];
+  const totalMatches=results.reduce((s,r)=>s+r.hits.length,0);
+
+  return(
+    <div style={{width:340,background:"var(--bg2)",borderRight:"1px solid var(--border2)",display:"flex",flexDirection:"column",flexShrink:0,overflow:"hidden"}}>
+
+      {/* Search input */}
+      <div style={{padding:"10px 12px",borderBottom:"1px solid var(--border2)"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+          <span style={{fontSize:13,color:"var(--text4)"}}>🔍</span>
+          <input ref={inputRef} value={query} onChange={e=>setQuery(e.target.value)} onKeyDown={handleKey}
+            placeholder="Search nodes, notes, properties…"
+            style={{flex:1,background:"var(--bg3)",border:"1px solid var(--accent)",borderRadius:"var(--radius-sm)",
+              padding:"6px 10px",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",outline:"none"}}/>
+          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1,flexShrink:0}}>×</button>
+        </div>
+        <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
+          {FIELDS.map(f=>(
+            <button key={f.id} onClick={()=>setField(f.id)}
+              style={{padding:"2px 8px",border:"none",borderRadius:"var(--radius-xs)",cursor:"pointer",
+                fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
+                background:field===f.id?"var(--accent2)":"var(--bg3)",
+                color:field===f.id?"#fff":"var(--text4)"}}>
+              {f.label}
+            </button>
+          ))}
+        </div>
+        {query.trim()&&(
+          <div style={{marginTop:6,fontSize:10,color:"var(--text4)"}}>
+            {results.length===0?"No matches":`${results.length} node${results.length!==1?"s":""} · ${totalMatches} match${totalMatches!==1?"es":""}`}
+            {results.length>0&&<span style={{marginLeft:6}}>↑↓ navigate · Enter jump</span>}
+          </div>
+        )}
+      </div>
+
+      {/* Results */}
+      <div style={{flex:1,overflow:"auto"}}>
+        {!query.trim()&&(
+          <div style={{padding:"20px 14px",textAlign:"center"}}>
+            <div style={{fontSize:24,marginBottom:8}}>🔍</div>
+            <div style={{fontSize:12,color:"var(--text3)",marginBottom:14}}>Search across all your nodes</div>
+            {[["Title","Node names"],["Notes","Free-text content"],["Properties","Make, Model, IP, OS…"],["Type","Router, Server, Note…"]].map(([k,v])=>(
+              <div key={k} style={{display:"flex",gap:8,fontSize:11,padding:"5px 8px",background:"var(--bg3)",borderRadius:"var(--radius-sm)",marginBottom:4,textAlign:"left"}}>
+                <span style={{color:"var(--accent)",fontWeight:700,minWidth:70}}>{k}</span>
+                <span style={{color:"var(--text3)"}}>{v}</span>
+              </div>
+            ))}
+            <div style={{marginTop:12,fontSize:10,color:"var(--text4)"}}>Ctrl+F to open · ESC to close</div>
+          </div>
+        )}
+
+        {query.trim()&&results.length===0&&(
+          <div style={{padding:"30px 14px",textAlign:"center",color:"var(--text4)"}}>
+            <div style={{fontSize:28,marginBottom:8}}>🔎</div>
+            <div style={{fontSize:12}}>No results for "{query}"</div>
+            <div style={{fontSize:10,marginTop:6}}>Try different terms or change field filter</div>
+          </div>
+        )}
+
+        {results.map((r,i)=>{
+          const isActive=i===activeIdx; const t=r.t;
+          const connCount=edges.filter(e=>e.from===r.node.id||e.to===r.node.id).length;
+          return(
+            <div key={r.node.id} onClick={()=>{setActiveIdx(i);onSelect(r);}}
+              style={{padding:"10px 12px",borderBottom:"1px solid var(--border2)",cursor:"pointer",
+                background:isActive?"var(--bg3)":"transparent",
+                borderLeft:`3px solid ${isActive?t.color:"transparent"}`,transition:"background .1s"}}
+              onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+              onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background="transparent";}}>
+
+              {/* Node title row */}
+              <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                <span style={{fontSize:14,flexShrink:0}}>{t.icon}</span>
+                <span style={{fontSize:12,fontWeight:700,color:t.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                  <Hl text={r.node.title} q={query}/>
+                </span>
+                <span style={{fontSize:9,color:"var(--text4)",background:"var(--bg)",padding:"1px 5px",borderRadius:3,border:"1px solid var(--border)",flexShrink:0}}>{t.label}</span>
+              </div>
+
+              {/* Match snippets */}
+              {r.hits.slice(0,4).map((hit,j)=>(
+                <div key={j} style={{display:"flex",gap:6,fontSize:10,lineHeight:1.45,marginBottom:2}}>
+                  <span style={{color:"var(--accent2)",flexShrink:0,fontWeight:700,minWidth:56,fontSize:9,letterSpacing:.5,paddingTop:1}}>{hit.field.toUpperCase()}</span>
+                  <span style={{color:"var(--text3)",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                    <Hl text={hit.snippet} q={query}/>
+                  </span>
+                </div>
+              ))}
+              {r.hits.length>4&&<div style={{fontSize:9,color:"var(--text4)",marginTop:1}}>+{r.hits.length-4} more</div>}
+
+              {/* Footer meta */}
+              <div style={{marginTop:4,display:"flex",gap:8,fontSize:9,color:"var(--text4)"}}>
+                <span>x:{Math.round(r.node.x)} y:{Math.round(r.node.y)}</span>
+                {connCount>0&&<span>· {connCount} connection{connCount!==1?"s":""}</span>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {results.length>0&&query.trim()&&(
+        <div style={{padding:"6px 12px",borderTop:"1px solid var(--border2)",display:"flex",gap:10,fontSize:9,color:"var(--text4)"}}>
+          <span>↑↓ Navigate</span><span>↵ Jump to node</span><span>ESC Close</span>
+        </div>
+      )}
     </div>
   );
 }
