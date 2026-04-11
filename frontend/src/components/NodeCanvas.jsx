@@ -611,7 +611,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         midOff:e.mid_off||null,
       }));
       setNodes(ns); setEdges(es); pushHistory(ns,es);
-    }).catch(console.error).finally(()=>setLoading(false));
+    }).catch(err=>{ console.error('[NodeCanvas] load error:', err); }).finally(()=>setLoading(false));
   },[mapId]);
 
   // ── Keyboard shortcuts ────────────────────────────────────
@@ -1001,36 +1001,34 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const tcx=toNode.x+tw/2,   tcy=toNode.y+th/2;
 
     // Use manual anchor if set, else auto-compute from direction
+    const faceNormal=(pt,node,nw,nh)=>{
+      const eps=2;
+      if(Math.abs(pt.y-node.y)<eps)      return {dx:0,dy:-1};
+      if(Math.abs(pt.y-(node.y+nh))<eps) return {dx:0,dy:1};
+      if(Math.abs(pt.x-node.x)<eps)      return {dx:-1,dy:0};
+      return {dx:1,dy:0};
+    };
+
     let fp, fn1;
-    if(edge.fromAnchor && edge.fromAnchor.side!=="auto"){
-      const a=anchorToPoint(fromNode,fw,fh,edge.fromAnchor);
-      fp=a; fn1=a.normal;
-    } else {
+    const fa=edge.fromAnchor;
+    if(fa && fa.side && fa.side!=="auto"){
+      const a=anchorToPoint(fromNode,fw,fh,fa);
+      if(a){ fp=a; fn1=a.normal; }
+    }
+    if(!fp){
       fp=rectEdgePoint(fromNode,fw,fh,tcx,tcy);
-      const getFaceNormal=(pt,node,nw,nh)=>{
-        const eps=2;
-        if(Math.abs(pt.y-node.y)<eps)     return {dx:0,dy:-1};
-        if(Math.abs(pt.y-(node.y+nh))<eps)return {dx:0,dy:1};
-        if(Math.abs(pt.x-node.x)<eps)     return {dx:-1,dy:0};
-        return {dx:1,dy:0};
-      };
-      fn1=getFaceNormal(fp,fromNode,fw,fh);
+      fn1=faceNormal(fp,fromNode,fw,fh);
     }
 
     let tp, fn2;
-    if(edge.toAnchor && edge.toAnchor.side!=="auto"){
-      const a=anchorToPoint(toNode,tw,th,edge.toAnchor);
-      tp=a; fn2=a.normal;
-    } else {
+    const ta=edge.toAnchor;
+    if(ta && ta.side && ta.side!=="auto"){
+      const a=anchorToPoint(toNode,tw,th,ta);
+      if(a){ tp=a; fn2=a.normal; }
+    }
+    if(!tp){
       tp=rectEdgePoint(toNode,tw,th,fcx,fcy);
-      const getFaceNormal=(pt,node,nw,nh)=>{
-        const eps=2;
-        if(Math.abs(pt.y-node.y)<eps)     return {dx:0,dy:-1};
-        if(Math.abs(pt.y-(node.y+nh))<eps)return {dx:0,dy:1};
-        if(Math.abs(pt.x-node.x)<eps)     return {dx:-1,dy:0};
-        return {dx:1,dy:0};
-      };
-      fn2=getFaceNormal(tp,toNode,tw,th);
+      fn2=faceNormal(tp,toNode,tw,th);
     }
 
     const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
