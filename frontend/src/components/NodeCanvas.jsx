@@ -163,6 +163,22 @@ const DP = {
 // sidebar category order
 const SIDEBAR_CATS = ["General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
 
+// ── Highlight matched text (returns JSX spans) ────────────────
+function highlightText(text, query) {
+  if(!query||!text) return text||"";
+  const str = String(text), q = query.trim();
+  const low = str.toLowerCase(), ql = q.toLowerCase();
+  const idx = low.indexOf(ql);
+  if(idx<0) return str;
+  return <span>
+    {str.slice(0,idx)}
+    <mark style={{background:"var(--accent2)",color:"#fff",borderRadius:2,padding:"0 1px",fontSize:"inherit"}}>
+      {str.slice(idx,idx+q.length)}
+    </mark>
+    {str.slice(idx+q.length)}
+  </span>;
+}
+
 // ── Edge style definitions ────────────────────────────────────
 const EDGE_STYLES = {
   // Basic
@@ -1229,7 +1245,121 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 8px",borderRadius:0}}>＋</button>
         </div>
 
-        <button onClick={()=>{setShowSearch(v=>!v);setSearchQuery("");}} style={tbtn(showSearch,"#238636")} title="Search (Ctrl+F)">🔍</button>
+        {/* ── Inline search bar in topbar ── */}
+        <div style={{position:"relative",display:"flex",alignItems:"center",flexShrink:0}}>
+          {showSearch?(
+            <div style={{display:"flex",alignItems:"center",gap:4,background:"var(--bg3)",
+              border:"1px solid var(--accent)",borderRadius:"var(--radius-sm)",
+              padding:"2px 6px",height:28}}>
+              <span style={{fontSize:11,color:"var(--text4)",flexShrink:0}}>🔍</span>
+              <input
+                autoFocus
+                value={searchQuery}
+                onChange={e=>setSearchQuery(e.target.value)}
+                onKeyDown={e=>{
+                  if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");}
+                  if(e.key==="ArrowDown"&&searchResults.length){
+                    e.preventDefault();
+                    const r=searchResults[0];
+                    scrollToNode(r.node.id);
+                  }
+                }}
+                placeholder="Search nodes…"
+                style={{background:"none",border:"none",outline:"none",color:"var(--text)",
+                  fontSize:12,fontFamily:"var(--font-ui)",width:180,padding:"0 2px"}}
+              />
+              {searchQuery&&(
+                <span style={{fontSize:10,color:"var(--text4)",flexShrink:0,whiteSpace:"nowrap"}}>
+                  {searchResults.length} result{searchResults.length!==1?"s":""}
+                </span>
+              )}
+              {searchQuery&&(
+                <button onClick={()=>setSearchQuery("")}
+                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:14,lineHeight:1,padding:"0 2px",flexShrink:0}}>×</button>
+              )}
+              <button onClick={()=>{setShowSearch(false);setSearchQuery("");}}
+                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"0 2px",flexShrink:0,fontFamily:"var(--font-ui)"}}>ESC</button>
+            </div>
+          ):(
+            <button onClick={()=>setShowSearch(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:5,padding:"4px 10px"}} title="Search (Ctrl+F)">
+              <span>🔍</span>
+              {!isMobile&&<span style={{fontSize:10,color:"var(--text4)"}}>Search</span>}
+              {!isMobile&&<span style={{fontSize:9,color:"var(--text4)",opacity:.6}}>Ctrl+F</span>}
+            </button>
+          )}
+
+          {/* Dropdown results under the bar */}
+          {showSearch&&searchQuery.trim()&&searchResults.length>0&&(
+            <div style={{
+              position:"absolute",top:"calc(100% + 4px)",right:0,
+              background:"var(--bg2)",border:"1px solid var(--border2)",
+              borderRadius:"var(--radius-md)",
+              boxShadow:"0 8px 32px rgba(0,0,0,.45)",
+              width:380,maxHeight:480,overflow:"auto",zIndex:400,
+            }}>
+              {/* Field filter pills */}
+              <div style={{display:"flex",gap:4,padding:"8px 10px",borderBottom:"1px solid var(--border2)",flexWrap:"wrap"}}>
+                {[["all","All"],["title","Title"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
+                  <button key={id} onClick={e=>{e.stopPropagation();setSearchField(id);}}
+                    style={{padding:"2px 8px",border:"none",borderRadius:"var(--radius-xs)",cursor:"pointer",
+                      fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
+                      background:searchField===id?"var(--accent2)":"var(--bg3)",
+                      color:searchField===id?"#fff":"var(--text4)"}}>
+                    {lbl}
+                  </button>
+                ))}
+                <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",alignSelf:"center"}}>
+                  {searchResults.length} node{searchResults.length!==1?"s":""}
+                </span>
+              </div>
+
+              {/* Results list */}
+              {searchResults.map((r,i)=>{
+                const t=r.t;
+                const connCount=edges.filter(e=>e.from===r.node.id||e.to===r.node.id).length;
+                return(
+                  <div key={r.node.id}
+                    onClick={()=>{scrollToNode(r.node.id);}}
+                    style={{padding:"9px 12px",borderBottom:"1px solid var(--border2)",
+                      cursor:"pointer",transition:"background .1s"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    {/* Title row */}
+                    <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4}}>
+                      <span style={{fontSize:13,flexShrink:0}}>{t.icon}</span>
+                      <span style={{fontSize:12,fontWeight:700,color:t.color,flex:1,
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        {highlightText(r.node.title, searchQuery)}
+                      </span>
+                      <span style={{fontSize:9,color:"var(--text4)",background:"var(--bg)",
+                        padding:"1px 5px",borderRadius:3,border:"1px solid var(--border)",flexShrink:0}}>
+                        {t.label}
+                      </span>
+                    </div>
+                    {/* Top 2 matching snippets */}
+                    {r.hits.slice(0,2).map((hit,j)=>(
+                      <div key={j} style={{display:"flex",gap:5,fontSize:10,lineHeight:1.4,marginBottom:2}}>
+                        <span style={{color:"var(--accent2)",fontWeight:700,minWidth:52,fontSize:9,flexShrink:0,paddingTop:1}}>
+                          {hit.field.toUpperCase()}
+                        </span>
+                        <span style={{color:"var(--text3)",overflow:"hidden",display:"-webkit-box",
+                          WebkitLineClamp:1,WebkitBoxOrient:"vertical"}}>
+                          {highlightText(hit.snippet, searchQuery)}
+                        </span>
+                      </div>
+                    ))}
+                    {r.hits.length>2&&<div style={{fontSize:9,color:"var(--text4)"}}>+{r.hits.length-2} more match{r.hits.length-2!==1?"es":""}</div>}
+                    <div style={{marginTop:3,fontSize:9,color:"var(--text4)"}}>
+                      x:{Math.round(r.node.x)} y:{Math.round(r.node.y)}
+                      {connCount>0&&<span> · {connCount} conn.</span>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
         <button onClick={()=>setShowAppearance(true)} style={tbtn(false,"#6C63FF")} title="Appearance">🎨</button>
         <button onClick={()=>setShowVersions(true)}   style={tbtn(false)}           title="Version history (V)">🕐</button>
         <button onClick={()=>setShowChat(true)}        style={tbtn(false,"#6C63FF")}>💬</button>
