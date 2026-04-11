@@ -7,41 +7,161 @@ import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
 // ── Node types ────────────────────────────────────────────────
+// ── Node type registry ────────────────────────────────────────
 const NT = {
-  note:     { label:"Note",     color:"#FFD93D", icon:"📝", cat:"General" },
-  heading:  { label:"Heading",  color:"#6C63FF", icon:"📌", cat:"General" },
-  user:     { label:"User",     color:"#E91E63", icon:"👤", cat:"General" },
-  process:  { label:"Process",  color:"#9C27B0", icon:"🔄", cat:"General" },
-  group:    { label:"Group",    color:"#9E9E9E", icon:"📂", cat:"General" },
-  network:  { label:"Network",  color:"#2196F3", icon:"🌐", cat:"Networking" },
-  router:   { label:"Router",   color:"#00BCD4", icon:"📡", cat:"Networking" },
-  firewall: { label:"Firewall", color:"#FF5722", icon:"🔥", cat:"Networking" },
-  switch:   { label:"Switch",   color:"#03A9F4", icon:"🔀", cat:"Networking" },
-  server:   { label:"Server",   color:"#F44336", icon:"🗄️", cat:"Hardware" },
-  hardware: { label:"Hardware", color:"#FF9800", icon:"🖥️", cat:"Hardware" },
-  cpu:      { label:"CPU",      color:"#795548", icon:"⚙️", cat:"Hardware" },
-  storage:  { label:"Storage",  color:"#607D8B", icon:"💾", cat:"Hardware" },
-  software: { label:"Software", color:"#4CAF50", icon:"📦", cat:"Software" },
-  api:      { label:"API",      color:"#009688", icon:"🔌", cat:"Software" },
-  database: { label:"Database", color:"#3F51B5", icon:"🗃️", cat:"Software" },
-  service:  { label:"Service",  color:"#8BC34A", icon:"⚡", cat:"Software" },
-  cloud:    { label:"Cloud",    color:"#29B6F6", icon:"☁️", cat:"Cloud" },
-  lambda:   { label:"Function", color:"#FF9100", icon:"λ",  cat:"Cloud" },
-  queue:    { label:"Queue",    color:"#AB47BC", icon:"↔",  cat:"Cloud" },
-  cdn:      { label:"CDN",      color:"#26A69A", icon:"🕸️", cat:"Cloud" },
+  // General
+  note:       { label:"Note",          color:"#FFD93D", icon:"📝", cat:"General" },
+  heading:    { label:"Heading",       color:"#6C63FF", icon:"📌", cat:"General" },
+  user:       { label:"User",          color:"#E91E63", icon:"👤", cat:"General" },
+  process:    { label:"Process",       color:"#9C27B0", icon:"🔄", cat:"General" },
+  group:      { label:"Group",         color:"#9E9E9E", icon:"📂", cat:"General" },
+  decision:   { label:"Decision",      color:"#FF9800", icon:"◆",  cat:"General" },
+  annotation: { label:"Annotation",    color:"#78909C", icon:"💬", cat:"General" },
+  // Network Infrastructure
+  router:     { label:"Router",        color:"#00BCD4", icon:"📡", cat:"Network" },
+  switch:     { label:"Switch",        color:"#03A9F4", icon:"🔀", cat:"Network" },
+  firewall:   { label:"Firewall",      color:"#FF5722", icon:"🔥", cat:"Network" },
+  loadbal:    { label:"Load Balancer", color:"#26C6DA", icon:"⚖️", cat:"Network" },
+  vpn:        { label:"VPN Gateway",   color:"#42A5F5", icon:"🔐", cat:"Network" },
+  ap:         { label:"Access Point",  color:"#29B6F6", icon:"📶", cat:"Network" },
+  modem:      { label:"Modem",         color:"#4DD0E1", icon:"📟", cat:"Network" },
+  wanlink:    { label:"WAN Link",      color:"#0288D1", icon:"🌐", cat:"Network" },
+  vlan:       { label:"VLAN",          color:"#0097A7", icon:"🔗", cat:"Network" },
+  proxy:      { label:"Proxy",         color:"#00838F", icon:"🔁", cat:"Network" },
+  // Computers & Workstations
+  desktop:    { label:"Desktop PC",    color:"#8D6E63", icon:"🖥️", cat:"Computers" },
+  laptop:     { label:"Laptop",        color:"#A1887F", icon:"💻", cat:"Computers" },
+  workstation:{ label:"Workstation",   color:"#795548", icon:"🖱️", cat:"Computers" },
+  thinclnt:   { label:"Thin Client",   color:"#6D4C41", icon:"📺", cat:"Computers" },
+  kiosk:      { label:"Kiosk",         color:"#5D4037", icon:"🏧", cat:"Computers" },
+  // Servers
+  server:     { label:"Server",        color:"#EF5350", icon:"🗄️", cat:"Servers" },
+  webserver:  { label:"Web Server",    color:"#E53935", icon:"🌍", cat:"Servers" },
+  appserver:  { label:"App Server",    color:"#F44336", icon:"⚙️", cat:"Servers" },
+  dbserver:   { label:"DB Server",     color:"#C62828", icon:"🗃️", cat:"Servers" },
+  fileserver: { label:"File Server",   color:"#D32F2F", icon:"📁", cat:"Servers" },
+  mailserver: { label:"Mail Server",   color:"#B71C1C", icon:"📧", cat:"Servers" },
+  printserver:{ label:"Print Server",  color:"#FF8A80", icon:"🖨️", cat:"Servers" },
+  // Storage
+  storage:    { label:"Storage",       color:"#607D8B", icon:"💾", cat:"Storage" },
+  nas:        { label:"NAS",           color:"#546E7A", icon:"🗄️", cat:"Storage" },
+  san:        { label:"SAN",           color:"#455A64", icon:"💿", cat:"Storage" },
+  backup:     { label:"Backup",        color:"#78909C", icon:"🔄", cat:"Storage" },
+  tape:       { label:"Tape Library",  color:"#90A4AE", icon:"📼", cat:"Storage" },
+  // Mobile & IoT
+  mobile:     { label:"Mobile/Phone",  color:"#66BB6A", icon:"📱", cat:"Mobile & IoT" },
+  tablet:     { label:"Tablet",        color:"#4CAF50", icon:"📋", cat:"Mobile & IoT" },
+  rpi:        { label:"Raspberry Pi",  color:"#C62828", icon:"🍓", cat:"Mobile & IoT" },
+  arduino:    { label:"Arduino",       color:"#00979D", icon:"🔌", cat:"Mobile & IoT" },
+  esp:        { label:"ESP32/8266",    color:"#E65100", icon:"📡", cat:"Mobile & IoT" },
+  sensor:     { label:"Sensor",        color:"#26A69A", icon:"📡", cat:"Mobile & IoT" },
+  camera:     { label:"IP Camera",     color:"#43A047", icon:"📷", cat:"Mobile & IoT" },
+  plc:        { label:"PLC",           color:"#2E7D32", icon:"🏭", cat:"Mobile & IoT" },
+  gateway:    { label:"IoT Gateway",   color:"#388E3C", icon:"🔀", cat:"Mobile & IoT" },
+  hvac:       { label:"HVAC",          color:"#1B5E20", icon:"❄️", cat:"Mobile & IoT" },
+  // Cloud
+  cloud:      { label:"Cloud",         color:"#29B6F6", icon:"☁️", cat:"Cloud" },
+  lambda:     { label:"Function",      color:"#FF9100", icon:"λ",  cat:"Cloud" },
+  queue:      { label:"Queue",         color:"#AB47BC", icon:"↔",  cat:"Cloud" },
+  cdn:        { label:"CDN",           color:"#26A69A", icon:"🕸️", cat:"Cloud" },
+  s3:         { label:"Object Store",  color:"#FF6D00", icon:"🪣", cat:"Cloud" },
+  k8s:        { label:"Kubernetes",    color:"#326CE5", icon:"⎈",  cat:"Cloud" },
+  container:  { label:"Container",     color:"#2496ED", icon:"📦", cat:"Cloud" },
+  apigateway: { label:"API Gateway",   color:"#A100FF", icon:"🔌", cat:"Cloud" },
+  // Software & Services
+  software:   { label:"Software",      color:"#4CAF50", icon:"📦", cat:"Software" },
+  api:        { label:"API",           color:"#009688", icon:"🔌", cat:"Software" },
+  database:   { label:"Database",      color:"#3F51B5", icon:"🗃️", cat:"Software" },
+  service:    { label:"Service",       color:"#8BC34A", icon:"⚡", cat:"Software" },
+  microservice:{ label:"Microservice", color:"#66BB6A", icon:"🧩", cat:"Software" },
+  cache:      { label:"Cache",         color:"#FF7043", icon:"⚡", cat:"Software" },
+  broker:     { label:"Msg Broker",    color:"#7B1FA2", icon:"📨", cat:"Software" },
+  // Security
+  ids:        { label:"IDS/IPS",       color:"#F44336", icon:"🛡️", cat:"Security" },
+  waf:        { label:"WAF",           color:"#E53935", icon:"🧱", cat:"Security" },
+  vault:      { label:"Vault/HSM",     color:"#B00020", icon:"🔒", cat:"Security" },
+  siem:       { label:"SIEM",          color:"#C62828", icon:"🔍", cat:"Security" },
+  dlp:        { label:"DLP",           color:"#D50000", icon:"🚫", cat:"Security" },
 };
+
+// ── Default properties per node type ──────────────────────────
 const DP = {
-  note:{Content:""},heading:{Level:"H1",Subtitle:""},user:{Role:"",Email:"",Team:""},
-  process:{Step:"",Input:"",Output:""},group:{Description:""},
-  network:{IP:"",Subnet:"",VLAN:""},router:{Gateway:"",Protocol:"BGP"},
-  firewall:{Rules:"",Zone:""},switch:{Ports:"",VLAN:""},
-  server:{OS:"",RAM:"",CPU:"",Role:""},hardware:{Model:"",Serial:"",Location:""},
-  cpu:{Cores:"",Speed:"",Architecture:""},storage:{Capacity:"",Type:"SSD",RAID:""},
-  software:{Version:"",License:"",Port:""},api:{Endpoint:"",Method:"REST",Auth:""},
-  database:{Engine:"",Port:"5432",Schema:""},service:{URL:"",Status:"Running",Port:""},
-  cloud:{Provider:"AWS",Region:"",Service:""},lambda:{Runtime:"Node.js",Trigger:"",Memory:"256MB"},
-  queue:{Type:"SQS",MaxSize:"",DLQ:""},cdn:{Provider:"CloudFront",Origin:"",TTL:""},
+  note:{Content:""},
+  heading:{Level:"H1",Subtitle:""},
+  user:{Role:"",Email:"",Team:""},
+  process:{Step:"",Input:"",Output:""},
+  group:{Description:""},
+  decision:{Condition:"",Yes:"",No:""},
+  annotation:{Reference:""},
+  // Network
+  router:{Make:"",Model:"",Gateway:"",Protocol:"BGP",Firmware:""},
+  switch:{Make:"",Model:"",Ports:"24",VLAN:"",Layer:"L2"},
+  firewall:{Make:"",Model:"",Rules:"",Zone:"",OS:""},
+  loadbal:{Make:"",Model:"",Algorithm:"Round Robin",VIP:""},
+  vpn:{Protocol:"IPSec",Endpoint:"",Peer:"",Tunnel:""},
+  ap:{Make:"",Model:"",SSID:"",Band:"2.4GHz/5GHz",Channel:""},
+  modem:{Make:"",Model:"",ISP:"",Type:"Cable"},
+  wanlink:{Provider:"",Speed:"",Type:"MPLS",Redundant:"No"},
+  vlan:{ID:"",Name:"",Subnet:"",Tagged:""},
+  proxy:{Type:"Forward",IP:"",Port:"3128",Auth:""},
+  // Computers
+  desktop:{Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",IP:""},
+  laptop:{Make:"",Model:"",OS:"",CPU:"",RAM:"",User:""},
+  workstation:{Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:""},
+  thinclnt:{Make:"",Model:"",OS:"",Server:""},
+  kiosk:{Make:"",OS:"",Location:"",App:""},
+  // Servers
+  server:{Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",IP:""},
+  webserver:{Software:"Nginx",Version:"",Port:"443",SSL:"Yes"},
+  appserver:{Runtime:"",Version:"",Port:"",Instances:""},
+  dbserver:{Engine:"PostgreSQL",Version:"",Port:"5432",RAM:""},
+  fileserver:{OS:"",Shares:"",Storage:"",Protocol:"SMB"},
+  mailserver:{Software:"",Domain:"",TLS:"Yes",Spam:""},
+  printserver:{Make:"",Model:"",Queue:"",Protocol:"IPP"},
+  // Storage
+  storage:{Capacity:"",Type:"SSD",RAID:"",Interface:""},
+  nas:{Make:"",Model:"",Capacity:"",RAID:"",Shares:""},
+  san:{Make:"",Model:"",Capacity:"",FC:"",Protocol:"iSCSI"},
+  backup:{Software:"",Schedule:"",Retention:"",Target:""},
+  tape:{Make:"",Model:"",Capacity:"",Library:""},
+  // Mobile & IoT
+  mobile:{Make:"",Model:"",OS:"",User:"",MDM:""},
+  tablet:{Make:"",Model:"",OS:"",User:""},
+  rpi:{Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:""},
+  arduino:{Model:"Uno",Firmware:"",Sensors:"",Protocol:""},
+  esp:{Model:"ESP32",Firmware:"",WiFi:"",Protocol:"MQTT"},
+  sensor:{Type:"",Protocol:"MQTT",Location:"",Unit:""},
+  camera:{Make:"",Model:"",Resolution:"",Protocol:"RTSP",IP:""},
+  plc:{Make:"",Model:"",Protocol:"Modbus",IO:""},
+  gateway:{Make:"",Model:"",Protocol:"",Upstream:""},
+  hvac:{Make:"",Model:"",Zone:"",Protocol:"BACnet"},
+  // Cloud
+  cloud:{Provider:"AWS",Region:"",Service:"",Account:""},
+  lambda:{Runtime:"Node.js 20",Trigger:"",Memory:"256MB",Timeout:"30s"},
+  queue:{Type:"SQS",MaxSize:"",DLQ:"",Delay:""},
+  cdn:{Provider:"CloudFront",Origin:"",TTL:"3600",Geo:""},
+  s3:{Provider:"AWS",Bucket:"",Region:"",Access:"Private"},
+  k8s:{Cluster:"",Namespace:"",Replicas:"",Version:""},
+  container:{Image:"",Tag:"latest",Port:"",Registry:""},
+  apigateway:{Provider:"AWS",Stage:"",Auth:"",Throttle:""},
+  // Software
+  software:{Version:"",License:"",Port:"",Platform:""},
+  api:{Endpoint:"",Method:"REST",Auth:"Bearer",Version:"v1"},
+  database:{Engine:"PostgreSQL",Port:"5432",Schema:"",HA:""},
+  service:{URL:"",Status:"Running",Port:"",SLA:""},
+  microservice:{Language:"",Port:"",Version:"",Replicas:""},
+  cache:{Type:"Redis",Port:"6379",MaxMem:"",Eviction:"LRU"},
+  broker:{Type:"Kafka",Port:"9092",Topics:"",Retention:"7d"},
+  // Security
+  ids:{Make:"",Model:"",Mode:"Inline",Ruleset:"Snort"},
+  waf:{Provider:"",Mode:"Block",Rules:"OWASP",SSL:"Yes"},
+  vault:{Type:"HashiCorp Vault",Auth:"",Secrets:"",HA:""},
+  siem:{Software:"",Sources:"",Retention:"90d",Alerts:""},
+  dlp:{Provider:"",Mode:"",Channels:"",Policy:""},
 };
+
+// sidebar category order
+const SIDEBAR_CATS = ["General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
 
 // ── Edge style definitions ────────────────────────────────────
 const EDGE_STYLES = {
@@ -368,7 +488,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showChat,     setShowChat]     = useState(false);
   const [showAppearance,setShowAppearance]=useState(false);
   const [showVersions, setShowVersions] = useState(false);
-  const [activeCat,    setActiveCat]    = useState(null);
+
   // Quick capture
   const [quickPos,     setQuickPos]     = useState(null);
   const [quickText,    setQuickText]    = useState("");
@@ -963,7 +1083,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Derived ────────────────────────────────────────────────
   const selectedNode = selected.size===1 ? nodes.find(n=>n.id===[...selected][0]) : null;
   const selectedEdgeObj = selEdge ? edges.find(e=>e.id===selEdge) : null;
-  const cats=useMemo(()=>[...new Set(Object.values(NT).map(t=>t.cat))],[]);
+  const cats=useMemo(()=>SIDEBAR_CATS.filter(c=>Object.values(NT).some(t=>t.cat===c)),[]);
   const isMobile=window.innerWidth<768;
   const canvasBg = canvasTheme!=="global"&&THEMES[canvasTheme]
     ? THEMES[canvasTheme].vars["--bg"]
@@ -1072,7 +1192,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
 
         {/* Desktop sidebar */}
-        {!isMobile&&<NodeSidebar cats={cats} activeCat={activeCat} setActiveCat={setActiveCat} addNode={addNode} canEdit={canEdit&&editMode}/>}
+        {!isMobile&&<NodeSidebar cats={cats} addNode={addNode} canEdit={canEdit&&editMode}/>}
 
         {/* Mobile sidebar */}
         {isMobile&&showSidebar&&(
@@ -1083,7 +1203,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>Add Node</span>
                 <button onClick={()=>setShowSidebar(false)} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20}}>×</button>
               </div>
-              <NodeSidebar cats={cats} activeCat={activeCat} setActiveCat={setActiveCat} addNode={addNode} canEdit={canEdit&&editMode} inline/>
+              <NodeSidebar cats={cats} addNode={addNode} canEdit={canEdit&&editMode} inline/>
             </div>
           </div>
         )}
@@ -1689,32 +1809,102 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
 }
 
 // ── Node Sidebar ──────────────────────────────────────────────
-function NodeSidebar({cats,activeCat,setActiveCat,addNode,canEdit,inline}){
+function NodeSidebar({cats,addNode,canEdit,inline}){
+  const [search, setSearch]       = React.useState("");
+  const [collapsed, setCollapsed] = React.useState({});
+
+  const toggle = cat => setCollapsed(p=>({...p,[cat]:!p[cat]}));
+
+  const q = search.trim().toLowerCase();
+  // Filter: by search or show all
+  const filtered = Object.entries(NT).filter(([,t])=>{
+    if(!q) return true;
+    return t.label.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q);
+  });
+
+  // Group filtered items by category (preserve SIDEBAR_CATS order)
+  const groups = {};
+  filtered.forEach(([k,t])=>{
+    if(!groups[t.cat]) groups[t.cat]=[];
+    groups[t.cat].push([k,t]);
+  });
+  const visibleCats = SIDEBAR_CATS.filter(c=>groups[c]?.length);
+
   return(
-    <div style={inline?{}:{width:"var(--sidebar-w)",background:"var(--bg2)",borderRight:"1px solid var(--border2)",display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
-      {!inline&&<div style={{padding:"10px 14px",borderBottom:"1px solid var(--border2)",fontSize:11,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>NODE LIBRARY</div>}
-      <div style={{display:"flex",flexWrap:"wrap",gap:4,padding:"8px 10px",borderBottom:"1px solid var(--border2)"}}>
-        {cats.map(c=>(
-          <button key={c} onClick={()=>setActiveCat(activeCat===c?null:c)}
-            style={{padding:"3px 8px",border:"none",borderRadius:"var(--radius-xs)",cursor:"pointer",fontSize:10,fontWeight:700,letterSpacing:.5,
-              background:activeCat===c?"var(--accent2)":"var(--bg3)",color:activeCat===c?"#fff":"var(--text3)"}}>
-            {c.slice(0,4).toUpperCase()}
-          </button>
-        ))}
-      </div>
-      <div style={{flex:1,overflow:"auto"}}>
-        {Object.entries(NT).filter(([,t])=>!activeCat||t.cat===activeCat).map(([key,t])=>(
-          <div key={key} onClick={()=>canEdit&&addNode(key)}
-            style={{display:"flex",alignItems:"center",gap:8,padding:"7px 14px",cursor:canEdit?"pointer":"default",fontSize:12,borderLeft:"3px solid transparent",transition:"var(--transition-all)"}}
-            onMouseEnter={e=>{if(canEdit){e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.borderLeftColor=t.color;}}}
-            onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderLeftColor="transparent";}}>
-            <span style={{fontSize:14}}>{t.icon}</span>
-            <span style={{color:"var(--text2)"}}>{t.label}</span>
-            <span style={{marginLeft:"auto",width:7,height:7,borderRadius:"50%",background:t.color,flexShrink:0}}/>
+    <div style={inline?{display:"flex",flexDirection:"column",height:"100%"}:{width:"var(--sidebar-w)",background:"var(--bg2)",borderRight:"1px solid var(--border2)",display:"flex",flexDirection:"column",overflow:"hidden",flexShrink:0}}>
+
+      {/* Header */}
+      {!inline&&(
+        <div style={{padding:"10px 12px 8px",borderBottom:"1px solid var(--border2)"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,marginBottom:8}}>NODE LIBRARY</div>
+          {/* Search */}
+          <div style={{position:"relative"}}>
+            <span style={{position:"absolute",left:8,top:"50%",transform:"translateY(-50%)",fontSize:12,color:"var(--text4)",pointerEvents:"none"}}>🔍</span>
+            <input value={search} onChange={e=>setSearch(e.target.value)}
+              placeholder="Search nodes…"
+              style={{width:"100%",boxSizing:"border-box",paddingLeft:28,paddingRight:8,paddingTop:5,paddingBottom:5,
+                background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}/>
+            {search&&<span onClick={()=>setSearch("")}
+              style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",fontSize:12,color:"var(--text4)",cursor:"pointer"}}>×</span>}
           </div>
-        ))}
+        </div>
+      )}
+
+      {/* Inline search for mobile */}
+      {inline&&(
+        <div style={{padding:"8px 10px",borderBottom:"1px solid var(--border2)",position:"relative"}}>
+          <span style={{position:"absolute",left:18,top:"50%",transform:"translateY(-50%)",fontSize:12,color:"var(--text4)"}}>🔍</span>
+          <input value={search} onChange={e=>setSearch(e.target.value)} placeholder="Search…"
+            style={{width:"100%",boxSizing:"border-box",paddingLeft:26,paddingRight:6,paddingTop:4,paddingBottom:4,
+              background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+              color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}/>
+        </div>
+      )}
+
+      {/* Categories + nodes */}
+      <div style={{flex:1,overflow:"auto"}}>
+        {visibleCats.length===0&&(
+          <div style={{padding:"20px 14px",color:"var(--text4)",fontSize:12,textAlign:"center"}}>
+            No nodes match "{search}"
+          </div>
+        )}
+        {visibleCats.map(cat=>{
+          const items=groups[cat]||[];
+          const isCollapsed=collapsed[cat]&&!q; // always expand during search
+          return(
+            <div key={cat}>
+              {/* Category header */}
+              <div onClick={()=>toggle(cat)}
+                style={{display:"flex",alignItems:"center",gap:6,padding:"6px 12px",
+                  cursor:"pointer",background:"var(--bg3)",borderBottom:"1px solid var(--border2)",
+                  borderTop:"1px solid var(--border2)",userSelect:"none",
+                  position:"sticky",top:0,zIndex:1}}>
+                <span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>
+                  {cat.toUpperCase()}
+                </span>
+                <span style={{fontSize:10,color:"var(--text4)",marginRight:4}}>{items.length}</span>
+                <span style={{fontSize:10,color:"var(--text4)",transition:"transform .2s",
+                  display:"inline-block",transform:isCollapsed?"rotate(-90deg)":"rotate(0deg)"}}>▾</span>
+              </div>
+              {/* Node items */}
+              {!isCollapsed&&items.map(([key,t])=>(
+                <div key={key} onClick={()=>canEdit&&addNode(key)} title={t.label}
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"6px 12px",
+                    cursor:canEdit?"pointer":"default",fontSize:12,
+                    borderLeft:"3px solid transparent",transition:"background .12s,border-color .12s"}}
+                  onMouseEnter={e=>{if(canEdit){e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.borderLeftColor=t.color;}}}
+                  onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderLeftColor="transparent";}}>
+                  <span style={{fontSize:15,width:20,textAlign:"center",flexShrink:0}}>{t.icon}</span>
+                  <span style={{color:"var(--text2)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.label}</span>
+                  <span style={{width:6,height:6,borderRadius:"50%",background:t.color,flexShrink:0}}/>
+                </div>
+              ))}
+            </div>
+          );
+        })}
       </div>
-      {!canEdit&&<div style={{padding:"8px 14px",fontSize:10,color:"var(--text4)",borderTop:"1px solid var(--border2)"}}>View only mode</div>}
+      {!canEdit&&<div style={{padding:"8px 14px",fontSize:10,color:"var(--text4)",borderTop:"1px solid var(--border2)"}}>View only</div>}
     </div>
   );
 }
