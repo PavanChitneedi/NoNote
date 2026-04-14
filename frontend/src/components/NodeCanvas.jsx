@@ -2624,8 +2624,7 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
 // ── Lightweight Markdown renderer ──────────────────────────────
 function MarkdownNote({ text, color }) {
   if (!text) return null;
-  const lines = text.split('
-');
+  const lines = text.split("\n");
   const elems = [];
   let i = 0;
   while (i < lines.length) {
