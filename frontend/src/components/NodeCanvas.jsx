@@ -1305,327 +1305,261 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
 
-      {/* ── Topbar ── */}
+      {/* ── Topbar — 2 rows ── */}
       <div style={{
-        height:"var(--topbar-h)",background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
-        display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",
-        flexShrink:0,overflow:"visible",
-        position:"relative",zIndex:10,padding:"0 6px",gap:4,
+        background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
+        flexShrink:0,overflow:"visible",position:"relative",zIndex:10,
       }}>
 
-        {/* ═══ LEFT GROUP ═══ */}
-        <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden"}}>
-          <span onClick={onHome} title="Home" style={{fontSize:18,cursor:"pointer",padding:"0 4px",userSelect:"none"}}>⬡</span>
-          <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
-          <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
-          <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",maxWidth:100,overflow:"hidden",
-            textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mapMeta?.title}</span>
-          <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
+        {/* ── ROW 1: Navigation + Search + Global Tools ── */}
+        <div style={{
+          height:42,display:"flex",alignItems:"center",
+          gap:4,padding:"0 8px",borderBottom:"1px solid var(--border2)",
+        }} onKeyDown={e=>e.stopPropagation()}>
 
+          {/* Nav */}
+          <span onClick={onHome} title="Home" style={{fontSize:18,cursor:"pointer",flexShrink:0,padding:"0 2px",userSelect:"none"}}>⬡</span>
+          <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
+          <div style={{width:1,height:20,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
+          <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{mapMeta?.title}</span>
+
+          {/* Save status */}
+          {saveMsg&&<span style={{fontSize:10,color:saveMsgColor,whiteSpace:"nowrap",padding:"0 4px",flexShrink:0}}>{saveMsg}</span>}
+
+          {/* CENTER: Search pill */}
+          <div style={{flex:1,display:"flex",justifyContent:"center",minWidth:0,padding:"0 8px"}}
+            onKeyDown={e=>e.stopPropagation()}>
+            <div style={{width:"100%",maxWidth:480}}>
+              <div style={{
+                display:"flex",alignItems:"center",gap:8,height:30,
+                background:showSearch?"var(--bg)":"var(--bg3)",
+                border:`1.5px solid ${showSearch?"var(--accent)":"var(--border)"}`,
+                borderRadius:"var(--radius-md)",padding:"0 10px",cursor:"text",
+                transition:"border-color .15s,background .15s",
+                boxShadow:showSearch?"0 0 0 3px #58a6ff20":"none",
+              }} onClick={()=>{setShowSearch(true);document.getElementById("nn-search-input")?.focus();}}>
+                <span style={{fontSize:11,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0}}>🔍</span>
+                <input id="nn-search-input" value={searchQuery}
+                  onChange={e=>{setSearchQuery(e.target.value);setShowSearch(true);}}
+                  onFocus={()=>setShowSearch(true)}
+                  onKeyDown={e=>{
+                    e.stopPropagation();
+                    if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");e.target.blur();}
+                    if(e.key==="Enter"&&searchResults.length>0){scrollToNode(searchResults[0].node.id);setShowSearch(false);setSearchQuery("");}
+                    if(e.key==="ArrowDown"&&searchResults.length>0){e.preventDefault();document.getElementById("nn-sr-0")?.focus();}
+                  }}
+                  placeholder="Search in this map…"
+                  style={{flex:1,background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",minWidth:0}}
+                />
+                {searchQuery.trim()&&(
+                  <span style={{fontSize:10,fontWeight:700,color:searchResults.length?"var(--success)":"var(--danger)",
+                    padding:"1px 6px",borderRadius:10,flexShrink:0,whiteSpace:"nowrap",
+                    background:searchResults.length?"#3fb95020":"#f7816620"}}>
+                    {searchResults.length||"No"} result{searchResults.length!==1?"s":""}
+                  </span>
+                )}
+                {searchQuery&&<button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
+                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:14,lineHeight:1,padding:"0 2px",flexShrink:0}}>×</button>}
+                {!showSearch&&!searchQuery&&!isMobile&&(
+                  <kbd style={{fontSize:9,color:"var(--text4)",background:"var(--bg2)",border:"1px solid var(--border)",
+                    borderRadius:3,padding:"1px 4px",flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* RIGHT: Zoom + Panels + Actions */}
+          <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+            {/* Zoom */}
+            <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
+              <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>−</button>
+              <span onClick={()=>setZoom(1)} style={{fontSize:10,color:"var(--text3)",cursor:"pointer",minWidth:34,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
+              <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>＋</button>
+            </div>
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
+            {/* Panel toggles */}
+            <button onClick={()=>setShowChat(v=>!v)} style={tbtn(showChat,"#6C63FF")} title="AI Chat">💬</button>
+            <button onClick={()=>setShowTemplates(v=>!v)} style={tbtn(showTemplates,"#FF9800")} title="Templates">📋</button>
+            <button onClick={()=>setShowComments(v=>!v)} style={tbtn(showComments,"var(--accent2)")} title="Comments">
+              🗨{Object.values(comments).flat().length>0&&(
+                <span style={{fontSize:8,background:"var(--accent)",color:"#fff",borderRadius:10,padding:"0 3px",marginLeft:2}}>
+                  {Object.values(comments).flat().length}
+                </span>
+              )}
+            </button>
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
+            {/* Appearance dropdown */}
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setShowAppMenu(v=>!v)} style={tbtn(showAppMenu,"#6C63FF")} title="Appearance">🎨<span style={{fontSize:8,opacity:.7}}>▾</span></button>
+              {showAppMenu&&(<>
+                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
+                <div style={{position:"fixed",top:84,right:6,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:6,minWidth:160}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"4px 8px 6px"}}>APPEARANCE</div>
+                  {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
+                    <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
+                      style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      {ic} {lbl}
+                    </div>
+                  ))}
+                </div>
+              </>)}
+            </div>
+            <button onClick={()=>setShowVersions(true)} style={tbtn(false)} title="Version History (V)">🕐</button>
+            {/* Export dropdown */}
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setShowExportMenu(v=>!v)} style={tbtn(showExportMenu,"#238636")} title="Export">↗<span style={{fontSize:8,opacity:.7}}>▾</span></button>
+              {showExportMenu&&(<>
+                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
+                <div style={{position:"fixed",top:84,right:0,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
+                  {[["🤖","LLM Text","Paste into any AI","llm"],["{ }","JSON","Raw map data","json"],["🖼","PNG Image","Visual snapshot","png"]].map(([ic,lbl,desc,id])=>(
+                    <div key={id} onClick={()=>{setShowExportMenu(false);if(id==="png")exportAsPNG(nodes,edges,mapMeta?.title);else setShowExport(true);}}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <span style={{fontSize:15,minWidth:20,textAlign:"center"}}>{ic}</span>
+                      <div><div style={{fontSize:11,fontWeight:600,color:"var(--text)"}}>{lbl}</div><div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div></div>
+                    </div>
+                  ))}
+                </div>
+              </>)}
+            </div>
+            {!isMobile&&<span title={"Shortcuts:\nCtrl+F=search  Space=quick note\nCtrl+D=duplicate  Del=delete\nCtrl+Z/Y=undo/redo  Ctrl+A=all\nCtrl+Enter=layout  Ctrl+±/0=zoom\nE=edit/view  V=versions  C=connect"}
+              style={{fontSize:11,color:"var(--text4)",cursor:"help",borderBottom:"1px dashed var(--text4)",padding:"0 3px"}}>⌨</span>}
+          </div>
+        </div>
+
+        {/* ── ROW 2: Canvas Tools ── */}
+        <div style={{height:36,display:"flex",alignItems:"center",gap:3,padding:"0 8px",background:"var(--bg2)"}}
+          onKeyDown={e=>e.stopPropagation()}>
+
+          {/* Edit/View mode */}
           {canEdit&&(
-            <button onClick={()=>setEditMode(v=>!v)} style={tbtn(!editMode,"var(--success)")} title="Toggle edit/view (E)">
+            <button onClick={()=>setEditMode(v=>!v)} style={{...tbtn(!editMode,"var(--success)"),minWidth:60}} title="Toggle edit/view (E)">
               {editMode?"✏ EDIT":"👁 VIEW"}
             </button>
           )}
 
-          {editMode&&canEdit&&<>
-            <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
-            <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
-
-            {/* Connection style dropdown */}
-            {mode==="connect"&&(
-              <div style={{position:"relative"}}>
-                <button onClick={()=>setShowConnDropdown(v=>!v)}
-                  style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:5,padding:"4px 9px"}}
-                  title={EDGE_STYLES[edgeStyle]?.label}>
-                  <EdgeIcon styleKey={edgeStyle} size={28} active={true}/>
-                  <span style={{fontSize:9,color:"var(--text3)",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
-                  <span style={{fontSize:8,opacity:.7}}>▾</span>
-                </button>
-                {showConnDropdown&&(
-                  <>
-                    <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
-                    <div style={{position:"fixed",top:52,left:8,zIndex:501,background:"var(--bg2)",
-                      border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",
-                      boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
-
-                      {/* Icon grid grouped by section */}
-                      {EDGE_SECTIONS.map(section=>{
-                        const sectionStyles=Object.entries(EDGE_STYLES).filter(([,s])=>s.section===section);
-                        return(
-                          <div key={section}>
-                            <div style={{padding:"5px 10px 3px",fontSize:8,fontWeight:700,letterSpacing:1,
-                              color:"var(--text4)",background:"var(--bg3)",borderBottom:"1px solid var(--border2)"}}>
-                              {section.toUpperCase()}
-                            </div>
-                            <div style={{display:"flex",flexWrap:"wrap",gap:2,padding:"6px 8px"}}>
-                              {sectionStyles.map(([key,style])=>(
-                                <div key={key}
-                                  title={`${style.label} — ${style.desc}`}
-                                  onClick={()=>{setEdgeStyle(key);setShowConnDropdown(false);}}
-                                  style={{
-                                    width:80,display:"flex",flexDirection:"column",alignItems:"center",
-                                    gap:3,padding:"6px 4px",borderRadius:"var(--radius-sm)",cursor:"pointer",
-                                    border:`1.5px solid ${edgeStyle===key?"var(--accent)":"transparent"}`,
-                                    background:edgeStyle===key?"var(--accent)14":"transparent",
-                                    transition:"all .1s",
-                                  }}
-                                  onMouseEnter={e=>{if(edgeStyle!==key)e.currentTarget.style.background="var(--bg3)";}}
-                                  onMouseLeave={e=>{if(edgeStyle!==key)e.currentTarget.style.background="transparent";}}>
-                                  <EdgeIcon styleKey={key} size={56} active={edgeStyle===key}
-                                    color={edgeStyle===key?"var(--accent)":"var(--text3)"}/>
-                                  <span style={{fontSize:9,color:edgeStyle===key?"var(--accent)":"var(--text4)",
-                                    textAlign:"center",lineHeight:1.2,maxWidth:76,
-                                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                                    {style.label}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        );
-                      })}
-
-                      {/* Color row */}
-                      <div style={{padding:"8px 12px",borderTop:"1px solid var(--border2)",
-                        display:"flex",alignItems:"center",gap:8,background:"var(--bg3)"}}>
-                        <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)"}}>COLOR</span>
-                        <div style={{width:20,height:20,borderRadius:"50%",flexShrink:0,
-                          background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,
-                          border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}>
-                          <input type="color" defaultValue="#58a6ff" onChange={e=>setEdgeColor(e.target.value)}
-                            style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
-                        </div>
-                        {["#58a6ff","#3fb950","#f78166","#d2a8ff","#ffa657","#ffffff"].map(c=>(
-                          <div key={c} onClick={()=>setEdgeColor(c)}
-                            style={{width:16,height:16,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,
-                              border:(edgeColor===c||edgeColor==="var(--accent)"&&c==="#58a6ff")?"2px solid #fff":"2px solid transparent",
-                              transition:"border .1s"}}/>
-                        ))}
-                        <button onClick={()=>setEdgeColor("var(--accent)")}
-                          style={{marginLeft:"auto",fontSize:9,background:"none",border:"1px solid var(--border)",
-                            borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
-                      </div>
-                    </div>
-                  </>
-                )}
-                {drawingEdge&&<span style={{fontSize:10,color:"#f78166",marginLeft:4,animation:"pulse 1s infinite"}}>● pick target</span>}
-              </div>
-            )}
-
-            <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
-            <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
-            <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ LAYOUT</button>
-            <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse/Expand all">
-              {globalCollapsed?"⊞":"⊟"}
-            </button>
-            <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
-            <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
-            <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
-            {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑{selected.size>1?` (${selected.size})`:""}</button>}
-            {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties (panel)">✏</button>}
-          </>}
-          {/* ── Props mode segmented toggle — always visible after tools ── */}
-          <div style={{width:1,height:20,background:"var(--border)",margin:"0 4px",flexShrink:0}}/>
-          <div style={{display:"flex",alignItems:"center",flexShrink:0,
-            background:"var(--bg3)",border:"1.5px solid var(--border)",
-            borderRadius:"var(--radius-md)",overflow:"hidden",gap:0}}>
-            <button
-              onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
+          {/* POPUP / PANEL toggle — always visible */}
+          <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",border:"1.5px solid var(--border)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}>
+            <button onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
               title="Popup mode — double-click node to open inline editor"
-              style={{
-                display:"flex",alignItems:"center",gap:4,padding:"5px 10px",
-                border:"none",cursor:"pointer",fontSize:10,fontWeight:700,
-                fontFamily:"var(--font-ui)",letterSpacing:.3,
+              style={{display:"flex",alignItems:"center",gap:4,padding:"4px 9px",border:"none",cursor:"pointer",
+                fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
                 background:propsMode==='popup'?"var(--accent2)":"transparent",
                 color:propsMode==='popup'?"#fff":"var(--text4)",
-                borderRight:"1px solid var(--border)",
-                transition:"all .15s",
-              }}>
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <rect x="2" y="2" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-                <rect x="4.5" y="4.5" width="4" height="4" rx=".5" fill="currentColor" opacity=".6"/>
+                borderRight:"1px solid var(--border)",transition:"all .15s"}}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <rect x="1.5" y="1.5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                <rect x="4" y="4" width="4" height="4" rx=".8" fill="currentColor" opacity=".65"/>
               </svg>
               POPUP
             </button>
-            <button
-              onClick={()=>{setPropsMode('panel');setNodePopup(null);if(selected.size===1)setShowProps(true);}}
-              title="Panel mode — click node to open properties in right side panel"
-              style={{
-                display:"flex",alignItems:"center",gap:4,padding:"5px 10px",
-                border:"none",cursor:"pointer",fontSize:10,fontWeight:700,
-                fontFamily:"var(--font-ui)",letterSpacing:.3,
+            <button onClick={()=>{setPropsMode('panel');setNodePopup(null);if(selected.size===1)setShowProps(true);}}
+              title="Panel mode — click node to show properties in side panel"
+              style={{display:"flex",alignItems:"center",gap:4,padding:"4px 9px",border:"none",cursor:"pointer",
+                fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
                 background:propsMode==='panel'?"var(--accent2)":"transparent",
                 color:propsMode==='panel'?"#fff":"var(--text4)",
-                transition:"all .15s",
-              }}>
-              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
-                <rect x="1" y="2" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
-                <line x1="8" y1="2" x2="8" y2="11" stroke="currentColor" strokeWidth="1.5"/>
+                transition:"all .15s"}}>
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                <rect x=".75" y="1.5" width="10.5" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                <line x1="7.5" y1="1.5" x2="7.5" y2="10.5" stroke="currentColor" strokeWidth="1.4"/>
               </svg>
               PANEL
             </button>
           </div>
-        </div>
 
-        {/* ═══ CENTER — search pill ═══ */}
-        <div style={{display:"flex",justifyContent:"center",width:"100%",minWidth:0}}
-          onKeyDown={e=>e.stopPropagation()}>
-          <div style={{width:"100%",maxWidth:460}}>
-          <div style={{
-            display:"flex",alignItems:"center",gap:8,height:34,
-            background:showSearch?"var(--bg)":"var(--bg3)",
-            border:`1.5px solid ${showSearch?"var(--accent)":"var(--border)"}`,
-            borderRadius:"var(--radius-md)",
-            padding:"0 12px",cursor:"text",transition:"border-color .15s,background .15s",
-            boxShadow:showSearch?"0 0 0 3px #58a6ff20":"none",
-          }}
-            onClick={()=>{setShowSearch(true);document.getElementById("nn-search-input")?.focus();}}>
-            <span style={{fontSize:12,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0}}>🔍</span>
-            <input id="nn-search-input" value={searchQuery}
-              onChange={e=>{setSearchQuery(e.target.value);setShowSearch(true);}}
-              onFocus={()=>setShowSearch(true)}
-              onKeyDown={e=>{
-                e.stopPropagation();
-                if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");e.target.blur();}
-                if(e.key==="Enter"&&searchResults.length>0){scrollToNode(searchResults[0].node.id);setShowSearch(false);setSearchQuery("");}
-                if(e.key==="ArrowDown"&&searchResults.length>0){e.preventDefault();document.getElementById("nn-sr-0")?.focus();}
-              }}
-              placeholder="Search in this map…"
-              style={{flex:1,background:"none",border:"none",outline:"none",
-                color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",minWidth:0}}
-            />
-            {searchQuery.trim()&&(
-              <span style={{fontSize:10,fontWeight:700,
-                color:searchResults.length?"var(--success)":"var(--danger)",
-                padding:"1px 7px",borderRadius:10,flexShrink:0,whiteSpace:"nowrap",
-                background:searchResults.length?"#3fb95020":"#f7816620"}}>
-                {searchResults.length||"No"} result{searchResults.length!==1?"s":""}
-              </span>
-            )}
-            {searchQuery&&(
-              <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
-                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:15,lineHeight:1,padding:"0 2px",flexShrink:0}}>×</button>
-            )}
-            {!showSearch&&!searchQuery&&!isMobile&&(
-              <kbd style={{fontSize:9,color:"var(--text4)",background:"var(--bg2)",border:"1px solid var(--border)",
-                borderRadius:3,padding:"1px 5px",flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
-            )}
-          </div>
-          </div>
-        </div>
+          <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
 
-        {/* ═══ RIGHT GROUP ═══ */}
-        <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"flex-end"}}>
-          {saveMsg&&<span style={{fontSize:10,color:saveMsgColor,whiteSpace:"nowrap",padding:"0 4px"}}>{saveMsg}</span>}
+          {/* Canvas tools — edit mode only */}
+          {editMode&&canEdit&&<>
+            <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
+            <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
 
-          {/* Zoom */}
-          <div style={{display:"flex",alignItems:"center",gap:0,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
-            <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 7px",borderRadius:0}}>−</button>
-            <span onClick={()=>setZoom(1)} style={{fontSize:10,color:"var(--text3)",cursor:"pointer",minWidth:36,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
-            <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"3px 7px",borderRadius:0}}>＋</button>
-          </div>
-
-          <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
-
-          {/* 💬 Chat — toggles right panel */}
-          <button onClick={()=>setShowChat(v=>!v)} style={tbtn(showChat,"#6C63FF")} title="AI Chat">💬</button>
-          {/* 📋 Template library */}
-          <button onClick={()=>setShowTemplates(v=>!v)} style={tbtn(showTemplates,"#FF9800")} title="Template library">📋</button>
-          {/* 💬 Comments sidebar */}
-          <button onClick={()=>setShowComments(v=>!v)} style={tbtn(showComments,"var(--accent2)")} title="Comments">
-            🗨{Object.values(comments).flat().length>0&&(
-              <span style={{fontSize:8,background:"var(--accent)",color:"#fff",borderRadius:10,padding:"0 4px",marginLeft:2}}>
-                {Object.values(comments).flat().length}
-              </span>
-            )}
-          </button>
-
-          {/* 🎨 Appearance dropdown */}
-          <div style={{position:"relative"}}>
-            <button onClick={()=>setShowAppMenu(v=>!v)} style={tbtn(showAppMenu,"#6C63FF")} title="Appearance">
-              🎨 <span style={{fontSize:8,opacity:.7}}>▾</span>
-            </button>
-            {showAppMenu&&(
-              <>
-                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
-                <div style={{position:"fixed",top:52,right:6,zIndex:501,background:"var(--bg2)",
-                  border:"1px solid var(--border)",borderRadius:"var(--radius-md)",
-                  boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:"6px",minWidth:160}}>
-                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"4px 8px 6px"}}>APPEARANCE</div>
-                  <button onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
-                    style={{width:"100%",padding:"8px 10px",background:"none",border:"none",
-                      borderRadius:"var(--radius-sm)",color:"var(--text)",cursor:"pointer",
-                      fontSize:12,fontFamily:"var(--font-ui)",textAlign:"left",display:"flex",gap:8,alignItems:"center"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                    onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                    🎨 <span>Theme & Colors</span>
-                  </button>
-                  <button onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
-                    style={{width:"100%",padding:"8px 10px",background:"none",border:"none",
-                      borderRadius:"var(--radius-sm)",color:"var(--text)",cursor:"pointer",
-                      fontSize:12,fontFamily:"var(--font-ui)",textAlign:"left",display:"flex",gap:8,alignItems:"center"}}
-                    onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                    onMouseLeave={e=>e.currentTarget.style.background="none"}>
-                    🖌 <span>Canvas Style</span>
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-
-          {/* 🕐 History */}
-          <button onClick={()=>setShowVersions(true)} style={tbtn(false)} title="Version History (V)">🕐</button>
-
-          {/* ↗ Export dropdown */}
-          <div style={{position:"relative"}}>
-            <button onClick={()=>setShowExportMenu(v=>!v)} style={tbtn(showExportMenu,"#238636")} title="Export">
-              ↗ <span style={{fontSize:8,opacity:.7}}>▾</span>
-            </button>
-            {showExportMenu&&(
-              <>
-                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
-                <div style={{position:"fixed",top:52,right:6,zIndex:501,background:"var(--bg2)",
-                  border:"1px solid var(--border)",borderRadius:"var(--radius-md)",
-                  boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
-                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
-                  {[
-                    ["🤖","LLM Text","Paste into any AI","llm"],
-                    ["{ }","JSON","Raw map data","json"],
-                    ["🖼","PNG Image","Visual snapshot","png"],
-                  ].map(([ic,label,desc,id])=>(
-                    <div key={id} onClick={()=>{
-                      setShowExportMenu(false);
-                      if(id==="png") exportAsPNG(nodes,edges,mapMeta?.title);
-                      else setShowExport(true);
-                    }}
-                      style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                      <span style={{fontSize:16,flexShrink:0,minWidth:22,textAlign:"center"}}>{ic}</span>
-                      <div>
-                        <div style={{fontSize:12,fontWeight:600,color:"var(--text)"}}>{label}</div>
-                        <div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div>
+            {/* Connection style */}
+            {mode==="connect"&&(
+              <div style={{position:"relative"}}>
+                <button onClick={()=>setShowConnDropdown(v=>!v)}
+                  style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:4}}
+                  title={EDGE_STYLES[edgeStyle]?.label}>
+                  <EdgeIcon styleKey={edgeStyle} size={26} active/>
+                  <span style={{fontSize:9,color:"var(--text3)",maxWidth:44,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
+                  <span style={{fontSize:8,opacity:.7}}>▾</span>
+                </button>
+                {showConnDropdown&&(<>
+                  <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
+                  <div style={{position:"fixed",top:84,left:8,zIndex:501,background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
+                    {EDGE_SECTIONS.map(section=>{
+                      const sectionStyles=Object.entries(EDGE_STYLES).filter(([,s])=>s.section===section);
+                      return(
+                        <div key={section}>
+                          <div style={{padding:"5px 10px 3px",fontSize:8,fontWeight:700,letterSpacing:1,color:"var(--text4)",background:"var(--bg3)",borderBottom:"1px solid var(--border2)"}}>{section.toUpperCase()}</div>
+                          <div style={{display:"flex",flexWrap:"wrap",gap:2,padding:"6px 8px"}}>
+                            {sectionStyles.map(([key,style])=>(
+                              <div key={key} title={`${style.label} — ${style.desc}`}
+                                onClick={()=>{setEdgeStyle(key);setShowConnDropdown(false);}}
+                                style={{width:80,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 4px",borderRadius:"var(--radius-sm)",cursor:"pointer",border:`1.5px solid ${edgeStyle===key?"var(--accent)":"transparent"}`,background:edgeStyle===key?"var(--accent)14":"transparent",transition:"all .1s"}}
+                                onMouseEnter={e=>{if(edgeStyle!==key)e.currentTarget.style.background="var(--bg3)";}}
+                                onMouseLeave={e=>{if(edgeStyle!==key)e.currentTarget.style.background="transparent";}}>
+                                <EdgeIcon styleKey={key} size={56} active={edgeStyle===key} color={edgeStyle===key?"var(--accent)":"var(--text3)"}/>
+                                <span style={{fontSize:9,color:edgeStyle===key?"var(--accent)":"var(--text4)",textAlign:"center",lineHeight:1.2,maxWidth:76,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{style.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    <div style={{padding:"8px 12px",borderTop:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8,background:"var(--bg3)"}}>
+                      <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)"}}>COLOR</span>
+                      <div style={{width:20,height:20,borderRadius:"50%",background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}>
+                        <input type="color" defaultValue="#58a6ff" onChange={e=>setEdgeColor(e.target.value)} style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
                       </div>
+                      {["#58a6ff","#3fb950","#f78166","#d2a8ff","#ffa657","#ffffff"].map(c=>(
+                        <div key={c} onClick={()=>setEdgeColor(c)}
+                          style={{width:16,height:16,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,
+                            border:(edgeColor===c||edgeColor==="var(--accent)"&&c==="#58a6ff")?"2px solid #fff":"2px solid transparent"}}/>
+                      ))}
+                      <button onClick={()=>setEdgeColor("var(--accent)")}
+                        style={{marginLeft:"auto",fontSize:9,background:"none",border:"1px solid var(--border)",borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
                     </div>
-                  ))}
-                </div>
-              </>
+                  </div>
+                </>)}
+                {drawingEdge&&<span style={{fontSize:10,color:"#f78166",marginLeft:4,animation:"pulse 1s infinite"}}>● pick target</span>}
+              </div>
             )}
-          </div>
 
-          {!isMobile&&<span title={"Shortcuts:\nESC=cancel  Space=quick note\nCtrl+F=search  Del=delete\nCtrl+Z/Y=undo/redo  Ctrl+A=select all\nCtrl+Enter=layout  Ctrl+±/0=zoom\nE=edit/view  V=versions"}
-            style={{fontSize:11,color:"var(--text4)",cursor:"help",flexShrink:0,
-              borderBottom:"1px dashed var(--text4)",padding:"0 4px"}}>⌨</span>}
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
+            <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
+            <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ LAYOUT</button>
+            <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all">
+              {globalCollapsed?"⊞ EXPAND":"⊟ COLLAPSE"}
+            </button>
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
+            <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
+            <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
+            {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑{selected.size>1?` (${selected.size})`:""}</button>}
+            {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties">✏</button>}
+          </>}
+
+          {/* View-mode indicator when not editing */}
+          {(!editMode||!canEdit)&&(
+            <span style={{fontSize:10,color:"var(--text4)",fontStyle:"italic",marginLeft:4}}>
+              {canEdit?"View only — click ✏ EDIT to make changes":"Read-only map"}
+            </span>
+          )}
         </div>
       </div>
+
 
       {/* Search dropdown — fixed, centered under pill */}
       {showSearch&&(
         <>
           <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
           <div style={{
-            position:"fixed",top:52,left:"50%",transform:"translateX(-50%)",
+            position:"fixed",top:84,left:"50%",transform:"translateX(-50%)",
             width:480,maxWidth:"min(480px,94vw)",zIndex:501,
             background:"var(--bg2)",border:"1.5px solid var(--accent)",
             borderRadius:"var(--radius-md)",
@@ -1771,7 +1705,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {/* ── Connection Style Panel (floating) ── */}
         {showConnPanel&&mode==="connect"&&(
           <div style={{
-            position:"fixed",top:56,left:"50%",transform:"translateX(-50%)",
+            position:"fixed",top:84,left:"50%",transform:"translateX(-50%)",
             background:"var(--bg2)",border:"1px solid var(--border2)",
             borderRadius:"var(--radius-lg)",zIndex:300,
             boxShadow:"0 12px 40px rgba(0,0,0,.55)",
