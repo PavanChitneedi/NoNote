@@ -507,6 +507,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showExportMenu,  setShowExportMenu]  = useState(false);
   const [showAppMenu,     setShowAppMenu]     = useState(false);
   const [showConnDropdown,setShowConnDropdown]= useState(false);
+  const [contextMenu,    setContextMenu]    = useState(null);  // {x,y,nodeId}
+  const [snapToGrid,     setSnapToGrid]     = useState(false); // shift-drag snapping
+  const [snapGuides,     setSnapGuides]     = useState([]);    // [{x1,y1,x2,y2}] alignment guides
+  const [editingNotes,   setEditingNotes]   = useState(null);  // nodeId being edited
   const [showSearch,   setShowSearch]   = useState(false);
   const [searchQuery,  setSearchQuery]  = useState("");
   const [searchField,  setSearchField]  = useState("all"); // all|title|notes|props
@@ -697,6 +701,20 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         return;
       }
       if(e.code==="KeyN"&&canEdit){addNode("note");return;}
+      if(e.code==="KeyD"&&mod&&canEdit&&selected.size>0){
+        e.preventDefault();
+        const offset=24;
+        applyNodes(ns=>{
+          const newNodes=[...ns];
+          [...selected].forEach(id=>{
+            const src=ns.find(n=>n.id===id); if(!src) return;
+            newNodes.push({...src,id:makeId(),x:src.x+offset,y:src.y+offset,
+              properties:{...(src.properties||{})},customProps:{...(src.customProps||{})}});
+          });
+          return newNodes;
+        });
+        return;
+      }
       if(e.code==="KeyC"&&canEdit){setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);return;}
       if(e.code==="KeyS"&&canEdit){setMode("select");setDrawingEdge(null);return;}
       if(e.code==="KeyE"&&canEdit){setEditMode(v=>!v);return;}
@@ -706,7 +724,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     };
     window.addEventListener("keydown",h);
     return ()=>window.removeEventListener("keydown",h);
-  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch]);
+  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes]);
 
   useEffect(()=>{if(quickPos)quickInpRef.current?.focus();},[quickPos]);
 
@@ -751,11 +769,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const cx=isT?e.touches[0].clientX:e.clientX;
       const cy=isT?e.touches[0].clientY:e.clientY;
       if(dragging&&canvasRef.current){
+        // Clear guides when not dragging single node
+        if(dragging.ids.length!==1) setSnapGuides([]);
         const el=canvasRef.current;
         const rect=el.getBoundingClientRect(); const s=1/zoom;
         const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
         const canvasY=(cy-rect.top)*s+el.scrollTop*s;
-        const dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
+        let dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
+        // Shift = snap to 20px grid
+        const GRID=20;
+        if(e.shiftKey && dragging.ids.length===1){
+          const start0=dragging.startPositions[dragging.ids[0]];
+          if(start0){
+            const snappedX=Math.round((start0.x+dx)/GRID)*GRID;
+            const snappedY=Math.round((start0.y+dy)/GRID)*GRID;
+            dx=snappedX-start0.x; dy=snappedY-start0.y;
+          }
+        }
         const GAP=14; // 14px minimum gap between any two node edges
         const fixedNodes=nodesRef.current.filter(n=>!dragging.ids.includes(n.id));
 
@@ -809,6 +839,32 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           const rp=resolvedPositions[n.id];
           return rp?{...n,...rp}:n;
         }));
+        // Alignment guides — single node drag only
+        if(dragging.ids.length===1){
+          const movId=dragging.ids[0];
+          const base=resolvedPositions[movId];
+          if(base){
+            const mov=nodesRef.current.find(n=>n.id===movId);
+            if(mov){
+              const mW=collW(mov),mH=collH(mov);
+              const mL=base.x,mR=base.x+mW,mCX=base.x+mW/2;
+              const mT=base.y,mB=base.y+mH,mCY=base.y+mH/2;
+              const guides=[];const TOL=6;
+              nodesRef.current.filter(n=>n.id!==movId).forEach(n=>{
+                const nW=collW(n),nH=collH(n);
+                const nL=n.x,nR=n.x+nW,nCX=n.x+nW/2;
+                const nT=n.y,nB=n.y+nH,nCY=n.y+nH/2;
+                if(Math.abs(mCX-nCX)<TOL) guides.push({x:nCX,type:"cx"});
+                if(Math.abs(mCY-nCY)<TOL) guides.push({y:nCY,type:"cy"});
+                if(Math.abs(mL-nL)<TOL)   guides.push({x:nL,type:"edge"});
+                if(Math.abs(mR-nR)<TOL)   guides.push({x:nR,type:"edge"});
+                if(Math.abs(mT-nT)<TOL)   guides.push({y:nT,type:"edge"});
+                if(Math.abs(mB-nB)<TOL)   guides.push({y:nB,type:"edge"});
+              });
+              setSnapGuides(guides);
+            }
+          }
+        } else { setSnapGuides([]); }
       }
       if(resizing&&canvasRef.current){
         const s=1/zoom;
@@ -850,7 +906,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         }
         boxSelRef.current=null; setBoxSel(null);
       }
-      setDragging(null); setResizing(null);
+      setDragging(null); setResizing(null); setSnapGuides([]);
     };
     window.addEventListener("mousemove",onMove);
     window.addEventListener("mouseup",onUp);
@@ -865,6 +921,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   },[dragging,resizing,drawingEdge,scheduleSave,pushHistory,zoom,nodes]);
 
   // ── Node click ────────────────────────────────────────────
+  const handleNodeRightClick=useCallback((e,id)=>{
+    e.preventDefault(); e.stopPropagation();
+    if(!canEdit||!editMode) return;
+    const el=canvasRef.current; if(!el) return;
+    const rect=el.getBoundingClientRect();
+    setContextMenu({x:e.clientX-rect.left,y:e.clientY-rect.top,nodeId:id});
+    if(!selected.has(id)) setSelected(new Set([id]));
+  },[canEdit,editMode,selected]);
+
   const handleNodeClick=useCallback((e,id)=>{
     e.stopPropagation();
     if(mode==="connect"){
@@ -1702,6 +1767,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             if(e.target.tagName==="path"||e.target.tagName==="text") return;
             setSelected(new Set());setSelEdge(null);
             if(drawingEdge)setDrawingEdge(null);
+            setContextMenu(null);
           }}
           onMouseMove={e=>{
             if(drawingEdge&&canvasRef.current){
@@ -1720,6 +1786,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         >
           <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
             <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
+
+              {/* Snap alignment guides */}
+              {snapGuides.length>0&&(
+                <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:2}}>
+                  {snapGuides.map((g,i)=>(
+                    g.x!==undefined
+                      ? <line key={i} x1={g.x} y1={0} x2={g.x} y2={3000} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
+                      : <line key={i} x1={0} y1={g.y} x2={4000} y2={g.y} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
+                  ))}
+                </svg>
+              )}
 
               {/* Box selection rect — behind nodes */}
               {boxRect&&boxRect.w>2&&boxRect.h>2&&(
@@ -1912,6 +1989,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onMouseDown={e=>{e.stopPropagation();startDrag(e.clientX,e.clientY,node.id);}}
                     onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
                     onClick={e=>handleNodeClick(e,node.id)}
+                    onContextMenu={e=>handleNodeRightClick(e,node.id)}
                     onToggleCollapse={e=>{e.stopPropagation();toggleCollapse(node.id);}}
                   />
                 );
@@ -1923,6 +2001,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onMouseDown={e=>{e.stopPropagation();if(editingTitle!==node.id)startDrag(e.clientX,e.clientY,node.id);}}
                     onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
                     onClick={e=>handleNodeClick(e,node.id)}
+                    onContextMenu={e=>handleNodeRightClick(e,node.id)}
                     onDoubleClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingTitle(node.id);}}
                     style={{
                       position:"absolute",left:node.x,top:node.y,width:nw,minHeight:nh,
@@ -1970,11 +2049,32 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                             <span style={{color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v}</span>
                           </div>:null
                         )}
-                        <textarea value={node.notes||""} onChange={e=>{e.stopPropagation();updateNotes(node.id,e.target.value);}}
-                          onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
-                          placeholder="Notes…" rows={2} readOnly={!canEdit||!editMode}
-                          style={{width:"100%",marginTop:4,background:"transparent",border:"none",borderTop:`1px dashed ${t.color}30`,outline:"none",resize:"none",color:"var(--text3)",fontSize:11,fontFamily:"var(--font-ui)",lineHeight:1.5,cursor:canEdit&&editMode?"text":"default",paddingTop:4}}
-                        />
+                        {/* Notes: markdown render when not editing, textarea when editing */}
+                        {editingNotes===node.id&&canEdit&&editMode?(
+                          <textarea autoFocus value={node.notes||""} onChange={e=>{e.stopPropagation();updateNotes(node.id,e.target.value);}}
+                            onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
+                            onBlur={()=>setEditingNotes(null)}
+                            onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape")setEditingNotes(null);}}
+                            placeholder="Notes… (markdown supported)"
+                            rows={4}
+                            style={{width:"100%",marginTop:4,background:"var(--bg)",border:`1px solid ${t.color}60`,
+                              borderRadius:"var(--radius-sm)",outline:"none",resize:"vertical",
+                              color:"var(--text2)",fontSize:11,fontFamily:"var(--font-ui)",
+                              lineHeight:1.55,padding:"5px 7px",boxSizing:"border-box"}}
+                          />
+                        ):(
+                          <div
+                            onClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingNotes(node.id);}}
+                            onMouseDown={e=>e.stopPropagation()}
+                            style={{marginTop:4,paddingTop:5,minHeight:28,
+                              borderTop:`1px dashed ${t.color}30`,cursor:canEdit&&editMode?"text":"default"}}>
+                            {node.notes?(
+                              <MarkdownNote text={node.notes} color={t.color}/>
+                            ):(
+                              canEdit&&editMode&&<span style={{fontSize:10,color:"var(--text4)",fontStyle:"italic"}}>Click to add notes… (markdown)</span>
+                            )}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -2107,6 +2207,43 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           />
         )}
 
+        {/* ── Context Menu ── */}
+        {contextMenu&&(
+          <>
+            <div style={{position:"fixed",inset:0,zIndex:600}} onClick={()=>setContextMenu(null)} onContextMenu={e=>{e.preventDefault();setContextMenu(null);}}/>
+            <ContextMenu
+              x={contextMenu.x} y={contextMenu.y}
+              nodeId={contextMenu.nodeId}
+              nodes={nodes} selected={selected} edges={edges}
+              canEdit={canEdit&&editMode}
+              onClose={()=>setContextMenu(null)}
+              onDuplicate={()=>{
+                const src=nodes.find(n=>n.id===contextMenu.nodeId); if(!src) return;
+                const dup={...src,id:makeId(),x:src.x+24,y:src.y+24,
+                  properties:{...(src.properties||{})},customProps:{...(src.customProps||{})}};
+                applyNodes(ns=>[...ns,dup]);
+                setSelected(new Set([dup.id]));
+              }}
+              onDelete={()=>{
+                const id=contextMenu.nodeId;
+                applyNodes(ns=>ns.filter(n=>n.id!==id));
+                applyEdges(es=>es.filter(e=>e.from!==id&&e.to!==id));
+                setSelected(new Set()); setSelEdge(null);
+              }}
+              onCollapse={()=>toggleCollapse(contextMenu.nodeId)}
+              onConnect={()=>{
+                const node=nodes.find(n=>n.id===contextMenu.nodeId); if(!node) return;
+                const cx=node.x+collW(node)/2, cy=node.y+collH(node)/2;
+                setMode("connect");
+                setDrawingEdge({fromId:contextMenu.nodeId,mouseX:cx,mouseY:cy});
+              }}
+              onEditTitle={()=>setEditingTitle(contextMenu.nodeId)}
+              onSelectAll={()=>setSelected(new Set(nodes.map(n=>n.id)))}
+              onProps={()=>setShowProps(true)}
+            />
+          </>
+        )}
+
         {/* ── LLM Chat Panel (VS Code style right panel) ── */}
         {showChat&&(
           <div style={{
@@ -2159,13 +2296,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 }
 
 // ── Collapsed Node ────────────────────────────────────────────
-function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onClick,onToggleCollapse}){
+function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onClick,onContextMenu,onToggleCollapse}){
   const [hovered,setHovered]=useState(false);
   const propEntries=Object.entries(node.properties||{}).filter(([,v])=>v).slice(0,4);
   return (
     <div
       className="nn-node"
-      onMouseDown={onMouseDown} onTouchStart={onTouchStart} onClick={onClick}
+      onMouseDown={onMouseDown} onTouchStart={onTouchStart} onClick={onClick} onContextMenu={onContextMenu}
       onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}
       style={{
         position:"absolute",left:node.x,top:node.y,
@@ -2196,6 +2333,13 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
           ⊞
         </button>
       )}
+      {/* Status dots: notes (blue), properties (green), connections — injected via prop */}
+      <div style={{position:"absolute",bottom:3,left:0,right:0,display:"flex",justifyContent:"center",gap:3,pointerEvents:"none"}}>
+        {node.notes&&<div title="Has notes" style={{width:5,height:5,borderRadius:"50%",background:"var(--accent)",opacity:.9}}/>}
+        {Object.values(node.properties||{}).some(v=>v)&&<div title="Has properties" style={{width:5,height:5,borderRadius:"50%",background:"var(--success)",opacity:.9}}/>}
+        {Object.keys(node.customProps||{}).length>0&&<div title="Has custom fields" style={{width:5,height:5,borderRadius:"50%",background:"#d2a8ff",opacity:.9}}/>}
+      </div>
+
       {/* Hover tooltip */}
       {hovered&&(propEntries.length>0||node.notes)&&(
         <div style={{
@@ -2405,6 +2549,150 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
       </div>
     </div>
   );
+}
+
+// ── Context Menu ─────────────────────────────────────────────────
+function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
+  onDuplicate,onDelete,onCollapse,onConnect,onEditTitle,onSelectAll,onProps}){
+  const node=nodes.find(n=>n.id===nodeId);
+  if(!node) return null;
+  const t=NT[node.type]||NT.note;
+  const connCount=edges.filter(e=>e.from===nodeId||e.to===nodeId).length;
+  const isMulti=selected.size>1&&selected.has(nodeId);
+
+  // Clamp to viewport
+  const menuW=196, menuH=320;
+  const vw=window.innerWidth, vh=window.innerHeight;
+  const left=Math.min(x+220, vw-menuW-8)-220; // approx canvas offset
+  const top=Math.min(y+48, vh-menuH-8)-48;
+
+  const Item=({icon,label,sub,onClick,danger,disabled})=>(
+    <div onClick={disabled?undefined:()=>{onClick();onClose();}}
+      style={{display:"flex",alignItems:"center",gap:9,padding:"7px 13px",cursor:disabled?"default":"pointer",
+        opacity:disabled?.4:1,transition:"background .1s",
+        color:danger?"var(--danger)":"var(--text)"}}
+      onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="var(--bg3)";}}
+      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+      <span style={{fontSize:14,flexShrink:0,minWidth:18,textAlign:"center"}}>{icon}</span>
+      <div style={{flex:1}}>
+        <div style={{fontSize:12,fontWeight:600}}>{label}</div>
+        {sub&&<div style={{fontSize:9,color:danger?"var(--danger)":"var(--text4)",marginTop:1}}>{sub}</div>}
+      </div>
+    </div>
+  );
+
+  const Sep=()=><div style={{height:1,background:"var(--border2)",margin:"3px 0"}}/>;
+
+  return(
+    <div style={{
+      position:"absolute",left:x,top:y,zIndex:601,
+      background:"var(--bg2)",border:"1px solid var(--border)",
+      borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.55)",
+      width:menuW,overflow:"hidden",userSelect:"none",
+    }} onClick={e=>e.stopPropagation()}>
+      {/* Header */}
+      <div style={{padding:"8px 13px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",
+        display:"flex",alignItems:"center",gap:7}}>
+        <span style={{fontSize:15}}>{t.icon}</span>
+        <div style={{flex:1,minWidth:0}}>
+          <div style={{fontSize:11,fontWeight:700,color:t.color,
+            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{node.title}</div>
+          <div style={{fontSize:9,color:"var(--text4)"}}>{t.label}{connCount>0?` · ${connCount} connections`:""}</div>
+        </div>
+      </div>
+
+      {canEdit&&<>
+        <Item icon="✏" label="Edit title" sub="Double-click" onClick={onEditTitle}/>
+        <Item icon="⤳" label="Connect from here" sub="C key" onClick={onConnect}/>
+        <Sep/>
+        <Item icon="⧉" label={isMulti?`Duplicate ${selected.size} nodes`:"Duplicate"} sub="Ctrl+D" onClick={onDuplicate}/>
+        <Item icon={node.collapsed?"⊞":"⊟"} label={node.collapsed?"Expand":"Collapse"} onClick={onCollapse}/>
+        <Item icon="✏" label="Properties" onClick={onProps}/>
+        <Sep/>
+        <Item icon="◻" label="Select all" sub="Ctrl+A" onClick={onSelectAll}/>
+        <Sep/>
+        <Item icon="🗑" label={isMulti?`Delete ${selected.size} nodes`:"Delete node"} sub="Del"
+          danger onClick={onDelete}/>
+      </>}
+      {!canEdit&&(
+        <div style={{padding:"10px 13px",fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>View-only mode</div>
+      )}
+    </div>
+  );
+}
+
+// ── Lightweight Markdown renderer ──────────────────────────────
+function MarkdownNote({ text, color }) {
+  if (!text) return null;
+  const lines = text.split('
+');
+  const elems = [];
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    // Heading
+    if (/^#{1,3}\s/.test(line)) {
+      const lvl = line.match(/^#+/)[0].length;
+      const txt = line.replace(/^#+\s/, '');
+      const sz = lvl === 1 ? 13 : lvl === 2 ? 12 : 11;
+      elems.push(<div key={i} style={{fontWeight:700,fontSize:sz,color:'var(--text)',marginTop:lvl===1?4:2,marginBottom:1}}>{txt}</div>);
+    }
+    // HR
+    else if (/^---+$/.test(line.trim())) {
+      elems.push(<hr key={i} style={{border:'none',borderTop:`1px solid ${color}30`,margin:'4px 0'}}/>);
+    }
+    // Bullet
+    else if (/^[-*]\s/.test(line)) {
+      const txt = line.replace(/^[-*]\s/, '');
+      elems.push(<div key={i} style={{display:'flex',gap:5,fontSize:11,color:'var(--text2)',lineHeight:1.5}}>
+        <span style={{color,flexShrink:0,marginTop:1}}>•</span>
+        <span>{inlineFormat(txt)}</span>
+      </div>);
+    }
+    // Checkbox
+    else if (/^\[[ x]\]\s/i.test(line)) {
+      const done = line[1].toLowerCase() === 'x';
+      const txt = line.replace(/^\[[ x]\]\s/i, '');
+      elems.push(<div key={i} style={{display:'flex',gap:5,fontSize:11,color:done?'var(--text4)':'var(--text2)',lineHeight:1.5,textDecoration:done?'line-through':'none'}}>
+        <span style={{color:done?'var(--success)':color,flexShrink:0}}>{done?'☑':'☐'}</span>
+        <span>{inlineFormat(txt)}</span>
+      </div>);
+    }
+    // Code block
+    else if (line.startsWith('```')) {
+      const codeLines = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
+      elems.push(<pre key={i} style={{background:'var(--bg)',border:`1px solid ${color}30`,borderRadius:4,
+        padding:'4px 6px',fontSize:10,fontFamily:'monospace',color:'var(--text3)',
+        margin:'2px 0',overflow:'auto',whiteSpace:'pre-wrap'}}>{codeLines.join("\n")}</pre>);
+    }
+    // Normal paragraph
+    else if (line.trim()) {
+      elems.push(<div key={i} style={{fontSize:11,color:'var(--text3)',lineHeight:1.55}}>{inlineFormat(line)}</div>);
+    }
+    // Blank line — small gap
+    else {
+      elems.push(<div key={i} style={{height:4}}/>);
+    }
+    i++;
+  }
+  return <>{elems}</>;
+}
+
+function inlineFormat(text) {
+  // Bold **text**, italic *text*, inline code `text`
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((p, i) => {
+    if (p.startsWith('**') && p.endsWith('**'))
+      return <strong key={i} style={{color:'var(--text)',fontWeight:700}}>{p.slice(2,-2)}</strong>;
+    if (p.startsWith('*') && p.endsWith('*'))
+      return <em key={i} style={{color:'var(--text2)'}}>{p.slice(1,-1)}</em>;
+    if (p.startsWith('`') && p.endsWith('`'))
+      return <code key={i} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:3,
+        padding:'0 3px',fontSize:10,fontFamily:'monospace',color:'#79c0ff'}}>{p.slice(1,-1)}</code>;
+    return p;
+  });
 }
 
 // ── EdgeIcon — SVG preview of a connection style ──────────────
