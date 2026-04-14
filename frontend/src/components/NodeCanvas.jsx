@@ -511,6 +511,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [snapToGrid,     setSnapToGrid]     = useState(false); // shift-drag snapping
   const [snapGuides,     setSnapGuides]     = useState([]);    // [{x1,y1,x2,y2}] alignment guides
   const [editingNotes,   setEditingNotes]   = useState(null);  // nodeId being edited
+  // Feature: Focus mode
+  const [focusMode,      setFocusMode]      = useState(false);
+  const [focusEnabled,   setFocusEnabled]   = useState(true);  // global toggle
+  // Feature: Template library
+  const [showTemplates,  setShowTemplates]  = useState(false);
+  // Feature: Comment pins
+  const [comments,       setComments]       = useState({});    // {nodeId: [{id,text,author,ts}]}
+  const [showComments,   setShowComments]   = useState(false); // sidebar open
+  const [commentNode,    setCommentNode]    = useState(null);  // nodeId of open thread
+  const [commentDraft,   setCommentDraft]   = useState("");
   const [showSearch,   setShowSearch]   = useState(false);
   const [searchQuery,  setSearchQuery]  = useState("");
   const [searchField,  setSearchField]  = useState("all"); // all|title|notes|props
@@ -727,6 +737,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes]);
 
   useEffect(()=>{if(quickPos)quickInpRef.current?.focus();},[quickPos]);
+
+  // Focus mode: activate when editing title/notes
+  useEffect(()=>{
+    if(focusEnabled&&(editingTitle||editingNotes)) setFocusMode(true);
+    else setFocusMode(false);
+  },[editingTitle,editingNotes,focusEnabled]);
 
   // ── Pinch/scroll zoom ─────────────────────────────────────
   useEffect(()=>{
@@ -1160,7 +1176,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       edges.forEach(e=>{
         const f=nodes.find(n=>n.id===e.from),t=nodes.find(n=>n.id===e.to);
         if(!f||!t)return;
-        const verb=e.label?`"${e.label}"`:e.style==="bidirectional"?"communicates with":"connects to";
+        const edgeTypeLbl={"data":"data flow","method":"method call","network":"network link","dependency":"depends on","trigger":"triggers","other":"connects"}[e.edgeType||"data"]||"connects to";
+        const verb=e.label?`"${e.label} (${edgeTypeLbl})"`:edgeTypeLbl;
         out+=`- **${f.title}** ${e.style==="bidirectional"?"↔":"→"} **${t.title}**: ${verb}\n`;
       });
     }
@@ -1432,6 +1449,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
           {/* 💬 Chat — toggles right panel */}
           <button onClick={()=>setShowChat(v=>!v)} style={tbtn(showChat,"#6C63FF")} title="AI Chat">💬</button>
+          {/* 📋 Template library */}
+          <button onClick={()=>setShowTemplates(v=>!v)} style={tbtn(showTemplates,"#FF9800")} title="Template library">📋</button>
+          {/* 💬 Comments sidebar */}
+          <button onClick={()=>setShowComments(v=>!v)} style={tbtn(showComments,"var(--accent2)")} title="Comments">
+            🗨{Object.values(comments).flat().length>0&&(
+              <span style={{fontSize:8,background:"var(--accent)",color:"#fff",borderRadius:10,padding:"0 4px",marginLeft:2}}>
+                {Object.values(comments).flat().length}
+              </span>
+            )}
+          </button>
 
           {/* 🎨 Appearance dropdown */}
           <div style={{position:"relative"}}>
@@ -1892,12 +1919,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       )}
                       {edge.label&&!isSel&&<text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>}
                       {isSel&&(
-                        <foreignObject x={mid.x-55} y={mid.y+16} width="110" height="28">
-                          <input value={edge.label||""} placeholder="label"
-                            onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
-                            onClick={e=>e.stopPropagation()}
-                            style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:5,padding:"3px 7px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}
-                          />
+                        <foreignObject x={mid.x-90} y={mid.y+14} width="180" height="52">
+                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                            <input value={edge.label||""} placeholder="Label (e.g. sends data)"
+                              onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
+                              onClick={e=>e.stopPropagation()}
+                              style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:4,padding:"3px 7px",color:"var(--text)",fontSize:10,fontFamily:"var(--font-ui)",outline:"none",boxSizing:"border-box"}}
+                            />
+                            <select value={edge.edgeType||"data"} onClick={e=>e.stopPropagation()}
+                              onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,edgeType:e.target.value}:ex));}}
+                              style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,padding:"2px 5px",color:"var(--text3)",fontSize:9,fontFamily:"var(--font-ui)",outline:"none",width:"100%",boxSizing:"border-box"}}>
+                              <option value="data">Data flow</option>
+                              <option value="method">Method call</option>
+                              <option value="network">Network</option>
+                              <option value="dependency">Dependency</option>
+                              <option value="trigger">Trigger</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
                         </foreignObject>
                       )}
                       {/* Midpoint drag handle — shown on every edge (diamond shape) */}
@@ -1982,9 +2021,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 const isCollapsed=node.collapsed;
                 const nw=isCollapsed?COL_W:node.w;
                 const nh=isCollapsed?COL_H:node.h;
+                // Focus mode: dim nodes that aren't being edited
+                const isFocused=(focusMode&&(editingTitle===node.id||editingNotes===node.id));
+                const focusDim=focusMode&&!isFocused?"0.15":"1";
 
                 if(isCollapsed) return (
-                  <CollapsedNode key={node.id} node={node} t={t} isSel={isSel}
+                  <div key={`fc-${node.id}`} style={{opacity:focusDim,transition:"opacity .2s"}}>
+                  <CollapsedNode node={node} t={t} isSel={isSel}
                     canEdit={canEdit&&editMode} mode={mode}
                     onMouseDown={e=>{e.stopPropagation();startDrag(e.clientX,e.clientY,node.id);}}
                     onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
@@ -1992,6 +2035,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onContextMenu={e=>handleNodeRightClick(e,node.id)}
                     onToggleCollapse={e=>{e.stopPropagation();toggleCollapse(node.id);}}
                   />
+                  </div>
                 );
 
                 return (
@@ -2003,7 +2047,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onClick={e=>handleNodeClick(e,node.id)}
                     onContextMenu={e=>handleNodeRightClick(e,node.id)}
                     onDoubleClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingTitle(node.id);}}
-                    style={{
+                    style={{opacity:focusDim,transition:"opacity .2s",
                       position:"absolute",left:node.x,top:node.y,width:nw,minHeight:nh,
                       background:isGroup?`${t.color}10`:"var(--node-bg)",
                       border:`var(--node-border-w) ${isGroup?"dashed":"solid"} ${isSel?"var(--accent)":`${t.color}65`}`,
@@ -2038,6 +2082,26 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         </span>
                       )}
                       <span style={{fontSize:9,color:"var(--text4)",letterSpacing:1.2,fontWeight:700,flexShrink:0}}>{t.label.toUpperCase()}</span>
+                      {/* Comment pin button */}
+                      <button
+                        className="nn-comment-btn"
+                        onMouseDown={e=>e.stopPropagation()}
+                        onClick={e=>{e.stopPropagation();setCommentNode(node.id);setShowComments(true);}}
+                        title={`Comments (${(comments[node.id]||[]).length})`}
+                        style={{
+                          background:"none",border:"none",cursor:"pointer",padding:"0 2px",
+                          flexShrink:0,opacity:0,transition:"opacity .15s",
+                          color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",
+                          fontSize:12,lineHeight:1,position:"relative",
+                        }}>
+                        💬{(comments[node.id]||[]).length>0&&(
+                          <span style={{position:"absolute",top:-3,right:-3,fontSize:7,background:"var(--accent)",
+                            color:"#fff",borderRadius:"50%",width:11,height:11,display:"flex",
+                            alignItems:"center",justifyContent:"center",fontWeight:700}}>
+                            {(comments[node.id]||[]).length}
+                          </span>
+                        )}
+                      </button>
                     </div>
 
                     {/* Body */}
@@ -2244,6 +2308,78 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </>
         )}
 
+        {/* ── Template Library Panel ── */}
+        {showTemplates&&(
+          <div style={{width:320,flexShrink:0,display:"flex",flexDirection:"column",
+            background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
+              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+              <span style={{fontSize:15}}>📋</span>
+              <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",flex:1}}>TEMPLATE LIBRARY</span>
+              <button onClick={()=>setShowTemplates(false)}
+                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+            </div>
+            <TemplateLibrary
+              onInsert={(tpl)=>{
+                const el=canvasRef.current; if(!el) return;
+                const s=1/zoom;
+                const ox=(el.scrollLeft+el.clientWidth/2)*s-300;
+                const oy=(el.scrollTop+el.clientHeight/2)*s-200;
+                const idMap={};
+                tpl.nodes.forEach(n=>{idMap[n.id]=makeId();});
+                const newNodes=tpl.nodes.map(n=>({
+                  ...mkNode(n.type,ox+n.x,oy+n.y),
+                  id:idMap[n.id],title:n.title,
+                  notes:n.notes||"",
+                  properties:{...(DP[n.type]||{}),...(n.properties||{})},
+                }));
+                const newEdges=tpl.edges.map(e=>({
+                  id:makeId(),from:idMap[e.from],to:idMap[e.to],
+                  label:e.label||"",style:e.style||"arrow",
+                  color:"var(--accent)",edgeType:e.edgeType||"data",
+                }));
+                applyNodes(ns=>[...ns,...newNodes]);
+                applyEdges(es=>[...es,...newEdges]);
+                setShowTemplates(false);
+              }}
+            />
+          </div>
+        )}
+
+        {/* ── Comments Sidebar ── */}
+        {showComments&&(
+          <div style={{width:300,flexShrink:0,display:"flex",flexDirection:"column",
+            background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
+              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+              <span style={{fontSize:15}}>🗨</span>
+              <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",flex:1}}>
+                {commentNode?`Comments on "${nodes.find(n=>n.id===commentNode)?.title||"node"}"`:"All Comments"}
+              </span>
+              {commentNode&&<button onClick={()=>setCommentNode(null)}
+                style={{fontSize:10,background:"none",border:"none",color:"var(--text4)",cursor:"pointer"}}>All</button>}
+              <button onClick={()=>{setShowComments(false);setCommentNode(null);}}
+                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+            </div>
+            <CommentsPanel
+              comments={comments} nodes={nodes} commentNode={commentNode}
+              setCommentNode={setCommentNode}
+              draft={commentDraft} setDraft={setCommentDraft}
+              user={user}
+              onAdd={(nodeId,text)=>{
+                const c={id:makeId(),text,author:user?.display_name||user?.email||"Me",
+                  ts:new Date().toISOString()};
+                setComments(prev=>({...prev,[nodeId]:[...(prev[nodeId]||[]),c]}));
+                setCommentDraft("");
+              }}
+              onDelete={(nodeId,cid)=>{
+                setComments(prev=>({...prev,[nodeId]:(prev[nodeId]||[]).filter(c=>c.id!==cid)}));
+              }}
+              onScrollTo={(nodeId)=>scrollToNode(nodeId)}
+            />
+          </div>
+        )}
+
         {/* ── LLM Chat Panel (VS Code style right panel) ── */}
         {showChat&&(
           <div style={{
@@ -2288,6 +2424,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         .nn-node:hover { z-index: 10; }
         .nn-node:hover .nn-collapse-btn { opacity: 0.8 !important; }
         .nn-node .nn-collapse-btn:hover { opacity: 1 !important; }
+        .nn-node:hover .nn-comment-btn { opacity: 0.65 !important; }
+        .nn-comment-btn:hover { opacity: 1 !important; }
         g:hover .nn-mid-handle { opacity: 1 !important; }
         .nn-mid-handle { transition: opacity .15s; }
       `}</style>
@@ -2886,6 +3024,233 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
     </div>
   );
 }
+
+// ── Template Library ──────────────────────────────────────────────
+const TEMPLATES = [
+  {
+    id:"blank",
+    name:"Blank Starter",
+    desc:"Two nodes, one connection",
+    icon:"✦",
+    color:"#9E9E9E",
+    nodes:[
+      {id:"t1",type:"note",x:0,y:0,title:"Start here"},
+      {id:"t2",type:"process",x:280,y:0,title:"Next step"},
+    ],
+    edges:[{from:"t1",to:"t2",label:"leads to",style:"arrow",edgeType:"other"}],
+  },
+  {
+    id:"homelab",
+    name:"Homelab Network",
+    desc:"Router, switch, servers, NAS, clients",
+    icon:"🏠",
+    color:"#00BCD4",
+    nodes:[
+      {id:"h1",type:"router",  x:200,y:0,   title:"Router",   properties:{Make:"",IP:"192.168.1.1"}},
+      {id:"h2",type:"switch",  x:200,y:120, title:"Switch",   properties:{Layer:"L2",Ports:"24"}},
+      {id:"h3",type:"server",  x:0,  y:260, title:"Server 1", properties:{OS:"Ubuntu",Role:"Docker"}},
+      {id:"h4",type:"server",  x:200,y:260, title:"Server 2", properties:{OS:"Proxmox",Role:"VM host"}},
+      {id:"h5",type:"nas",     x:400,y:260, title:"NAS",      properties:{Capacity:"8TB",Type:"HDD"}},
+      {id:"h6",type:"firewall",x:200,y:380, title:"Firewall",  properties:{Rules:""}},
+      {id:"h7",type:"desktop", x:0,  y:380, title:"PC",       properties:{OS:"Windows"}},
+    ],
+    edges:[
+      {from:"h1",to:"h2",label:"LAN",style:"arrow",edgeType:"network"},
+      {from:"h2",to:"h3",label:"",style:"line",edgeType:"network"},
+      {from:"h2",to:"h4",label:"",style:"line",edgeType:"network"},
+      {from:"h2",to:"h5",label:"",style:"line",edgeType:"network"},
+      {from:"h2",to:"h6",label:"",style:"line",edgeType:"network"},
+      {from:"h2",to:"h7",label:"",style:"line",edgeType:"network"},
+    ],
+  },
+  {
+    id:"microservices",
+    name:"Microservices",
+    desc:"API gateway, services, DB, queue",
+    icon:"⚙️",
+    color:"#4CAF50",
+    nodes:[
+      {id:"m1",type:"user",       x:220,y:0,   title:"Client"},
+      {id:"m2",type:"apigateway", x:220,y:120, title:"API Gateway"},
+      {id:"m3",type:"service",    x:0,  y:260, title:"Auth Service"},
+      {id:"m4",type:"service",    x:200,y:260, title:"Core Service"},
+      {id:"m5",type:"service",    x:400,y:260, title:"Notif Service"},
+      {id:"m6",type:"database",   x:100,y:400, title:"Postgres DB"},
+      {id:"m7",type:"queue",      x:300,y:400, title:"Message Queue"},
+      {id:"m8",type:"cache",      x:200,y:520, title:"Redis Cache"},
+    ],
+    edges:[
+      {from:"m1",to:"m2",label:"HTTPS",style:"arrow",edgeType:"network"},
+      {from:"m2",to:"m3",label:"auth",style:"arrow",edgeType:"method"},
+      {from:"m2",to:"m4",label:"route",style:"arrow",edgeType:"method"},
+      {from:"m4",to:"m5",label:"event",style:"dashed",edgeType:"trigger"},
+      {from:"m3",to:"m6",label:"reads/writes",style:"arrow",edgeType:"data"},
+      {from:"m4",to:"m6",label:"reads/writes",style:"arrow",edgeType:"data"},
+      {from:"m5",to:"m7",label:"publish",style:"dashed",edgeType:"data"},
+      {from:"m4",to:"m8",label:"cache",style:"dotted",edgeType:"data"},
+    ],
+  },
+  {
+    id:"mindmap",
+    name:"Mind Map",
+    desc:"Central idea with branches",
+    icon:"🧠",
+    color:"#9C27B0",
+    nodes:[
+      {id:"mm1",type:"heading",x:240,y:200,title:"Central Idea"},
+      {id:"mm2",type:"note",   x:0,  y:0,  title:"Branch A"},
+      {id:"mm3",type:"note",   x:480,y:0,  title:"Branch B"},
+      {id:"mm4",type:"note",   x:0,  y:400,title:"Branch C"},
+      {id:"mm5",type:"note",   x:480,y:400,title:"Branch D"},
+      {id:"mm6",type:"note",   x:0,  y:100, title:"Sub A1"},
+      {id:"mm7",type:"note",   x:0,  y:200, title:"Sub A2"},
+    ],
+    edges:[
+      {from:"mm1",to:"mm2",label:"",style:"line",edgeType:"other"},
+      {from:"mm1",to:"mm3",label:"",style:"line",edgeType:"other"},
+      {from:"mm1",to:"mm4",label:"",style:"line",edgeType:"other"},
+      {from:"mm1",to:"mm5",label:"",style:"line",edgeType:"other"},
+      {from:"mm2",to:"mm6",label:"",style:"dotted",edgeType:"other"},
+      {from:"mm2",to:"mm7",label:"",style:"dotted",edgeType:"other"},
+    ],
+  },
+];
+
+function TemplateLibrary({onInsert}){
+  const [hovered,setHovered]=useState(null);
+  return(
+    <div style={{flex:1,overflow:"auto",padding:12,display:"flex",flexDirection:"column",gap:8}}>
+      <div style={{fontSize:10,color:"var(--text4)",marginBottom:4}}>
+        Click a template to drop it onto your canvas.
+      </div>
+      {TEMPLATES.map(tpl=>(
+        <div key={tpl.id}
+          onClick={()=>onInsert(tpl)}
+          onMouseEnter={()=>setHovered(tpl.id)}
+          onMouseLeave={()=>setHovered(null)}
+          style={{
+            background:hovered===tpl.id?"var(--bg3)":"var(--bg)",
+            border:`1.5px solid ${hovered===tpl.id?tpl.color:"var(--border)"}`,
+            borderRadius:"var(--radius-md)",padding:"12px 14px",cursor:"pointer",
+            transition:"all .15s",
+          }}>
+          <div style={{display:"flex",alignItems:"center",gap:9,marginBottom:5}}>
+            <span style={{fontSize:22}}>{tpl.icon}</span>
+            <div>
+              <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>{tpl.name}</div>
+              <div style={{fontSize:10,color:"var(--text4)"}}>{tpl.desc}</div>
+            </div>
+          </div>
+          <div style={{display:"flex",gap:5,flexWrap:"wrap"}}>
+            <span style={{fontSize:9,color:"var(--text4)",background:"var(--bg3)",
+              padding:"1px 6px",borderRadius:8}}>
+              {tpl.nodes.length} nodes
+            </span>
+            <span style={{fontSize:9,color:"var(--text4)",background:"var(--bg3)",
+              padding:"1px 6px",borderRadius:8}}>
+              {tpl.edges.length} connections
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Comments Panel ─────────────────────────────────────────────────
+function CommentsPanel({comments,nodes,commentNode,setCommentNode,draft,setDraft,user,onAdd,onDelete,onScrollTo}){
+  const inputRef=useRef(null);
+  // Build list: if commentNode set, show only that node's comments; else all
+  const entries=commentNode
+    ? [{nodeId:commentNode,list:comments[commentNode]||[]}]
+    : nodes.filter(n=>(comments[n.id]||[]).length>0).map(n=>({nodeId:n.id,list:comments[n.id]||[]}));
+
+  const addComment=()=>{
+    const t=draft.trim(); if(!t||!commentNode) return;
+    onAdd(commentNode,t);
+  };
+
+  return(
+    <div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden"}}>
+      {/* Thread list */}
+      <div style={{flex:1,overflow:"auto",padding:"8px 12px",display:"flex",flexDirection:"column",gap:10}}>
+        {entries.length===0&&(
+          <div style={{padding:"20px 0",textAlign:"center",color:"var(--text4)"}}>
+            <div style={{fontSize:24,marginBottom:8}}>🗨</div>
+            <div style={{fontSize:12}}>{commentNode?"No comments yet":"No comments on any node"}</div>
+            {commentNode&&<div style={{fontSize:10,marginTop:4}}>Add one below</div>}
+          </div>
+        )}
+        {entries.map(({nodeId,list})=>{
+          const node=nodes.find(n=>n.id===nodeId);
+          const t=NT[node?.type]||NT.note;
+          return(
+            <div key={nodeId}>
+              {/* Node header */}
+              {!commentNode&&(
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,
+                  cursor:"pointer",padding:"4px 0"}}
+                  onClick={()=>{setCommentNode(nodeId);onScrollTo(nodeId);}}>
+                  <span style={{fontSize:13}}>{t.icon}</span>
+                  <span style={{fontSize:11,fontWeight:700,color:t.color,flex:1,
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{node?.title}</span>
+                  <span style={{fontSize:9,color:"var(--text4)"}}>{list.length}</span>
+                </div>
+              )}
+              {/* Comments */}
+              {list.map(c=>(
+                <div key={c.id} style={{
+                  background:"var(--bg3)",borderRadius:"var(--radius-sm)",
+                  padding:"8px 10px",marginBottom:4,
+                  borderLeft:`3px solid var(--accent)`,
+                }}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:6,marginBottom:4}}>
+                    <span style={{fontSize:11,fontWeight:700,color:"var(--accent)"}}>{c.author}</span>
+                    <span style={{fontSize:9,color:"var(--text4)"}}>
+                      {new Date(c.ts).toLocaleDateString()} {new Date(c.ts).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}
+                    </span>
+                    <button onClick={()=>onDelete(nodeId,c.id)}
+                      style={{marginLeft:"auto",background:"none",border:"none",
+                        color:"var(--text4)",cursor:"pointer",fontSize:12,opacity:.5}}>×</button>
+                  </div>
+                  <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{c.text}</div>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Input */}
+      {commentNode?(
+        <div style={{padding:"10px 12px",borderTop:"1px solid var(--border2)",background:"var(--bg3)"}}>
+          <div style={{fontSize:10,color:"var(--accent)",marginBottom:5,fontWeight:700}}>
+            REPLY ON "{nodes.find(n=>n.id===commentNode)?.title||"node"}"
+          </div>
+          <div style={{display:"flex",gap:6}}>
+            <textarea ref={inputRef} value={draft} onChange={e=>setDraft(e.target.value)}
+              onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addComment();}}}
+              placeholder="Write a comment… (Enter to send)"
+              rows={2}
+              style={{flex:1,background:"var(--bg)",border:"1px solid var(--border)",
+                borderRadius:"var(--radius-sm)",padding:"6px 8px",color:"var(--text)",
+                fontSize:11,fontFamily:"var(--font-ui)",resize:"none",outline:"none"}}/>
+            <button onClick={addComment}
+              style={{background:"var(--accent2)",border:"none",borderRadius:"var(--radius-sm)",
+                color:"#fff",cursor:"pointer",padding:"0 10px",fontSize:11,fontWeight:700,
+                fontFamily:"var(--font-ui)",flexShrink:0}}>↑</button>
+          </div>
+        </div>
+      ):(
+        <div style={{padding:"10px 12px",borderTop:"1px solid var(--border2)",
+          fontSize:10,color:"var(--text4)",textAlign:"center"}}>
+          Click a node's 💬 icon or a thread above to comment
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 // ── Export Modal ──────────────────────────────────────────────
 function ExportModal({nodes,edges,mapTitle,exportLLM,onClose}){
