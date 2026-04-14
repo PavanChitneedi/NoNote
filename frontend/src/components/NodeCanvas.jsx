@@ -519,6 +519,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [loading,      setLoading]      = useState(true);
   const [showSidebar,  setShowSidebar]  = useState(false);
   const [showProps,    setShowProps]    = useState(false);
+  const [propsMode,    setPropsMode]    = useState(()=>localStorage.getItem('nn_props_mode')||'popup'); // 'popup'|'panel'
   const [showExport,   setShowExport]   = useState(false);
   const [showChat,     setShowChat]     = useState(false);
   const [showAppearance,setShowAppearance]=useState(false);
@@ -759,6 +760,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes,nodePopup]);
 
   useEffect(()=>{if(quickPos)quickInpRef.current?.focus();},[quickPos]);
+
+  // Persist propsMode + auto-show/hide panel on mode switch
+  useEffect(()=>{
+    localStorage.setItem('nn_props_mode', propsMode);
+    if(propsMode==='panel'&&selected.size===1) setShowProps(true);
+    if(propsMode==='popup') setShowProps(false);
+  },[propsMode]);
 
   // Focus mode: activate when editing title/notes
   useEffect(()=>{
@@ -1014,7 +1022,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       return;
     }
     setSelected(new Set([id])); setSelEdge(null);
-    if(window.innerWidth<768) setShowProps(true);
+    if(propsMode==='panel') setShowProps(true);
+    else if(window.innerWidth<768) setShowProps(true);
   },[mode,drawingEdge,edgeStyle,nodes,applyEdges]);
 
   const handleEdgeClick=useCallback((e,eid)=>{
@@ -1414,8 +1423,49 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
             <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
             {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑{selected.size>1?` (${selected.size})`:""}</button>}
-            {selectedNode&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties">✏</button>}
+            {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties (panel)">✏</button>}
           </>}
+          {/* ── Props mode segmented toggle — always visible after tools ── */}
+          <div style={{width:1,height:20,background:"var(--border)",margin:"0 4px",flexShrink:0}}/>
+          <div style={{display:"flex",alignItems:"center",flexShrink:0,
+            background:"var(--bg3)",border:"1.5px solid var(--border)",
+            borderRadius:"var(--radius-md)",overflow:"hidden",gap:0}}>
+            <button
+              onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
+              title="Popup mode — double-click node to open inline editor"
+              style={{
+                display:"flex",alignItems:"center",gap:4,padding:"5px 10px",
+                border:"none",cursor:"pointer",fontSize:10,fontWeight:700,
+                fontFamily:"var(--font-ui)",letterSpacing:.3,
+                background:propsMode==='popup'?"var(--accent2)":"transparent",
+                color:propsMode==='popup'?"#fff":"var(--text4)",
+                borderRight:"1px solid var(--border)",
+                transition:"all .15s",
+              }}>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <rect x="2" y="2" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+                <rect x="4.5" y="4.5" width="4" height="4" rx=".5" fill="currentColor" opacity=".6"/>
+              </svg>
+              POPUP
+            </button>
+            <button
+              onClick={()=>{setPropsMode('panel');setNodePopup(null);if(selected.size===1)setShowProps(true);}}
+              title="Panel mode — click node to open properties in right side panel"
+              style={{
+                display:"flex",alignItems:"center",gap:4,padding:"5px 10px",
+                border:"none",cursor:"pointer",fontSize:10,fontWeight:700,
+                fontFamily:"var(--font-ui)",letterSpacing:.3,
+                background:propsMode==='panel'?"var(--accent2)":"transparent",
+                color:propsMode==='panel'?"#fff":"var(--text4)",
+                transition:"all .15s",
+              }}>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+                <rect x="1" y="2" width="11" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.5"/>
+                <line x1="8" y1="2" x2="8" y2="11" stroke="currentColor" strokeWidth="1.5"/>
+              </svg>
+              PANEL
+            </button>
+          </div>
         </div>
 
         {/* ═══ CENTER — search pill ═══ */}
@@ -1826,6 +1876,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             setSelected(new Set());setSelEdge(null);
             if(drawingEdge)setDrawingEdge(null);
             setContextMenu(null);
+            if(propsMode==='panel') setShowProps(false);
           }}
           onMouseMove={e=>{
             if(drawingEdge&&canvasRef.current){
@@ -2077,7 +2128,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
                     onClick={e=>handleNodeClick(e,node.id)}
                     onContextMenu={e=>handleNodeRightClick(e,node.id)}
-                    onDoubleClick={e=>{e.stopPropagation();setNodePopup({nodeId:node.id,tab:"notes"});}}
+                    onDoubleClick={e=>{
+                      e.stopPropagation();
+                      if(propsMode==='popup') setNodePopup({nodeId:node.id,tab:'notes'});
+                      else { if(canEdit&&editMode) setEditingTitle(node.id); }
+                    }}
                     style={{opacity:focusDim,transition:"opacity .2s",
                       position:"absolute",left:node.x,top:node.y,width:nw,minHeight:nh,
                       background:isGroup?`${t.color}10`:"var(--node-bg)",
@@ -2272,8 +2327,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               })}
 
 
-              {/* Inline Node Popup Editor */}
-              {nodePopup&&(()=>{
+              {/* Inline Node Popup Editor — popup mode only */}
+              {propsMode==='popup'&&nodePopup&&(()=>{
                 const pn=nodes.find(n=>n.id===nodePopup.nodeId);
                 if(!pn) return null;
                 const nw=collW(pn), nh=collH(pn);
@@ -2327,8 +2382,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </div>
         </div>
 
-        {/* Props Panel */}
-        {selectedNode&&(showProps||!isMobile)&&(
+        {/* Props Panel — visible in panel mode or mobile */}
+        {selectedNode&&propsMode==='panel'&&(showProps||!isMobile)&&(
           <PropsPanel node={selectedNode} edges={edges} nodes={nodes}
             isMobile={isMobile} canEdit={canEdit&&editMode}
             onClose={()=>setShowProps(false)}
