@@ -1349,8 +1349,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 borderRadius:3,padding:"1px 5px",flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
             )}
           </div>
-        </div>
-
           </div>
         </div>
 
