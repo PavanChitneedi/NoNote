@@ -1186,12 +1186,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {/* ── Topbar ── */}
       <div style={{
         height:"var(--topbar-h)",background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
-        display:"flex",alignItems:"center",flexShrink:0,overflow:"visible",
-        position:"relative",zIndex:10,padding:"0 6px",
+        display:"grid",gridTemplateColumns:"1fr auto 1fr",alignItems:"center",
+        flexShrink:0,overflow:"visible",
+        position:"relative",zIndex:10,padding:"0 6px",gap:4,
       }}>
 
         {/* ═══ LEFT GROUP ═══ */}
-        <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:3,overflow:"hidden"}}>
           <span onClick={onHome} title="Home" style={{fontSize:18,cursor:"pointer",padding:"0 4px",userSelect:"none"}}>⬡</span>
           <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
           <div style={{width:1,height:20,background:"var(--border)",margin:"0 2px",flexShrink:0}}/>
@@ -1213,9 +1214,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {mode==="connect"&&(
               <div style={{position:"relative"}}>
                 <button onClick={()=>setShowConnDropdown(v=>!v)}
-                  style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:4}}>
-                  <span style={{fontSize:13}}>{EDGE_STYLES[edgeStyle]?.icon||"→"}</span>
-                  <span style={{fontSize:9,color:"var(--text3)",maxWidth:52,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
+                  style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:5,padding:"4px 9px"}}
+                  title={EDGE_STYLES[edgeStyle]?.label}>
+                  <EdgeIcon styleKey={edgeStyle} size={28} active={true}/>
+                  <span style={{fontSize:9,color:"var(--text3)",maxWidth:48,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
                   <span style={{fontSize:8,opacity:.7}}>▾</span>
                 </button>
                 {showConnDropdown&&(
@@ -1223,49 +1225,64 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
                     <div style={{position:"fixed",top:52,left:8,zIndex:501,background:"var(--bg2)",
                       border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",
-                      boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:220,overflow:"hidden"}}>
-                      {Object.entries(EDGE_STYLES).reduce((acc,[key,style])=>{
-                        if(!acc.sections[style.section]) acc.sections[style.section]=[];
-                        acc.sections[style.section].push([key,style]);
-                        return acc;
-                      },{sections:{}}) && Object.entries(
-                        Object.entries(EDGE_STYLES).reduce((acc,[key,style])=>{
-                          if(!acc[style.section]) acc[style.section]=[];
-                          acc[style.section].push([key,style]);
-                          return acc;
-                        },{})
-                      ).map(([section,styles])=>(
-                        <div key={section}>
-                          <div style={{padding:"5px 10px 2px",fontSize:8,fontWeight:700,letterSpacing:1,
-                            color:"var(--text4)",background:"var(--bg3)"}}>{section.toUpperCase()}</div>
-                          {styles.map(([key,style])=>(
-                            <div key={key} onClick={()=>{setEdgeStyle(key);setShowConnDropdown(false);}}
-                              style={{display:"flex",alignItems:"center",gap:8,padding:"7px 12px",cursor:"pointer",
-                                background:edgeStyle===key?"var(--accent2)22":"transparent",
-                                borderLeft:edgeStyle===key?"2px solid var(--accent2)":"2px solid transparent"}}
-                              onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                              onMouseLeave={e=>e.currentTarget.style.background=edgeStyle===key?"var(--accent2)22":"transparent"}>
-                              <span style={{fontSize:16,flexShrink:0}}>{style.icon}</span>
-                              <div>
-                                <div style={{fontSize:11,fontWeight:600,color:edgeStyle===key?"var(--accent)":"var(--text)"}}>{style.label}</div>
-                                <div style={{fontSize:9,color:"var(--text4)"}}>{style.desc}</div>
-                              </div>
-                              {edgeStyle===key&&<span style={{marginLeft:"auto",color:"var(--accent)",fontSize:12}}>✓</span>}
+                      boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
+
+                      {/* Icon grid grouped by section */}
+                      {EDGE_SECTIONS.map(section=>{
+                        const sectionStyles=Object.entries(EDGE_STYLES).filter(([,s])=>s.section===section);
+                        return(
+                          <div key={section}>
+                            <div style={{padding:"5px 10px 3px",fontSize:8,fontWeight:700,letterSpacing:1,
+                              color:"var(--text4)",background:"var(--bg3)",borderBottom:"1px solid var(--border2)"}}>
+                              {section.toUpperCase()}
                             </div>
-                          ))}
-                        </div>
-                      ))}
-                      {/* Color picker */}
-                      <div style={{padding:"8px 12px",borderTop:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8}}>
-                        <span style={{fontSize:10,color:"var(--text4)"}}>Color</span>
-                        <div style={{width:22,height:22,borderRadius:"50%",background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,
+                            <div style={{display:"flex",flexWrap:"wrap",gap:2,padding:"6px 8px"}}>
+                              {sectionStyles.map(([key,style])=>(
+                                <div key={key}
+                                  title={`${style.label} — ${style.desc}`}
+                                  onClick={()=>{setEdgeStyle(key);setShowConnDropdown(false);}}
+                                  style={{
+                                    width:80,display:"flex",flexDirection:"column",alignItems:"center",
+                                    gap:3,padding:"6px 4px",borderRadius:"var(--radius-sm)",cursor:"pointer",
+                                    border:`1.5px solid ${edgeStyle===key?"var(--accent)":"transparent"}`,
+                                    background:edgeStyle===key?"var(--accent)14":"transparent",
+                                    transition:"all .1s",
+                                  }}
+                                  onMouseEnter={e=>{if(edgeStyle!==key)e.currentTarget.style.background="var(--bg3)";}}
+                                  onMouseLeave={e=>{if(edgeStyle!==key)e.currentTarget.style.background="transparent";}}>
+                                  <EdgeIcon styleKey={key} size={56} active={edgeStyle===key}
+                                    color={edgeStyle===key?"var(--accent)":"var(--text3)"}/>
+                                  <span style={{fontSize:9,color:edgeStyle===key?"var(--accent)":"var(--text4)",
+                                    textAlign:"center",lineHeight:1.2,maxWidth:76,
+                                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                                    {style.label}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {/* Color row */}
+                      <div style={{padding:"8px 12px",borderTop:"1px solid var(--border2)",
+                        display:"flex",alignItems:"center",gap:8,background:"var(--bg3)"}}>
+                        <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)"}}>COLOR</span>
+                        <div style={{width:20,height:20,borderRadius:"50%",flexShrink:0,
+                          background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,
                           border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}>
                           <input type="color" defaultValue="#58a6ff" onChange={e=>setEdgeColor(e.target.value)}
                             style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
                         </div>
+                        {["#58a6ff","#3fb950","#f78166","#d2a8ff","#ffa657","#ffffff"].map(c=>(
+                          <div key={c} onClick={()=>setEdgeColor(c)}
+                            style={{width:16,height:16,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,
+                              border:(edgeColor===c||edgeColor==="var(--accent)"&&c==="#58a6ff")?"2px solid #fff":"2px solid transparent",
+                              transition:"border .1s"}}/>
+                        ))}
                         <button onClick={()=>setEdgeColor("var(--accent)")}
-                          style={{fontSize:9,background:"none",border:"1px solid var(--border)",borderRadius:3,
-                            padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>Reset</button>
+                          style={{marginLeft:"auto",fontSize:9,background:"none",border:"1px solid var(--border)",
+                            borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
                       </div>
                     </div>
                   </>
@@ -1288,9 +1305,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </>}
         </div>
 
-        {/* ═══ CENTER — absolutely positioned search pill ═══ */}
-        <div style={{position:"absolute",left:"50%",transform:"translateX(-50%)",width:480,maxWidth:"60vw",zIndex:20}}
+        {/* ═══ CENTER — search pill ═══ */}
+        <div style={{display:"flex",justifyContent:"center",width:"100%",minWidth:0}}
           onKeyDown={e=>e.stopPropagation()}>
+          <div style={{width:"100%",maxWidth:460}}>
           <div style={{
             display:"flex",alignItems:"center",gap:8,height:34,
             background:showSearch?"var(--bg)":"var(--bg3)",
@@ -1333,8 +1351,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </div>
         </div>
 
+          </div>
+        </div>
+
         {/* ═══ RIGHT GROUP ═══ */}
-        <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:"auto",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:3,justifyContent:"flex-end"}}>
           {saveMsg&&<span style={{fontSize:10,color:saveMsgColor,whiteSpace:"nowrap",padding:"0 4px"}}>{saveMsg}</span>}
 
           {/* Zoom */}
@@ -2385,6 +2406,68 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         )}
       </div>
     </div>
+  );
+}
+
+// ── EdgeIcon — SVG preview of a connection style ──────────────
+function EdgeIcon({ styleKey, size=40, active=false, color="var(--text3)" }) {
+  const s = EDGE_STYLES[styleKey];
+  if(!s) return null;
+  const w=size, h=Math.round(size*0.55);
+  const x1=6, x2=w-8, y=h/2;
+  const dash = s.dash==="none" ? "none"
+    : s.dash==="8,5" ? `${Math.round(size*.14)},${Math.round(size*.09)}`
+    : `${Math.round(size*.035)},${Math.round(size*.09)}`;
+  const sw = s.strokeW>=4 ? Math.round(size*.075) : Math.round(size*.045);
+  const col = active?"var(--accent)":color;
+  const arrowSize = Math.round(size*.13);
+
+  // Arrow marker paths
+  const ArrowHead = ({x,y,dir=1})=>(
+    <polygon
+      points={`${x},${y} ${x-dir*arrowSize},${y-arrowSize*.55} ${x-dir*arrowSize},${y+arrowSize*.55}`}
+      fill={col}/>
+  );
+
+  // Wave path
+  const wavePath = ()=>{
+    const segs=5; const segW=(x2-x1)/segs;
+    let d=`M ${x1} ${y}`;
+    for(let i=0;i<segs;i++){
+      const cx1=x1+i*segW+segW*.25, cy1=y-(h*.2);
+      const cx2=x1+i*segW+segW*.75, cy2=y+(h*.2);
+      const ex=x1+(i+1)*segW;
+      d+=` C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ex} ${y}`;
+    }
+    return d;
+  };
+
+  // Double line
+  const offset=Math.round(size*.07);
+
+  return(
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{display:"block",overflow:"visible"}}>
+      {s.wave?(
+        <path d={wavePath()} stroke={col} strokeWidth={sw} fill="none"
+          strokeDasharray={dash!=="none"?dash:undefined}/>
+      ):s.strokeW>=1.5&&s.strokeW<2?(
+        // Double line
+        <>
+          <line x1={x1} y1={y-offset} x2={x2} y2={y-offset} stroke={col} strokeWidth={sw*.7} fill="none"
+            strokeDasharray={dash!=="none"?dash:undefined}/>
+          <line x1={x1} y1={y+offset} x2={x2} y2={y+offset} stroke={col} strokeWidth={sw*.7} fill="none"
+            strokeDasharray={dash!=="none"?dash:undefined}/>
+        </>
+      ):(
+        <line x1={x1} y1={y} x2={x2} y2={y} stroke={col} strokeWidth={sw} fill="none"
+          strokeDasharray={dash!=="none"?dash:undefined}
+          strokeLinecap="round"/>
+      )}
+      {/* End arrowhead */}
+      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1}/>}
+      {/* Start arrowhead */}
+      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1}/>}
+    </svg>
   );
 }
 
