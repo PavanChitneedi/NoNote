@@ -238,6 +238,7 @@ const mkNode = (type, x, y) => ({
   w: type==="group" ? GRP_W : DEF_W,
   h: type==="group" ? GRP_H : DEF_H,
   title: NT[type]?.label || "Node",
+  description: "", showNotes: false,
   notes: [], collapsed: false,
   properties: { ...(DP[type]||{}) }, customProps: {},
 });
@@ -534,6 +535,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [focusEnabled,   setFocusEnabled]   = useState(true);  // global toggle
   // Feature: Template library
   const [showTemplates,  setShowTemplates]  = useState(false);
+  // Feature: Inline node popup editor
+  const [nodePopup,      setNodePopup]      = useState(null); // {nodeId, tab}
   // Feature: Comment pins
   const [comments,       setComments]       = useState({});    // {nodeId: [{id,text,author,ts}]}
   const [showComments,   setShowComments]   = useState(false); // sidebar open
@@ -655,7 +658,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       setMapMeta(data.map);
       const ns=data.nodes.map(n=>({
         id:n.id,type:n.node_type,x:n.x,y:n.y,w:n.w,h:n.h,
-        title:n.title,notes:parseNotes(n.notes),collapsed:false,
+        title:n.title,description:n.description||"",showNotes:false,notes:parseNotes(n.notes),collapsed:false,
         properties:n.properties||{},customProps:n.custom_props||{},
       }));
       const es=data.edges.map(e=>({
@@ -675,6 +678,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const tag=e.target.tagName;
       const isInput=["INPUT","TEXTAREA","SELECT"].includes(tag);
       if(e.code==="Escape"){
+        if(nodePopup){setNodePopup(null);return;}
         if(showSearch){setShowSearch(false);setSearchQuery("");return;}
         if(editingTitle){setEditingTitle(null);return;}
         if(quickPos){setQuickPos(null);setQuickText("");return;}
@@ -752,7 +756,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     };
     window.addEventListener("keydown",h);
     return ()=>window.removeEventListener("keydown",h);
-  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes]);
+  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes,nodePopup]);
 
   useEffect(()=>{if(quickPos)quickInpRef.current?.focus();},[quickPos]);
 
@@ -2073,7 +2077,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
                     onClick={e=>handleNodeClick(e,node.id)}
                     onContextMenu={e=>handleNodeRightClick(e,node.id)}
-                    onDoubleClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingTitle(node.id);}}
+                    onDoubleClick={e=>{e.stopPropagation();setNodePopup({nodeId:node.id,tab:"notes"});}}
                     style={{opacity:focusDim,transition:"opacity .2s",
                       position:"absolute",left:node.x,top:node.y,width:nw,minHeight:nh,
                       background:isGroup?`${t.color}10`:"var(--node-bg)",
@@ -2131,39 +2135,49 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       </button>
                     </div>
 
-                    {/* Body */}
+                    {/* Body — description + notes toggle */}
                     {!isGroup&&(
                       <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
-                        {Object.entries(node.properties||{}).slice(0,3).map(([k,v])=>
-                          v?<div key={k} style={{display:"flex",gap:5,overflow:"hidden"}}>
-                            <span style={{color:"var(--text4)",flexShrink:0}}>{k}:</span>
-                            <span style={{color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v}</span>
-                          </div>:null
+                        {/* Description */}
+                        {node.description?(
+                          <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.5,marginBottom:3}}>
+                            {node.description}
+                          </div>
+                        ):(canEdit&&editMode&&(
+                          <div style={{fontSize:10,color:"var(--text4)",fontStyle:"italic",marginBottom:3}}>
+                            Double-click to edit…
+                          </div>
+                        ))}
+
+                        {/* Notes toggle row */}
+                        {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
+                          <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
+                            <button
+                              onMouseDown={e=>e.stopPropagation()}
+                              onClick={e=>{e.stopPropagation();updateNode(node.id,{showNotes:!node.showNotes});}}
+                              style={{display:"flex",alignItems:"center",gap:3,background:"none",border:`1px solid ${t.color}40`,
+                                borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
+                                color:node.showNotes?t.color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0}}>
+                              {node.showNotes?"▲":"▼"} {(Array.isArray(node.notes)?node.notes:[]).length} note{(Array.isArray(node.notes)?node.notes:[]).length!==1?"s":""}
+                            </button>
+                            {(Array.isArray(node.notes)?node.notes:[]).some(n=>n.sensitive)&&(
+                              <span title="Contains sensitive notes" style={{fontSize:10,color:"var(--danger)"}}>🔒</span>
+                            )}
+                          </div>
                         )}
-                        {/* Notes: compact preview — click to open editor */}
-                        {(()=>{
-                          const noteArr=Array.isArray(node.notes)?node.notes:[];
-                          const visible=noteArr.filter(nt=>!nt.sensitive||canEdit);
-                          return(
-                            <div onMouseDown={e=>e.stopPropagation()}
-                              style={{marginTop:4,paddingTop:4,borderTop:`1px dashed ${t.color}30`}}>
-                              {visible.slice(0,2).map(nt=>(
-                                <div key={nt.id} style={{fontSize:10,color:"var(--text3)",lineHeight:1.4,
-                                  marginBottom:2,display:"flex",alignItems:"baseline",gap:4}}>
-                                  {nt.sensitive&&<span title="Sensitive" style={{color:"var(--danger)",flexShrink:0}}>🔒</span>}
-                                  {nt.title&&<span style={{fontWeight:700,color:t.color,flexShrink:0,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nt.title}:</span>}
-                                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,opacity:nt.sensitive?0.5:1}}>
-                                    {nt.sensitive?"[sensitive]":stripHtml(nt.content).slice(0,60)}
-                                  </span>
-                                </div>
-                              ))}
-                              {noteArr.length===0&&canEdit&&editMode&&(
-                                <span style={{fontSize:10,color:"var(--text4)",fontStyle:"italic"}}>No notes yet</span>
-                              )}
-                              {noteArr.length>2&&<span style={{fontSize:9,color:"var(--text4)"}}>+{noteArr.length-2} more notes</span>}
-                            </div>
-                          );
-                        })()}
+
+                        {/* Expanded notes on node */}
+                        {node.showNotes&&(Array.isArray(node.notes)?node.notes:[]).filter(nt=>!nt.sensitive||canEdit).map(nt=>(
+                          <div key={nt.id} style={{marginTop:5,paddingTop:5,borderTop:`1px solid ${t.color}20`}}>
+                            {nt.title&&<div style={{fontSize:9,fontWeight:700,color:t.color,marginBottom:2,letterSpacing:.5}}>{nt.title.toUpperCase()}</div>}
+                            {nt.sensitive?(
+                              <div style={{fontSize:9,color:"var(--danger)",fontStyle:"italic"}}>🔒 Sensitive</div>
+                            ):(
+                              <div style={{fontSize:10,color:"var(--text2)",lineHeight:1.55}}
+                                dangerouslySetInnerHTML={{__html:nt.content}}/>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     )}
 
@@ -2257,6 +2271,40 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 );
               })}
 
+
+              {/* Inline Node Popup Editor */}
+              {nodePopup&&(()=>{
+                const pn=nodes.find(n=>n.id===nodePopup.nodeId);
+                if(!pn) return null;
+                const nw=collW(pn), nh=collH(pn);
+                // Position: below the node, clamped to canvas
+                const popW=440, popH=480;
+                let px=pn.x, py=pn.y+nh+10;
+                // Clamp right edge
+                if(px+popW>4000) px=Math.max(0,pn.x+nw-popW);
+                return(
+                  <InlineNodeEditor
+                    key={pn.id}
+                    node={pn} x={px} y={py}
+                    tab={nodePopup.tab}
+                    nodes={nodes} edges={edges}
+                    canEdit={canEdit&&editMode}
+                    onTabChange={tab=>setNodePopup({nodeId:pn.id,tab})}
+                    onClose={()=>setNodePopup(null)}
+                    onUpdate={(u)=>updateNode(pn.id,u)}
+                    onUpdateNotes={(notes)=>updateNotes(pn.id,notes)}
+                    onChangeType={(newType)=>{
+                      const defaults=DP[newType]||{};
+                      updateNode(pn.id,{type:newType,
+                        properties:{...defaults,...pn.properties},
+                      });
+                    }}
+                    onUpdateCustom={(k,v)=>updateCustom(pn.id,k,v)}
+                    onDeleteCustom={(k)=>deleteCustom(pn.id,k)}
+                    onAddCustom={()=>{const k=`field_${Object.keys(pn.customProps||{}).length+1}`;updateCustom(pn.id,k,"");}}
+                  />
+                );
+              })()}
 
               {/* Quick Capture */}
               {quickPos&&canEdit&&editMode&&(
@@ -2746,12 +2794,11 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
 }
 
 
-// ── Rich Text Editor ──────────────────────────────────────────────
-function RichTextEditor({ value, onChange, disabled }) {
+// ── Rich Text Editor — enhanced ──────────────────────────────────
+function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
   const editorRef = useRef(null);
   const isUpdating = useRef(false);
 
-  // Sync value → DOM (only when value changes externally)
   useEffect(() => {
     if (!editorRef.current) return;
     if (editorRef.current.innerHTML !== (value || '')) {
@@ -2762,89 +2809,115 @@ function RichTextEditor({ value, onChange, disabled }) {
   }, [value]);
 
   const exec = (cmd, val) => {
+    if (disabled) return;
     editorRef.current?.focus();
     document.execCommand(cmd, false, val || null);
     onChange(editorRef.current?.innerHTML || '');
   };
 
-  const ToolBtn = ({ cmd, val, title, children, active }) => (
-    <button
-      onMouseDown={e => { e.preventDefault(); exec(cmd, val); }}
-      title={title}
+  const TBtn = ({ cmd, val, title, active, children, style: s }) => (
+    <button onMouseDown={e => { e.preventDefault(); exec(cmd, val); }} title={title}
       style={{
-        background: active ? 'var(--accent2)' : 'none',
+        background: active ? 'var(--accent2)' : 'transparent',
         border: 'none', borderRadius: 3, cursor: disabled ? 'default' : 'pointer',
-        padding: '2px 6px', fontSize: 11, fontFamily: 'inherit',
-        color: active ? '#fff' : 'var(--text3)',
-        fontWeight: cmd === 'bold' ? 700 : 400,
-        fontStyle: cmd === 'italic' ? 'italic' : 'normal',
-        textDecoration: cmd === 'underline' ? 'underline' : cmd === 'strikeThrough' ? 'line-through' : 'none',
-        opacity: disabled ? 0.4 : 1,
-        minWidth: 24, lineHeight: '18px',
+        padding: '3px 5px', fontSize: 11, color: active ? '#fff' : 'var(--text3)',
+        lineHeight: 1, minWidth: 22, height: 22, display: 'flex', alignItems: 'center',
+        justifyContent: 'center', flexShrink: 0, opacity: disabled ? 0.4 : 1, ...s,
       }}>{children}</button>
   );
 
-  const COLORS = ['var(--text)', 'var(--accent)', 'var(--success)', 'var(--danger)', '#ffa657', '#d2a8ff'];
+  const Div = () => <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />;
+
+  const FONT_SIZES = [['1', '10px', 'XS'], ['2', '12px', 'S'], ['3', '14px', 'M'], ['5', '18px', 'L'], ['6', '24px', 'XL']];
+  const TEXT_COLORS = ['#e6edf3', '#58a6ff', '#3fb950', '#f78166', '#ffa657', '#d2a8ff', '#ffb3c0', '#aff5b4'];
+  const BG_COLORS   = ['transparent', '#0d2d6e', '#0f3d1a', '#5d1a1a', '#3d2e0a', '#2a0a3d', 'transparent', 'transparent'];
 
   return (
-    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
-      {/* Toolbar */}
-      <div style={{
-        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1,
-        padding: '3px 6px', background: 'var(--bg3)',
-        borderBottom: '1px solid var(--border)', opacity: disabled ? 0.4 : 1,
-      }}>
-        <ToolBtn cmd="bold"          title="Bold (Ctrl+B)">B</ToolBtn>
-        <ToolBtn cmd="italic"        title="Italic (Ctrl+I)">I</ToolBtn>
-        <ToolBtn cmd="underline"     title="Underline (Ctrl+U)">U</ToolBtn>
-        <ToolBtn cmd="strikeThrough" title="Strikethrough">S</ToolBtn>
-        <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 3px' }}/>
-        <ToolBtn cmd="formatBlock" val="H2" title="Heading">H</ToolBtn>
-        <ToolBtn cmd="formatBlock" val="P"  title="Paragraph">¶</ToolBtn>
-        <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 3px' }}/>
-        <ToolBtn cmd="insertUnorderedList" title="Bullet list">• List</ToolBtn>
-        <ToolBtn cmd="insertOrderedList"   title="Numbered list">1. List</ToolBtn>
-        <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 3px' }}/>
-        <ToolBtn cmd="removeFormat" title="Clear formatting">✕ fmt</ToolBtn>
-        <div style={{ flex: 1 }}/>
-        {/* Color swatches */}
-        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-          {COLORS.map(c => (
-            <div key={c} onMouseDown={e => { e.preventDefault(); exec('foreColor', c); }}
-              title={`Text color: ${c}`}
-              style={{ width: 12, height: 12, borderRadius: '50%', background: c === 'var(--text)' ? '#e6edf3' : c === 'var(--accent)' ? '#58a6ff' : c === 'var(--success)' ? '#3fb950' : c === 'var(--danger)' ? '#f78166' : c,
-                border: '1.5px solid var(--border)', cursor: 'pointer' }}/>
-          ))}
-        </div>
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+      {/* Toolbar Row 1 */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 1, padding: '3px 6px', background: 'var(--bg2)', borderBottom: '1px solid var(--border2)', flexWrap: 'wrap' }}>
+        <TBtn cmd="bold"          title="Bold (Ctrl+B)"        style={{ fontWeight: 700 }}>B</TBtn>
+        <TBtn cmd="italic"        title="Italic (Ctrl+I)"      style={{ fontStyle: 'italic' }}>I</TBtn>
+        <TBtn cmd="underline"     title="Underline (Ctrl+U)"   style={{ textDecoration: 'underline' }}>U</TBtn>
+        <TBtn cmd="strikeThrough" title="Strikethrough"        style={{ textDecoration: 'line-through' }}>S</TBtn>
+        <Div/>
+        <TBtn cmd="superscript"   title="Superscript">x²</TBtn>
+        <TBtn cmd="subscript"     title="Subscript">x₂</TBtn>
+        <Div/>
+        <TBtn cmd="formatBlock" val="H1"         title="Heading 1">H1</TBtn>
+        <TBtn cmd="formatBlock" val="H2"         title="Heading 2">H2</TBtn>
+        <TBtn cmd="formatBlock" val="H3"         title="Heading 3">H3</TBtn>
+        <TBtn cmd="formatBlock" val="P"          title="Paragraph">¶</TBtn>
+        <TBtn cmd="formatBlock" val="BLOCKQUOTE" title="Quote">❝</TBtn>
+        <Div/>
+        <TBtn cmd="justifyLeft"   title="Align left">⫷</TBtn>
+        <TBtn cmd="justifyCenter" title="Center">≡</TBtn>
+        <TBtn cmd="justifyRight"  title="Align right">⫸</TBtn>
+        <Div/>
+        <TBtn cmd="insertUnorderedList" title="Bullet list">•≡</TBtn>
+        <TBtn cmd="insertOrderedList"   title="Numbered list">1≡</TBtn>
+        <TBtn cmd="indent"              title="Indent">→|</TBtn>
+        <TBtn cmd="outdent"             title="Outdent">|←</TBtn>
+        <Div/>
+        <TBtn cmd="insertHorizontalRule" title="Horizontal rule">—</TBtn>
+        <Div/>
+        <TBtn cmd="removeFormat" title="Clear formatting">✕</TBtn>
+        {/* Font size */}
+        <Div/>
+        <select onMouseDown={e => e.stopPropagation()}
+          onChange={e => { exec('fontSize', e.target.value); }}
+          defaultValue="3"
+          style={{ fontSize: 9, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text3)', padding: '1px 3px', height: 22, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
+          {FONT_SIZES.map(([val, , lbl]) => <option key={val} value={val}>{lbl}</option>)}
+        </select>
       </div>
-      {/* Editor */}
-      <div
-        ref={editorRef}
+      {/* Toolbar Row 2 — colors */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', background: 'var(--bg2)', borderBottom: '1px solid var(--border2)' }}>
+        <span style={{ fontSize: 9, color: 'var(--text4)', marginRight: 2 }}>Text</span>
+        {TEXT_COLORS.map(c => (
+          <div key={c} onMouseDown={e => { e.preventDefault(); exec('foreColor', c); }}
+            title={`Text: ${c}`}
+            style={{ width: 14, height: 14, borderRadius: '50%', background: c, border: '1.5px solid var(--border)', cursor: disabled ? 'default' : 'pointer', flexShrink: 0 }}/>
+        ))}
+        <Div/>
+        <span style={{ fontSize: 9, color: 'var(--text4)', marginRight: 2 }}>Highlight</span>
+        {[['#fff9c4','Yellow'],['#c8e6c9','Green'],['#ffcdd2','Red'],['#bbdefb','Blue'],['#e1bee7','Purple'],['transparent','None']].map(([c, lbl]) => (
+          <div key={c} onMouseDown={e => { e.preventDefault(); exec('hiliteColor', c === 'transparent' ? 'transparent' : c); }}
+            title={`Highlight: ${lbl}`}
+            style={{ width: 14, height: 14, borderRadius: 2, background: c === 'transparent' ? 'var(--bg3)' : c, border: '1.5px solid var(--border)', cursor: disabled ? 'default' : 'pointer', flexShrink: 0 }}/>
+        ))}
+      </div>
+      {/* Editor area */}
+      <div ref={editorRef}
         contentEditable={!disabled}
         suppressContentEditableWarning
         onInput={e => { if (!isUpdating.current) onChange(e.currentTarget.innerHTML); }}
         onKeyDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
         onMouseDown={e => e.stopPropagation()}
+        data-placeholder="Write note content…"
         style={{
-          minHeight: 80, maxHeight: 300, overflow: 'auto',
-          padding: '8px 10px', fontSize: 12, lineHeight: 1.6,
+          minHeight, maxHeight: 320, overflowY: 'auto',
+          padding: '10px 12px', fontSize: 12, lineHeight: 1.65,
           color: 'var(--text)', outline: 'none',
           background: disabled ? 'var(--bg3)' : 'var(--bg)',
           cursor: disabled ? 'default' : 'text',
         }}
-        data-placeholder="Write note content…"
       />
       <style>{`
-        [contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text4); font-style: italic; pointer-events: none; }
-        [contenteditable] h2 { font-size: 13px; font-weight: 700; margin: 6px 0 2px; color: var(--text); }
-        [contenteditable] ul { padding-left: 16px; margin: 2px 0; }
-        [contenteditable] ol { padding-left: 16px; margin: 2px 0; }
-        [contenteditable] li { margin-bottom: 2px; }
+        [contenteditable]:empty:before{content:attr(data-placeholder);color:var(--text4);font-style:italic;pointer-events:none}
+        [contenteditable] h1{font-size:18px;font-weight:700;margin:8px 0 4px;color:var(--text)}
+        [contenteditable] h2{font-size:14px;font-weight:700;margin:6px 0 2px;color:var(--text)}
+        [contenteditable] h3{font-size:12px;font-weight:700;margin:4px 0 2px;color:var(--text2)}
+        [contenteditable] blockquote{border-left:3px solid var(--accent);margin:4px 0;padding:4px 10px;color:var(--text3);font-style:italic}
+        [contenteditable] ul,[contenteditable] ol{padding-left:18px;margin:4px 0}
+        [contenteditable] li{margin-bottom:2px}
+        [contenteditable] hr{border:none;border-top:1px solid var(--border2);margin:8px 0}
       `}</style>
     </div>
   );
 }
+
 
 // ── Note Card ─────────────────────────────────────────────────────
 function NoteCard({ note, canEdit, onChange, onDelete }) {
@@ -3268,6 +3341,320 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
     </div>
   );
 }
+
+// ── Inline Node Editor — tabbed popup at node ────────────────────
+function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
+  onTabChange, onClose, onUpdate, onUpdateNotes, onChangeType,
+  onUpdateCustom, onDeleteCustom, onAddCustom }) {
+
+  const t = NT[node.type] || NT.note;
+  const nodeEdges = edges.filter(e => e.from === node.id || e.to === node.id);
+  const [typeSearch, setTypeSearch] = useState('');
+  const [confirmType, setConfirmType] = useState(null);
+
+  const TABS = [
+    { id: 'notes',   label: '📝 Notes'      },
+    { id: 'props',   label: '⚙ Properties'  },
+    { id: 'type',    label: '🏷 Type'        },
+    { id: 'conns',   label: `🔗 Links (${nodeEdges.length})` },
+  ];
+
+  const inp = () => ({
+    width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+    borderRadius: 'var(--radius-xs)', padding: '6px 8px', color: 'var(--text)',
+    fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none', boxSizing: 'border-box',
+  });
+
+  return (
+    <div
+      onMouseDown={e => e.stopPropagation()}
+      onClick={e => e.stopPropagation()}
+      onKeyDown={e => e.stopPropagation()}
+      style={{
+        position: 'absolute', left: x, top: y, width: 440, zIndex: 200,
+        background: 'var(--bg2)', border: `2px solid ${t.color}`,
+        borderRadius: 'var(--radius-lg)', boxShadow: '0 16px 48px rgba(0,0,0,.65)',
+        display: 'flex', flexDirection: 'column', maxHeight: 480,
+        userSelect: 'none',
+      }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
+        borderBottom: '1px solid var(--border2)', background: `${t.color}18`, flexShrink: 0 }}>
+        <span style={{ fontSize: 18 }}>{t.icon}</span>
+        <input value={node.title} onChange={e => onUpdate({ title: e.target.value })}
+          disabled={!canEdit}
+          style={{ flex: 1, background: 'none', border: 'none', outline: 'none',
+            fontSize: 14, fontWeight: 700, color: t.color, fontFamily: 'var(--font-ui)' }}
+        />
+        <span style={{ fontSize: 9, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1 }}>{t.label.toUpperCase()}</span>
+        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text4)',
+          cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
+      </div>
+
+      {/* Description field */}
+      <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border2)', flexShrink: 0 }}>
+        <input
+          value={node.description || ''}
+          onChange={e => onUpdate({ description: e.target.value })}
+          disabled={!canEdit}
+          placeholder="Short description (shown on node)…"
+          style={{ ...inp(), background: 'transparent', border: 'none', padding: '0',
+            fontSize: 11, color: 'var(--text3)', fontStyle: node.description ? 'normal' : 'italic' }}
+        />
+      </div>
+
+      {/* Tab bar */}
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border2)', flexShrink: 0 }}>
+        {TABS.map(tb => (
+          <button key={tb.id} onClick={() => onTabChange(tb.id)}
+            style={{ flex: 1, padding: '7px 4px', border: 'none', cursor: 'pointer',
+              fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-ui)',
+              background: tab === tb.id ? 'var(--bg)' : 'var(--bg2)',
+              color: tab === tb.id ? t.color : 'var(--text4)',
+              borderBottom: tab === tb.id ? `2px solid ${t.color}` : '2px solid transparent',
+            }}>
+            {tb.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
+
+        {/* ── NOTES TAB ── */}
+        {tab === 'notes' && (
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+              <span style={{ fontSize: 10, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1, flex: 1 }}>NOTES</span>
+              {canEdit && <button onClick={() => {
+                const newNote = { id: Math.random().toString(36).slice(2), title: '', content: '', sensitive: false };
+                onUpdateNotes([...(Array.isArray(node.notes) ? node.notes : []), newNote]);
+              }} style={{ fontSize: 10, background: 'var(--accent2)', border: 'none', borderRadius: 4,
+                color: '#fff', cursor: 'pointer', padding: '3px 10px', fontFamily: 'var(--font-ui)', fontWeight: 700 }}>
+                + ADD NOTE
+              </button>}
+            </div>
+            {/* Notes toggle */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
+              padding: '6px 10px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)' }}>
+              <span style={{ fontSize: 10, color: 'var(--text3)', flex: 1 }}>Show notes on node canvas</span>
+              <button onClick={() => onUpdate({ showNotes: !node.showNotes })}
+                style={{ background: node.showNotes ? t.color : 'var(--bg)', border: `1.5px solid ${t.color}`,
+                  borderRadius: 10, width: 32, height: 18, cursor: 'pointer', position: 'relative',
+                  transition: 'background .15s', flexShrink: 0 }}>
+                <div style={{ position: 'absolute', top: 2, left: node.showNotes ? 14 : 2, width: 12, height: 12,
+                  borderRadius: '50%', background: node.showNotes ? '#fff' : t.color, transition: 'left .15s' }}/>
+              </button>
+            </div>
+            {(Array.isArray(node.notes) ? node.notes : []).map((nt, idx) => (
+              <NoteCard key={nt.id} note={nt} canEdit={canEdit}
+                onChange={updated => {
+                  const arr = [...(Array.isArray(node.notes) ? node.notes : [])];
+                  arr[idx] = updated;
+                  onUpdateNotes(arr);
+                }}
+                onDelete={() => {
+                  onUpdateNotes((Array.isArray(node.notes) ? node.notes : []).filter((_, i) => i !== idx));
+                }}
+              />
+            ))}
+            {!(Array.isArray(node.notes) ? node.notes : []).length && (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text4)', fontSize: 11, fontStyle: 'italic' }}>
+                No notes yet. Click + ADD NOTE.
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── PROPERTIES TAB ── */}
+        {tab === 'props' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {/* Template properties */}
+            {Object.keys(node.properties || {}).length > 0 && (
+              <div>
+                <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, marginBottom: 6 }}>TEMPLATE PROPERTIES</div>
+                {Object.entries(node.properties || {}).map(([k, v]) => (
+                  <div key={k} style={{ marginBottom: 6 }}>
+                    <label style={{ fontSize: 9, fontWeight: 700, color: `${t.color}cc`, letterSpacing: 0.5, display: 'block', marginBottom: 2 }}>{k.toUpperCase()}</label>
+                    <input value={v} onChange={e => onUpdateCustom ? (() => {
+                      const p = { ...node.properties, [k]: e.target.value };
+                      onUpdate({ properties: p });
+                    })() : null} disabled={!canEdit} style={inp()} />
+                  </div>
+                ))}
+              </div>
+            )}
+            {/* Custom properties */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, flex: 1 }}>CUSTOM FIELDS</span>
+                {canEdit && <button onClick={onAddCustom} style={{ fontSize: 9, background: 'none',
+                  border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text3)',
+                  cursor: 'pointer', padding: '2px 7px', fontFamily: 'var(--font-ui)' }}>+ ADD</button>}
+              </div>
+              {Object.entries(node.customProps || {}).map(([k, v]) => (
+                <div key={k} style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
+                  <input value={k} readOnly style={{ ...inp(), width: '38%', opacity: 0.6 }} />
+                  <input value={v} onChange={e => onUpdateCustom(k, e.target.value)} disabled={!canEdit} style={{ ...inp(), flex: 1 }} />
+                  {canEdit && <button onClick={() => onDeleteCustom(k)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>}
+                </div>
+              ))}
+              {!Object.keys(node.customProps || {}).length && (
+                <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No custom fields yet</div>
+              )}
+            </div>
+            {/* Size */}
+            <div>
+              <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, marginBottom: 6 }}>SIZE</div>
+              <div style={{ display: 'flex', gap: 8 }}>
+                {['w', 'h'].map(dim => (
+                  <div key={dim} style={{ flex: 1 }}>
+                    <label style={{ fontSize: 9, color: 'var(--text4)', display: 'block', marginBottom: 2 }}>{dim.toUpperCase()}</label>
+                    <input type="number" value={node[dim]} onChange={e => onUpdate({ [dim]: +e.target.value })} disabled={!canEdit} style={inp()} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── TYPE TAB ── */}
+        {tab === 'type' && (
+          <div>
+            <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 10 }}>
+              Current type: <span style={{ color: t.color, fontWeight: 700 }}>{t.icon} {t.label}</span>
+              {' '}<span style={{ color: 'var(--text4)', fontSize: 9 }}>(category: {t.cat})</span>
+            </div>
+            <div style={{ marginBottom: 10 }}>
+              <input value={typeSearch} onChange={e => setTypeSearch(e.target.value)}
+                placeholder="Search node types…"
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-sm)', padding: '6px 10px', color: 'var(--text)',
+                  fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none', boxSizing: 'border-box' }}
+              />
+            </div>
+            {SIDEBAR_CATS.map(cat => {
+              const items = Object.entries(NT).filter(([, nt]) => nt.cat === cat &&
+                (!typeSearch || nt.label.toLowerCase().includes(typeSearch.toLowerCase())));
+              if (!items.length) return null;
+              return (
+                <div key={cat} style={{ marginBottom: 10 }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, marginBottom: 4 }}>{cat.toUpperCase()}</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                    {items.map(([key, nt]) => (
+                      <button key={key}
+                        onClick={() => {
+                          if (key === node.type) return;
+                          if (Object.values(node.properties || {}).some(v => v)) {
+                            setConfirmType(key);
+                          } else {
+                            onChangeType(key);
+                          }
+                        }}
+                        style={{
+                          display: 'flex', alignItems: 'center', gap: 5, padding: '5px 9px',
+                          border: `1.5px solid ${key === node.type ? nt.color : 'var(--border)'}`,
+                          borderRadius: 'var(--radius-sm)', cursor: 'pointer',
+                          background: key === node.type ? `${nt.color}22` : 'var(--bg)',
+                          color: key === node.type ? nt.color : 'var(--text3)',
+                          fontSize: 11, fontFamily: 'var(--font-ui)',
+                          transition: 'all .1s',
+                        }}>
+                        <span style={{ fontSize: 14 }}>{nt.icon}</span>
+                        <span style={{ fontWeight: key === node.type ? 700 : 400 }}>{nt.label}</span>
+                        {key === node.type && <span style={{ fontSize: 9 }}>✓</span>}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            {/* Confirm type change modal */}
+            {confirmType && (
+              <div style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,.7)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ background: 'var(--bg2)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)',
+                  padding: 20, maxWidth: 300, width: '90%' }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Change node type?</div>
+                  <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 14 }}>
+                    Change to {NT[confirmType]?.icon} {NT[confirmType]?.label}? You can keep or reset existing property values.
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button onClick={() => { onChangeType(confirmType); setConfirmType(null); onTabChange('props'); }}
+                      style={{ flex: 1, padding: '7px', background: 'var(--accent2)', border: 'none', borderRadius: 6,
+                        color: '#fff', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)', fontWeight: 700 }}>
+                      Change + Keep Props
+                    </button>
+                    <button onClick={() => {
+                      onUpdate({ type: confirmType, properties: { ...(DP[confirmType] || {}) } });
+                      setConfirmType(null); onTabChange('props');
+                    }}
+                      style={{ flex: 1, padding: '7px', background: 'var(--bg3)', border: '1px solid var(--border)',
+                        borderRadius: 6, color: 'var(--text)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+                      Reset Props
+                    </button>
+                    <button onClick={() => setConfirmType(null)}
+                      style={{ padding: '7px 12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text4)', fontSize: 14 }}>
+                      ×
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── CONNECTIONS TAB ── */}
+        {tab === 'conns' && (
+          <div>
+            {nodeEdges.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text4)', fontSize: 11, fontStyle: 'italic' }}>
+                No connections yet. Use Connect mode (C) to draw arrows.
+              </div>
+            ) : nodeEdges.map(edge => {
+              const other = nodes.find(n => n.id === (edge.from === node.id ? edge.to : edge.from));
+              const isFrom = edge.from === node.id;
+              const ot = NT[other?.type] || NT.note;
+              return (
+                <div key={edge.id} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, marginBottom: 10,
+                  padding: '8px 10px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
+                  border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, paddingTop: 2 }}>
+                    <span style={{ fontSize: 16 }}>{ot.icon}</span>
+                    <span style={{ fontSize: 18, color: ot.color, lineHeight: 1 }}>{isFrom ? '→' : '←'}</span>
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: ot.color, marginBottom: 4,
+                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {other?.title || '?'}
+                    </div>
+                    <div style={{ display: 'flex', gap: 5 }}>
+                      <input value={edge.label || ''} placeholder="Label…"
+                        onChange={e => {/* handled by parent */}}
+                        style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                          padding: '3px 6px', color: 'var(--text)', fontSize: 10, fontFamily: 'var(--font-ui)', outline: 'none' }}
+                      />
+                      <select value={edge.edgeType || 'data'}
+                        style={{ background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                          padding: '3px 5px', color: 'var(--text3)', fontSize: 9, fontFamily: 'var(--font-ui)', outline: 'none' }}>
+                        <option value="data">Data flow</option>
+                        <option value="method">Method call</option>
+                        <option value="network">Network</option>
+                        <option value="dependency">Dependency</option>
+                        <option value="trigger">Trigger</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 
 // ── Template Library ──────────────────────────────────────────────
 const TEMPLATES = [
