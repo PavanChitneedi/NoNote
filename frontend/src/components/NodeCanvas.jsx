@@ -215,12 +215,30 @@ const makeId = () => typeof crypto !== 'undefined' && crypto.randomUUID
   ? crypto.randomUUID()
   : `${Date.now()}-${Math.random().toString(36).slice(2)}-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);});
 
+// ── Notes helpers ─────────────────────────────────────────────
+function parseNotes(raw) {
+  if (!raw) return [];
+  try {
+    const p = JSON.parse(raw);
+    if (Array.isArray(p)) return p;
+  } catch {}
+  if (typeof raw === 'string' && raw.trim())
+    return [{ id: Math.random().toString(36).slice(2), title: '', content: raw, sensitive: false }];
+  return [];
+}
+function stripHtml(html) {
+  return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function serializeNotes(notes) {
+  return JSON.stringify(Array.isArray(notes) ? notes : []);
+}
+
 const mkNode = (type, x, y) => ({
   id: makeId(), type, x, y,
   w: type==="group" ? GRP_W : DEF_W,
   h: type==="group" ? GRP_H : DEF_H,
   title: NT[type]?.label || "Node",
-  notes: "", collapsed: false,
+  notes: [], collapsed: false,
   properties: { ...(DP[type]||{}) }, customProps: {},
 });
 
@@ -586,12 +604,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        await saveMap(mapId, { nodes:ns, edges:es });
+        await saveMap(mapId, { nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})), edges:es });
         setSaveState("saved"); setSaveMsg("Saved ✓");
         setTimeout(()=>{setSaveState("idle");setSaveMsg("");},2500);
         clearTimeout(versionTimer.current);
         versionTimer.current = setTimeout(async()=>{
-          try{ await saveVersion(mapId,{nodes:ns,edges:es,label:"Auto-save"}); }catch{}
+          try{ await saveVersion(mapId,{nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})),edges:es,label:"Auto-save"}); }catch{}
         }, 5*60*1000);
       } catch {
         setSaveState("error"); setSaveMsg("Save failed — retry in 10s");
@@ -637,7 +655,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       setMapMeta(data.map);
       const ns=data.nodes.map(n=>({
         id:n.id,type:n.node_type,x:n.x,y:n.y,w:n.w,h:n.h,
-        title:n.title,notes:n.notes,collapsed:false,
+        title:n.title,notes:parseNotes(n.notes),collapsed:false,
         properties:n.properties||{},customProps:n.custom_props||{},
       }));
       const es=data.edges.map(e=>({
@@ -1061,11 +1079,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const toggleCollapse=(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,collapsed:!n.collapsed}:n));
   const collapseAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:true}))); setGlobalCollapsed(true); };
   const expandAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:false}))); setGlobalCollapsed(false); };
-  const updateNotes  =(id,val)=>{
-    setNodes(ns=>ns.map(n=>n.id===id?{...n,notes:val}:n));
+  const updateNotes  =(id,notes)=>{
+    setNodes(ns=>ns.map(n=>n.id===id?{...n,notes}:n));
     clearTimeout(notesTimers.current[id]);
     notesTimers.current[id]=setTimeout(()=>{
-      setNodes(ns=>{const u=ns.map(n=>n.id===id?{...n,notes:val}:n);setEdges(es=>{scheduleSave(u,es);pushHistory(u,es);return es;});return u;});
+      setNodes(ns=>{const u=ns.map(n=>n.id===id?{...n,notes}:n);setEdges(es=>{scheduleSave(u,es);pushHistory(u,es);return es;});return u;});
     },800);
   };
 
@@ -1083,7 +1101,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── Restore version ────────────────────────────────────────
   const handleRestore=(ns,es)=>{
-    const mappedN=ns.map(n=>({id:n.id,type:n.node_type||n.type,x:n.x,y:n.y,w:n.w,h:n.h,title:n.title,notes:n.notes||"",collapsed:false,properties:n.properties||{},customProps:n.custom_props||n.customProps||{}}));
+    const mappedN=ns.map(n=>({id:n.id,type:n.node_type||n.type,x:n.x,y:n.y,w:n.w,h:n.h,title:n.title,notes:parseNotes(n.notes),collapsed:false,properties:n.properties||{},customProps:n.custom_props||n.customProps||{}}));
     const mappedE=es.map(e=>({id:e.id,from:e.from_node||e.from,to:e.to_node||e.to,label:e.label||"",style:e.style||"arrow",color:e.color||"var(--accent)",fromAnchor:e.from_anchor||e.fromAnchor||null,toAnchor:e.to_anchor||e.toAnchor||null}));
     setNodes(mappedN);setEdges(mappedE);pushHistory(mappedN,mappedE);scheduleSave(mappedN,mappedE);
   };
@@ -1167,7 +1185,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       ns.forEach(n=>{
         out+=`**${n.title}** _(${NT[n.type]?.label||n.type})_\n`;
         [...Object.entries(n.properties||{}),...Object.entries(n.customProps||{})].filter(([,v])=>v).forEach(([k,v])=>{out+=`- ${k}: ${v}\n`;});
-        if(n.notes)out+=`- Notes: ${n.notes}\n`;
+        const noteArr=Array.isArray(n.notes)?n.notes:[];
+        noteArr.forEach(nt=>{
+          if(nt.sensitive) out+=`- Note: [REDACTED — sensitive]\n`;
+          else if(stripHtml(nt.content)) out+=`- Note${nt.title?` (${nt.title})`:""}:  ${stripHtml(nt.content)}\n`;
+        });
         out+="\n";
       });
     });
@@ -1210,7 +1232,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         });
       };
       if(searchField==="all"||searchField==="title")  match("Title",   node.title);
-      if(searchField==="all"||searchField==="notes")  match("Notes",   node.notes);
+      if(searchField==="all"||searchField==="notes"){
+        const noteArr=Array.isArray(node.notes)?node.notes:[];
+        noteArr.forEach((nt,i)=>{
+          if(!nt.sensitive) match(nt.title||`Note ${i+1}`, stripHtml(nt.content));
+        });
+      }
       if(searchField==="all"||searchField==="type")   match("Type",    t.label);
       if(searchField==="all"||searchField==="props"){
         Object.entries(node.properties||{}).forEach(([k,v])=>match(k, v));
@@ -2113,32 +2140,30 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                             <span style={{color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{v}</span>
                           </div>:null
                         )}
-                        {/* Notes: markdown render when not editing, textarea when editing */}
-                        {editingNotes===node.id&&canEdit&&editMode?(
-                          <textarea autoFocus value={node.notes||""} onChange={e=>{e.stopPropagation();updateNotes(node.id,e.target.value);}}
-                            onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
-                            onBlur={()=>setEditingNotes(null)}
-                            onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape")setEditingNotes(null);}}
-                            placeholder="Notes… (markdown supported)"
-                            rows={4}
-                            style={{width:"100%",marginTop:4,background:"var(--bg)",border:`1px solid ${t.color}60`,
-                              borderRadius:"var(--radius-sm)",outline:"none",resize:"vertical",
-                              color:"var(--text2)",fontSize:11,fontFamily:"var(--font-ui)",
-                              lineHeight:1.55,padding:"5px 7px",boxSizing:"border-box"}}
-                          />
-                        ):(
-                          <div
-                            onClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingNotes(node.id);}}
-                            onMouseDown={e=>e.stopPropagation()}
-                            style={{marginTop:4,paddingTop:5,minHeight:28,
-                              borderTop:`1px dashed ${t.color}30`,cursor:canEdit&&editMode?"text":"default"}}>
-                            {node.notes?(
-                              <MarkdownNote text={node.notes} color={t.color}/>
-                            ):(
-                              canEdit&&editMode&&<span style={{fontSize:10,color:"var(--text4)",fontStyle:"italic"}}>Click to add notes… (markdown)</span>
-                            )}
-                          </div>
-                        )}
+                        {/* Notes: compact preview — click to open editor */}
+                        {(()=>{
+                          const noteArr=Array.isArray(node.notes)?node.notes:[];
+                          const visible=noteArr.filter(nt=>!nt.sensitive||canEdit);
+                          return(
+                            <div onMouseDown={e=>e.stopPropagation()}
+                              style={{marginTop:4,paddingTop:4,borderTop:`1px dashed ${t.color}30`}}>
+                              {visible.slice(0,2).map(nt=>(
+                                <div key={nt.id} style={{fontSize:10,color:"var(--text3)",lineHeight:1.4,
+                                  marginBottom:2,display:"flex",alignItems:"baseline",gap:4}}>
+                                  {nt.sensitive&&<span title="Sensitive" style={{color:"var(--danger)",flexShrink:0}}>🔒</span>}
+                                  {nt.title&&<span style={{fontWeight:700,color:t.color,flexShrink:0,maxWidth:60,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{nt.title}:</span>}
+                                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,opacity:nt.sensitive?0.5:1}}>
+                                    {nt.sensitive?"[sensitive]":stripHtml(nt.content).slice(0,60)}
+                                  </span>
+                                </div>
+                              ))}
+                              {noteArr.length===0&&canEdit&&editMode&&(
+                                <span style={{fontSize:10,color:"var(--text4)",fontStyle:"italic"}}>No notes yet</span>
+                              )}
+                              {noteArr.length>2&&<span style={{fontSize:9,color:"var(--text4)"}}>+{noteArr.length-2} more notes</span>}
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 
@@ -2330,7 +2355,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 const newNodes=tpl.nodes.map(n=>({
                   ...mkNode(n.type,ox+n.x,oy+n.y),
                   id:idMap[n.id],title:n.title,
-                  notes:n.notes||"",
+                  notes:parseNotes(n.notes),
                   properties:{...(DP[n.type]||{}),...(n.properties||{})},
                 }));
                 const newEdges=tpl.edges.map(e=>({
@@ -2473,7 +2498,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
       )}
       {/* Status dots: notes (blue), properties (green), connections — injected via prop */}
       <div style={{position:"absolute",bottom:3,left:0,right:0,display:"flex",justifyContent:"center",gap:3,pointerEvents:"none"}}>
-        {node.notes&&<div title="Has notes" style={{width:5,height:5,borderRadius:"50%",background:"var(--accent)",opacity:.9}}/>}
+        {(Array.isArray(node.notes)?node.notes:[]).length>0&&<div title="Has notes" style={{width:5,height:5,borderRadius:"50%",background:"var(--accent)",opacity:.9}}/>}
         {Object.values(node.properties||{}).some(v=>v)&&<div title="Has properties" style={{width:5,height:5,borderRadius:"50%",background:"var(--success)",opacity:.9}}/>}
         {Object.keys(node.customProps||{}).length>0&&<div title="Has custom fields" style={{width:5,height:5,borderRadius:"50%",background:"#d2a8ff",opacity:.9}}/>}
       </div>
@@ -2494,7 +2519,11 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
               <span style={{color:"var(--text2)"}}>{String(v).slice(0,30)}</span>
             </div>
           ))}
-          {node.notes&&<div style={{fontSize:10,color:"var(--text3)",marginTop:5,fontStyle:"italic",borderTop:"1px solid var(--border2)",paddingTop:5}}>{node.notes.slice(0,80)}{node.notes.length>80?"…":""}</div>}
+{(Array.isArray(node.notes)?node.notes:[]).filter(nt=>!nt.sensitive).slice(0,2).map(nt=>(
+            <div key={nt.id} style={{fontSize:10,color:"var(--text3)",marginTop:4,fontStyle:"italic",borderTop:"1px solid var(--border2)",paddingTop:4}}>
+              {nt.title&&<span style={{fontWeight:700,marginRight:4}}>{nt.title}:</span>}{stripHtml(nt.content).slice(0,80)}
+            </div>
+          ))}
           <div style={{fontSize:9,color:"var(--text4)",marginTop:5,textAlign:"right"}}>Click for full details</div>
         </div>
       )}
@@ -2663,9 +2692,36 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
           ))}
           {!Object.keys(node.customProps||{}).length&&<div style={{fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>None yet</div>}
         </div>
-        <div>
-          <label style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,marginBottom:3,display:"block"}}>NOTES</label>
-          <textarea value={node.notes||""} onChange={e=>onUpdateNotes(node.id,e.target.value)} disabled={!canEdit} rows={4} placeholder="Add notes…" style={{...inp(),resize:"vertical",lineHeight:1.55,marginTop:3}}/>
+        {/* ── NOTES SECTION ── */}
+        <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
+          <div style={{display:"flex",alignItems:"center",marginBottom:8}}>
+            <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>NOTES</span>
+            {canEdit&&<button onClick={()=>{
+              const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false};
+              onUpdateNotes(node.id,[...(Array.isArray(node.notes)?node.notes:[]),newNote]);
+            }} style={{fontSize:10,background:"var(--accent2)",border:"none",borderRadius:"var(--radius-xs)",
+              color:"#fff",cursor:"pointer",padding:"2px 8px",fontFamily:"var(--font-ui)",fontWeight:700}}>
+              + ADD NOTE
+            </button>}
+          </div>
+          {(Array.isArray(node.notes)?node.notes:[]).map((nt,idx)=>(
+            <NoteCard key={nt.id} note={nt} canEdit={canEdit}
+              onChange={updated=>{
+                const arr=[...(Array.isArray(node.notes)?node.notes:[])];
+                arr[idx]=updated;
+                onUpdateNotes(node.id,arr);
+              }}
+              onDelete={()=>{
+                const arr=(Array.isArray(node.notes)?node.notes:[]).filter((_,i)=>i!==idx);
+                onUpdateNotes(node.id,arr);
+              }}
+            />
+          ))}
+          {!(Array.isArray(node.notes)?node.notes:[]).length&&(
+            <div style={{fontSize:11,color:"var(--text4)",fontStyle:"italic",textAlign:"center",padding:"10px 0"}}>
+              No notes yet. Click + ADD NOTE to create one.
+            </div>
+          )}
         </div>
         {nodeEdges.length>0&&(
           <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
@@ -2685,6 +2741,194 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+
+// ── Rich Text Editor ──────────────────────────────────────────────
+function RichTextEditor({ value, onChange, disabled }) {
+  const editorRef = useRef(null);
+  const isUpdating = useRef(false);
+
+  // Sync value → DOM (only when value changes externally)
+  useEffect(() => {
+    if (!editorRef.current) return;
+    if (editorRef.current.innerHTML !== (value || '')) {
+      isUpdating.current = true;
+      editorRef.current.innerHTML = value || '';
+      isUpdating.current = false;
+    }
+  }, [value]);
+
+  const exec = (cmd, val) => {
+    editorRef.current?.focus();
+    document.execCommand(cmd, false, val || null);
+    onChange(editorRef.current?.innerHTML || '');
+  };
+
+  const ToolBtn = ({ cmd, val, title, children, active }) => (
+    <button
+      onMouseDown={e => { e.preventDefault(); exec(cmd, val); }}
+      title={title}
+      style={{
+        background: active ? 'var(--accent2)' : 'none',
+        border: 'none', borderRadius: 3, cursor: disabled ? 'default' : 'pointer',
+        padding: '2px 6px', fontSize: 11, fontFamily: 'inherit',
+        color: active ? '#fff' : 'var(--text3)',
+        fontWeight: cmd === 'bold' ? 700 : 400,
+        fontStyle: cmd === 'italic' ? 'italic' : 'normal',
+        textDecoration: cmd === 'underline' ? 'underline' : cmd === 'strikeThrough' ? 'line-through' : 'none',
+        opacity: disabled ? 0.4 : 1,
+        minWidth: 24, lineHeight: '18px',
+      }}>{children}</button>
+  );
+
+  const COLORS = ['var(--text)', 'var(--accent)', 'var(--success)', 'var(--danger)', '#ffa657', '#d2a8ff'];
+
+  return (
+    <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden' }}>
+      {/* Toolbar */}
+      <div style={{
+        display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 1,
+        padding: '3px 6px', background: 'var(--bg3)',
+        borderBottom: '1px solid var(--border)', opacity: disabled ? 0.4 : 1,
+      }}>
+        <ToolBtn cmd="bold"          title="Bold (Ctrl+B)">B</ToolBtn>
+        <ToolBtn cmd="italic"        title="Italic (Ctrl+I)">I</ToolBtn>
+        <ToolBtn cmd="underline"     title="Underline (Ctrl+U)">U</ToolBtn>
+        <ToolBtn cmd="strikeThrough" title="Strikethrough">S</ToolBtn>
+        <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 3px' }}/>
+        <ToolBtn cmd="formatBlock" val="H2" title="Heading">H</ToolBtn>
+        <ToolBtn cmd="formatBlock" val="P"  title="Paragraph">¶</ToolBtn>
+        <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 3px' }}/>
+        <ToolBtn cmd="insertUnorderedList" title="Bullet list">• List</ToolBtn>
+        <ToolBtn cmd="insertOrderedList"   title="Numbered list">1. List</ToolBtn>
+        <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 3px' }}/>
+        <ToolBtn cmd="removeFormat" title="Clear formatting">✕ fmt</ToolBtn>
+        <div style={{ flex: 1 }}/>
+        {/* Color swatches */}
+        <div style={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+          {COLORS.map(c => (
+            <div key={c} onMouseDown={e => { e.preventDefault(); exec('foreColor', c); }}
+              title={`Text color: ${c}`}
+              style={{ width: 12, height: 12, borderRadius: '50%', background: c === 'var(--text)' ? '#e6edf3' : c === 'var(--accent)' ? '#58a6ff' : c === 'var(--success)' ? '#3fb950' : c === 'var(--danger)' ? '#f78166' : c,
+                border: '1.5px solid var(--border)', cursor: 'pointer' }}/>
+          ))}
+        </div>
+      </div>
+      {/* Editor */}
+      <div
+        ref={editorRef}
+        contentEditable={!disabled}
+        suppressContentEditableWarning
+        onInput={e => { if (!isUpdating.current) onChange(e.currentTarget.innerHTML); }}
+        onKeyDown={e => e.stopPropagation()}
+        onClick={e => e.stopPropagation()}
+        onMouseDown={e => e.stopPropagation()}
+        style={{
+          minHeight: 80, maxHeight: 300, overflow: 'auto',
+          padding: '8px 10px', fontSize: 12, lineHeight: 1.6,
+          color: 'var(--text)', outline: 'none',
+          background: disabled ? 'var(--bg3)' : 'var(--bg)',
+          cursor: disabled ? 'default' : 'text',
+        }}
+        data-placeholder="Write note content…"
+      />
+      <style>{`
+        [contenteditable]:empty:before { content: attr(data-placeholder); color: var(--text4); font-style: italic; pointer-events: none; }
+        [contenteditable] h2 { font-size: 13px; font-weight: 700; margin: 6px 0 2px; color: var(--text); }
+        [contenteditable] ul { padding-left: 16px; margin: 2px 0; }
+        [contenteditable] ol { padding-left: 16px; margin: 2px 0; }
+        [contenteditable] li { margin-bottom: 2px; }
+      `}</style>
+    </div>
+  );
+}
+
+// ── Note Card ─────────────────────────────────────────────────────
+function NoteCard({ note, canEdit, onChange, onDelete }) {
+  const [expanded, setExpanded] = useState(!note.content);
+  const preview = stripHtml(note.content).slice(0, 80);
+
+  return (
+    <div style={{
+      marginBottom: 8, border: `1px solid ${note.sensitive ? 'var(--danger)' : 'var(--border)'}`,
+      borderRadius: 'var(--radius-sm)', overflow: 'hidden',
+      background: note.sensitive ? '#f7816608' : 'var(--bg)',
+    }}>
+      {/* Card header */}
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 6,
+        padding: '5px 8px', background: 'var(--bg3)',
+        borderBottom: expanded ? '1px solid var(--border)' : 'none',
+        cursor: 'pointer',
+      }} onClick={() => setExpanded(v => !v)}>
+        <span style={{ fontSize: 10, color: 'var(--text4)', flexShrink: 0 }}>{expanded ? '▾' : '▸'}</span>
+        {canEdit ? (
+          <input
+            value={note.title || ''}
+            onChange={e => { e.stopPropagation(); onChange({ ...note, title: e.target.value }); }}
+            onClick={e => e.stopPropagation()}
+            onMouseDown={e => e.stopPropagation()}
+            placeholder="Note title…"
+            style={{
+              flex: 1, background: 'none', border: 'none', outline: 'none',
+              fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'inherit',
+            }}
+          />
+        ) : (
+          <span style={{ flex: 1, fontSize: 11, fontWeight: 700, color: 'var(--text)' }}>
+            {note.title || 'Note'}
+          </span>
+        )}
+        {/* Sensitive toggle */}
+        <button
+          title={note.sensitive ? 'Sensitive — hidden from exports' : 'Mark as sensitive'}
+          onMouseDown={e => e.stopPropagation()}
+          onClick={e => { e.stopPropagation(); onChange({ ...note, sensitive: !note.sensitive }); }}
+          style={{
+            background: 'none', border: 'none', cursor: 'pointer', fontSize: 13,
+            color: note.sensitive ? 'var(--danger)' : 'var(--text4)',
+            padding: '0 2px', flexShrink: 0,
+          }}>
+          {note.sensitive ? '🔒' : '🔓'}
+        </button>
+        {canEdit && (
+          <button
+            onMouseDown={e => e.stopPropagation()}
+            onClick={e => { e.stopPropagation(); onDelete(); }}
+            style={{ background: 'none', border: 'none', cursor: 'pointer',
+              color: 'var(--text4)', fontSize: 14, padding: '0 2px', flexShrink: 0 }}>
+            ×
+          </button>
+        )}
+      </div>
+      {/* Collapsed preview */}
+      {!expanded && preview && (
+        <div style={{ padding: '4px 10px', fontSize: 10, color: 'var(--text3)',
+          fontStyle: 'italic', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {note.sensitive ? '🔒 Sensitive content hidden' : preview}
+          {stripHtml(note.content).length > 80 ? '…' : ''}
+        </div>
+      )}
+      {/* Expanded editor */}
+      {expanded && (
+        <div style={{ padding: 8 }}>
+          {note.sensitive && (
+            <div style={{ fontSize: 10, color: 'var(--danger)', marginBottom: 6,
+              padding: '4px 8px', background: '#f7816615', borderRadius: 4,
+              display: 'flex', alignItems: 'center', gap: 5 }}>
+              🔒 <strong>Sensitive</strong> — this note will be redacted in exports and LLM context
+            </div>
+          )}
+          <RichTextEditor
+            value={note.content || ''}
+            onChange={html => onChange({ ...note, content: html })}
+            disabled={!canEdit}
+          />
+        </div>
+      )}
     </div>
   );
 }
