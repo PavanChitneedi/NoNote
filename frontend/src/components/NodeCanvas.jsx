@@ -247,161 +247,162 @@ const mkNode = (type, x, y) => ({
 function autoLayout(nodes, edges) {
   if (!nodes.length) return nodes;
   try {
-    const H_GAP = 90;   // horizontal gap between nodes in same layer
-    const V_GAP = 100;  // vertical gap between layers
-    const START_X = 80;
-    const START_Y = 80;
-    const nodeW = n => (n?.w || DEF_W);
-    const nodeH = n => (n?.h || DEF_H);
-    const ids = nodes.map(n => n.id);
+    const H_GAP = 80;    // min horizontal gap between nodes
+    const V_GAP = 110;   // vertical gap between layers
+    const START_X = 100;
+    const START_Y = 100;
+    const nodeW = n => n?.w || DEF_W;
+    const nodeH = n => n?.h || DEF_H;
     const nodeById = id => nodes.find(n => n.id === id);
 
-    // ── 1. Build directed graph ────────────────────────────────────────
+    // ── 1. Build graph (deduplicated) ────────────────────────────────
     const children = {}, parents = {};
-    ids.forEach(id => { children[id] = []; parents[id] = []; });
+    nodes.forEach(n => { children[n.id] = []; parents[n.id] = []; });
     edges.forEach(e => {
-      if (children[e.from] !== undefined && children[e.to] !== undefined) {
-        if (!children[e.from].includes(e.to)) children[e.from].push(e.to);
-        if (!parents[e.to].includes(e.from))  parents[e.to].push(e.from);
+      if (!children[e.from] || children[e.to] === undefined) return;
+      if (!children[e.from].includes(e.to)) {
+        children[e.from].push(e.to);
+        parents[e.to].push(e.from);
       }
     });
 
-    // ── 2. Cycle detection — remove back-edges for layout purposes ─────
-    const visited = new Set(), inStack = new Set();
-    function dfs(id) {
-      visited.add(id); inStack.add(id);
-      const ch = [...children[id]];
-      for (const child of ch) {
-        if (!visited.has(child)) { dfs(child); }
-        else if (inStack.has(child)) {
-          children[id] = children[id].filter(c => c !== child);
-          parents[child] = parents[child].filter(p => p !== id);
-        }
+    // ── 2. Break cycles (DFS back-edge removal) ──────────────────────
+    const vis = new Set(), stack = new Set();
+    function breakCycles(id) {
+      vis.add(id); stack.add(id);
+      for (const c of [...children[id]]) {
+        if (stack.has(c)) {
+          children[id] = children[id].filter(x => x !== c);
+          parents[c]   = parents[c].filter(x => x !== id);
+        } else if (!vis.has(c)) breakCycles(c);
       }
-      inStack.delete(id);
+      stack.delete(id);
     }
-    ids.forEach(id => { if (!visited.has(id)) dfs(id); });
+    nodes.forEach(n => { if (!vis.has(n.id)) breakCycles(n.id); });
 
-    // ── 3. Longest-path layer assignment ──────────────────────────────
-    const layerOf = {};
+    // ── 3. Longest-path layer assignment ─────────────────────────────
     const memo = {};
-    function longestPath(id) {
+    function depth(id) {
       if (memo[id] !== undefined) return memo[id];
-      const parentLayers = parents[id].map(p => longestPath(p));
-      memo[id] = parentLayers.length ? Math.max(...parentLayers) + 1 : 0;
-      layerOf[id] = memo[id];
-      return memo[id];
+      const pd = parents[id].map(p => depth(p));
+      return (memo[id] = pd.length ? Math.max(...pd) + 1 : 0);
     }
-    ids.forEach(id => longestPath(id));
+    nodes.forEach(n => depth(n.id));
 
-    const maxLayer = Math.max(...ids.map(id => layerOf[id]));
-    const layerNodes = Array.from({length: maxLayer + 1}, () => []);
-    ids.forEach(id => layerNodes[layerOf[id]].push(id));
+    const maxL = Math.max(...nodes.map(n => memo[n.id]));
+    const layers = Array.from({length: maxL + 1}, () => []);
+    nodes.forEach(n => layers[memo[n.id]].push(n.id));
 
-    // ── 4. Barycenter crossing minimization (4 sweeps) ─────────────────
-    function barycenter(li, dir) {
-      const cur = layerNodes[li];
-      const refLayer = dir === 'down' ? layerNodes[li - 1] : layerNodes[li + 1];
-      if (!refLayer) return;
-      const refPos = {};
-      refLayer.forEach((id, i) => { refPos[id] = i; });
-      const scores = cur.map(id => {
-        const nbrs = dir === 'down' ? parents[id] : children[id];
-        const hits = nbrs.filter(n => refPos[n] !== undefined);
-        if (!hits.length) return { id, score: cur.indexOf(id) };
-        return { id, score: hits.reduce((s, n) => s + refPos[n], 0) / hits.length };
+    // ── 4. Barycenter crossing-minimisation (6 sweeps) ────────────────
+    function bary(li, dir) {
+      const cur = layers[li];
+      const ref = dir === 'dn' ? layers[li-1] : layers[li+1];
+      if (!ref) return;
+      const rp = {}; ref.forEach((id,i) => rp[id] = i);
+      const scored = cur.map(id => {
+        const nb = dir === 'dn' ? parents[id] : children[id];
+        const hits = nb.filter(x => rp[x] !== undefined);
+        return { id, s: hits.length ? hits.reduce((a,x)=>a+rp[x],0)/hits.length : cur.indexOf(id) };
       });
-      scores.sort((a, b) => a.score - b.score);
-      layerNodes[li] = scores.map(s => s.id);
+      scored.sort((a,b) => a.s - b.s);
+      layers[li] = scored.map(x => x.id);
     }
-    for (let pass = 0; pass < 5; pass++) {
-      for (let i = 1; i <= maxLayer; i++) barycenter(i, 'down');
-      for (let i = maxLayer - 1; i >= 0; i--) barycenter(i, 'up');
-    }
-
-    // ── 5. Compute layer Y positions ────────────────────────────────────
-    const layerY = [];
-    let curY = START_Y;
-    for (let li = 0; li <= maxLayer; li++) {
-      layerY[li] = curY;
-      const maxH = Math.max(...layerNodes[li].map(id => nodeH(nodeById(id))));
-      curY += maxH + V_GAP;
+    for (let p = 0; p < 6; p++) {
+      for (let i = 1; i <= maxL; i++) bary(i, 'dn');
+      for (let i = maxL-1; i >= 0; i--) bary(i, 'up');
     }
 
-    // ── 6. Initial X: sequential within each layer ──────────────────────
-    const posX = {}, posY = {};
-    for (let li = 0; li <= maxLayer; li++) {
+    // ── 5. Layer Y positions ──────────────────────────────────────────
+    const layY = [];
+    let cY = START_Y;
+    for (let li = 0; li <= maxL; li++) {
+      layY[li] = cY;
+      cY += Math.max(...layers[li].map(id => nodeH(nodeById(id)))) + V_GAP;
+    }
+
+    // ── 6. Initial X: sequential placement ───────────────────────────
+    const px = {}, py = {};
+    for (let li = 0; li <= maxL; li++) {
       let x = START_X;
-      layerNodes[li].forEach(id => {
-        posX[id] = x; posY[id] = layerY[li];
-        x += nodeW(nodeById(id)) + H_GAP;
-      });
+      layers[li].forEach(id => { px[id] = x; py[id] = layY[li]; x += nodeW(nodeById(id)) + H_GAP; });
     }
 
-    // ── 7. Center children under their parents (top-down pass) ──────────
-    for (let li = 1; li <= maxLayer; li++) {
-      const sorted = [...layerNodes[li]].sort((a, b) => posX[a] - posX[b]);
-      sorted.forEach((id, idx) => {
-        const pa = parents[id].filter(p => layerOf[p] < layerOf[id]);
-        if (pa.length) {
-          const leftmost  = Math.min(...pa.map(p => posX[p]));
-          const rightmost = Math.max(...pa.map(p => posX[p] + nodeW(nodeById(p))));
-          const desired = (leftmost + rightmost) / 2 - nodeW(nodeById(id)) / 2;
-          const minX = idx > 0
-            ? posX[sorted[idx - 1]] + nodeW(nodeById(sorted[idx - 1])) + H_GAP
-            : START_X;
-          posX[id] = Math.max(desired, minX);
-        } else {
-          const minX = idx > 0
-            ? posX[sorted[idx - 1]] + nodeW(nodeById(sorted[idx - 1])) + H_GAP
-            : posX[id];
-          posX[id] = Math.max(posX[id], minX);
-        }
-      });
+    // ── 7. Width of a subtree (for proportional spacing) ─────────────
+    const subtreeW = {};
+    function calcSubtree(id) {
+      if (subtreeW[id] !== undefined) return subtreeW[id];
+      const ch = children[id].filter(c => memo[c] === memo[id]+1);
+      if (!ch.length) return (subtreeW[id] = nodeW(nodeById(id)));
+      const total = ch.reduce((s,c) => s + calcSubtree(c) + H_GAP, -H_GAP);
+      return (subtreeW[id] = Math.max(nodeW(nodeById(id)), total));
+    }
+    nodes.forEach(n => calcSubtree(n.id));
+
+    // ── 8. Spread nodes proportionally in each layer ─────────────────
+    for (let li = 0; li <= maxL; li++) {
+      const ids = layers[li];
+      // compute total width needed
+      const totalW = ids.reduce((s,id) => s + nodeW(nodeById(id)), 0) + H_GAP*(ids.length-1);
+      // find parent center span
+      const parentXs = ids.flatMap(id => parents[id].map(p => px[p] + nodeW(nodeById(p))/2));
+      const centreX = parentXs.length
+        ? parentXs.reduce((a,b)=>a+b,0)/parentXs.length
+        : START_X + totalW/2;
+      let x = centreX - totalW/2;
+      x = Math.max(x, START_X);
+      ids.forEach(id => { px[id] = x; py[id] = layY[li]; x += nodeW(nodeById(id)) + H_GAP; });
     }
 
-    // ── 8. Center parents over their children (bottom-up pass) ──────────
-    for (let li = maxLayer - 1; li >= 0; li--) {
-      const sorted = [...layerNodes[li]].sort((a, b) => posX[a] - posX[b]);
+    // ── 9. Fine-tune: center each node over its children (bottom-up) ─
+    for (let li = maxL-1; li >= 0; li--) {
+      const sorted = [...layers[li]].sort((a,b)=>px[a]-px[b]);
       sorted.forEach((id, idx) => {
-        const ch = children[id].filter(c => layerOf[c] === li + 1);
-        if (ch.length) {
-          const leftmost  = Math.min(...ch.map(c => posX[c]));
-          const rightmost = Math.max(...ch.map(c => posX[c] + nodeW(nodeById(c))));
-          const desired = (leftmost + rightmost) / 2 - nodeW(nodeById(id)) / 2;
-          const minX = idx > 0
-            ? posX[sorted[idx - 1]] + nodeW(nodeById(sorted[idx - 1])) + H_GAP
-            : START_X;
-          posX[id] = Math.max(desired, minX);
-        }
+        const ch = children[id].filter(c => memo[c] === memo[id]+1);
+        if (!ch.length) return;
+        const lx = Math.min(...ch.map(c=>px[c]));
+        const rx = Math.max(...ch.map(c=>px[c]+nodeW(nodeById(c))));
+        const desired = (lx+rx)/2 - nodeW(nodeById(id))/2;
+        const minX = idx > 0 ? px[sorted[idx-1]] + nodeW(nodeById(sorted[idx-1])) + H_GAP : START_X;
+        px[id] = Math.max(desired, minX);
       });
-      // Re-spread this layer so nothing overlaps after centering
-      const resort = [...layerNodes[li]].sort((a, b) => posX[a] - posX[b]);
-      for (let i = 1; i < resort.length; i++) {
-        const prev = resort[i - 1], cur = resort[i];
-        const need = posX[prev] + nodeW(nodeById(prev)) + H_GAP;
-        if (posX[cur] < need) posX[cur] = need;
+      // re-spread siblings to avoid overlap
+      const s2 = [...layers[li]].sort((a,b)=>px[a]-px[b]);
+      for (let i=1;i<s2.length;i++) {
+        const need = px[s2[i-1]] + nodeW(nodeById(s2[i-1])) + H_GAP;
+        if (px[s2[i]] < need) px[s2[i]] = need;
       }
     }
 
-    // ── 9. Shift so nothing is off-canvas ────────────────────────────────
-    const minX = Math.min(...ids.map(id => posX[id] ?? START_X));
-    const shift = minX < START_X ? START_X - minX : 0;
-    ids.forEach(id => { if (posX[id] !== undefined) posX[id] += shift; });
+    // ── 10. Fine-tune: center each node under its parents (top-down) ─
+    for (let li = 1; li <= maxL; li++) {
+      const sorted = [...layers[li]].sort((a,b)=>px[a]-px[b]);
+      sorted.forEach((id, idx) => {
+        const pa = parents[id].filter(p => memo[p] === memo[id]-1);
+        if (!pa.length) return;
+        const lx = Math.min(...pa.map(p=>px[p]));
+        const rx = Math.max(...pa.map(p=>px[p]+nodeW(nodeById(p))));
+        const desired = (lx+rx)/2 - nodeW(nodeById(id))/2;
+        const minX = idx > 0 ? px[sorted[idx-1]] + nodeW(nodeById(sorted[idx-1])) + H_GAP : START_X;
+        px[id] = Math.max(desired, minX);
+      });
+    }
 
-    // ── 10. Assemble result + handle isolated nodes ───────────────────────
-    let isoX = START_X, isoY = curY + 40;
+    // ── 11. Shift to stay on canvas ───────────────────────────────────
+    const minX = Math.min(...nodes.map(n => px[n.id]??START_X));
+    if (minX < START_X) nodes.forEach(n => { if(px[n.id]!==undefined) px[n.id] += START_X - minX; });
+
+    // ── 12. Assemble ─────────────────────────────────────────────────
+    let isoX = START_X, isoY = cY + 40;
     return nodes.map(n => {
-      if (posX[n.id] !== undefined) {
-        return { ...n, x: Math.round(posX[n.id]), y: Math.round(posY[n.id]) };
-      }
+      if (px[n.id] !== undefined)
+        return { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) };
       const r = { ...n, x: isoX, y: isoY };
       isoX += nodeW(n) + H_GAP;
       return r;
     });
 
   } catch(err) {
-    console.error("[autoLayout] crash:", err);
+    console.error('[autoLayout]', err);
     return nodes;
   }
 }
@@ -1222,8 +1223,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if(a){ fp=a; fn1=a.normal; }
     }
     if(!fp){
-      fp=rectEdgePoint(fromNode,fw,fh,tcx,tcy);
-      fn1=faceNormal(fp,fromNode,fw,fh);
+      // Prefer bottom exit when target is significantly below source
+      const dyRel=(tcy-fcy)/(fh||1);
+      if(!fa&&dyRel>0.6&&Math.abs(tcx-fcx)<fw*1.5){
+        fp={x:fcx,y:fromNode.y+fh};
+        fn1={dx:0,dy:1};
+      } else {
+        fp=rectEdgePoint(fromNode,fw,fh,tcx,tcy);
+        fn1=faceNormal(fp,fromNode,fw,fh);
+      }
     }
 
     let tp, fn2;
@@ -1233,8 +1241,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if(a){ tp=a; fn2=a.normal; }
     }
     if(!tp){
-      tp=rectEdgePoint(toNode,tw,th,fcx,fcy);
-      fn2=faceNormal(tp,toNode,tw,th);
+      // Prefer top entry when source is significantly above
+      const dyRel=(tcy-fcy)/(th||1);
+      if(!ta&&dyRel>0.6&&Math.abs(tcx-fcx)<tw*1.5){
+        tp={x:tcx,y:toNode.y};
+        fn2={dx:0,dy:-1};
+      } else {
+        tp=rectEdgePoint(toNode,tw,th,fcx,fcy);
+        fn2=faceNormal(tp,toNode,tw,th);
+      }
     }
 
     const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
@@ -1317,8 +1332,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if(searchField==="all"||searchField==="notes"){
         const noteArr=Array.isArray(node.notes)?node.notes:[];
         noteArr.forEach((nt,i)=>{
-          if(!nt.sensitive) match(nt.title||`Note ${i+1}`, stripHtml(nt.content));
+          if(!nt.sensitive){
+            // Search note title separately
+            if(nt.title) match(`Note title`, nt.title);
+            // Search note content
+            const txt=stripHtml(nt.content);
+            if(txt) match(nt.title||`Note ${i+1}`, txt);
+          }
         });
+      }
+      // Also search description
+      if(searchField==="all"||searchField==="notes"){
+        if(node.description) match("Description", node.description);
       }
       if(searchField==="all"||searchField==="type")   match("Type",    t.label);
       if(searchField==="all"||searchField==="props"){
@@ -1566,37 +1591,46 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           outline:searchHitIds.has(node.id)&&!isSel?"2px solid var(--success)":selected.size>1&&isSel?"2px solid var(--accent)":"none",
           outlineOffset:searchHitIds.has(node.id)&&!isSel?"2px":"0",
         }}>
-        {/* Header */}
-        <div style={{display:"flex",alignItems:"center",gap:7,padding:"var(--node-pad)",background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,height:"var(--node-header-h)",boxSizing:"border-box"}}>
-          <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>{t.icon}</span>
-          {editingTitle===node.id?(
-            <input autoFocus value={node.title}
-              onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
-              onMouseDown={e=>e.stopPropagation()}
-              onBlur={()=>setEditingTitle(null)}
-              onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"||e.key==="Escape")setEditingTitle(null);}}
-              style={{flex:1,background:"var(--bg)",border:`1px solid ${t.color}`,borderRadius:"var(--radius-xs)",padding:"2px 6px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700}}
-            />
-          ):(
-            <span style={{fontSize:13,fontWeight:"var(--font-weight-node)",color:t.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:canEdit&&editMode?"text":"default"}}
-              title={canEdit&&editMode?"Double-click to edit":node.title}>
-              {node.title}
-            </span>
-          )}
-          <span style={{fontSize:9,color:"var(--text4)",letterSpacing:1.2,fontWeight:700,flexShrink:0}}>{t.label.toUpperCase()}</span>
-          <button className="nn-comment-btn" onMouseDown={e=>e.stopPropagation()}
-            onClick={e=>{e.stopPropagation();setCommentNode(node.id);setShowComments(true);}}
-            title={`Comments (${(comments[node.id]||[]).length})`}
-            style={{background:"none",border:"none",cursor:"pointer",padding:"0 2px",flexShrink:0,
-              opacity:0,transition:"opacity .15s",
-              color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",fontSize:12,lineHeight:1,position:"relative"}}>
-            💬{(comments[node.id]||[]).length>0&&(
-              <span style={{position:"absolute",top:-3,right:-3,fontSize:7,background:"var(--accent)",
-                color:"#fff",borderRadius:"50%",width:11,height:11,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
-                {(comments[node.id]||[]).length}
+        {/* Header — 2 lines: title row + type badge row */}
+        <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:"6px var(--node-pad) 5px"}}>
+          {/* Row 1: icon + title + comment btn */}
+          <div style={{display:"flex",alignItems:"center",gap:6,minHeight:22}}>
+            <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>{t.icon}</span>
+            {editingTitle===node.id?(
+              <input autoFocus value={node.title}
+                onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
+                onMouseDown={e=>e.stopPropagation()}
+                onBlur={()=>setEditingTitle(null)}
+                onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"||e.key==="Escape")setEditingTitle(null);}}
+                style={{flex:1,background:"var(--bg)",border:`1px solid ${t.color}`,borderRadius:"var(--radius-xs)",padding:"1px 5px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700}}
+              />
+            ):(
+              <span style={{fontSize:13,fontWeight:"var(--font-weight-node)",color:"var(--text)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:canEdit&&editMode?"text":"default"}}
+                title={canEdit&&editMode?"Double-click to edit":node.title}>
+                {node.title}
               </span>
             )}
-          </button>
+            <button className="nn-comment-btn" onMouseDown={e=>e.stopPropagation()}
+              onClick={e=>{e.stopPropagation();setCommentNode(node.id);setShowComments(true);}}
+              title={`Comments (${(comments[node.id]||[]).length})`}
+              style={{background:"none",border:"none",cursor:"pointer",padding:"0 2px",flexShrink:0,
+                opacity:0,transition:"opacity .15s",
+                color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",fontSize:12,lineHeight:1,position:"relative"}}>
+              💬{(comments[node.id]||[]).length>0&&(
+                <span style={{position:"absolute",top:-3,right:-3,fontSize:7,background:"var(--accent)",
+                  color:"#fff",borderRadius:"50%",width:11,height:11,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
+                  {(comments[node.id]||[]).length}
+                </span>
+              )}
+            </button>
+          </div>
+          {/* Row 2: type badge */}
+          <div style={{marginTop:3,paddingLeft:21}}>
+            <span style={{fontSize:9,color:t.color,letterSpacing:1.2,fontWeight:700,
+              background:`${t.color}18`,borderRadius:3,padding:"1px 6px",display:"inline-block"}}>
+              {t.label.toUpperCase()}
+            </span>
+          </div>
         </div>
         {/* Body */}
         {!isGroup&&(
