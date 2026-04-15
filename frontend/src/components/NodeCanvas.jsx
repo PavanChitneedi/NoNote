@@ -1331,46 +1331,105 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const searchResults = useMemo(()=>{
     const q = searchQuery.trim().toLowerCase();
     if(!q) return [];
-    return nodes.map(node=>{
-      const t = NT[node.type]||NT.note;
-      const hits = [];
-      const match = (field, text) => {
-        if(!text) return;
-        const s = String(text).toLowerCase();
-        const idx = s.indexOf(q);
-        if(idx>=0) hits.push({
-          field,
-          snippet: String(text).slice(Math.max(0,idx-30), idx+q.length+50),
-          matchStart: Math.max(0,idx-30)>0 ? idx+30 : idx,
-          matchLen: q.length,
+
+    // hit(field, rawText) — finds q in rawText, adds to hits[]
+    // Works on any value: strings, numbers, arrays (joined), objects (values)
+    const searchAll=(hits, field, value)=>{
+      if(value===null||value===undefined) return;
+      if(Array.isArray(value)){
+        value.forEach((v,i)=>searchAll(hits,`${field}[${i}]`,v));
+        return;
+      }
+      if(typeof value==="object"){
+        Object.entries(value).forEach(([k,v])=>searchAll(hits,k,v));
+        return;
+      }
+      const raw=String(value);
+      const txt=raw.replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim(); // strip HTML
+      const s=txt.toLowerCase();
+      const idx=s.indexOf(q);
+      if(idx>=0) hits.push({
+        field,
+        snippet: txt.slice(Math.max(0,idx-30), idx+q.length+50),
+        matchStart: Math.max(0,idx-30)>0?idx+30:idx,
+        matchLen: q.length,
+      });
+    };
+
+    const nodeResults = nodes.map(node=>{
+      const t=NT[node.type]||NT.note;
+      const hits=[];
+      const chk=(f,v)=>searchAll(hits,f,v);
+      const inTitle  = searchField==="all"||searchField==="title";
+      const inNotes  = searchField==="all"||searchField==="notes";
+      const inProps  = searchField==="all"||searchField==="props";
+      const inType   = searchField==="all"||searchField==="type";
+
+      // ── Node identity ──────────────────────────────────────────────
+      if(inTitle) chk("Name",         node.title);
+      if(inTitle) chk("Description",  node.description);
+
+      // ── Type ───────────────────────────────────────────────────────
+      if(inType){
+        chk("Type",     t.label);
+        chk("Category", t.cat);
+      }
+
+      // ── Notes ─────────────────────────────────────────────────────
+      if(inNotes){
+        // Handle both array format and legacy string format
+        if(Array.isArray(node.notes)){
+          node.notes.forEach((nt,i)=>{
+            if(nt.sensitive) return; // skip sensitive notes
+            // Always search title regardless of whether it's empty
+            chk(nt.title?`Note: ${nt.title}`:`Note ${i+1} title`, nt.title);
+            chk(nt.title?`Note: ${nt.title} content`:`Note ${i+1}`, nt.content);
+          });
+        } else if(typeof node.notes==="string"&&node.notes.trim()){
+          // Legacy plain-string notes
+          chk("Notes", node.notes);
+        }
+      }
+
+      // ── Properties (template + custom) ───────────────────────────
+      if(inProps){
+        Object.entries(node.properties||{}).forEach(([k,v])=>{
+          chk(k, v);
+          // Also search the key itself
+          const ks=k.toLowerCase();
+          if(ks.indexOf(q)>=0) hits.push({field:"Property key",snippet:k,matchStart:0,matchLen:k.length});
         });
-      };
-      if(searchField==="all"||searchField==="title")  match("Title",   node.title);
-      if(searchField==="all"||searchField==="notes"){
-        const noteArr=Array.isArray(node.notes)?node.notes:[];
-        noteArr.forEach((nt,i)=>{
-          if(!nt.sensitive){
-            // Search note title separately
-            if(nt.title) match(`Note title`, nt.title);
-            // Search note content
-            const txt=stripHtml(nt.content);
-            if(txt) match(nt.title||`Note ${i+1}`, txt);
-          }
+        Object.entries(node.customProps||{}).forEach(([k,v])=>{
+          chk(k, v);
+          const ks=k.toLowerCase();
+          if(ks.indexOf(q)>=0) hits.push({field:"Custom field key",snippet:k,matchStart:0,matchLen:k.length});
         });
       }
-      // Also search description
-      if(searchField==="all"||searchField==="notes"){
-        if(node.description) match("Description", node.description);
-      }
-      if(searchField==="all"||searchField==="type")   match("Type",    t.label);
-      if(searchField==="all"||searchField==="props"){
-        Object.entries(node.properties||{}).forEach(([k,v])=>match(k, v));
-        Object.entries(node.customProps||{}).forEach(([k,v])=>match(k, v));
-      }
+
       if(!hits.length) return null;
-      return { node, t, hits };
+      return {node,t,hits};
     }).filter(Boolean);
-  },[nodes, searchQuery, searchField]);
+
+    // ── Also search edge labels (show which node the edge is on) ──
+    if(searchField==="all"||searchField==="title"){
+      edges.forEach(edge=>{
+        if(!edge.label) return;
+        const lbl=edge.label.toLowerCase();
+        if(lbl.indexOf(q)>=0){
+          const fn=nodes.find(n=>n.id===edge.from);
+          const tn=nodes.find(n=>n.id===edge.to);
+          if(fn){
+            let existing=nodeResults.find(r=>r.node.id===fn.id);
+            const hit={field:"Arrow label",snippet:edge.label,matchStart:0,matchLen:edge.label.length};
+            if(existing) existing.hits.push(hit);
+            else nodeResults.push({node:fn,t:NT[fn.type]||NT.note,hits:[hit]});
+          }
+        }
+      });
+    }
+
+    return nodeResults;
+  },[nodes, edges, searchQuery, searchField]);
 
   const scrollToNode = (nodeId) => {
     const node = nodes.find(n=>n.id===nodeId);
@@ -2022,7 +2081,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Filter chips */}
             <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
               <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)",marginRight:4,flexShrink:0}}>SEARCH IN</span>
-              {[["all","All fields"],["title","Name"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
+              {[["all","All fields"],["title","Name & Desc"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
                 <button key={id} onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
                   style={{padding:"3px 11px",border:"1px solid",borderRadius:12,cursor:"pointer",
                     fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",transition:"all .12s",
