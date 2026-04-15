@@ -1305,96 +1305,78 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
 
-      {/* ── Topbar — 2 rows ── */}
+      {/* ── Topbar ── */}
       <div style={{
         background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
         flexShrink:0,overflow:"visible",position:"relative",zIndex:10,
       }}>
 
-        {/* ── ROW 1: Navigation + Search + Global Tools ── */}
-        <div style={{
-          height:42,display:"flex",alignItems:"center",
-          gap:4,padding:"0 8px",borderBottom:"1px solid var(--border2)",
-        }} onKeyDown={e=>e.stopPropagation()}>
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ROW 1 — CONTEXT BAR
+            Left:  Navigation (where you are)
+            Right: Document tools (whole-doc operations) + View controls
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div style={{height:40,display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:"1px solid var(--border2)"}}
+          onKeyDown={e=>e.stopPropagation()}>
 
-          {/* Nav */}
-          <span onClick={onHome} title="Home" style={{fontSize:18,cursor:"pointer",flexShrink:0,padding:"0 2px",userSelect:"none"}}>⬡</span>
-          <button onClick={onBack} style={tbtn(false)}>← MAPS</button>
-          <div style={{width:1,height:20,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
-          <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",maxWidth:120,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flexShrink:0}}>{mapMeta?.title}</span>
-
-          {/* Save status */}
-          {saveMsg&&<span style={{fontSize:10,color:saveMsgColor,whiteSpace:"nowrap",padding:"0 4px",flexShrink:0}}>{saveMsg}</span>}
-
-          {/* CENTER: Search pill */}
-          <div style={{flex:1,display:"flex",justifyContent:"center",minWidth:0,padding:"0 8px"}}
-            onKeyDown={e=>e.stopPropagation()}>
-            <div style={{width:"100%",maxWidth:480}}>
-              <div style={{
-                display:"flex",alignItems:"center",gap:8,height:30,
-                background:showSearch?"var(--bg)":"var(--bg3)",
-                border:`1.5px solid ${showSearch?"var(--accent)":"var(--border)"}`,
-                borderRadius:"var(--radius-md)",padding:"0 10px",cursor:"text",
-                transition:"border-color .15s,background .15s",
-                boxShadow:showSearch?"0 0 0 3px #58a6ff20":"none",
-              }} onClick={()=>{setShowSearch(true);document.getElementById("nn-search-input")?.focus();}}>
-                <span style={{fontSize:11,color:showSearch?"var(--accent)":"var(--text4)",flexShrink:0}}>🔍</span>
-                <input id="nn-search-input" value={searchQuery}
-                  onChange={e=>{setSearchQuery(e.target.value);setShowSearch(true);}}
-                  onFocus={()=>setShowSearch(true)}
-                  onKeyDown={e=>{
-                    e.stopPropagation();
-                    if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");e.target.blur();}
-                    if(e.key==="Enter"&&searchResults.length>0){scrollToNode(searchResults[0].node.id);setShowSearch(false);setSearchQuery("");}
-                    if(e.key==="ArrowDown"&&searchResults.length>0){e.preventDefault();document.getElementById("nn-sr-0")?.focus();}
-                  }}
-                  placeholder="Search in this map…"
-                  style={{flex:1,background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",minWidth:0}}
-                />
-                {searchQuery.trim()&&(
-                  <span style={{fontSize:10,fontWeight:700,color:searchResults.length?"var(--success)":"var(--danger)",
-                    padding:"1px 6px",borderRadius:10,flexShrink:0,whiteSpace:"nowrap",
-                    background:searchResults.length?"#3fb95020":"#f7816620"}}>
-                    {searchResults.length||"No"} result{searchResults.length!==1?"s":""}
-                  </span>
-                )}
-                {searchQuery&&<button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
-                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:14,lineHeight:1,padding:"0 2px",flexShrink:0}}>×</button>}
-                {!showSearch&&!searchQuery&&!isMobile&&(
-                  <kbd style={{fontSize:9,color:"var(--text4)",background:"var(--bg2)",border:"1px solid var(--border)",
-                    borderRadius:3,padding:"1px 4px",flexShrink:0,fontFamily:"var(--font-ui)",userSelect:"none"}}>Ctrl+F</kbd>
-                )}
-              </div>
-            </div>
+          {/* ── Navigation ── */}
+          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
+            <span onClick={onHome} title="Home" style={{fontSize:17,cursor:"pointer",padding:"0 3px",userSelect:"none",lineHeight:1}}>⬡</span>
+            <button onClick={onBack} style={tbtn(false)}>← Maps</button>
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
+            <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mapMeta?.title}</span>
+            {saveMsg&&<span style={{fontSize:9,color:saveMsgColor,whiteSpace:"nowrap",marginLeft:4}}>{saveMsg}</span>}
           </div>
 
-          {/* RIGHT: Zoom + Panels + Actions */}
-          <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-            {/* Zoom */}
-            <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
-              <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>−</button>
-              <span onClick={()=>setZoom(1)} style={{fontSize:10,color:"var(--text3)",cursor:"pointer",minWidth:34,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
-              <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>＋</button>
-            </div>
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
-            {/* Panel toggles */}
-            <button onClick={()=>setShowChat(v=>!v)} style={tbtn(showChat,"#6C63FF")} title="AI Chat">💬</button>
-            <button onClick={()=>setShowTemplates(v=>!v)} style={tbtn(showTemplates,"#FF9800")} title="Templates">📋</button>
-            <button onClick={()=>setShowComments(v=>!v)} style={tbtn(showComments,"var(--accent2)")} title="Comments">
-              🗨{Object.values(comments).flat().length>0&&(
-                <span style={{fontSize:8,background:"var(--accent)",color:"#fff",borderRadius:10,padding:"0 3px",marginLeft:2}}>
-                  {Object.values(comments).flat().length}
-                </span>
-              )}
+          <div style={{flex:1}}/>
+
+          {/* ── Document-level tools (right side) ── */}
+          <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
+
+            {/* TEMPLATES — starting point for new maps */}
+            <button onClick={()=>setShowTemplates(v=>!v)} style={{...tbtn(showTemplates,"#FF9800"),display:"flex",alignItems:"center",gap:4}} title="Template library — start from a preset">
+              📋 <span style={{fontSize:10}}>Templates</span>
             </button>
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 2px"}}/>
-            {/* Appearance dropdown */}
+
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
+
+            {/* HISTORY / VERSIONS — time-travel */}
+            <button onClick={()=>setShowVersions(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:4}} title="Version history — restore previous saves (V)">
+              🕐 <span style={{fontSize:10}}>History</span>
+            </button>
+
+            {/* EXPORT — take it out */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>setShowAppMenu(v=>!v)} style={tbtn(showAppMenu,"#6C63FF")} title="Appearance">🎨<span style={{fontSize:8,opacity:.7}}>▾</span></button>
+              <button onClick={()=>setShowExportMenu(v=>!v)} style={{...tbtn(showExportMenu,"#238636"),display:"flex",alignItems:"center",gap:4}} title="Export map">
+                ↗ <span style={{fontSize:10}}>Export</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
+              </button>
+              {showExportMenu&&(<>
+                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
+                <div style={{position:"fixed",top:82,right:0,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
+                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
+                  {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],["🖼","PNG Image","Visual snapshot"]].map(([ic,lbl,desc],i)=>(
+                    <div key={i} onClick={()=>{setShowExportMenu(false);if(i===2)exportAsPNG(nodes,edges,mapMeta?.title);else setShowExport(true);}}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <span style={{fontSize:15,minWidth:20,textAlign:"center"}}>{ic}</span>
+                      <div><div style={{fontSize:11,fontWeight:600,color:"var(--text)"}}>{lbl}</div><div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div></div>
+                    </div>
+                  ))}
+                </div>
+              </>)}
+            </div>
+
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
+
+            {/* APPEARANCE — look & feel */}
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setShowAppMenu(v=>!v)} style={{...tbtn(showAppMenu,"#6C63FF"),display:"flex",alignItems:"center",gap:4}} title="Appearance — themes, canvas style">
+                🎨 <span style={{fontSize:10}}>Theme</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
+              </button>
               {showAppMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
-                <div style={{position:"fixed",top:84,right:6,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:6,minWidth:160}}>
-                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"4px 8px 6px"}}>APPEARANCE</div>
+                <div style={{position:"fixed",top:82,right:0,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:6,minWidth:160}}>
                   {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
                     <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
                       style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
@@ -1406,99 +1388,110 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </div>
               </>)}
             </div>
-            <button onClick={()=>setShowVersions(true)} style={tbtn(false)} title="Version History (V)">🕐</button>
-            {/* Export dropdown */}
-            <div style={{position:"relative"}}>
-              <button onClick={()=>setShowExportMenu(v=>!v)} style={tbtn(showExportMenu,"#238636")} title="Export">↗<span style={{fontSize:8,opacity:.7}}>▾</span></button>
-              {showExportMenu&&(<>
-                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
-                <div style={{position:"fixed",top:84,right:0,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
-                  <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
-                  {[["🤖","LLM Text","Paste into any AI","llm"],["{ }","JSON","Raw map data","json"],["🖼","PNG Image","Visual snapshot","png"]].map(([ic,lbl,desc,id])=>(
-                    <div key={id} onClick={()=>{setShowExportMenu(false);if(id==="png")exportAsPNG(nodes,edges,mapMeta?.title);else setShowExport(true);}}
-                      style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer",transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                      <span style={{fontSize:15,minWidth:20,textAlign:"center"}}>{ic}</span>
-                      <div><div style={{fontSize:11,fontWeight:600,color:"var(--text)"}}>{lbl}</div><div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div></div>
-                    </div>
-                  ))}
-                </div>
-              </>)}
+
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
+
+            {/* ZOOM */}
+            <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
+              <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>−</button>
+              <span onClick={()=>setZoom(1)} style={{fontSize:10,color:"var(--text3)",cursor:"pointer",minWidth:36,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
+              <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>＋</button>
             </div>
-            {!isMobile&&<span title={"Shortcuts:\nCtrl+F=search  Space=quick note\nCtrl+D=duplicate  Del=delete\nCtrl+Z/Y=undo/redo  Ctrl+A=all\nCtrl+Enter=layout  Ctrl+±/0=zoom\nE=edit/view  V=versions  C=connect"}
-              style={{fontSize:11,color:"var(--text4)",cursor:"help",borderBottom:"1px dashed var(--text4)",padding:"0 3px"}}>⌨</span>}
+
+            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
+
+            {/* 🔍 FIND IN MAP — command-palette style */}
+            <button onClick={()=>{setShowSearch(v=>!v);if(!showSearch){setSearchQuery("");}}}
+              style={{...tbtn(showSearch,"var(--accent2)"),display:"flex",alignItems:"center",gap:5,padding:"4px 10px"}}
+              title="Find nodes (Ctrl+F)">
+              🔍
+              <span style={{fontSize:10}}>Find</span>
+              {!isMobile&&<kbd style={{fontSize:8,color:showSearch?"rgba(255,255,255,.7)":"var(--text4)",background:showSearch?"rgba(255,255,255,.15)":"var(--bg3)",border:`1px solid ${showSearch?"rgba(255,255,255,.3)":"var(--border)"}`,borderRadius:3,padding:"1px 4px",fontFamily:"var(--font-ui)"}}>Ctrl+F</kbd>}
+            </button>
+
+            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find in map\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View mode\nV  Version history\nC  Connect mode\nSpace  Quick capture"}
+              style={{fontSize:11,color:"var(--text4)",cursor:"help",borderBottom:"1px dashed var(--text4)",padding:"0 3px",marginLeft:2}}>⌨</span>}
           </div>
         </div>
 
-        {/* ── ROW 2: Canvas Tools ── */}
-        <div style={{height:36,display:"flex",alignItems:"center",gap:3,padding:"0 8px",background:"var(--bg2)"}}
+        {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+            ROW 2 — EDITING TOOLBAR
+            Left:  Mode controls (what mode are you in)
+            Mid:   Drawing tools (what you're creating)
+            Right: Selection tools (what happens to selected items)
+                   + Side panels (AI chat, comments)
+        ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
+        <div style={{height:36,display:"flex",alignItems:"center",gap:0,padding:"0 8px"}}
           onKeyDown={e=>e.stopPropagation()}>
 
-          {/* Edit/View mode */}
-          {canEdit&&(
-            <button onClick={()=>setEditMode(v=>!v)} style={{...tbtn(!editMode,"var(--success)"),minWidth:60}} title="Toggle edit/view (E)">
-              {editMode?"✏ EDIT":"👁 VIEW"}
-            </button>
-          )}
-
-          {/* POPUP / PANEL toggle — always visible */}
-          <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",border:"1.5px solid var(--border)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}>
-            <button onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
-              title="Popup mode — double-click node to open inline editor"
-              style={{display:"flex",alignItems:"center",gap:4,padding:"4px 9px",border:"none",cursor:"pointer",
-                fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
-                background:propsMode==='popup'?"var(--accent2)":"transparent",
-                color:propsMode==='popup'?"#fff":"var(--text4)",
-                borderRight:"1px solid var(--border)",transition:"all .15s"}}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <rect x="1.5" y="1.5" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                <rect x="4" y="4" width="4" height="4" rx=".8" fill="currentColor" opacity=".65"/>
-              </svg>
-              POPUP
-            </button>
-            <button onClick={()=>{setPropsMode('panel');setNodePopup(null);if(selected.size===1)setShowProps(true);}}
-              title="Panel mode — click node to show properties in side panel"
-              style={{display:"flex",alignItems:"center",gap:4,padding:"4px 9px",border:"none",cursor:"pointer",
-                fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
-                background:propsMode==='panel'?"var(--accent2)":"transparent",
-                color:propsMode==='panel'?"#fff":"var(--text4)",
-                transition:"all .15s"}}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <rect x=".75" y="1.5" width="10.5" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
-                <line x1="7.5" y1="1.5" x2="7.5" y2="10.5" stroke="currentColor" strokeWidth="1.4"/>
-              </svg>
-              PANEL
-            </button>
+          {/* ── MODE GROUP ── edit/view + props mode ── */}
+          <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+            {canEdit&&(
+              <button onClick={()=>setEditMode(v=>!v)}
+                style={{...tbtn(!editMode,"var(--success)"),minWidth:58}}
+                title="Toggle edit/view mode (E)">
+                {editMode?"✏ Edit":"👁 View"}
+              </button>
+            )}
+            {/* POPUP / PANEL — how you open node details */}
+            <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",border:"1.5px solid var(--border)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
+              title="How to view node details">
+              <button onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
+                style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",border:"none",cursor:"pointer",
+                  fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
+                  background:propsMode==='popup'?"var(--accent2)":"transparent",
+                  color:propsMode==='popup'?"#fff":"var(--text4)",
+                  borderRight:"1px solid var(--border)",transition:"all .15s"}}
+                title="Popup — double-click any node">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <rect x="1" y="1" width="9" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                  <rect x="3.5" y="3.5" width="4" height="4" rx=".8" fill="currentColor" opacity=".7"/>
+                </svg>
+                Popup
+              </button>
+              <button onClick={()=>{setPropsMode('panel');setNodePopup(null);if(selected.size===1)setShowProps(true);}}
+                style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",border:"none",cursor:"pointer",
+                  fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
+                  background:propsMode==='panel'?"var(--accent2)":"transparent",
+                  color:propsMode==='panel'?"#fff":"var(--text4)",
+                  transition:"all .15s"}}
+                title="Side panel — click any node">
+                <svg width="11" height="11" viewBox="0 0 11 11" fill="none">
+                  <rect x=".75" y="1" width="9.5" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.4"/>
+                  <line x1="7" y1="1" x2="7" y2="10" stroke="currentColor" strokeWidth="1.4"/>
+                </svg>
+                Panel
+              </button>
+            </div>
           </div>
 
-          <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
-
-          {/* Canvas tools — edit mode only */}
           {editMode&&canEdit&&<>
-            <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select (S)">↖</button>
-            <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} style={tbtn(mode==="connect","#6C63FF")} title="Connect (C)">⤳</button>
+            <div style={{width:1,height:20,background:"var(--border)",flexShrink:0,margin:"0 6px"}}/>
 
-            {/* Connection style */}
-            {mode==="connect"&&(
-              <div style={{position:"relative"}}>
-                <button onClick={()=>setShowConnDropdown(v=>!v)}
-                  style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:4}}
-                  title={EDGE_STYLES[edgeStyle]?.label}>
-                  <EdgeIcon styleKey={edgeStyle} size={26} active/>
-                  <span style={{fontSize:9,color:"var(--text3)",maxWidth:44,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
-                  <span style={{fontSize:8,opacity:.7}}>▾</span>
-                </button>
-                {showConnDropdown&&(<>
-                  <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
-                  <div style={{position:"fixed",top:84,left:8,zIndex:501,background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
-                    {EDGE_SECTIONS.map(section=>{
-                      const sectionStyles=Object.entries(EDGE_STYLES).filter(([,s])=>s.section===section);
-                      return(
-                        <div key={section}>
+            {/* ── DRAWING TOOLS GROUP ── what you're creating/arranging ── */}
+            <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+              <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select mode (S)">↖ Select</button>
+              <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} style={tbtn(mode==="connect","#6C63FF")} title="Connect nodes (C)">⤳ Connect</button>
+
+              {/* Connection style — only in connect mode */}
+              {mode==="connect"&&(
+                <div style={{position:"relative"}}>
+                  <button onClick={()=>setShowConnDropdown(v=>!v)}
+                    style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:4}}
+                    title={`Style: ${EDGE_STYLES[edgeStyle]?.label}`}>
+                    <EdgeIcon styleKey={edgeStyle} size={24} active/>
+                    <span style={{fontSize:9,color:"var(--text3)",maxWidth:40,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
+                    <span style={{fontSize:8,opacity:.6}}>▾</span>
+                  </button>
+                  {showConnDropdown&&(<>
+                    <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
+                    <div style={{position:"fixed",top:82,left:8,zIndex:501,background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
+                      {EDGE_SECTIONS.map(section=>{
+                        const ss=Object.entries(EDGE_STYLES).filter(([,s])=>s.section===section);
+                        return(<div key={section}>
                           <div style={{padding:"5px 10px 3px",fontSize:8,fontWeight:700,letterSpacing:1,color:"var(--text4)",background:"var(--bg3)",borderBottom:"1px solid var(--border2)"}}>{section.toUpperCase()}</div>
                           <div style={{display:"flex",flexWrap:"wrap",gap:2,padding:"6px 8px"}}>
-                            {sectionStyles.map(([key,style])=>(
+                            {ss.map(([key,style])=>(
                               <div key={key} title={`${style.label} — ${style.desc}`}
                                 onClick={()=>{setEdgeStyle(key);setShowConnDropdown(false);}}
                                 style={{width:80,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 4px",borderRadius:"var(--radius-sm)",cursor:"pointer",border:`1.5px solid ${edgeStyle===key?"var(--accent)":"transparent"}`,background:edgeStyle===key?"var(--accent)14":"transparent",transition:"all .1s"}}
@@ -1509,67 +1502,106 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                               </div>
                             ))}
                           </div>
+                        </div>);
+                      })}
+                      <div style={{padding:"8px 12px",borderTop:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8,background:"var(--bg3)"}}>
+                        <span style={{fontSize:9,fontWeight:700,color:"var(--text4)"}}>COLOR</span>
+                        <div style={{width:20,height:20,borderRadius:"50%",background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}>
+                          <input type="color" defaultValue="#58a6ff" onChange={e=>setEdgeColor(e.target.value)} style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
                         </div>
-                      );
-                    })}
-                    <div style={{padding:"8px 12px",borderTop:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8,background:"var(--bg3)"}}>
-                      <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)"}}>COLOR</span>
-                      <div style={{width:20,height:20,borderRadius:"50%",background:edgeColor==="var(--accent)"?"var(--accent)":edgeColor,border:"2px solid var(--border)",cursor:"pointer",overflow:"hidden"}}>
-                        <input type="color" defaultValue="#58a6ff" onChange={e=>setEdgeColor(e.target.value)} style={{opacity:0,width:"100%",height:"100%",cursor:"pointer",border:"none",padding:0}}/>
+                        {["#58a6ff","#3fb950","#f78166","#d2a8ff","#ffa657","#ffffff"].map(c=>(
+                          <div key={c} onClick={()=>setEdgeColor(c)} style={{width:16,height:16,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,border:(edgeColor===c||edgeColor==="var(--accent)"&&c==="#58a6ff")?"2px solid #fff":"2px solid transparent"}}/>
+                        ))}
+                        <button onClick={()=>setEdgeColor("var(--accent)")} style={{marginLeft:"auto",fontSize:9,background:"none",border:"1px solid var(--border)",borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
                       </div>
-                      {["#58a6ff","#3fb950","#f78166","#d2a8ff","#ffa657","#ffffff"].map(c=>(
-                        <div key={c} onClick={()=>setEdgeColor(c)}
-                          style={{width:16,height:16,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,
-                            border:(edgeColor===c||edgeColor==="var(--accent)"&&c==="#58a6ff")?"2px solid #fff":"2px solid transparent"}}/>
-                      ))}
-                      <button onClick={()=>setEdgeColor("var(--accent)")}
-                        style={{marginLeft:"auto",fontSize:9,background:"none",border:"1px solid var(--border)",borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
                     </div>
-                  </div>
-                </>)}
-                {drawingEdge&&<span style={{fontSize:10,color:"#f78166",marginLeft:4,animation:"pulse 1s infinite"}}>● pick target</span>}
-              </div>
-            )}
+                  </>)}
+                  {drawingEdge&&<span style={{fontSize:10,color:"#f78166",marginLeft:4,animation:"pulse 1s infinite",flexShrink:0}}>● pick target</span>}
+                </div>
+              )}
 
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
-            <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ NODE</button>
-            <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ LAYOUT</button>
-            <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all">
-              {globalCollapsed?"⊞ EXPAND":"⊟ COLLAPSE"}
-            </button>
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
-            <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩</button>
-            <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪</button>
-            {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete (Del)">🗑{selected.size>1?` (${selected.size})`:""}</button>}
-            {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Properties">✏</button>}
+              <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
+
+              <button onClick={()=>setShowSidebar(v=>!v)} style={tbtn(false)} title="Add node (N)">＋ Node</button>
+              <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ Layout</button>
+              <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
+                {globalCollapsed?"⊞ Expand All":"⊟ Collapse"}
+              </button>
+            </div>
+
+            <div style={{width:1,height:20,background:"var(--border)",flexShrink:0,margin:"0 6px"}}/>
+
+            {/* ── SELECTION ACTIONS GROUP ── what happens to selected items ── */}
+            <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+              <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩ Undo</button>
+              <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪ Redo</button>
+              {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete selected (Del)">🗑{selected.size>1?` ×${selected.size}`:""}</button>}
+              {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Open properties panel">✏ Props</button>}
+            </div>
           </>}
 
-          {/* View-mode indicator when not editing */}
-          {(!editMode||!canEdit)&&(
-            <span style={{fontSize:10,color:"var(--text4)",fontStyle:"italic",marginLeft:4}}>
-              {canEdit?"View only — click ✏ EDIT to make changes":"Read-only map"}
-            </span>
-          )}
+          <div style={{flex:1}}/>
+
+          {/* ── SIDE PANELS GROUP ── persistent panel toggles ── */}
+          <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+            <button onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"#6C63FF"),display:"flex",alignItems:"center",gap:4}} title="AI Chat panel">
+              💬 <span style={{fontSize:10}}>AI Chat</span>
+            </button>
+            <button onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
+              🗨 <span style={{fontSize:10}}>Comments</span>
+              {Object.values(comments).flat().length>0&&(
+                <span style={{fontSize:8,background:"var(--accent)",color:"#fff",borderRadius:10,padding:"0 4px"}}>{Object.values(comments).flat().length}</span>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
 
-      {/* Search dropdown — fixed, centered under pill */}
+      {/* ── Command-palette search overlay ── */}
       {showSearch&&(
         <>
-          <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
+          {/* Full-screen backdrop */}
+          <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,.45)"}}
+            onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
+
+          {/* Command palette panel */}
           <div style={{
-            position:"fixed",top:84,left:"50%",transform:"translateX(-50%)",
-            width:480,maxWidth:"min(480px,94vw)",zIndex:501,
-            background:"var(--bg2)",border:"1.5px solid var(--accent)",
-            borderRadius:"var(--radius-md)",
-            boxShadow:"0 12px 40px rgba(0,0,0,.55)",overflow:"hidden",
+            position:"fixed",top:"12%",left:"50%",transform:"translateX(-50%)",
+            width:620,maxWidth:"92vw",zIndex:601,
+            background:"var(--bg2)",
+            border:"1.5px solid var(--accent)",
+            borderRadius:"var(--radius-lg)",
+            boxShadow:"0 24px 64px rgba(0,0,0,.7)",
+            overflow:"hidden",
           }} onKeyDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
+
+            {/* Input row */}
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 16px",borderBottom:"1px solid var(--border2)"}}>
+              <span style={{fontSize:16,color:"var(--accent)",flexShrink:0}}>🔍</span>
+              <input id="nn-search-input" autoFocus value={searchQuery}
+                onChange={e=>{setSearchQuery(e.target.value);setShowSearch(true);}}
+                onKeyDown={e=>{
+                  e.stopPropagation();
+                  if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");}
+                  if(e.key==="Enter"&&searchResults.length>0){scrollToNode(searchResults[0].node.id);setShowSearch(false);setSearchQuery("");}
+                  if(e.key==="ArrowDown"&&searchResults.length>0){e.preventDefault();document.getElementById("nn-sr-0")?.focus();}
+                }}
+                placeholder="Find nodes by name, content, properties, type…"
+                style={{flex:1,background:"none",border:"none",outline:"none",
+                  color:"var(--text)",fontSize:15,fontFamily:"var(--font-ui)"}}
+              />
+              {searchQuery&&(
+                <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
+                  style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text4)",cursor:"pointer",fontSize:13,flexShrink:0}}>×</button>
+              )}
+              <kbd style={{fontSize:10,color:"var(--text4)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:4,padding:"2px 7px",flexShrink:0,fontFamily:"var(--font-ui)",whiteSpace:"nowrap"}}>ESC to close</kbd>
+            </div>
+
             {/* Filter chips */}
-            <div style={{display:"flex",alignItems:"center",gap:5,padding:"8px 12px",
-              borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
-              <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)",marginRight:4,flexShrink:0}}>FILTER</span>
-              {[["all","All"],["title","Title"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
+            <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
+              <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)",marginRight:4,flexShrink:0}}>SEARCH IN</span>
+              {[["all","All fields"],["title","Name"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
                 <button key={id} onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
                   style={{padding:"3px 11px",border:"1px solid",borderRadius:12,cursor:"pointer",
                     fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",transition:"all .12s",
@@ -1580,24 +1612,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </button>
               ))}
               {searchQuery.trim()&&searchResults.length>0&&(
-                <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",flexShrink:0,whiteSpace:"nowrap"}}>
-                  {searchResults.reduce((s,r)=>s+r.hits.length,0)} match{searchResults.reduce((s,r)=>s+r.hits.length,0)!==1?"es":""}
+                <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",flexShrink:0}}>
+                  {searchResults.length} node{searchResults.length!==1?"s":""} · {searchResults.reduce((s,r)=>s+r.hits.length,0)} match{searchResults.reduce((s,r)=>s+r.hits.length,0)!==1?"es":""}
                 </span>
               )}
             </div>
-            {/* Results body */}
-            <div style={{maxHeight:400,overflowY:"auto"}}>
+
+            {/* Results */}
+            <div style={{maxHeight:440,overflowY:"auto"}}>
               {!searchQuery.trim()?(
-                <div style={{padding:"16px 14px"}}>
-                  <div style={{fontSize:11,color:"var(--text4)",fontWeight:700,letterSpacing:.5,marginBottom:10}}>SEARCH IN</div>
-                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:6}}>
-                    {[["📝","Title","Node names"],["🗒️","Notes","Free-text content"],["⚙️","Properties","IP, Make, Model…"],["🏷️","Type","Router, Server…"]].map(([ic,k,v])=>(
+                <div style={{padding:"20px 18px"}}>
+                  <div style={{fontSize:11,color:"var(--text4)",fontWeight:700,letterSpacing:.5,marginBottom:12}}>WHAT WOULD YOU LIKE TO FIND?</div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                    {[["📝","Name","Node titles"],["🗒","Notes","Note content"],["⚙","Properties","IP, OS, Model…"],["🏷","Type","Router, Server…"]].map(([ic,k,v])=>(
                       <div key={k} onClick={()=>{setSearchField(k.toLowerCase().slice(0,5));document.getElementById("nn-search-input")?.focus();}}
-                        style={{display:"flex",gap:9,padding:"9px 11px",background:"var(--bg3)",borderRadius:"var(--radius-sm)",
-                          cursor:"pointer",alignItems:"center",border:"1px solid var(--border)",transition:"border-color .12s"}}
+                        style={{display:"flex",gap:10,padding:"10px 12px",background:"var(--bg3)",borderRadius:"var(--radius-sm)",cursor:"pointer",alignItems:"center",border:"1px solid var(--border)",transition:"border-color .12s"}}
                         onMouseEnter={e=>e.currentTarget.style.borderColor="var(--accent)"}
                         onMouseLeave={e=>e.currentTarget.style.borderColor="var(--border)"}>
-                        <span style={{fontSize:18}}>{ic}</span>
+                        <span style={{fontSize:20}}>{ic}</span>
                         <div>
                           <div style={{fontSize:12,fontWeight:700,color:"var(--text)"}}>{k}</div>
                           <div style={{fontSize:10,color:"var(--text4)"}}>{v}</div>
@@ -1605,13 +1637,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       </div>
                     ))}
                   </div>
-                  <div style={{marginTop:12,fontSize:10,color:"var(--text4)",textAlign:"center"}}>Start typing · Ctrl+F · ESC to close</div>
+                  <div style={{marginTop:14,fontSize:10,color:"var(--text4)",textAlign:"center"}}>Start typing to search across {nodes.length} node{nodes.length!==1?"s":""}</div>
                 </div>
               ):searchResults.length===0?(
-                <div style={{padding:"28px 16px",textAlign:"center"}}>
-                  <div style={{fontSize:30,marginBottom:8}}>🔎</div>
-                  <div style={{fontSize:14,fontWeight:700,color:"var(--text2)",marginBottom:5}}>No results for "{searchQuery}"</div>
-                  <div style={{fontSize:11,color:"var(--text4)"}}>Try a different keyword or field filter</div>
+                <div style={{padding:"32px 18px",textAlign:"center"}}>
+                  <div style={{fontSize:32,marginBottom:10}}>🔎</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--text2)",marginBottom:6}}>No results for "{searchQuery}"</div>
+                  <div style={{fontSize:11,color:"var(--text4)"}}>Try different keywords or switch the field filter above</div>
                 </div>
               ):(
                 searchResults.map((r,i)=>{
@@ -1627,37 +1659,28 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         if(e.key==="ArrowUp") i===0?document.getElementById("nn-search-input")?.focus():document.getElementById(`nn-sr-${i-1}`)?.focus();
                         if(e.key==="Escape"){setShowSearch(false);setSearchQuery("");}
                       }}
-                      style={{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",
+                      style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",
                         borderBottom:"1px solid var(--border2)",cursor:"pointer",outline:"none",transition:"background .1s"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
                       onMouseLeave={e=>e.currentTarget.style.background="transparent"}
                       onFocus={e=>e.currentTarget.style.background="var(--bg3)"}
                       onBlur={e=>e.currentTarget.style.background="transparent"}>
-                      <div style={{width:34,height:34,borderRadius:"50%",flexShrink:0,
+                      <div style={{width:36,height:36,borderRadius:"50%",flexShrink:0,
                         background:`${t.color}22`,border:`1.5px solid ${t.color}60`,
-                        display:"flex",alignItems:"center",justifyContent:"center",fontSize:17}}>
+                        display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>
                         {t.icon}
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{display:"flex",alignItems:"baseline",gap:7,marginBottom:3}}>
-                          <span style={{fontSize:13,fontWeight:700,color:"var(--text)",
-                            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                        <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:3}}>
+                          <span style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                             {highlightText(r.node.title,searchQuery)}
                           </span>
-                          <span style={{fontSize:9,fontWeight:700,color:t.color,
-                            background:`${t.color}22`,padding:"1px 6px",borderRadius:10,flexShrink:0}}>
-                            {t.label}
-                          </span>
+                          <span style={{fontSize:9,fontWeight:700,color:t.color,background:`${t.color}22`,padding:"1px 7px",borderRadius:10,flexShrink:0}}>{t.label}</span>
                         </div>
                         {r.hits.slice(0,2).map((hit,j)=>(
-                          <div key={j} style={{display:"flex",gap:6,alignItems:"baseline"}}>
-                            <span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",flexShrink:0,minWidth:48,letterSpacing:.3}}>
-                              {hit.field.slice(0,8).toUpperCase()}
-                            </span>
-                            <span style={{fontSize:11,color:"var(--text3)",overflow:"hidden",
-                              display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical"}}>
-                              {highlightText(hit.snippet,searchQuery)}
-                            </span>
+                          <div key={j} style={{display:"flex",gap:7,alignItems:"baseline"}}>
+                            <span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",flexShrink:0,minWidth:52,letterSpacing:.3}}>{hit.field.slice(0,10).toUpperCase()}</span>
+                            <span style={{fontSize:11,color:"var(--text3)",overflow:"hidden",display:"-webkit-box",WebkitLineClamp:1,WebkitBoxOrient:"vertical"}}>{highlightText(hit.snippet,searchQuery)}</span>
                           </div>
                         ))}
                         {r.hits.length>2&&<span style={{fontSize:9,color:"var(--text4)"}}>+{r.hits.length-2} more</span>}
@@ -1669,812 +1692,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 })
               )}
             </div>
+
+            {/* Footer */}
             {searchResults.length>0&&searchQuery.trim()&&(
-              <div style={{display:"flex",gap:12,padding:"6px 14px",borderTop:"1px solid var(--border2)",
-                background:"var(--bg3)",fontSize:9,color:"var(--text4)"}}>
-                <span>↵ Jump</span><span>↑↓ Navigate</span><span>ESC Close</span>
-                <span style={{marginLeft:"auto"}}>{searchResults.length}/{nodes.length} nodes</span>
+              <div style={{display:"flex",gap:14,padding:"7px 16px",borderTop:"1px solid var(--border2)",background:"var(--bg3)",fontSize:9,color:"var(--text4)"}}>
+                <span>↑↓ Navigate</span><span>↵ Jump to node</span><span>ESC Close</span>
+                <span style={{marginLeft:"auto"}}>{searchResults.length} of {nodes.length} nodes</span>
               </div>
             )}
           </div>
         </>
       )}
-
-
-            {/* ── Main area ── */}
-      <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
-
-        {/* Desktop sidebar */}
-        {!isMobile&&<NodeSidebar cats={cats} addNode={addNode} canEdit={canEdit&&editMode}/>}
-
-        {/* Mobile sidebar */}
-        {isMobile&&showSidebar&&(
-          <div style={{position:"absolute",inset:0,zIndex:50,display:"flex"}}>
-            <div style={{flex:1,background:"rgba(0,0,0,.6)"}} onClick={()=>setShowSidebar(false)}/>
-            <div style={{width:220,background:"var(--bg2)",borderLeft:"1px solid var(--border)",overflow:"auto",display:"flex",flexDirection:"column"}}>
-              <div style={{padding:"12px 14px",borderBottom:"1px solid var(--border)",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-                <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>Add Node</span>
-                <button onClick={()=>setShowSidebar(false)} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20}}>×</button>
-              </div>
-              <NodeSidebar cats={cats} addNode={addNode} canEdit={canEdit&&editMode} inline/>
-            </div>
-          </div>
-        )}
-
-        {/* ── Connection Style Panel (floating) ── */}
-        {/* ── Connection Style Panel (floating) ── */}
-        {showConnPanel&&mode==="connect"&&(
-          <div style={{
-            position:"fixed",top:84,left:"50%",transform:"translateX(-50%)",
-            background:"var(--bg2)",border:"1px solid var(--border2)",
-            borderRadius:"var(--radius-lg)",zIndex:300,
-            boxShadow:"0 12px 40px rgba(0,0,0,.55)",
-            width:580,maxWidth:"96vw",maxHeight:"80vh",overflow:"auto",
-          }} onClick={e=>e.stopPropagation()}>
-
-            {/* Header */}
-            <div style={{padding:"12px 16px",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center"}}>
-              <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>⤳ Connection Style</span>
-              <button onClick={()=>setShowConnPanel(false)}
-                style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1,padding:"0 4px"}}>×</button>
-            </div>
-
-            {/* Sections */}
-            {EDGE_SECTIONS.map(section=>{
-              const sectionStyles=Object.entries(EDGE_STYLES).filter(([,d])=>d.section===section);
-              return(
-                <div key={section} style={{padding:"10px 14px"}}>
-                  <div style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:2,marginBottom:8}}>
-                    {section.toUpperCase()}
-                  </div>
-                  <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:6}}>
-                    {sectionStyles.map(([k,def])=>{
-                      const sel=edgeStyle===k;
-                      const ec=sel?"var(--accent)":"var(--text3)";
-                      const sw=def.strokeW>2?3.5:1.8;
-                      const da=def.dash==="none"?undefined:def.dash;
-                      return(
-                        <button key={k} onClick={()=>setEdgeStyle(k)}
-                          style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",
-                            borderRadius:"var(--radius-md)",cursor:"pointer",textAlign:"left",
-                            border:`1.5px solid ${sel?"var(--accent)":"var(--border)"}`,
-                            background:sel?"color-mix(in srgb,var(--accent) 12%,transparent)":"var(--bg3)",
-                            transition:"all .12s",outline:"none"}}>
-                          {/* Inline SVG preview */}
-                          <svg width="48" height="20" viewBox="0 0 48 20" style={{flexShrink:0}}>
-                            <defs>
-                              <marker id={`p-e-${k}`} markerWidth="6" markerHeight="5" refX="6" refY="2.5" orient="auto">
-                                <polygon points="0 0,6 2.5,0 5" fill={ec}/>
-                              </marker>
-                              <marker id={`p-s-${k}`} markerWidth="6" markerHeight="5" refX="0" refY="2.5" orient="auto-start-reverse">
-                                <polygon points="0 0,6 2.5,0 5" fill={ec}/>
-                              </marker>
-                            </defs>
-                            {def.wave?(
-                              <path d="M 4 10 Q 16 2 24 10 Q 32 18 44 10"
-                                stroke={ec} strokeWidth={sw} fill="none"
-                                markerEnd={def.mEnd?`url(#p-e-${k})`:undefined}
-                                markerStart={def.mStart?`url(#p-s-${k})`:undefined}/>
-                            ):(
-                              <line x1="4" y1="10" x2="44" y2="10"
-                                stroke={ec} strokeWidth={sw}
-                                strokeDasharray={da}
-                                markerEnd={def.mEnd?`url(#p-e-${k})`:undefined}
-                                markerStart={def.mStart?`url(#p-s-${k})`:undefined}/>
-                            )}
-                          </svg>
-                          <div style={{minWidth:0}}>
-                            <div style={{fontSize:11,fontWeight:600,color:sel?"var(--accent)":"var(--text)",
-                              whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{def.label}</div>
-                            <div style={{fontSize:9,color:"var(--text4)",marginTop:1}}>{def.desc}</div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Color strip */}
-            <div style={{padding:"10px 16px",borderTop:"1px solid var(--border2)",display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
-              <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1,marginRight:4}}>COLOR</span>
-              {["var(--accent)","#58a6ff","#f78166","#3fb950","#d2a8ff","#ffa657","#ff7b72","#39d353","#8b949e","#ff6ec7"].map(c=>(
-                <div key={c} onClick={()=>setEdgeColor(c)} title={c}
-                  style={{width:20,height:20,borderRadius:"50%",flexShrink:0,cursor:"pointer",
-                    background:c==="var(--accent)"?"var(--accent)":c,
-                    boxShadow:edgeColor===c?"0 0 0 2.5px var(--bg2), 0 0 0 4px var(--text)":"none",
-                    transform:edgeColor===c?"scale(1.2)":"scale(1)",transition:"transform .1s,box-shadow .1s"}}/>
-              ))}
-              {/* Custom */}
-              <div style={{position:"relative",width:20,height:20,borderRadius:"50%",overflow:"hidden",
-                background:"conic-gradient(red,yellow,lime,cyan,blue,magenta,red)",
-                border:"1px solid var(--border)",cursor:"pointer",flexShrink:0}} title="Custom">
-                <input type="color" onChange={e=>setEdgeColor(e.target.value)}
-                  style={{position:"absolute",inset:0,opacity:0,cursor:"pointer",width:"100%",height:"100%"}}/>
-              </div>
-              <button onClick={()=>setEdgeColor("var(--accent)")}
-                style={{marginLeft:"auto",background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
-                  color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"3px 10px",fontFamily:"var(--font-ui)"}}>Reset</button>
-            </div>
-          </div>
-        )}
-
-        {/* ── Canvas ── */}
-        <div ref={canvasRef}
-          onMouseDown={handleCanvasMouseDown}
-          onClick={e=>{
-            // Don't clear selection if we just finished a box-select drag
-            if(e.target.closest(".nn-node")) return;
-            if(e.target.tagName==="path"||e.target.tagName==="text") return;
-            setSelected(new Set());setSelEdge(null);
-            if(drawingEdge)setDrawingEdge(null);
-            setContextMenu(null);
-            if(propsMode==='panel') setShowProps(false);
-          }}
-          onMouseMove={e=>{
-            if(drawingEdge&&canvasRef.current){
-              const el=canvasRef.current; const rect=el.getBoundingClientRect(); const s=1/zoom;
-              setDrawingEdge(d=>({...d,mouseX:(e.clientX-rect.left)*s+el.scrollLeft*s,mouseY:(e.clientY-rect.top)*s+el.scrollTop*s}));
-            }
-          }}
-          style={{
-            flex:1,position:"relative",overflow:"auto",
-            cursor:mode==="connect"?"crosshair":boxSel?"crosshair":"default",
-            backgroundColor:canvasBg,
-            backgroundImage:`radial-gradient(circle, ${canvasDot} 1px, transparent 1px)`,
-            backgroundSize:`${28*zoom}px ${28*zoom}px`,
-            WebkitOverflowScrolling:"touch",
-          }}
-        >
-          <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
-            <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
-
-              {/* Snap alignment guides */}
-              {snapGuides.length>0&&(
-                <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:2}}>
-                  {snapGuides.map((g,i)=>(
-                    g.x!==undefined
-                      ? <line key={i} x1={g.x} y1={0} x2={g.x} y2={3000} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
-                      : <line key={i} x1={0} y1={g.y} x2={4000} y2={g.y} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
-                  ))}
-                </svg>
-              )}
-
-              {/* Box selection rect — behind nodes */}
-              {boxRect&&boxRect.w>2&&boxRect.h>2&&(
-                <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:1}}>
-                  <rect x={boxRect.x} y={boxRect.y} width={boxRect.w} height={boxRect.h}
-                    fill="var(--accent2)" fillOpacity="0.08"
-                    stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="5,3"/>
-                </svg>
-              )}
-
-              {/* Edge SVG — before nodes in DOM = renders BEHIND nodes. No zIndex to preserve DOM stacking. */}
-              <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
-                <defs>
-                  {/* Standard filled arrow — end tip */}
-                  <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
-                    <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
-                  </marker>
-                  {/* Bold filled arrow — end tip */}
-                  <marker id="nn-tk"  markerWidth="8"  markerHeight="7" refX="8"  refY="3.5" orient="auto" markerUnits="strokeWidth">
-                    <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
-                  </marker>
-                  {/* Double chevron — end tip */}
-                  <marker id="nn-dbl" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto" markerUnits="strokeWidth">
-                    <polyline points="0 1, 5 4, 0 7"  fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-                    <polyline points="4 1, 9 4, 4 7"  fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-                  </marker>
-                </defs>
-
-                {/* Live arrow while drawing */}
-                {drawingEdge&&(()=>{
-                  const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
-                  const fw=collW(fn), fh=collH(fn);
-                  const fp=rectEdgePoint(fn,fw,fh,drawingEdge.mouseX,drawingEdge.mouseY);
-                  // Face normal for perpendicular exit
-                  const eps=2;
-                  let ndx=0,ndy=0;
-                  if(Math.abs(fp.y-fn.y)<eps)       ndy=-1;
-                  else if(Math.abs(fp.y-(fn.y+fh))<eps) ndy=1;
-                  else if(Math.abs(fp.x-fn.x)<eps)  ndx=-1;
-                  else                               ndx=1;
-                  const dist=Math.sqrt((drawingEdge.mouseX-fp.x)**2+(drawingEdge.mouseY-fp.y)**2);
-                  const ctrl=Math.max(50,dist*0.4);
-                  const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
-                  return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-20}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
-                    stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
-                })()}
-
-                {/* Edges */}
-                {edges.map(edge=>{
-                  const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
-                  if(!f||!t) return null;
-                  const result=getEdgePath(f,t,edge); const {path,fp,tp}=result;
-                  const mid=result.mid||{x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
-                  const isSel=selEdge===edge.id;
-                  return (
-                    <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
-                      <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
-                      {(()=>{
-                        const def=EDGE_STYLES[edge.style]||EDGE_STYLES.arrow;
-                        const ec=isSel?"var(--danger)":(edge.color||"var(--accent)");
-                        const sw=isSel?3:def.strokeW;
-                        const da=def.dash==="none"?"none":def.dash;
-                        const mEnd=def.mEnd?`url(#${def.mEnd})`:undefined;
-                        // Bidirectional: use auto-start-reverse trick — same marker at start
-                        const mStart=def.mStart?`url(#${def.mStart})`:undefined;
-                        // Wave style: generate wavy path via extra control points
-                        const usePath = def.wave ? (() => {
-                          const dx=tp.x-fp.x, dy=tp.y-fp.y;
-                          const len=Math.sqrt(dx*dx+dy*dy)||1;
-                          const px=-dy/len*18, py=dx/len*18; // perpendicular offset
-                          const thirds=4;
-                          let d=`M ${fp.x} ${fp.y}`;
-                          for(let i=1;i<=thirds;i++){
-                            const t1=(i*2-1)/(thirds*2), t2=i/thirds;
-                            const sign=(i%2===1?1:-1);
-                            d+=` Q ${fp.x+dx*t1+px*sign} ${fp.y+dy*t1+py*sign}, ${fp.x+dx*t2} ${fp.y+dy*t2}`;
-                          }
-                          return d;
-                        })() : path;
-                        return(
-                          <path d={usePath} stroke={ec} strokeWidth={sw} fill="none" opacity={isSel?1:.92}
-                            strokeDasharray={da}
-                            markerEnd={mEnd}
-                            markerStart={mStart}
-                          />
-                        );
-                      })()}
-                      {isSel&&(
-                        <g style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>{e.stopPropagation();applyEdges(es=>es.filter(ex=>ex.id!==edge.id));setSelEdge(null);}}>
-                          <circle cx={mid.x} cy={mid.y} r="11" fill="var(--danger)"/>
-                          <text x={mid.x} y={mid.y+4.5} textAnchor="middle" fill="#fff" fontSize="14" fontWeight="bold">×</text>
-                        </g>
-                      )}
-                      {edge.label&&!isSel&&<text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>}
-                      {isSel&&(
-                        <foreignObject x={mid.x-90} y={mid.y+14} width="180" height="52">
-                          <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                            <input value={edge.label||""} placeholder="Label (e.g. sends data)"
-                              onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,label:e.target.value}:ex));}}
-                              onClick={e=>e.stopPropagation()}
-                              style={{width:"100%",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:4,padding:"3px 7px",color:"var(--text)",fontSize:10,fontFamily:"var(--font-ui)",outline:"none",boxSizing:"border-box"}}
-                            />
-                            <select value={edge.edgeType||"data"} onClick={e=>e.stopPropagation()}
-                              onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,edgeType:e.target.value}:ex));}}
-                              style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,padding:"2px 5px",color:"var(--text3)",fontSize:9,fontFamily:"var(--font-ui)",outline:"none",width:"100%",boxSizing:"border-box"}}>
-                              <option value="data">Data flow</option>
-                              <option value="method">Method call</option>
-                              <option value="network">Network</option>
-                              <option value="dependency">Dependency</option>
-                              <option value="trigger">Trigger</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </div>
-                        </foreignObject>
-                      )}
-                      {/* Midpoint drag handle — shown on every edge (diamond shape) */}
-                      {canEdit&&(()=>{
-                        const isThisEdgeSel=isSel;
-                        const onMidDown=(ev)=>{
-                          ev.stopPropagation();
-                          const origOff=edge.midOff||{dx:0,dy:0};
-                          const startX=ev.clientX, startY=ev.clientY;
-                          const onMove=(mv)=>{
-                            const el=canvasRef.current; if(!el) return;
-                            const s=1/zoom;
-                            const ddx=(mv.clientX-startX)*s, ddy=(mv.clientY-startY)*s;
-                            applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,midOff:{dx:origOff.dx+ddx,dy:origOff.dy+ddy}}));
-                          };
-                          const onUp=()=>{window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp);};
-                          window.addEventListener("mousemove",onMove);
-                          window.addEventListener("mouseup",onUp);
-                        };
-                        // Only show on hover (via opacity) or always when selected
-                        return(
-                          <g style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={onMidDown}
-                             opacity={isThisEdgeSel?1:0} className="nn-mid-handle">
-                            <circle cx={mid.x} cy={mid.y} r="10" fill="transparent"/>
-                            <rect x={mid.x-5} y={mid.y-5} width="10" height="10" rx="2"
-                              fill="var(--bg2)" stroke={edge.color||"var(--accent)"} strokeWidth="1.5"
-                              transform={`rotate(45,${mid.x},${mid.y})`}/>
-                            {/* Reset midpoint on dbl-click */}
-                            <circle cx={mid.x} cy={mid.y} r="10" fill="transparent"
-                              onDoubleClick={ev=>{ev.stopPropagation();applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,midOff:null}));}}/>
-                          </g>
-                        );
-                      })()}
-
-                      {/* Draggable endpoint handles — shown on selected edge */}
-                      {isSel&&canEdit&&(()=>{
-                        const handleDrag=(isFrom)=>(ev)=>{
-                          ev.stopPropagation();
-                          const onMove=(mv)=>{
-                            if(!canvasRef.current) return;
-                            const el=canvasRef.current;
-                            const rect=el.getBoundingClientRect(); const s=1/zoom;
-                            const cx=(mv.clientX-rect.left)*s+el.scrollLeft*s;
-                            const cy=(mv.clientY-rect.top)*s+el.scrollTop*s;
-                            const hoveredNode=nodesRef.current.find(n=>{
-                              const nw=collW(n),nh=collH(n);
-                              return cx>=n.x&&cx<=n.x+nw&&cy>=n.y&&cy<=n.y+nh;
-                            });
-                            if(hoveredNode){
-                              const nw=collW(hoveredNode),nh=collH(hoveredNode);
-                              const newAnchor=snapToAnchor(hoveredNode,nw,nh,cx,cy)||{side:"auto"};
-                              applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{
-                                ...ex,
-                                ...(isFrom?{from:hoveredNode.id,fromAnchor:newAnchor}:{to:hoveredNode.id,toAnchor:newAnchor}),
-                              }));
-                            }
-                          };
-                          const onUp=()=>{ window.removeEventListener("mousemove",onMove); window.removeEventListener("mouseup",onUp); };
-                          window.addEventListener("mousemove",onMove);
-                          window.addEventListener("mouseup",onUp);
-                        };
-                        return (<>
-                          <circle cx={fp.x} cy={fp.y} r="7" fill="var(--success)" stroke="var(--bg2)" strokeWidth="2.5"
-                            style={{cursor:"grab",pointerEvents:"all"}} title="Drag to reattach source"
-                            onMouseDown={handleDrag(true)}/>
-                          <circle cx={tp.x} cy={tp.y} r="7" fill="var(--accent)" stroke="var(--bg2)" strokeWidth="2.5"
-                            style={{cursor:"grab",pointerEvents:"all"}} title="Drag to reattach target"
-                            onMouseDown={handleDrag(false)}/>
-                        </>);
-                      })()}
-                    </g>
-                  );
-                })}
-
-              </svg>
-
-              {/* Nodes */}
-              {nodes.map(node=>{
-                const t=NT[node.type]||NT.note;
-                const isSel=selected.has(node.id);
-                const isGroup=node.type==="group";
-                const isCollapsed=node.collapsed;
-                const nw=isCollapsed?COL_W:node.w;
-                const nh=isCollapsed?COL_H:node.h;
-                // Focus mode: dim nodes that aren't being edited
-                const isFocused=(focusMode&&(editingTitle===node.id||editingNotes===node.id));
-                const focusDim=focusMode&&!isFocused?"0.15":"1";
-
-                if(isCollapsed) return (
-                  <div key={`fc-${node.id}`} style={{opacity:focusDim,transition:"opacity .2s"}}>
-                  <CollapsedNode node={node} t={t} isSel={isSel}
-                    canEdit={canEdit&&editMode} mode={mode}
-                    onMouseDown={e=>{e.stopPropagation();startDrag(e.clientX,e.clientY,node.id);}}
-                    onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
-                    onClick={e=>handleNodeClick(e,node.id)}
-                    onContextMenu={e=>handleNodeRightClick(e,node.id)}
-                    onToggleCollapse={e=>{e.stopPropagation();toggleCollapse(node.id);}}
-                  />
-                  </div>
-                );
-
-                return (
-                  <div key={node.id}
-                    className="nn-node"
-                    ref={el=>{ if(el) nodeHeightsRef.current[node.id]=el.getBoundingClientRect().height/zoom; }}
-                    onMouseDown={e=>{e.stopPropagation();if(editingTitle!==node.id)startDrag(e.clientX,e.clientY,node.id);}}
-                    onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
-                    onClick={e=>handleNodeClick(e,node.id)}
-                    onContextMenu={e=>handleNodeRightClick(e,node.id)}
-                    onDoubleClick={e=>{
-                      e.stopPropagation();
-                      if(propsMode==='popup') setNodePopup({nodeId:node.id,tab:'notes'});
-                      else { if(canEdit&&editMode) setEditingTitle(node.id); }
-                    }}
-                    style={{opacity:focusDim,transition:"opacity .2s",
-                      position:"absolute",left:node.x,top:node.y,width:nw,minHeight:nh,
-                      background:isGroup?`${t.color}10`:"var(--node-bg)",
-                      border:`var(--node-border-w) ${isGroup?"dashed":"solid"} ${isSel?"var(--accent)":`${t.color}65`}`,
-                      borderRadius:"var(--radius-node)",
-                      boxShadow:isSel?"var(--shadow-node-sel)":"var(--shadow-node)",
-                      cursor:mode==="connect"?"crosshair":canEdit&&editMode?"grab":"default",
-                      userSelect:"none",overflow:"hidden",touchAction:"none",
-                      transition:"border-color .12s,box-shadow .12s",
-                      outline:searchHitIds.has(node.id)&&!isSel
-                        ? "2px solid var(--success)"
-                        : selected.size>1&&isSel
-                        ? "2px solid var(--accent)"
-                        : "none",
-                      outlineOffset:searchHitIds.has(node.id)&&!isSel ? "2px" : "0",
-                    }}
-                  >
-                    {/* Header */}
-                    <div style={{display:"flex",alignItems:"center",gap:7,padding:"var(--node-pad)",background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,height:"var(--node-header-h)",boxSizing:"border-box"}}>
-                      <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>{t.icon}</span>
-                      {editingTitle===node.id ? (
-                        <input autoFocus value={node.title}
-                          onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
-                          onMouseDown={e=>e.stopPropagation()}
-                          onBlur={()=>setEditingTitle(null)}
-                          onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"||e.key==="Escape")setEditingTitle(null);}}
-                          style={{flex:1,background:"var(--bg)",border:`1px solid ${t.color}`,borderRadius:"var(--radius-xs)",padding:"2px 6px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700}}
-                        />
-                      ) : (
-                        <span style={{fontSize:13,fontWeight:"var(--font-weight-node)",color:t.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:canEdit&&editMode?"text":"default"}}
-                          title={canEdit&&editMode?"Double-click to edit":node.title}>
-                          {node.title}
-                        </span>
-                      )}
-                      <span style={{fontSize:9,color:"var(--text4)",letterSpacing:1.2,fontWeight:700,flexShrink:0}}>{t.label.toUpperCase()}</span>
-                      {/* Comment pin button */}
-                      <button
-                        className="nn-comment-btn"
-                        onMouseDown={e=>e.stopPropagation()}
-                        onClick={e=>{e.stopPropagation();setCommentNode(node.id);setShowComments(true);}}
-                        title={`Comments (${(comments[node.id]||[]).length})`}
-                        style={{
-                          background:"none",border:"none",cursor:"pointer",padding:"0 2px",
-                          flexShrink:0,opacity:0,transition:"opacity .15s",
-                          color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",
-                          fontSize:12,lineHeight:1,position:"relative",
-                        }}>
-                        💬{(comments[node.id]||[]).length>0&&(
-                          <span style={{position:"absolute",top:-3,right:-3,fontSize:7,background:"var(--accent)",
-                            color:"#fff",borderRadius:"50%",width:11,height:11,display:"flex",
-                            alignItems:"center",justifyContent:"center",fontWeight:700}}>
-                            {(comments[node.id]||[]).length}
-                          </span>
-                        )}
-                      </button>
-                    </div>
-
-                    {/* Body — description + notes toggle */}
-                    {!isGroup&&(
-                      <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
-                        {/* Description */}
-                        {node.description?(
-                          <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.5,marginBottom:3}}>
-                            {node.description}
-                          </div>
-                        ):(canEdit&&editMode&&(
-                          <div style={{fontSize:10,color:"var(--text4)",fontStyle:"italic",marginBottom:3}}>
-                            Double-click to edit…
-                          </div>
-                        ))}
-
-                        {/* Notes toggle row */}
-                        {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
-                          <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
-                            <button
-                              onMouseDown={e=>e.stopPropagation()}
-                              onClick={e=>{e.stopPropagation();updateNode(node.id,{showNotes:!node.showNotes});}}
-                              style={{display:"flex",alignItems:"center",gap:3,background:"none",border:`1px solid ${t.color}40`,
-                                borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
-                                color:node.showNotes?t.color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0}}>
-                              {node.showNotes?"▲":"▼"} {(Array.isArray(node.notes)?node.notes:[]).length} note{(Array.isArray(node.notes)?node.notes:[]).length!==1?"s":""}
-                            </button>
-                            {(Array.isArray(node.notes)?node.notes:[]).some(n=>n.sensitive)&&(
-                              <span title="Contains sensitive notes" style={{fontSize:10,color:"var(--danger)"}}>🔒</span>
-                            )}
-                          </div>
-                        )}
-
-                        {/* Expanded notes on node */}
-                        {node.showNotes&&(Array.isArray(node.notes)?node.notes:[]).filter(nt=>!nt.sensitive||canEdit).map(nt=>(
-                          <div key={nt.id} style={{marginTop:5,paddingTop:5,borderTop:`1px solid ${t.color}20`}}>
-                            {nt.title&&<div style={{fontSize:9,fontWeight:700,color:t.color,marginBottom:2,letterSpacing:.5}}>{nt.title.toUpperCase()}</div>}
-                            {nt.sensitive?(
-                              <div style={{fontSize:9,color:"var(--danger)",fontStyle:"italic"}}>🔒 Sensitive</div>
-                            ):(
-                              <div style={{fontSize:10,color:"var(--text2)",lineHeight:1.55}}
-                                dangerouslySetInnerHTML={{__html:nt.content}}/>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Anchor dots — multiple per side in connect mode */}
-                    {mode==="connect"&&canEdit&&!isCollapsed&&(()=>{
-                      const nw2=collW(node), nh2=collH(node);
-                      // Generate N anchor points per side based on node size
-                      // More points on longer sides
-                      const hCount = Math.max(3, Math.min(7, Math.floor(nw2/60))); // horizontal sides
-                      const vCount = Math.max(3, Math.min(7, Math.floor(nh2/50))); // vertical sides
-                      const anchors=[];
-                      // Top & Bottom: hCount points evenly spaced
-                      for(let i=0;i<hCount;i++){
-                        const t=(i+1)/(hCount+1);
-                        anchors.push({side:"top",    t, ax:node.x+nw2*t, ay:node.y,       key:`top-${i}`});
-                        anchors.push({side:"bottom", t, ax:node.x+nw2*t, ay:node.y+nh2,   key:`bot-${i}`});
-                      }
-                      // Left & Right: vCount points evenly spaced
-                      for(let i=0;i<vCount;i++){
-                        const t=(i+1)/(vCount+1);
-                        anchors.push({side:"left",   t, ax:node.x,       ay:node.y+nh2*t, key:`lft-${i}`});
-                        anchors.push({side:"right",  t, ax:node.x+nw2,   ay:node.y+nh2*t, key:`rgt-${i}`});
-                      }
-                      // Corners too
-                      anchors.push({side:"top",    t:0,   ax:node.x,      ay:node.y,      key:"tl"});
-                      anchors.push({side:"top",    t:1,   ax:node.x+nw2,  ay:node.y,      key:"tr"});
-                      anchors.push({side:"bottom", t:0,   ax:node.x,      ay:node.y+nh2,  key:"bl"});
-                      anchors.push({side:"bottom", t:1,   ax:node.x+nw2,  ay:node.y+nh2,  key:"br"});
-
-                      const DOT=8; // dot radius
-                      return anchors.map(a=>(
-                        <div key={a.key}
-                          onMouseDown={e=>e.stopPropagation()}
-                          onClick={e=>{
-                            e.stopPropagation();
-                            if(drawingEdge){
-                              if(drawingEdge.fromId!==node.id){
-                                applyEdges(es=>[...es,{
-                                  id:makeId(),from:drawingEdge.fromId,to:node.id,
-                                  label:"",style:edgeStyle,color:edgeColor,
-                                  fromAnchor:drawingEdge.fromAnchor||{side:"auto"},
-                                  toAnchor:{side:a.side,t:a.t},
-                                }]);
-                              }
-                              setDrawingEdge(null);
-                            } else {
-                              setDrawingEdge({fromId:node.id,mouseX:a.ax,mouseY:a.ay,fromAnchor:{side:a.side,t:a.t}});
-                            }
-                          }}
-                          style={{
-                            position:"absolute",
-                            left:a.ax-node.x-DOT, top:a.ay-node.y-DOT,
-                            width:DOT*2, height:DOT*2, borderRadius:"50%",
-                            background:drawingEdge?"var(--success)":"var(--accent)",
-                            border:"2px solid var(--bg2)",
-                            cursor:"crosshair", zIndex:30,
-                            boxShadow:`0 0 5px var(--accent)`,
-                            transition:"transform .1s, opacity .1s",
-                            opacity:0.85,
-                          }}
-                          onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.5)";e.currentTarget.style.opacity="1";}}
-                          onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.opacity="0.85";}}
-                        />
-                      ));
-                    })()}
-
-                    {/* Bottom-right corner icons — order: reset | collapse | resize(rightmost) */}
-                    {canEdit&&editMode&&(
-                      <div style={{position:"absolute",bottom:4,right:4,display:"flex",gap:3,alignItems:"center"}}>
-                        {/* Reset size (leftmost) */}
-                        {isSel&&(
-                          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();resetSize(node.id);}}
-                            title="Reset to default size" style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text4)",cursor:"pointer",fontSize:9,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center"}}>⊡</button>
-                        )}
-                        {/* Collapse/Expand (middle) */}
-                        <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
-                          title={node.collapsed?"Expand node (⊞)":"Collapse node (⊟)"}
-                          style={{background:"none",border:`1px solid ${t.color}40`,borderRadius:"var(--radius-xs)",color:t.color,cursor:"pointer",fontSize:12,width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",opacity:0,transition:"opacity .15s"}} className="nn-collapse-btn">
-                          {node.collapsed?"⊞":"⊟"}
-                        </button>
-                        {/* Resize handle (rightmost — directly in the corner) */}
-                        {!isGroup&&isSel&&(
-                          <div onMouseDown={e=>startResize(e,node.id)}
-                            style={{width:16,height:16,cursor:"nwse-resize",display:"flex",alignItems:"center",justifyContent:"center",opacity:.8}} title="Drag to resize">
-                            <svg width="10" height="10" viewBox="0 0 10 10"><path d="M2 10 L10 2 M6 10 L10 6" stroke="var(--accent)" strokeWidth="1.8"/></svg>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-
-
-              {/* Inline Node Popup Editor — popup mode only */}
-              {propsMode==='popup'&&nodePopup&&(()=>{
-                const pn=nodes.find(n=>n.id===nodePopup.nodeId);
-                if(!pn) return null;
-                const nw=collW(pn), nh=collH(pn);
-                // Position: below the node, clamped to canvas
-                const popW=440, popH=480;
-                let px=pn.x, py=pn.y+nh+10;
-                // Clamp right edge
-                if(px+popW>4000) px=Math.max(0,pn.x+nw-popW);
-                return(
-                  <InlineNodeEditor
-                    key={pn.id}
-                    node={pn} x={px} y={py}
-                    tab={nodePopup.tab}
-                    nodes={nodes} edges={edges}
-                    canEdit={canEdit&&editMode}
-                    onTabChange={tab=>setNodePopup({nodeId:pn.id,tab})}
-                    onClose={()=>setNodePopup(null)}
-                    onUpdate={(u)=>updateNode(pn.id,u)}
-                    onUpdateNotes={(notes)=>updateNotes(pn.id,notes)}
-                    onChangeType={(newType)=>{
-                      const defaults=DP[newType]||{};
-                      updateNode(pn.id,{type:newType,
-                        properties:{...defaults,...pn.properties},
-                      });
-                    }}
-                    onUpdateCustom={(k,v)=>updateCustom(pn.id,k,v)}
-                    onDeleteCustom={(k)=>deleteCustom(pn.id,k)}
-                    onAddCustom={()=>{const k=`field_${Object.keys(pn.customProps||{}).length+1}`;updateCustom(pn.id,k,"");}}
-                  />
-                );
-              })()}
-
-              {/* Quick Capture */}
-              {quickPos&&canEdit&&editMode&&(
-                <div style={{position:"absolute",left:quickPos.x,top:quickPos.y-64,zIndex:100,display:"flex",flexDirection:"column",gap:5}} onClick={e=>e.stopPropagation()}>
-                  <div style={{background:"#6C63FF",color:"#fff",fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"3px 9px",borderRadius:"var(--radius-xs)",alignSelf:"flex-start"}}>⚡ QUICK CAPTURE</div>
-                  <div style={{display:"flex",alignItems:"center",gap:7,background:"var(--bg2)",border:"2px solid #6C63FF",borderRadius:"var(--radius-md)",padding:"9px 12px",boxShadow:"0 10px 40px var(--shadow)",minWidth:300}}>
-                    <span style={{fontSize:16}}>📝</span>
-                    <input ref={quickInpRef} value={quickText} onChange={e=>setQuickText(e.target.value)}
-                      onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")commitCapture();if(e.key==="Escape"){setQuickPos(null);setQuickText("");}}}
-                      placeholder="Type and press Enter…"
-                      style={{flex:1,background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:14,fontFamily:"var(--font-ui)"}}
-                    />
-                    <button onClick={commitCapture} style={{background:"#6C63FF",border:"none",borderRadius:"var(--radius-sm)",color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,padding:"5px 12px",fontFamily:"var(--font-ui)"}}>ADD</button>
-                    <button onClick={()=>{setQuickPos(null);setQuickText("");}} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18}}>×</button>
-                  </div>
-                  <div style={{fontSize:10,color:"var(--text4)",paddingLeft:2}}>Enter to place · Esc to dismiss</div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Props Panel — visible in panel mode or mobile */}
-        {selectedNode&&propsMode==='panel'&&(showProps||!isMobile)&&(
-          <PropsPanel node={selectedNode} edges={edges} nodes={nodes}
-            isMobile={isMobile} canEdit={canEdit&&editMode}
-            onClose={()=>setShowProps(false)}
-            onUpdate={updateNode} onUpdateProp={updateProp}
-            onUpdateCustom={updateCustom} onDeleteCustom={deleteCustom}
-            onAddCustom={()=>{const k=`field_${Object.keys(selectedNode.customProps||{}).length+1}`;updateCustom(selectedNode.id,k,"");}}
-            onUpdateEdge={(eid,u)=>applyEdges(es=>es.map(e=>e.id===eid?{...e,...u}:e))}
-            onDeleteEdge={eid=>applyEdges(es=>es.filter(e=>e.id!==eid))}
-            onResetSize={()=>resetSize(selectedNode.id)}
-            onUpdateNotes={updateNotes}
-            onStartEditTitle={()=>canEdit&&editMode&&setEditingTitle(selectedNode.id)}
-            onToggleCollapse={()=>toggleCollapse(selectedNode.id)}
-          />
-        )}
-
-        {/* ── Context Menu ── */}
-        {contextMenu&&(
-          <>
-            <div style={{position:"fixed",inset:0,zIndex:600}} onClick={()=>setContextMenu(null)} onContextMenu={e=>{e.preventDefault();setContextMenu(null);}}/>
-            <ContextMenu
-              x={contextMenu.x} y={contextMenu.y}
-              nodeId={contextMenu.nodeId}
-              nodes={nodes} selected={selected} edges={edges}
-              canEdit={canEdit&&editMode}
-              onClose={()=>setContextMenu(null)}
-              onDuplicate={()=>{
-                const src=nodes.find(n=>n.id===contextMenu.nodeId); if(!src) return;
-                const dup={...src,id:makeId(),x:src.x+24,y:src.y+24,
-                  properties:{...(src.properties||{})},customProps:{...(src.customProps||{})}};
-                applyNodes(ns=>[...ns,dup]);
-                setSelected(new Set([dup.id]));
-              }}
-              onDelete={()=>{
-                const id=contextMenu.nodeId;
-                applyNodes(ns=>ns.filter(n=>n.id!==id));
-                applyEdges(es=>es.filter(e=>e.from!==id&&e.to!==id));
-                setSelected(new Set()); setSelEdge(null);
-              }}
-              onCollapse={()=>toggleCollapse(contextMenu.nodeId)}
-              onConnect={()=>{
-                const node=nodes.find(n=>n.id===contextMenu.nodeId); if(!node) return;
-                const cx=node.x+collW(node)/2, cy=node.y+collH(node)/2;
-                setMode("connect");
-                setDrawingEdge({fromId:contextMenu.nodeId,mouseX:cx,mouseY:cy});
-              }}
-              onEditTitle={()=>setEditingTitle(contextMenu.nodeId)}
-              onSelectAll={()=>setSelected(new Set(nodes.map(n=>n.id)))}
-              onProps={()=>setShowProps(true)}
-            />
-          </>
-        )}
-
-        {/* ── Template Library Panel ── */}
-        {showTemplates&&(
-          <div style={{width:320,flexShrink:0,display:"flex",flexDirection:"column",
-            background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
-              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
-              <span style={{fontSize:15}}>📋</span>
-              <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",flex:1}}>TEMPLATE LIBRARY</span>
-              <button onClick={()=>setShowTemplates(false)}
-                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-            </div>
-            <TemplateLibrary
-              onInsert={(tpl)=>{
-                const el=canvasRef.current; if(!el) return;
-                const s=1/zoom;
-                const ox=(el.scrollLeft+el.clientWidth/2)*s-300;
-                const oy=(el.scrollTop+el.clientHeight/2)*s-200;
-                const idMap={};
-                tpl.nodes.forEach(n=>{idMap[n.id]=makeId();});
-                const newNodes=tpl.nodes.map(n=>({
-                  ...mkNode(n.type,ox+n.x,oy+n.y),
-                  id:idMap[n.id],title:n.title,
-                  notes:parseNotes(n.notes),
-                  properties:{...(DP[n.type]||{}),...(n.properties||{})},
-                }));
-                const newEdges=tpl.edges.map(e=>({
-                  id:makeId(),from:idMap[e.from],to:idMap[e.to],
-                  label:e.label||"",style:e.style||"arrow",
-                  color:"var(--accent)",edgeType:e.edgeType||"data",
-                }));
-                applyNodes(ns=>[...ns,...newNodes]);
-                applyEdges(es=>[...es,...newEdges]);
-                setShowTemplates(false);
-              }}
-            />
-          </div>
-        )}
-
-        {/* ── Comments Sidebar ── */}
-        {showComments&&(
-          <div style={{width:300,flexShrink:0,display:"flex",flexDirection:"column",
-            background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
-              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
-              <span style={{fontSize:15}}>🗨</span>
-              <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",flex:1}}>
-                {commentNode?`Comments on "${nodes.find(n=>n.id===commentNode)?.title||"node"}"`:"All Comments"}
-              </span>
-              {commentNode&&<button onClick={()=>setCommentNode(null)}
-                style={{fontSize:10,background:"none",border:"none",color:"var(--text4)",cursor:"pointer"}}>All</button>}
-              <button onClick={()=>{setShowComments(false);setCommentNode(null);}}
-                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-            </div>
-            <CommentsPanel
-              comments={comments} nodes={nodes} commentNode={commentNode}
-              setCommentNode={setCommentNode}
-              draft={commentDraft} setDraft={setCommentDraft}
-              user={user}
-              onAdd={(nodeId,text)=>{
-                const c={id:makeId(),text,author:user?.display_name||user?.email||"Me",
-                  ts:new Date().toISOString()};
-                setComments(prev=>({...prev,[nodeId]:[...(prev[nodeId]||[]),c]}));
-                setCommentDraft("");
-              }}
-              onDelete={(nodeId,cid)=>{
-                setComments(prev=>({...prev,[nodeId]:(prev[nodeId]||[]).filter(c=>c.id!==cid)}));
-              }}
-              onScrollTo={(nodeId)=>scrollToNode(nodeId)}
-            />
-          </div>
-        )}
-
-        {/* ── LLM Chat Panel (VS Code style right panel) ── */}
-        {showChat&&(
-          <div style={{
-            width:380,flexShrink:0,display:"flex",flexDirection:"column",
-            background:"var(--bg2)",borderLeft:"1px solid var(--border2)",
-            transition:"width .2s",overflow:"hidden",
-          }}>
-            {/* Panel header */}
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",
-              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
-              <span style={{fontSize:15}}>💬</span>
-              <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",flex:1,letterSpacing:.5}}>AI CHAT</span>
-              <button onClick={()=>setShowChat(false)}
-                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1,padding:"0 2px"}}>×</button>
-            </div>
-            <div style={{flex:1,overflow:"hidden",display:"flex",flexDirection:"column"}}>
-              <LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"} onClose={()=>setShowChat(false)}/>
-            </div>
-          </div>
-        )}
-
-        {/* Multi-select info bar */}
-        {selected.size>1&&(
-          <div style={{position:"absolute",bottom:16,left:"50%",transform:"translateX(-50%)",background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",padding:"8px 16px",display:"flex",alignItems:"center",gap:12,boxShadow:"var(--shadow-node)",zIndex:30,fontSize:12,color:"var(--text2)"}}>
-            <span style={{color:"var(--accent)",fontWeight:700}}>{selected.size} nodes selected</span>
-            <button onClick={()=>selected.forEach(id=>toggleCollapse(id))} style={{...tbtn(false,"#9C27B0"),padding:"4px 10px"}}>⊟ TOGGLE COLLAPSE</button>
-            <button onClick={handleAutoLayout} style={{...tbtn(false),padding:"4px 10px"}}>⊞ LAYOUT</button>
-            <button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)",padding:"4px 10px"}}>🗑 DELETE ALL</button>
-            <button onClick={()=>setSelected(new Set())} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:16}}>×</button>
-          </div>
-        )}
-      </div>
-
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
