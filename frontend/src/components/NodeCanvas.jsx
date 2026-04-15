@@ -247,13 +247,18 @@ const mkNode = (type, x, y) => ({
 function autoLayout(nodes, edges, direction='LR') {
   if (!nodes.length) return nodes;
   try {
-    const LAYER_GAP = 130; // gap between depth layers (main axis)
-    const NODE_GAP  = 30;  // minimum gap between sibling subtrees (cross axis)
-    const PAD       = 80;  // canvas padding
+    const PAD        = 80;   // canvas padding
+    const LAYER_GAP  = 80;   // gap between depth layers
+    const NODE_GAP   = 50;   // gap between sibling node edges
     const nodeW = n => n?.w || DEF_W;
     const nodeH = n => n?.h || DEF_H;
     const nodeById = id => nodes.find(n => n.id === id);
     const isHoriz = direction === 'LR' || direction === 'RL';
+
+    // cross-axis size of a node
+    const crossSize = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
+    // main-axis size of a node
+    const mainSize  = id => isHoriz ? nodeW(nodeById(id)) : nodeH(nodeById(id));
 
     // ── 1. Build adjacency ───────────────────────────────────────────
     const children = {}, parents = {};
@@ -280,148 +285,151 @@ function autoLayout(nodes, edges, direction='LR') {
     }
     nodes.forEach(n => { if (!vis.has(n.id)) breakCycles(n.id); });
 
-    // ── 3. For DAGs: pick ONE primary parent per node (lowest depth) ─
-    // This converts the DAG to a spanning tree while keeping edges.
+    // ── 3. Spanning tree: pick primary parent per node ────────────────
+    // For DAGs, each node belongs to exactly one parent in the layout tree.
     const primaryParent = {};
     {
-      const depthMemo = {};
-      function nodeDepth(id) {
-        if (depthMemo[id] !== undefined) return depthMemo[id];
-        const pd = parents[id].map(p => nodeDepth(p));
-        return (depthMemo[id] = pd.length ? Math.max(...pd) + 1 : 0);
+      const depMemo = {};
+      function d(id) {
+        if (depMemo[id] !== undefined) return depMemo[id];
+        const pd = parents[id].map(p => d(p));
+        return (depMemo[id] = pd.length ? Math.max(...pd)+1 : 0);
       }
-      nodes.forEach(n => nodeDepth(n.id));
-      // Build tree children using primary parent only
+      nodes.forEach(n => d(n.id));
       nodes.forEach(n => {
-        if (parents[n.id].length > 1) {
-          // Pick parent with highest depth (deepest = most natural parent)
-          const pp = parents[n.id].reduce((best, p) =>
-            depthMemo[p] > depthMemo[best] ? p : best
-          );
-          primaryParent[n.id] = pp;
-        } else if (parents[n.id].length === 1) {
-          primaryParent[n.id] = parents[n.id][0];
-        }
+        if (!parents[n.id].length) return;
+        primaryParent[n.id] = parents[n.id].reduce((best,p) =>
+          depMemo[p] > depMemo[best] ? p : best);
       });
     }
-    // Build tree-children (only primary parent links)
-    const treeChildren = {};
-    nodes.forEach(n => { treeChildren[n.id] = []; });
-    nodes.forEach(n => {
-      if (primaryParent[n.id]) treeChildren[primaryParent[n.id]].push(n.id);
-    });
+    const treeKids = {};
+    nodes.forEach(n => { treeKids[n.id] = []; });
+    nodes.forEach(n => { if (primaryParent[n.id]) treeKids[primaryParent[n.id]].push(n.id); });
     const roots = nodes.filter(n => !primaryParent[n.id]).map(n => n.id);
 
     // ── 4. RADIAL layout ─────────────────────────────────────────────
     if (direction === 'radial') {
-      const cx = 2000, cy = 1500;
-      const radii = [0, 300, 560, 820, 1080, 1340];
-      const px = {}, py = {};
-      const allByLayer = Array.from({length: 6}, () => []);
-      function assignRadialLayer(id, li) {
-        allByLayer[Math.min(li, 5)].push(id);
-        treeChildren[id].forEach(c => assignRadialLayer(c, li+1));
-      }
-      roots.forEach(r => assignRadialLayer(r, 0));
-      allByLayer.forEach((layer, li) => {
-        const r = radii[li];
-        if (li === 0) {
-          layer.forEach((id, i) => {
-            px[id] = cx - nodeW(nodeById(id))/2 + (layer.length > 1 ? (i - layer.length/2)*180 : 0);
-            py[id] = cy - nodeH(nodeById(id))/2;
-          });
-        } else {
-          layer.forEach((id, i) => {
-            const angle = (i/Math.max(layer.length,1))*Math.PI*2 - Math.PI/2;
-            px[id] = cx + r*Math.cos(angle) - nodeW(nodeById(id))/2;
-            py[id] = cy + r*Math.sin(angle) - nodeH(nodeById(id))/2;
-          });
-        }
+      const cx=2000, cy=1500, radii=[0,300,560,820,1080,1340];
+      const px={}, py={};
+      const byDepth = Array.from({length:6}, ()=>[]);
+      function radDepth(id, li) { byDepth[Math.min(li,5)].push(id); treeKids[id].forEach(c=>radDepth(c,li+1)); }
+      roots.forEach(r=>radDepth(r,0));
+      byDepth.forEach((layer,li) => {
+        const r=radii[li];
+        layer.forEach((id,i) => {
+          if (li===0) { px[id]=cx-nodeW(nodeById(id))/2; py[id]=cy-nodeH(nodeById(id))/2; }
+          else {
+            const a=(i/Math.max(layer.length,1))*Math.PI*2-Math.PI/2;
+            px[id]=cx+r*Math.cos(a)-nodeW(nodeById(id))/2;
+            py[id]=cy+r*Math.sin(a)-nodeH(nodeById(id))/2;
+          }
+        });
       });
-      return nodes.map(n => px[n.id] !== undefined
-        ? { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) } : n);
+      return nodes.map(n => px[n.id]!==undefined ? {...n,x:Math.round(px[n.id]),y:Math.round(py[n.id])} : n);
     }
 
-    // ── 5. Compute subtree "span" (cross-axis height needed) ──────────
-    // The span of a leaf = node cross-size + NODE_GAP
-    // The span of an internal node = max(own cross-size, sum of children spans) + NODE_GAP
+    // ── 5. Compute depths ────────────────────────────────────────────
+    const depthOf = {};
+    function setDepth(id, d) { depthOf[id]=d; treeKids[id].forEach(c=>setDepth(c,d+1)); }
+    roots.forEach(r => setDepth(r, 0));
+    const maxDepth = Math.max(...nodes.map(n => depthOf[n.id]||0));
+
+    // ── 6. Absolute layer MAIN-axis positions ────────────────────────
+    // All nodes at depth D get the same main-axis coordinate.
+    // Layer width = max node main-size at that depth.
+    const layerPos = [];
+    let curMain = PAD;
+    for (let d = 0; d <= maxDepth; d++) {
+      layerPos[d] = curMain;
+      const atD = nodes.filter(n => depthOf[n.id] === d);
+      const maxMain = atD.length ? Math.max(...atD.map(n => mainSize(n.id))) : (DEF_W);
+      curMain += maxMain + LAYER_GAP;
+    }
+
+    // ── 7. Subtree CROSS-axis span (space needed) ─────────────────────
+    // Leaf span = its cross size + NODE_GAP (gap after node)
+    // Internal span = sum of children spans  (no extra gap; gap is in leaves)
+    // NOTE: We add a small SUBTREE_GAP between groups of siblings
+    const SUBTREE_GAP = 20; // extra gap added between sibling subtrees
     const span = {};
     function computeSpan(id) {
-      const selfSize = isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
-      const ch = treeChildren[id];
-      if (!ch.length) return (span[id] = selfSize + NODE_GAP);
-      const childrenTotal = ch.reduce((s, c) => s + computeSpan(c), 0);
-      return (span[id] = Math.max(selfSize + NODE_GAP, childrenTotal));
+      const ch = treeKids[id];
+      if (!ch.length) {
+        return (span[id] = crossSize(id) + NODE_GAP);
+      }
+      // Sum of children spans + SUBTREE_GAP between each sibling group
+      const childSum = ch.reduce((s,c) => s + computeSpan(c), 0);
+      const extraGap = (ch.length - 1) * SUBTREE_GAP;
+      return (span[id] = Math.max(crossSize(id) + NODE_GAP, childSum + extraGap));
     }
     roots.forEach(r => computeSpan(r));
 
-    // ── 6. Assign positions recursively ──────────────────────────────
+    // ── 8. Place subtrees recursively ────────────────────────────────
     const px = {}, py = {};
-    // depth = layer index (0 = root)
-    const depthOf = {};
-    function setDepth(id, d) { depthOf[id] = d; treeChildren[id].forEach(c => setDepth(c, d+1)); }
-    roots.forEach(r => setDepth(r, 0));
-
-    // Cumulative cross-axis offset per root group
-    let globalCross = PAD;
-
-    function placeSubtree(id, mainOffset, crossOffset) {
-      const ch = treeChildren[id];
+    function place(id, crossStart) {
+      const ch = treeKids[id];
+      const d  = depthOf[id];
 
       if (!ch.length) {
-        // Leaf: center in its own span
-        const selfCross = isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
-        const center = crossOffset + span[id]/2 - selfCross/2;
-        if (isHoriz) { px[id] = mainOffset; py[id] = center; }
-        else          { py[id] = mainOffset; px[id] = center; }
+        // Leaf: center in its span
+        const mainPos  = layerPos[d];
+        const crossPos = crossStart + span[id]/2 - crossSize(id)/2;
+        if (isHoriz) { px[id]=mainPos;  py[id]=crossPos; }
+        else          { px[id]=crossPos; py[id]=mainPos; }
         return;
       }
 
-      // Place each child, then center this node over all children
-      let childCross = crossOffset;
-      ch.forEach(c => {
-        placeSubtree(c, mainOffset + nodeW(nodeById(id)) + LAYER_GAP, childCross);
-        childCross += span[c];
+      // Place children sequentially, add SUBTREE_GAP between siblings
+      let c_cross = crossStart;
+      ch.forEach((c, i) => {
+        place(c, c_cross);
+        c_cross += span[c] + (i < ch.length-1 ? SUBTREE_GAP : 0);
       });
 
-      // Center over children span
-      const firstC = ch[0], lastC = ch[ch.length-1];
-      const firstCross = isHoriz ? py[firstC] : px[firstC];
-      const lastNode   = nodeById(lastC);
-      const lastCross  = (isHoriz ? py[lastC]  : px[lastC]) +
-                         (isHoriz ? nodeH(lastNode) : nodeW(lastNode));
-      const selfCross = isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
-      const center = (firstCross + lastCross)/2 - selfCross/2;
+      // Center this node over children's actual positions
+      const firstKid = nodeById(ch[0]);
+      const lastKid  = nodeById(ch[ch.length-1]);
+      const firstPos = isHoriz ? py[ch[0]] : px[ch[0]];
+      const lastPos  = (isHoriz ? py[ch[ch.length-1]] : px[ch[ch.length-1]])
+                       + crossSize(ch[ch.length-1]);
+      const midPos   = (firstPos + lastPos) / 2 - crossSize(id) / 2;
 
-      if (isHoriz) { px[id] = mainOffset; py[id] = center; }
-      else          { py[id] = mainOffset; px[id] = center; }
+      if (isHoriz) { px[id]=layerPos[d]; py[id]=midPos; }
+      else          { px[id]=midPos;      py[id]=layerPos[d]; }
     }
 
+    let globalCross = PAD;
     roots.forEach(r => {
-      placeSubtree(r, PAD, globalCross);
-      globalCross += span[r];
+      place(r, globalCross);
+      globalCross += span[r] + SUBTREE_GAP;
     });
 
-    // ── 7. Handle nodes not in spanning tree (secondary parents) ─────
-    // Nodes that ARE in the tree already have positions. No adjustment needed.
-
-    // ── 8. Handle RL/BT flip ─────────────────────────────────────────
+    // ── 9. Flip for RL / BT ──────────────────────────────────────────
     if (direction === 'RL' || direction === 'BT') {
       const maxMain = Math.max(...nodes.map(n =>
-        isHoriz ? (px[n.id] ?? PAD) + nodeW(n) : (py[n.id] ?? PAD) + nodeH(n)
+        isHoriz ? (px[n.id]??PAD) + nodeW(nodeById(n.id))
+                : (py[n.id]??PAD) + nodeH(nodeById(n.id))
       ));
       nodes.forEach(n => {
-        if (isHoriz) px[n.id] = maxMain - (px[n.id] ?? PAD) - nodeW(n) + PAD;
-        else         py[n.id] = maxMain - (py[n.id] ?? PAD) - nodeH(n) + PAD;
+        if (isHoriz) px[n.id] = maxMain - (px[n.id]??PAD) - nodeW(nodeById(n.id)) + PAD;
+        else         py[n.id] = maxMain - (py[n.id]??PAD) - nodeH(nodeById(n.id)) + PAD;
       });
     }
 
-    // ── 9. Assemble ───────────────────────────────────────────────────
-    return nodes.map(n => ({
-      ...n,
-      x: Math.round(px[n.id] ?? PAD),
-      y: Math.round(py[n.id] ?? PAD),
-    }));
+    // ── 10. Assemble + handle missing positions ──────────────────────
+    let isoMain = PAD;
+    const maxCross = Math.max(...nodes.map(n => isHoriz ? (py[n.id]??0)+nodeH(nodeById(n.id)) : (px[n.id]??0)+nodeW(nodeById(n.id))));
+    const isoStart = maxCross + LAYER_GAP;
+
+    return nodes.map(n => {
+      if (px[n.id] !== undefined) {
+        return { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) };
+      }
+      // Isolated node not in spanning tree
+      const r = isHoriz ? { ...n, x: isoMain, y: isoStart } : { ...n, x: isoStart, y: isoMain };
+      isoMain += mainSize(n.id) + LAYER_GAP;
+      return r;
+    });
 
   } catch(err) {
     console.error('[autoLayout]', err);
