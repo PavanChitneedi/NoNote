@@ -247,15 +247,15 @@ const mkNode = (type, x, y) => ({
 function autoLayout(nodes, edges) {
   if (!nodes.length) return nodes;
   try {
-    const H_GAP = 80;    // min horizontal gap between nodes
-    const V_GAP = 110;   // vertical gap between layers
-    const START_X = 100;
-    const START_Y = 100;
+    const LAYER_GAP = 120;  // horizontal gap between layers
+    const NODE_GAP  = 70;   // vertical gap between nodes in same layer
+    const START_X   = 80;
+    const START_Y   = 80;
     const nodeW = n => n?.w || DEF_W;
     const nodeH = n => n?.h || DEF_H;
     const nodeById = id => nodes.find(n => n.id === id);
 
-    // ── 1. Build graph (deduplicated) ────────────────────────────────
+    // ── 1. Build graph ───────────────────────────────────────────────
     const children = {}, parents = {};
     nodes.forEach(n => { children[n.id] = []; parents[n.id] = []; });
     edges.forEach(e => {
@@ -266,17 +266,17 @@ function autoLayout(nodes, edges) {
       }
     });
 
-    // ── 2. Break cycles (DFS back-edge removal) ──────────────────────
-    const vis = new Set(), stack = new Set();
+    // ── 2. Break cycles ──────────────────────────────────────────────
+    const vis = new Set(), stk = new Set();
     function breakCycles(id) {
-      vis.add(id); stack.add(id);
+      vis.add(id); stk.add(id);
       for (const c of [...children[id]]) {
-        if (stack.has(c)) {
+        if (stk.has(c)) {
           children[id] = children[id].filter(x => x !== c);
-          parents[c]   = parents[c].filter(x => x !== id);
+          parents[c] = parents[c].filter(x => x !== id);
         } else if (!vis.has(c)) breakCycles(c);
       }
-      stack.delete(id);
+      stk.delete(id);
     }
     nodes.forEach(n => { if (!vis.has(n.id)) breakCycles(n.id); });
 
@@ -293,111 +293,89 @@ function autoLayout(nodes, edges) {
     const layers = Array.from({length: maxL + 1}, () => []);
     nodes.forEach(n => layers[memo[n.id]].push(n.id));
 
-    // ── 4. Barycenter crossing-minimisation (6 sweeps) ────────────────
+    // ── 4. Barycenter crossing minimization ───────────────────────────
     function bary(li, dir) {
       const cur = layers[li];
-      const ref = dir === 'dn' ? layers[li-1] : layers[li+1];
+      const ref = dir==='fwd' ? layers[li-1] : layers[li+1];
       if (!ref) return;
       const rp = {}; ref.forEach((id,i) => rp[id] = i);
-      const scored = cur.map(id => {
-        const nb = dir === 'dn' ? parents[id] : children[id];
+      const sc = cur.map(id => {
+        const nb = dir==='fwd' ? parents[id] : children[id];
         const hits = nb.filter(x => rp[x] !== undefined);
         return { id, s: hits.length ? hits.reduce((a,x)=>a+rp[x],0)/hits.length : cur.indexOf(id) };
       });
-      scored.sort((a,b) => a.s - b.s);
-      layers[li] = scored.map(x => x.id);
+      sc.sort((a,b) => a.s - b.s);
+      layers[li] = sc.map(x => x.id);
     }
     for (let p = 0; p < 6; p++) {
-      for (let i = 1; i <= maxL; i++) bary(i, 'dn');
-      for (let i = maxL-1; i >= 0; i--) bary(i, 'up');
+      for (let i = 1; i <= maxL; i++) bary(i, 'fwd');
+      for (let i = maxL-1; i >= 0; i--) bary(i, 'bwd');
     }
 
-    // ── 5. Layer Y positions ──────────────────────────────────────────
-    const layY = [];
-    let cY = START_Y;
+    // ── 5. Layer X positions (left → right) ───────────────────────────
+    const layX = [];
+    let curX = START_X;
     for (let li = 0; li <= maxL; li++) {
-      layY[li] = cY;
-      cY += Math.max(...layers[li].map(id => nodeH(nodeById(id)))) + V_GAP;
+      layX[li] = curX;
+      const maxW = Math.max(...layers[li].map(id => nodeW(nodeById(id))));
+      curX += maxW + LAYER_GAP;
     }
 
-    // ── 6. Initial X: sequential placement ───────────────────────────
+    // ── 6. Initial Y: sequential within each layer ────────────────────
     const px = {}, py = {};
     for (let li = 0; li <= maxL; li++) {
-      let x = START_X;
-      layers[li].forEach(id => { px[id] = x; py[id] = layY[li]; x += nodeW(nodeById(id)) + H_GAP; });
-    }
-
-    // ── 7. Width of a subtree (for proportional spacing) ─────────────
-    const subtreeW = {};
-    function calcSubtree(id) {
-      if (subtreeW[id] !== undefined) return subtreeW[id];
-      const ch = children[id].filter(c => memo[c] === memo[id]+1);
-      if (!ch.length) return (subtreeW[id] = nodeW(nodeById(id)));
-      const total = ch.reduce((s,c) => s + calcSubtree(c) + H_GAP, -H_GAP);
-      return (subtreeW[id] = Math.max(nodeW(nodeById(id)), total));
-    }
-    nodes.forEach(n => calcSubtree(n.id));
-
-    // ── 8. Spread nodes proportionally in each layer ─────────────────
-    for (let li = 0; li <= maxL; li++) {
-      const ids = layers[li];
-      // compute total width needed
-      const totalW = ids.reduce((s,id) => s + nodeW(nodeById(id)), 0) + H_GAP*(ids.length-1);
-      // find parent center span
-      const parentXs = ids.flatMap(id => parents[id].map(p => px[p] + nodeW(nodeById(p))/2));
-      const centreX = parentXs.length
-        ? parentXs.reduce((a,b)=>a+b,0)/parentXs.length
-        : START_X + totalW/2;
-      let x = centreX - totalW/2;
-      x = Math.max(x, START_X);
-      ids.forEach(id => { px[id] = x; py[id] = layY[li]; x += nodeW(nodeById(id)) + H_GAP; });
-    }
-
-    // ── 9. Fine-tune: center each node over its children (bottom-up) ─
-    for (let li = maxL-1; li >= 0; li--) {
-      const sorted = [...layers[li]].sort((a,b)=>px[a]-px[b]);
-      sorted.forEach((id, idx) => {
-        const ch = children[id].filter(c => memo[c] === memo[id]+1);
-        if (!ch.length) return;
-        const lx = Math.min(...ch.map(c=>px[c]));
-        const rx = Math.max(...ch.map(c=>px[c]+nodeW(nodeById(c))));
-        const desired = (lx+rx)/2 - nodeW(nodeById(id))/2;
-        const minX = idx > 0 ? px[sorted[idx-1]] + nodeW(nodeById(sorted[idx-1])) + H_GAP : START_X;
-        px[id] = Math.max(desired, minX);
+      let y = START_Y;
+      layers[li].forEach(id => {
+        px[id] = layX[li]; py[id] = y;
+        y += nodeH(nodeById(id)) + NODE_GAP;
       });
-      // re-spread siblings to avoid overlap
-      const s2 = [...layers[li]].sort((a,b)=>px[a]-px[b]);
-      for (let i=1;i<s2.length;i++) {
-        const need = px[s2[i-1]] + nodeW(nodeById(s2[i-1])) + H_GAP;
-        if (px[s2[i]] < need) px[s2[i]] = need;
-      }
     }
 
-    // ── 10. Fine-tune: center each node under its parents (top-down) ─
+    // ── 7. Center children vertically under parent (top-down) ─────────
     for (let li = 1; li <= maxL; li++) {
-      const sorted = [...layers[li]].sort((a,b)=>px[a]-px[b]);
+      const sorted = [...layers[li]].sort((a,b) => py[a]-py[b]);
       sorted.forEach((id, idx) => {
         const pa = parents[id].filter(p => memo[p] === memo[id]-1);
         if (!pa.length) return;
-        const lx = Math.min(...pa.map(p=>px[p]));
-        const rx = Math.max(...pa.map(p=>px[p]+nodeW(nodeById(p))));
-        const desired = (lx+rx)/2 - nodeW(nodeById(id))/2;
-        const minX = idx > 0 ? px[sorted[idx-1]] + nodeW(nodeById(sorted[idx-1])) + H_GAP : START_X;
-        px[id] = Math.max(desired, minX);
+        const topY    = Math.min(...pa.map(p => py[p]));
+        const botY    = Math.max(...pa.map(p => py[p] + nodeH(nodeById(p))));
+        const desired = (topY + botY)/2 - nodeH(nodeById(id))/2;
+        const minY    = idx > 0 ? py[sorted[idx-1]] + nodeH(nodeById(sorted[idx-1])) + NODE_GAP : START_Y;
+        py[id] = Math.max(desired, minY);
       });
     }
 
-    // ── 11. Shift to stay on canvas ───────────────────────────────────
-    const minX = Math.min(...nodes.map(n => px[n.id]??START_X));
-    if (minX < START_X) nodes.forEach(n => { if(px[n.id]!==undefined) px[n.id] += START_X - minX; });
+    // ── 8. Center parents over children (bottom-up) ───────────────────
+    for (let li = maxL-1; li >= 0; li--) {
+      const sorted = [...layers[li]].sort((a,b) => py[a]-py[b]);
+      sorted.forEach((id, idx) => {
+        const ch = children[id].filter(c => memo[c] === memo[id]+1);
+        if (!ch.length) return;
+        const topY    = Math.min(...ch.map(c => py[c]));
+        const botY    = Math.max(...ch.map(c => py[c] + nodeH(nodeById(c))));
+        const desired = (topY + botY)/2 - nodeH(nodeById(id))/2;
+        const minY    = idx > 0 ? py[sorted[idx-1]] + nodeH(nodeById(sorted[idx-1])) + NODE_GAP : START_Y;
+        py[id] = Math.max(desired, minY);
+      });
+      // re-spread after centering
+      const s2 = [...layers[li]].sort((a,b) => py[a]-py[b]);
+      for (let i = 1; i < s2.length; i++) {
+        const need = py[s2[i-1]] + nodeH(nodeById(s2[i-1])) + NODE_GAP;
+        if (py[s2[i]] < need) py[s2[i]] = need;
+      }
+    }
 
-    // ── 12. Assemble ─────────────────────────────────────────────────
-    let isoX = START_X, isoY = cY + 40;
+    // ── 9. Shift to keep on canvas ────────────────────────────────────
+    const minY = Math.min(...nodes.map(n => py[n.id] ?? START_Y));
+    if (minY < START_Y) nodes.forEach(n => { if (py[n.id]!==undefined) py[n.id] += START_Y - minY; });
+
+    // ── 10. Assemble ──────────────────────────────────────────────────
+    let isoX = START_X, isoY = (Math.max(...nodes.map(n=>py[n.id]??0)) || 0) + 200;
     return nodes.map(n => {
       if (px[n.id] !== undefined)
         return { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) };
       const r = { ...n, x: isoX, y: isoY };
-      isoX += nodeW(n) + H_GAP;
+      isoX += nodeW(n) + LAYER_GAP;
       return r;
     });
 
@@ -1200,54 +1178,58 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setSelected(new Set([node.id])); setQuickPos(null); setQuickText("");
   };
 
-  // ── Smart edge router ─────────────────────────────────────────────────
-  // Picks best exit/entry sides from geometry, draws smooth bezier curves.
+
+  // ── Smart edge router — prefers right→left for horizontal layouts ────
   const getEdgePath=(fromNode,toNode,edge={})=>{
     const fw=collW(fromNode), fh=collH(fromNode);
     const tw=collW(toNode),   th=collH(toNode);
-    const fcx=fromNode.x+fw/2, fcy=fromNode.y+fh/2;
-    const tcx=toNode.x+tw/2,   tcy=toNode.y+th/2;
 
-    const faceNormal=(pt,nd,nw,nh)=>{
-      const eps=3;
-      if(Math.abs(pt.y-nd.y)<eps)       return {dx:0,dy:-1};
-      if(Math.abs(pt.y-(nd.y+nh))<eps)  return {dx:0,dy:1};
-      if(Math.abs(pt.x-nd.x)<eps)       return {dx:-1,dy:0};
-      return {dx:1,dy:0};
-    };
-
-    // Pick best exit/entry sides from relative positions
-    const bestSides=(fdx,fdy,fw2,fh2,tdx,tdy,tw2,th2)=>{
-      const dx=(tdx+tw2/2)-(fdx+fw2/2), dy=(tdy+th2/2)-(fdy+fh2/2);
-      const ax=Math.abs(dx), ay=Math.abs(dy);
-      if(ay>ax*0.7) return dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"};
-      if(ax>ay*0.7) return dx>0?{from:"right",to:"left"}:{from:"left",to:"right"};
-      return ay>=ax
-        ?(dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"})
-        :(dx>0?{from:"right",to:"left"}:{from:"left",to:"right"});
-    };
-
-    // Center point on a side with face normal
-    const sideCenter=(nd,nw,nh,side)=>{
+    const faceNormal=(side)=>{
       switch(side){
-        case "top":    return {x:nd.x+nw/2, y:nd.y,      normal:{dx:0, dy:-1}};
-        case "bottom": return {x:nd.x+nw/2, y:nd.y+nh,   normal:{dx:0, dy:1}};
-        case "left":   return {x:nd.x,       y:nd.y+nh/2, normal:{dx:-1,dy:0}};
-        case "right":  return {x:nd.x+nw,    y:nd.y+nh/2, normal:{dx:1, dy:0}};
-        default:       return {x:nd.x+nw/2,  y:nd.y+nh/2, normal:{dx:0, dy:0}};
+        case "top":    return {dx:0, dy:-1};
+        case "bottom": return {dx:0, dy:1};
+        case "left":   return {dx:-1,dy:0};
+        case "right":  return {dx:1, dy:0};
+        default:       return {dx:0, dy:0};
       }
+    };
+
+    // Returns the center point on a node side, with optional t offset (0-1)
+    const sidePt=(nd,nw,nh,side,t=0.5)=>{
+      switch(side){
+        case "top":    return {x:nd.x+nw*t,   y:nd.y,       normal:faceNormal(side)};
+        case "bottom": return {x:nd.x+nw*t,   y:nd.y+nh,    normal:faceNormal(side)};
+        case "left":   return {x:nd.x,         y:nd.y+nh*t,  normal:faceNormal(side)};
+        case "right":  return {x:nd.x+nw,      y:nd.y+nh*t,  normal:faceNormal(side)};
+        default:       return {x:nd.x+nw/2,    y:nd.y+nh/2,  normal:{dx:0,dy:0}};
+      }
+    };
+
+    // Compute best sides from relative geometry
+    const bestSides=(fx,fy,fw2,fh2,tx,ty,tw2,th2)=>{
+      const dx=(tx+tw2/2)-(fx+fw2/2), dy=(ty+th2/2)-(fy+fh2/2);
+      const ax=Math.abs(dx), ay=Math.abs(dy);
+      // Strong rightward → right→left (main flow direction)
+      if(ax>ay*0.5&&dx>0) return {from:"right",to:"left"};
+      // Strong leftward
+      if(ax>ay*0.5&&dx<0) return {from:"left",to:"right"};
+      // Vertical dominance
+      if(ay>ax*0.7)        return dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"};
+      // Mixed diagonal — prefer horizontal
+      return dx>0?{from:"right",to:"left"}:{from:"left",to:"right"};
     };
 
     // Resolve from-point
     let fp,fn1;
     const fa=edge.fromAnchor;
     if(fa&&fa.side&&fa.side!=="auto"){
-      const a=anchorToPoint(fromNode,fw,fh,fa);
-      if(a){fp=a;fn1=a.normal;}
+      const t=fa.t??0.5;
+      const a=sidePt(fromNode,fw,fh,fa.side,t);
+      fp=a; fn1=a.normal;
     }
     if(!fp){
       const {from:fSide}=bestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
-      const pt=sideCenter(fromNode,fw,fh,fSide);
+      const pt=sidePt(fromNode,fw,fh,fSide,0.5);
       fp=pt; fn1=pt.normal;
     }
 
@@ -1255,24 +1237,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     let tp,fn2;
     const ta=edge.toAnchor;
     if(ta&&ta.side&&ta.side!=="auto"){
-      const a=anchorToPoint(toNode,tw,th,ta);
-      if(a){tp=a;fn2=a.normal;}
+      const t=ta.t??0.5;
+      const a=sidePt(toNode,tw,th,ta.side,t);
+      tp=a; fn2=a.normal;
     }
     if(!tp){
       const {to:tSide}=bestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
-      const pt=sideCenter(toNode,tw,th,tSide);
+      const pt=sidePt(toNode,tw,th,tSide,0.5);
       tp=pt; fn2=pt.normal;
     }
 
-    // Bezier control point lengths — longer when route is perpendicular
+    // Bezier control points — longer for perpendicular routes
     const dx=tp.x-fp.x, dy=tp.y-fp.y;
     const dist=Math.sqrt(dx*dx+dy*dy);
     const alignF=dist>0?Math.abs(fn1.dx*(dx/dist)+fn1.dy*(dy/dist)):0;
-    const ctrl=Math.max(50, dist*(0.35+(1-alignF)*0.25));
+    const ctrl=Math.max(50, dist*(0.4+(1-alignF)*0.2));
     let c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
     let c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
 
-    // Manual midpoint override (bezier handle drag)
     if(edge.midOff){
       const mx=(fp.x+tp.x)/2+edge.midOff.dx;
       const my=(fp.y+tp.y)/2+edge.midOff.dy;
@@ -1591,27 +1573,57 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               );
             })()}
             {isSel&&canEdit&&(()=>{
-              const handleDrag=(isFrom)=>(ev)=>{
+              // Drag endpoint: if near the SAME node's edge → slide t offset
+              //               if dragged onto a DIFFERENT node → reattach
+              const handleEndpointDrag=(isFrom)=>(ev)=>{
                 ev.stopPropagation();
+                const srcId = isFrom ? edge.from : edge.to;
                 const onMove=(mv)=>{
                   if(!canvasRef.current) return;
                   const el=canvasRef.current;
                   const rect=el.getBoundingClientRect(); const s=1/zoom;
                   const cx=(mv.clientX-rect.left)*s+el.scrollLeft*s;
                   const cy=(mv.clientY-rect.top)*s+el.scrollTop*s;
-                  const hoveredNode=nodesRef.current.find(n=>{const nw=collW(n),nh=collH(n);return cx>=n.x&&cx<=n.x+nw&&cy>=n.y&&cy<=n.y+nh;});
+                  // Check which node we're over
+                  const hoveredNode=nodesRef.current.find(n=>{
+                    const nw=collW(n),nh=collH(n);
+                    return cx>=n.x&&cx<=n.x+nw&&cy>=n.y&&cy<=n.y+nh;
+                  });
                   if(hoveredNode){
                     const nw=collW(hoveredNode),nh=collH(hoveredNode);
-                    const newAnchor=snapToAnchor(hoveredNode,nw,nh,cx,cy)||{side:"auto"};
-                    applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,...(isFrom?{from:hoveredNode.id,fromAnchor:newAnchor}:{to:hoveredNode.id,toAnchor:newAnchor})}));
+                    if(hoveredNode.id===srcId){
+                      // Same node — slide t along current side
+                      const anchor=snapToAnchor(hoveredNode,nw,nh,cx,cy)||{side:"auto"};
+                      applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,
+                        ...(isFrom?{fromAnchor:anchor}:{toAnchor:anchor})}));
+                    } else {
+                      // Different node — reattach
+                      const anchor=snapToAnchor(hoveredNode,nw,nh,cx,cy)||{side:"auto"};
+                      applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,
+                        ...(isFrom?{from:hoveredNode.id,fromAnchor:anchor}:{to:hoveredNode.id,toAnchor:anchor})}));
+                    }
                   }
                 };
                 const onUp=()=>{window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp);};
                 window.addEventListener("mousemove",onMove); window.addEventListener("mouseup",onUp);
               };
               return(<>
-                <circle cx={fp.x} cy={fp.y} r="7" fill="var(--success)" stroke="var(--bg2)" strokeWidth="2.5" style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={handleDrag(true)}/>
-                <circle cx={tp.x} cy={tp.y} r="7" fill="var(--accent)" stroke="var(--bg2)" strokeWidth="2.5" style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={handleDrag(false)}/>
+                {/* FROM handle — green circle */}
+                <circle cx={fp.x} cy={fp.y} r="8" fill="var(--success)" stroke="var(--bg2)" strokeWidth="2" opacity="0.9"
+                  style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={handleEndpointDrag(true)}/>
+                <circle cx={fp.x} cy={fp.y} r="3" fill="#fff" opacity="0.8" style={{pointerEvents:"none"}}/>
+                {/* TO handle — blue circle */}
+                <circle cx={tp.x} cy={tp.y} r="8" fill="var(--accent)" stroke="var(--bg2)" strokeWidth="2" opacity="0.9"
+                  style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={handleEndpointDrag(false)}/>
+                <circle cx={tp.x} cy={tp.y} r="3" fill="#fff" opacity="0.8" style={{pointerEvents:"none"}}/>
+                {/* Reset anchor button — tiny x near midpoint */}
+                {(edge.fromAnchor||edge.toAnchor||edge.midOff)&&(
+                  <text x={mid.x+14} y={mid.y-14} fill="var(--text4)" fontSize="10" textAnchor="middle"
+                    style={{cursor:"pointer",pointerEvents:"all"}} fontFamily="var(--font-ui)"
+                    onClick={ev=>{ev.stopPropagation();applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,fromAnchor:null,toAnchor:null,midOff:null}));}}>
+                    ↺
+                  </text>
+                )}
               </>);
             })()}
           </g>
