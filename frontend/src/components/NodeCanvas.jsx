@@ -247,95 +247,162 @@ const mkNode = (type, x, y) => ({
 function autoLayout(nodes, edges) {
   if (!nodes.length) return nodes;
   try {
-  // Always use EXPANDED sizes for layout — so collapse→layout→expand never overlaps
-  const H_PAD = 80, V_PAD = 80;
-  const START_X = 100, START_Y = 100;
-  // Always use full (expanded) size regardless of current collapse state
-  const nodeW = n => n?.w || DEF_W;
-  const nodeH = n => n?.h || DEF_H;
-  const nodeById = id => nodes.find(n => n.id === id);
+    const H_GAP = 90;   // horizontal gap between nodes in same layer
+    const V_GAP = 100;  // vertical gap between layers
+    const START_X = 80;
+    const START_Y = 80;
+    const nodeW = n => (n?.w || DEF_W);
+    const nodeH = n => (n?.h || DEF_H);
+    const ids = nodes.map(n => n.id);
+    const nodeById = id => nodes.find(n => n.id === id);
 
-  // Build adjacency for topological sort
-  const inDeg = {}, adj = {};
-  nodes.forEach(n => { inDeg[n.id] = 0; adj[n.id] = []; });
-  edges.forEach(e => {
-    if (inDeg[e.to] !== undefined && inDeg[e.from] !== undefined) {
-      inDeg[e.to]++;
-      adj[e.from].push(e.to);
-    }
-  });
-
-  // Kahn topo sort → layers
-  const layers = [];
-  let q = nodes.filter(n => inDeg[n.id] === 0).map(n => n.id);
-  const vis = new Set();
-  while (q.length) {
-    layers.push([...q]);
-    q.forEach(id => vis.add(id));
-    const next = [];
-    q.forEach(id => adj[id]?.forEach(tid => {
-      if (!vis.has(tid)) { inDeg[tid]--; if (inDeg[tid] === 0) next.push(tid); }
-    }));
-    q = next;
-  }
-  // Cyclic / isolated nodes — place in extra rows
-  nodes.filter(n => !vis.has(n.id)).forEach(n => layers.push([n.id]));
-
-  // Position each layer left-to-right, stack layers top-to-bottom
-  const posMap = {};
-  let y = START_Y;
-  layers.forEach(layer => {
-    let x = START_X;
-    layer.forEach(id => {
-      const n = nodeById(id);
-      posMap[id] = { x, y };
-      x += nodeW(n) + H_PAD;
+    // ── 1. Build directed graph ────────────────────────────────────────
+    const children = {}, parents = {};
+    ids.forEach(id => { children[id] = []; parents[id] = []; });
+    edges.forEach(e => {
+      if (children[e.from] !== undefined && children[e.to] !== undefined) {
+        if (!children[e.from].includes(e.to)) children[e.from].push(e.to);
+        if (!parents[e.to].includes(e.from))  parents[e.to].push(e.from);
+      }
     });
-    const maxH = layer.length ? Math.max(...layer.map(id => nodeH(nodeById(id)))) : DEF_H;
-    y += maxH + V_PAD;
-  });
 
-  const fallbackY = y;
-  let result = nodes.map((n, i) => ({
-    ...n,
-    ...(posMap[n.id] || { x: START_X + (i % 4) * (DEF_W + 80), y: fallbackY + Math.floor(i / 4) * (DEF_H + 80) }),
-  }));
-
-  // Force-separation — push overlapping nodes apart until clean
-  const MIN_GAP = 24;
-  for (let iter = 0; iter < 120; iter++) {
-    let moved = false;
-    for (let i = 0; i < result.length; i++) {
-      for (let j = i + 1; j < result.length; j++) {
-        const a = result[i], b = result[j];
-        const aw = a.w||DEF_W, ah = a.h||DEF_H;
-        const bw = b.w||DEF_W, bh = b.h||DEF_H;
-        const gapX = b.x - (a.x + aw);
-        const gapY = b.y - (a.y + ah);
-        const gapBX = a.x - (b.x + bw);
-        const gapBY = a.y - (b.y + bh);
-        const overlapX = gapX < MIN_GAP && gapBX < MIN_GAP;
-        const overlapY = gapY < MIN_GAP && gapBY < MIN_GAP;
-        if (overlapX && overlapY) {
-          // Push along the smaller overlap axis
-          const pushRight = MIN_GAP - gapX;
-          const pushDown  = MIN_GAP - gapY;
-          if (pushRight <= pushDown) {
-            result[j] = { ...result[j], x: result[j].x + pushRight };
-          } else {
-            result[j] = { ...result[j], y: result[j].y + pushDown };
-          }
-          moved = true;
+    // ── 2. Cycle detection — remove back-edges for layout purposes ─────
+    const visited = new Set(), inStack = new Set();
+    function dfs(id) {
+      visited.add(id); inStack.add(id);
+      const ch = [...children[id]];
+      for (const child of ch) {
+        if (!visited.has(child)) { dfs(child); }
+        else if (inStack.has(child)) {
+          children[id] = children[id].filter(c => c !== child);
+          parents[child] = parents[child].filter(p => p !== id);
         }
       }
+      inStack.delete(id);
     }
-    if (!moved) break;
-  }
+    ids.forEach(id => { if (!visited.has(id)) dfs(id); });
 
-  return result;
+    // ── 3. Longest-path layer assignment ──────────────────────────────
+    const layerOf = {};
+    const memo = {};
+    function longestPath(id) {
+      if (memo[id] !== undefined) return memo[id];
+      const parentLayers = parents[id].map(p => longestPath(p));
+      memo[id] = parentLayers.length ? Math.max(...parentLayers) + 1 : 0;
+      layerOf[id] = memo[id];
+      return memo[id];
+    }
+    ids.forEach(id => longestPath(id));
+
+    const maxLayer = Math.max(...ids.map(id => layerOf[id]));
+    const layerNodes = Array.from({length: maxLayer + 1}, () => []);
+    ids.forEach(id => layerNodes[layerOf[id]].push(id));
+
+    // ── 4. Barycenter crossing minimization (4 sweeps) ─────────────────
+    function barycenter(li, dir) {
+      const cur = layerNodes[li];
+      const refLayer = dir === 'down' ? layerNodes[li - 1] : layerNodes[li + 1];
+      if (!refLayer) return;
+      const refPos = {};
+      refLayer.forEach((id, i) => { refPos[id] = i; });
+      const scores = cur.map(id => {
+        const nbrs = dir === 'down' ? parents[id] : children[id];
+        const hits = nbrs.filter(n => refPos[n] !== undefined);
+        if (!hits.length) return { id, score: cur.indexOf(id) };
+        return { id, score: hits.reduce((s, n) => s + refPos[n], 0) / hits.length };
+      });
+      scores.sort((a, b) => a.score - b.score);
+      layerNodes[li] = scores.map(s => s.id);
+    }
+    for (let pass = 0; pass < 5; pass++) {
+      for (let i = 1; i <= maxLayer; i++) barycenter(i, 'down');
+      for (let i = maxLayer - 1; i >= 0; i--) barycenter(i, 'up');
+    }
+
+    // ── 5. Compute layer Y positions ────────────────────────────────────
+    const layerY = [];
+    let curY = START_Y;
+    for (let li = 0; li <= maxLayer; li++) {
+      layerY[li] = curY;
+      const maxH = Math.max(...layerNodes[li].map(id => nodeH(nodeById(id))));
+      curY += maxH + V_GAP;
+    }
+
+    // ── 6. Initial X: sequential within each layer ──────────────────────
+    const posX = {}, posY = {};
+    for (let li = 0; li <= maxLayer; li++) {
+      let x = START_X;
+      layerNodes[li].forEach(id => {
+        posX[id] = x; posY[id] = layerY[li];
+        x += nodeW(nodeById(id)) + H_GAP;
+      });
+    }
+
+    // ── 7. Center children under their parents (top-down pass) ──────────
+    for (let li = 1; li <= maxLayer; li++) {
+      const sorted = [...layerNodes[li]].sort((a, b) => posX[a] - posX[b]);
+      sorted.forEach((id, idx) => {
+        const pa = parents[id].filter(p => layerOf[p] < layerOf[id]);
+        if (pa.length) {
+          const leftmost  = Math.min(...pa.map(p => posX[p]));
+          const rightmost = Math.max(...pa.map(p => posX[p] + nodeW(nodeById(p))));
+          const desired = (leftmost + rightmost) / 2 - nodeW(nodeById(id)) / 2;
+          const minX = idx > 0
+            ? posX[sorted[idx - 1]] + nodeW(nodeById(sorted[idx - 1])) + H_GAP
+            : START_X;
+          posX[id] = Math.max(desired, minX);
+        } else {
+          const minX = idx > 0
+            ? posX[sorted[idx - 1]] + nodeW(nodeById(sorted[idx - 1])) + H_GAP
+            : posX[id];
+          posX[id] = Math.max(posX[id], minX);
+        }
+      });
+    }
+
+    // ── 8. Center parents over their children (bottom-up pass) ──────────
+    for (let li = maxLayer - 1; li >= 0; li--) {
+      const sorted = [...layerNodes[li]].sort((a, b) => posX[a] - posX[b]);
+      sorted.forEach((id, idx) => {
+        const ch = children[id].filter(c => layerOf[c] === li + 1);
+        if (ch.length) {
+          const leftmost  = Math.min(...ch.map(c => posX[c]));
+          const rightmost = Math.max(...ch.map(c => posX[c] + nodeW(nodeById(c))));
+          const desired = (leftmost + rightmost) / 2 - nodeW(nodeById(id)) / 2;
+          const minX = idx > 0
+            ? posX[sorted[idx - 1]] + nodeW(nodeById(sorted[idx - 1])) + H_GAP
+            : START_X;
+          posX[id] = Math.max(desired, minX);
+        }
+      });
+      // Re-spread this layer so nothing overlaps after centering
+      const resort = [...layerNodes[li]].sort((a, b) => posX[a] - posX[b]);
+      for (let i = 1; i < resort.length; i++) {
+        const prev = resort[i - 1], cur = resort[i];
+        const need = posX[prev] + nodeW(nodeById(prev)) + H_GAP;
+        if (posX[cur] < need) posX[cur] = need;
+      }
+    }
+
+    // ── 9. Shift so nothing is off-canvas ────────────────────────────────
+    const minX = Math.min(...ids.map(id => posX[id] ?? START_X));
+    const shift = minX < START_X ? START_X - minX : 0;
+    ids.forEach(id => { if (posX[id] !== undefined) posX[id] += shift; });
+
+    // ── 10. Assemble result + handle isolated nodes ───────────────────────
+    let isoX = START_X, isoY = curY + 40;
+    return nodes.map(n => {
+      if (posX[n.id] !== undefined) {
+        return { ...n, x: Math.round(posX[n.id]), y: Math.round(posY[n.id]) };
+      }
+      const r = { ...n, x: isoX, y: isoY };
+      isoX += nodeW(n) + H_GAP;
+      return r;
+    });
+
   } catch(err) {
     console.error("[autoLayout] crash:", err);
-    return nodes; // return unchanged on any error
+    return nodes;
   }
 }
 
