@@ -1607,7 +1607,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   });
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"100vh,background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
 
       {/* ── Topbar ── */}
       <div style={{
