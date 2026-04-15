@@ -244,13 +244,10 @@ const mkNode = (type, x, y) => ({
 });
 
 // ── Auto-layout — topological layers, centered, no overlap ──
-function autoLayout(nodes, edges) {
+function autoLayout(nodes, edges, direction='LR') {
   if (!nodes.length) return nodes;
   try {
-    const LAYER_GAP = 120;  // horizontal gap between layers
-    const NODE_GAP  = 70;   // vertical gap between nodes in same layer
-    const START_X   = 80;
-    const START_Y   = 80;
+    const PAD_START = 80;  // padding from canvas edge
     const nodeW = n => n?.w || DEF_W;
     const nodeH = n => n?.h || DEF_H;
     const nodeById = id => nodes.find(n => n.id === id);
@@ -282,12 +279,12 @@ function autoLayout(nodes, edges) {
 
     // ── 3. Longest-path layer assignment ─────────────────────────────
     const memo = {};
-    function depth(id) {
+    function layerOf(id) {
       if (memo[id] !== undefined) return memo[id];
-      const pd = parents[id].map(p => depth(p));
+      const pd = parents[id].map(p => layerOf(p));
       return (memo[id] = pd.length ? Math.max(...pd) + 1 : 0);
     }
-    nodes.forEach(n => depth(n.id));
+    nodes.forEach(n => layerOf(n.id));
 
     const maxL = Math.max(...nodes.map(n => memo[n.id]));
     const layers = Array.from({length: maxL + 1}, () => []);
@@ -312,71 +309,123 @@ function autoLayout(nodes, edges) {
       for (let i = maxL-1; i >= 0; i--) bary(i, 'bwd');
     }
 
-    // ── 5. Layer X positions (left → right) ───────────────────────────
-    const layX = [];
-    let curX = START_X;
-    for (let li = 0; li <= maxL; li++) {
-      layX[li] = curX;
-      const maxW = Math.max(...layers[li].map(id => nodeW(nodeById(id))));
-      curX += maxW + LAYER_GAP;
+    // ── 5. RADIAL layout ─────────────────────────────────────────────
+    if (direction === 'radial') {
+      const cx = 2000, cy = 1500; // center of canvas
+      const radii = [0, 280, 520, 760, 1000, 1240];
+      const px = {}, py = {};
+      layers.forEach((layer, li) => {
+        const r = radii[Math.min(li, radii.length-1)];
+        if (li === 0) {
+          // root(s) at center or spread around center
+          layer.forEach((id, i) => {
+            const angle = (i / Math.max(layer.length, 1)) * Math.PI * 2;
+            px[id] = cx + (li === 0 ? 0 : r) * Math.cos(angle) - nodeW(nodeById(id))/2;
+            py[id] = cy + (li === 0 ? 0 : r) * Math.sin(angle) - nodeH(nodeById(id))/2;
+          });
+        } else {
+          layer.forEach((id, i) => {
+            const angle = (i / Math.max(layer.length, 1)) * Math.PI * 2 - Math.PI/2;
+            px[id] = cx + r * Math.cos(angle) - nodeW(nodeById(id))/2;
+            py[id] = cy + r * Math.sin(angle) - nodeH(nodeById(id))/2;
+          });
+        }
+      });
+      return nodes.map(n => px[n.id] !== undefined
+        ? { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) }
+        : n);
     }
 
-    // ── 6. Initial Y: sequential within each layer ────────────────────
-    const px = {}, py = {};
+    // ── 6. Hierarchical layout — compute along main axis ─────────────
+    // direction: LR=left→right, TB=top→bottom, RL=right→left, BT=bottom→top
+    const isHoriz = direction==='LR' || direction==='RL';
+    const LAYER_GAP = isHoriz ? 120 : 110; // gap between layers
+    const NODE_GAP  = isHoriz ? 70  : 80;  // gap between nodes in same layer
+
+    // Each layer's cross-axis offset
+    const layOff = [];
+    let curOff = PAD_START;
     for (let li = 0; li <= maxL; li++) {
-      let y = START_Y;
+      layOff[li] = curOff;
+      const maxMain = Math.max(...layers[li].map(id =>
+        isHoriz ? nodeW(nodeById(id)) : nodeH(nodeById(id))
+      ));
+      curOff += maxMain + LAYER_GAP;
+    }
+
+    // Positions along the cross axis
+    const pMain = {}, pCross = {};
+    for (let li = 0; li <= maxL; li++) {
+      let cross = PAD_START;
       layers[li].forEach(id => {
-        px[id] = layX[li]; py[id] = y;
-        y += nodeH(nodeById(id)) + NODE_GAP;
+        pMain[id]  = layOff[li];
+        pCross[id] = cross;
+        cross += (isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id))) + NODE_GAP;
       });
     }
 
-    // ── 7. Center children vertically under parent (top-down) ─────────
+    // Center children under parent (top-down pass)
     for (let li = 1; li <= maxL; li++) {
-      const sorted = [...layers[li]].sort((a,b) => py[a]-py[b]);
+      const sorted = [...layers[li]].sort((a,b) => pCross[a]-pCross[b]);
       sorted.forEach((id, idx) => {
         const pa = parents[id].filter(p => memo[p] === memo[id]-1);
         if (!pa.length) return;
-        const topY    = Math.min(...pa.map(p => py[p]));
-        const botY    = Math.max(...pa.map(p => py[p] + nodeH(nodeById(p))));
-        const desired = (topY + botY)/2 - nodeH(nodeById(id))/2;
-        const minY    = idx > 0 ? py[sorted[idx-1]] + nodeH(nodeById(sorted[idx-1])) + NODE_GAP : START_Y;
-        py[id] = Math.max(desired, minY);
+        const nodeSize = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
+        const lo = Math.min(...pa.map(p => pCross[p]));
+        const hi = Math.max(...pa.map(p => pCross[p] + nodeSize(p)));
+        const desired = (lo+hi)/2 - nodeSize(id)/2;
+        const minCross = idx>0 ? pCross[sorted[idx-1]] + nodeSize(sorted[idx-1]) + NODE_GAP : PAD_START;
+        pCross[id] = Math.max(desired, minCross);
       });
     }
 
-    // ── 8. Center parents over children (bottom-up) ───────────────────
+    // Center parents over children (bottom-up pass)
     for (let li = maxL-1; li >= 0; li--) {
-      const sorted = [...layers[li]].sort((a,b) => py[a]-py[b]);
+      const sorted = [...layers[li]].sort((a,b) => pCross[a]-pCross[b]);
       sorted.forEach((id, idx) => {
         const ch = children[id].filter(c => memo[c] === memo[id]+1);
         if (!ch.length) return;
-        const topY    = Math.min(...ch.map(c => py[c]));
-        const botY    = Math.max(...ch.map(c => py[c] + nodeH(nodeById(c))));
-        const desired = (topY + botY)/2 - nodeH(nodeById(id))/2;
-        const minY    = idx > 0 ? py[sorted[idx-1]] + nodeH(nodeById(sorted[idx-1])) + NODE_GAP : START_Y;
-        py[id] = Math.max(desired, minY);
+        const nodeSize = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
+        const lo = Math.min(...ch.map(c => pCross[c]));
+        const hi = Math.max(...ch.map(c => pCross[c] + nodeSize(c)));
+        const desired = (lo+hi)/2 - nodeSize(id)/2;
+        const minCross = idx>0 ? pCross[sorted[idx-1]] + nodeSize(sorted[idx-1]) + NODE_GAP : PAD_START;
+        pCross[id] = Math.max(desired, minCross);
       });
-      // re-spread after centering
-      const s2 = [...layers[li]].sort((a,b) => py[a]-py[b]);
-      for (let i = 1; i < s2.length; i++) {
-        const need = py[s2[i-1]] + nodeH(nodeById(s2[i-1])) + NODE_GAP;
-        if (py[s2[i]] < need) py[s2[i]] = need;
+      // Re-spread
+      const s2 = [...layers[li]].sort((a,b) => pCross[a]-pCross[b]);
+      const nodeSize2 = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
+      for (let i=1;i<s2.length;i++) {
+        const need = pCross[s2[i-1]] + nodeSize2(s2[i-1]) + NODE_GAP;
+        if (pCross[s2[i]] < need) pCross[s2[i]] = need;
       }
     }
 
-    // ── 9. Shift to keep on canvas ────────────────────────────────────
-    const minY = Math.min(...nodes.map(n => py[n.id] ?? START_Y));
-    if (minY < START_Y) nodes.forEach(n => { if (py[n.id]!==undefined) py[n.id] += START_Y - minY; });
+    // Clamp cross axis to canvas
+    const minCross = Math.min(...nodes.map(n => pCross[n.id] ?? PAD_START));
+    if (minCross < PAD_START) nodes.forEach(n => {
+      if (pCross[n.id] !== undefined) pCross[n.id] += PAD_START - minCross;
+    });
 
-    // ── 10. Assemble ──────────────────────────────────────────────────
-    let isoX = START_X, isoY = (Math.max(...nodes.map(n=>py[n.id]??0)) || 0) + 200;
+    // Flip main axis for RL/BT
+    const totalMain = curOff;
+    const flip = direction==='RL' || direction==='BT';
+
+    let isoOff = PAD_START, isoCross = (Math.max(...nodes.map(n=>pCross[n.id]??0))||0) + 200;
     return nodes.map(n => {
-      if (px[n.id] !== undefined)
-        return { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) };
-      const r = { ...n, x: isoX, y: isoY };
-      isoX += nodeW(n) + LAYER_GAP;
-      return r;
+      if (pMain[n.id] === undefined) {
+        const r = isHoriz
+          ? { ...n, x: isoOff, y: isoCross }
+          : { ...n, x: isoCross, y: isoOff };
+        isoOff += (isHoriz ? nodeW(n) : nodeH(n)) + LAYER_GAP;
+        return r;
+      }
+      const main  = flip ? totalMain - pMain[n.id] - (isHoriz?nodeW(n):nodeH(n)) : pMain[n.id];
+      const cross = pCross[n.id];
+      return { ...n,
+        x: Math.round(isHoriz ? main  : cross),
+        y: Math.round(isHoriz ? cross : main),
+      };
     });
 
   } catch(err) {
@@ -585,6 +634,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // Feature: Inline node popup editor
   const [nodePopup,      setNodePopup]      = useState(null); // {nodeId, tab}
   const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
+  const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
+  const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [sidebarIconOnly, setSidebarIconOnly] = useState(false);
   // Feature: Comment pins
   const [comments,       setComments]       = useState({});    // {nodeId: [{id,text,author,ts}]}
@@ -748,7 +799,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const mod=e.ctrlKey||e.metaKey;
       if(mod&&e.code==="KeyZ"&&!e.shiftKey){e.preventDefault();undo();return;}
       if((mod&&e.code==="KeyY")||(mod&&e.shiftKey&&e.code==="KeyZ")){e.preventDefault();redo();return;}
-      if(mod&&e.code==="Enter"){e.preventDefault();handleAutoLayout();return;}
+      if(mod&&e.code==="Enter"){e.preventDefault();handleAutoLayout(layoutDir);return;}
       if(mod&&e.code==="Equal"){e.preventDefault();setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)));return;}
       if(mod&&e.code==="Minus"){e.preventDefault();setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)));return;}
       if(mod&&e.code==="Digit0"){e.preventDefault();setZoom(1);return;}
@@ -1149,17 +1200,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   };
 
   // ── Auto-layout ────────────────────────────────────────────
-  const handleAutoLayout=useCallback(()=>{
+  const handleAutoLayout=useCallback((dir)=>{
+    const d=dir||layoutDir;
+    localStorage.setItem('nn_layout_dir',d);
     applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null,midOff:null})));
     applyNodes(ns=>{
-      const laid=autoLayout(ns,edges);
-      // Scroll to show nodes after a tick
+      const laid=autoLayout(ns,edges,d);
       setTimeout(()=>{
         if(canvasRef.current) canvasRef.current.scrollTo({left:0,top:0,behavior:"smooth"});
       },100);
       return laid;
     });
-  },[edges,applyNodes,zoom]);
+  },[edges,applyNodes,zoom,layoutDir]);
 
   // ── Restore version ────────────────────────────────────────
   const handleRestore=(ns,es)=>{
@@ -1205,18 +1257,22 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
     };
 
-    // Compute best sides from relative geometry
+    // Compute best sides — direction-aware
     const bestSides=(fx,fy,fw2,fh2,tx,ty,tw2,th2)=>{
       const dx=(tx+tw2/2)-(fx+fw2/2), dy=(ty+th2/2)-(fy+fh2/2);
       const ax=Math.abs(dx), ay=Math.abs(dy);
-      // Strong rightward → right→left (main flow direction)
-      if(ax>ay*0.5&&dx>0) return {from:"right",to:"left"};
-      // Strong leftward
-      if(ax>ay*0.5&&dx<0) return {from:"left",to:"right"};
-      // Vertical dominance
-      if(ay>ax*0.7)        return dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"};
-      // Mixed diagonal — prefer horizontal
-      return dx>0?{from:"right",to:"left"}:{from:"left",to:"right"};
+      // If the separation is strongly horizontal, use horizontal sides
+      if(ax>ay*0.5){
+        return dx>0?{from:"right",to:"left"}:{from:"left",to:"right"};
+      }
+      // If the separation is strongly vertical, use vertical sides
+      if(ay>ax*0.5){
+        return dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"};
+      }
+      // Roughly diagonal — pick dominant axis
+      return ax>=ay
+        ? (dx>0?{from:"right",to:"left"}:{from:"left",to:"right"})
+        : (dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"});
     };
 
     // Resolve from-point
@@ -2015,7 +2071,52 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
               <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
 
-              <button onClick={handleAutoLayout} style={tbtn(false)} title="Auto-arrange (Ctrl+Enter)">⊞ Layout</button>
+              {/* Layout with direction picker */}
+              <div style={{position:"relative",flexShrink:0}}>
+                <div style={{display:"flex",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden"}}>
+                  <button onClick={()=>handleAutoLayout()} style={{...tbtn(false),borderRadius:0,padding:"4px 9px",fontSize:11,borderRight:"1px solid var(--border)"}}
+                    title="Auto-arrange (Ctrl+Enter)">
+                    ⊞ Layout
+                  </button>
+                  <button onClick={()=>setShowLayoutMenu(v=>!v)}
+                    style={{...tbtn(showLayoutMenu,"var(--accent2)"),borderRadius:0,padding:"4px 6px",fontSize:10}}
+                    title="Choose layout direction">
+                    {{LR:"→",TB:"↓",RL:"←",BT:"↑",radial:"◎"}[layoutDir]||"→"} ▾
+                  </button>
+                </div>
+                {showLayoutMenu&&(<>
+                  <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowLayoutMenu(false)}/>
+                  <div style={{position:"fixed",top:82,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",
+                    borderRadius:"var(--radius-md)",boxShadow:"0 8px 28px rgba(0,0,0,.5)",
+                    padding:6,minWidth:190,overflow:"hidden"}}>
+                    <div style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:1,padding:"4px 8px 6px"}}>LAYOUT DIRECTION</div>
+                    {[
+                      ["LR","→","Left → Right","Hierarchical tree flowing right (default)"],
+                      ["TB","↓","Top → Bottom","Classic org chart / flowchart"],
+                      ["RL","←","Right → Left","Reverse horizontal tree"],
+                      ["BT","↑","Bottom → Top","Reverse vertical / timeline"],
+                      ["radial","◎","Radial","Root in center, children spread outward"],
+                    ].map(([dir,icon,label,desc])=>(
+                      <div key={dir}
+                        onClick={()=>{setLayoutDir(dir);setShowLayoutMenu(false);handleAutoLayout(dir);}}
+                        style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",cursor:"pointer",
+                          borderRadius:"var(--radius-sm)",
+                          background:layoutDir===dir?"var(--accent2)20":"transparent",
+                          border:layoutDir===dir?"1px solid var(--accent2)":"1px solid transparent",
+                          marginBottom:2}}
+                        onMouseEnter={e=>e.currentTarget.style.background=layoutDir===dir?"var(--accent2)30":"var(--bg3)"}
+                        onMouseLeave={e=>e.currentTarget.style.background=layoutDir===dir?"var(--accent2)20":"transparent"}>
+                        <span style={{fontSize:16,width:24,textAlign:"center",flexShrink:0}}>{icon}</span>
+                        <div>
+                          <div style={{fontSize:11,fontWeight:700,color:layoutDir===dir?"var(--accent2)":"var(--text)"}}>{label}</div>
+                          <div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div>
+                        </div>
+                        {layoutDir===dir&&<span style={{marginLeft:"auto",color:"var(--accent2)",fontSize:12}}>✓</span>}
+                      </div>
+                    ))}
+                  </div>
+                </>)}
+              </div>
               <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
                 {globalCollapsed?"⊞ Expand All":"⊟ Collapse"}
               </button>
@@ -2216,6 +2317,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             setSelected(new Set()); setSelEdge(null);
             if(drawingEdge) setDrawingEdge(null);
             setContextMenu(null);
+            if(nodePopup) setNodePopup(null);
             if(propsMode==='panel') setShowProps(false);
           }}
           onMouseMove={e=>{
