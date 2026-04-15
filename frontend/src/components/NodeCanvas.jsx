@@ -1172,6 +1172,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback(()=>{
+    // Reset edge anchors so smart router picks best sides for new positions
+    applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null,midOff:null})));
     applyNodes(ns=>{
       const laid=autoLayout(ns,edges);
       // Scroll to show nodes after a tick
@@ -1199,9 +1201,1316 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setSelected(new Set([node.id])); setQuickPos(null); setQuickText("");
   };
 
-  // ── Edge path — orthogonal bezier, arrows perpendicular to node edge ──
-  // Uses actual rendered dimensions (collW/collH) for precise edge exit points
+  // ── Smart edge router ─────────────────────────────────────────────────
+  // Picks the best exit/entry sides based on node geometry, then draws
+  // smooth bezier curves with proper perpendicular control points.
   const getEdgePath=(fromNode,toNode,edge={})=>{
+    const fw=collW(fromNode), fh=collH(fromNode);
+    const tw=collW(toNode),   th=collH(toNode);
+    const fcx=fromNode.x+fw/2, fcy=fromNode.y+fh/2;
+    const tcx=toNode.x+tw/2,   tcy=toNode.y+th/2;
+
+    const faceNormal=(pt,node,nw,nh)=>{
+      const eps=3;
+      if(Math.abs(pt.y-node.y)<eps)      return {dx:0,dy:-1};
+      if(Math.abs(pt.y-(node.y+nh))<eps) return {dx:0,dy:1};
+      if(Math.abs(pt.x-node.x)<eps)      return {dx:-1,dy:0};
+      return {dx:1,dy:0};
+    };
+
+    // ── Smart side selection ──────────────────────────────────────────
+    // Decide best exit/entry sides from geometric relationship
+    function bestSides(from, fw, fh, to, tw, th) {
+      const dx = (to.x+tw/2) - (from.x+fw/2);
+      const dy = (to.y+th/2) - (from.y+fh/2);
+      const absDx = Math.abs(dx), absDy = Math.abs(dy);
+      
+      // Vertical dominance — use top/bottom
+      if (absDy > absDx * 0.7) {
+        return dy > 0
+          ? { from: 'bottom', to: 'top' }
+          : { from: 'top',    to: 'bottom' };
+      }
+      // Horizontal dominance — use left/right
+      if (absDx > absDy * 0.7) {
+        return dx > 0
+          ? { from: 'right', to: 'left' }
+          : { from: 'left',  to: 'right' };
+      }
+      // Diagonal — pick based on dominant axis
+      if (absDy >= absDx) {
+        return dy > 0 ? { from: 'bottom', to: 'top' } : { from: 'top', to: 'bottom' };
+      }
+      return dx > 0 ? { from: 'right', to: 'left' } : { from: 'left', to: 'right' };
+    }
+
+    function sidePoint(node, nw, nh, side, offset=0.5) {
+      // offset 0–1 across the side, default center
+      switch(side) {
+        case 'top':    return { x: node.x + nw*offset,   y: node.y,       normal:{dx:0,dy:-1} };
+        case 'bottom': return { x: node.x + nw*offset,   y: node.y + nh,  normal:{dx:0,dy:1} };
+        case 'left':   return { x: node.x,               y: node.y+nh*offset, normal:{dx:-1,dy:0} };
+        case 'right':  return { x: node.x + nw,          y: node.y+nh*offset, normal:{dx:1,dy:0} };
+        default:       return { x: node.x + nw/2,        y: node.y + nh/2,    normal:{dx:0,dy:0} };
+      }
+    }
+
+    // ── Resolve from-point ───────────────────────────────────────────
+    let fp, fn1;
+    const fa = edge.fromAnchor;
+    if (fa && fa.side && fa.side !== 'auto') {
+      const a = anchorToPoint(fromNode, fw, fh, fa);
+      if (a) { fp = a; fn1 = a.normal; }
+    }
+    if (!fp) {
+      // Use smart side selection
+      const { from: fromSide } = bestSides(fromNode, fw, fh, toNode, tw, th);
+      const pt = sidePoint(fromNode, fw, fh, fromSide, 0.5);
+      fp = pt; fn1 = pt.normal;
+    }
+
+    // ── Resolve to-point ────────────────────────────────────────────
+    let tp, fn2;
+    const ta = edge.toAnchor;
+    if (ta && ta.side && ta.side !== 'auto') {
+      const a = anchorToPoint(toNode, tw, th, ta);
+      if (a) { tp = a; fn2 = a.normal; }
+    }
+    if (!tp) {
+      const { to: toSide } = bestSides(fromNode, fw, fh, toNode, tw, th);
+      const pt = sidePoint(toNode, tw, th, toSide, 0.5);
+      tp = pt; fn2 = pt.normal;
+    }
+
+    // ── Bezier control points ─────────────────────────────────────────
+    // Use longer tangents for shallow angles to avoid S-kinks
+    const dx = tp.x - fp.x, dy = tp.y - fp.y;
+    const dist = Math.sqrt(dx*dx + dy*dy);
+    
+    // Tangent length: longer when perpendicular to the edge direction
+    const alignF = Math.abs(fn1.dx*dx/dist + fn1.dy*dy/dist); // 0=perpendicular,1=aligned
+    const ctrl = Math.max(50, dist * (0.35 + (1-alignF)*0.25));
+    
+    let c1x = fp.x + fn1.dx*ctrl, c1y = fp.y + fn1.dy*ctrl;
+    let c2x = tp.x + fn2.dx*ctrl, c2y = tp.y + fn2.dy*ctrl;
+
+    // Manual midpoint override (from bezier handle drag)
+    if (edge.midOff) {
+      const mx = (fp.x+tp.x)/2 + edge.midOff.dx;
+      const my = (fp.y+tp.y)/2 + edge.midOff.dy;
+      c1x = fp.x*0.25 + mx*0.75; c1y = fp.y*0.25 + my*0.75;
+      c2x = tp.x*0.25 + mx*0.75; c2y = tp.y*0.25 + my*0.75;
+    }
+
+    const path = `M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`;
+    const mid = {
+      x: 0.125*(fp.x+tp.x) + 0.375*(c1x+c2x),
+      y: 0.125*(fp.y+tp.y) + 0.375*(c1y+c2y),
+    };
+
+    return { path, fp, tp, mid };
+  };k, useEffect, useMemo } from "react";
+import { getMap, saveMap, saveVersion } from "../api/client.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { useTheme, THEMES } from "../context/ThemeContext.jsx";
+import LLMChat        from "./LLMChat.jsx";
+import ThemePicker    from "./ThemePicker.jsx";
+import VersionHistory from "./VersionHistory.jsx";
+
+// ── Node types ────────────────────────────────────────────────
+// ── Node type registry ────────────────────────────────────────
+const NT = {
+  // General
+  note:       { label:"Note",          color:"#FFD93D", icon:"📝", cat:"General" },
+  heading:    { label:"Heading",       color:"#6C63FF", icon:"📌", cat:"General" },
+  user:       { label:"User",          color:"#E91E63", icon:"👤", cat:"General" },
+  process:    { label:"Process",       color:"#9C27B0", icon:"🔄", cat:"General" },
+  group:      { label:"Group",         color:"#9E9E9E", icon:"📂", cat:"General" },
+  decision:   { label:"Decision",      color:"#FF9800", icon:"◆",  cat:"General" },
+  annotation: { label:"Annotation",    color:"#78909C", icon:"💬", cat:"General" },
+  // Network Infrastructure
+  router:     { label:"Router",        color:"#00BCD4", icon:"📡", cat:"Network" },
+  switch:     { label:"Switch",        color:"#03A9F4", icon:"🔀", cat:"Network" },
+  firewall:   { label:"Firewall",      color:"#FF5722", icon:"🔥", cat:"Network" },
+  loadbal:    { label:"Load Balancer", color:"#26C6DA", icon:"⚖️", cat:"Network" },
+  vpn:        { label:"VPN Gateway",   color:"#42A5F5", icon:"🔐", cat:"Network" },
+  ap:         { label:"Access Point",  color:"#29B6F6", icon:"📶", cat:"Network" },
+  modem:      { label:"Modem",         color:"#4DD0E1", icon:"📟", cat:"Network" },
+  wanlink:    { label:"WAN Link",      color:"#0288D1", icon:"🌐", cat:"Network" },
+  vlan:       { label:"VLAN",          color:"#0097A7", icon:"🔗", cat:"Network" },
+  proxy:      { label:"Proxy",         color:"#00838F", icon:"🔁", cat:"Network" },
+  // Computers & Workstations
+  desktop:    { label:"Desktop PC",    color:"#8D6E63", icon:"🖥️", cat:"Computers" },
+  laptop:     { label:"Laptop",        color:"#A1887F", icon:"💻", cat:"Computers" },
+  workstation:{ label:"Workstation",   color:"#795548", icon:"🖱️", cat:"Computers" },
+  thinclnt:   { label:"Thin Client",   color:"#6D4C41", icon:"📺", cat:"Computers" },
+  kiosk:      { label:"Kiosk",         color:"#5D4037", icon:"🏧", cat:"Computers" },
+  // Servers
+  server:     { label:"Server",        color:"#EF5350", icon:"🗄️", cat:"Servers" },
+  webserver:  { label:"Web Server",    color:"#E53935", icon:"🌍", cat:"Servers" },
+  appserver:  { label:"App Server",    color:"#F44336", icon:"⚙️", cat:"Servers" },
+  dbserver:   { label:"DB Server",     color:"#C62828", icon:"🗃️", cat:"Servers" },
+  fileserver: { label:"File Server",   color:"#D32F2F", icon:"📁", cat:"Servers" },
+  mailserver: { label:"Mail Server",   color:"#B71C1C", icon:"📧", cat:"Servers" },
+  printserver:{ label:"Print Server",  color:"#FF8A80", icon:"🖨️", cat:"Servers" },
+  // Storage
+  storage:    { label:"Storage",       color:"#607D8B", icon:"💾", cat:"Storage" },
+  nas:        { label:"NAS",           color:"#546E7A", icon:"🗄️", cat:"Storage" },
+  san:        { label:"SAN",           color:"#455A64", icon:"💿", cat:"Storage" },
+  backup:     { label:"Backup",        color:"#78909C", icon:"🔄", cat:"Storage" },
+  tape:       { label:"Tape Library",  color:"#90A4AE", icon:"📼", cat:"Storage" },
+  // Mobile & IoT
+  mobile:     { label:"Mobile/Phone",  color:"#66BB6A", icon:"📱", cat:"Mobile & IoT" },
+  tablet:     { label:"Tablet",        color:"#4CAF50", icon:"📋", cat:"Mobile & IoT" },
+  rpi:        { label:"Raspberry Pi",  color:"#C62828", icon:"🍓", cat:"Mobile & IoT" },
+  arduino:    { label:"Arduino",       color:"#00979D", icon:"🔌", cat:"Mobile & IoT" },
+  esp:        { label:"ESP32/8266",    color:"#E65100", icon:"📡", cat:"Mobile & IoT" },
+  sensor:     { label:"Sensor",        color:"#26A69A", icon:"📡", cat:"Mobile & IoT" },
+  camera:     { label:"IP Camera",     color:"#43A047", icon:"📷", cat:"Mobile & IoT" },
+  plc:        { label:"PLC",           color:"#2E7D32", icon:"🏭", cat:"Mobile & IoT" },
+  gateway:    { label:"IoT Gateway",   color:"#388E3C", icon:"🔀", cat:"Mobile & IoT" },
+  hvac:       { label:"HVAC",          color:"#1B5E20", icon:"❄️", cat:"Mobile & IoT" },
+  // Cloud
+  cloud:      { label:"Cloud",         color:"#29B6F6", icon:"☁️", cat:"Cloud" },
+  lambda:     { label:"Function",      color:"#FF9100", icon:"λ",  cat:"Cloud" },
+  queue:      { label:"Queue",         color:"#AB47BC", icon:"↔",  cat:"Cloud" },
+  cdn:        { label:"CDN",           color:"#26A69A", icon:"🕸️", cat:"Cloud" },
+  s3:         { label:"Object Store",  color:"#FF6D00", icon:"🪣", cat:"Cloud" },
+  k8s:        { label:"Kubernetes",    color:"#326CE5", icon:"⎈",  cat:"Cloud" },
+  container:  { label:"Container",     color:"#2496ED", icon:"📦", cat:"Cloud" },
+  apigateway: { label:"API Gateway",   color:"#A100FF", icon:"🔌", cat:"Cloud" },
+  // Software & Services
+  software:   { label:"Software",      color:"#4CAF50", icon:"📦", cat:"Software" },
+  api:        { label:"API",           color:"#009688", icon:"🔌", cat:"Software" },
+  database:   { label:"Database",      color:"#3F51B5", icon:"🗃️", cat:"Software" },
+  service:    { label:"Service",       color:"#8BC34A", icon:"⚡", cat:"Software" },
+  microservice:{ label:"Microservice", color:"#66BB6A", icon:"🧩", cat:"Software" },
+  cache:      { label:"Cache",         color:"#FF7043", icon:"⚡", cat:"Software" },
+  broker:     { label:"Msg Broker",    color:"#7B1FA2", icon:"📨", cat:"Software" },
+  // Security
+  ids:        { label:"IDS/IPS",       color:"#F44336", icon:"🛡️", cat:"Security" },
+  waf:        { label:"WAF",           color:"#E53935", icon:"🧱", cat:"Security" },
+  vault:      { label:"Vault/HSM",     color:"#B00020", icon:"🔒", cat:"Security" },
+  siem:       { label:"SIEM",          color:"#C62828", icon:"🔍", cat:"Security" },
+  dlp:        { label:"DLP",           color:"#D50000", icon:"🚫", cat:"Security" },
+};
+
+// ── Default properties per node type ──────────────────────────
+const DP = {
+  note:{Content:""},
+  heading:{Level:"H1",Subtitle:""},
+  user:{Role:"",Email:"",Team:""},
+  process:{Step:"",Input:"",Output:""},
+  group:{Description:""},
+  decision:{Condition:"",Yes:"",No:""},
+  annotation:{Reference:""},
+  // Network
+  router:{Make:"",Model:"",Gateway:"",Protocol:"BGP",Firmware:""},
+  switch:{Make:"",Model:"",Ports:"24",VLAN:"",Layer:"L2"},
+  firewall:{Make:"",Model:"",Rules:"",Zone:"",OS:""},
+  loadbal:{Make:"",Model:"",Algorithm:"Round Robin",VIP:""},
+  vpn:{Protocol:"IPSec",Endpoint:"",Peer:"",Tunnel:""},
+  ap:{Make:"",Model:"",SSID:"",Band:"2.4GHz/5GHz",Channel:""},
+  modem:{Make:"",Model:"",ISP:"",Type:"Cable"},
+  wanlink:{Provider:"",Speed:"",Type:"MPLS",Redundant:"No"},
+  vlan:{ID:"",Name:"",Subnet:"",Tagged:""},
+  proxy:{Type:"Forward",IP:"",Port:"3128",Auth:""},
+  // Computers
+  desktop:{Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",IP:""},
+  laptop:{Make:"",Model:"",OS:"",CPU:"",RAM:"",User:""},
+  workstation:{Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:""},
+  thinclnt:{Make:"",Model:"",OS:"",Server:""},
+  kiosk:{Make:"",OS:"",Location:"",App:""},
+  // Servers
+  server:{Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",IP:""},
+  webserver:{Software:"Nginx",Version:"",Port:"443",SSL:"Yes"},
+  appserver:{Runtime:"",Version:"",Port:"",Instances:""},
+  dbserver:{Engine:"PostgreSQL",Version:"",Port:"5432",RAM:""},
+  fileserver:{OS:"",Shares:"",Storage:"",Protocol:"SMB"},
+  mailserver:{Software:"",Domain:"",TLS:"Yes",Spam:""},
+  printserver:{Make:"",Model:"",Queue:"",Protocol:"IPP"},
+  // Storage
+  storage:{Capacity:"",Type:"SSD",RAID:"",Interface:""},
+  nas:{Make:"",Model:"",Capacity:"",RAID:"",Shares:""},
+  san:{Make:"",Model:"",Capacity:"",FC:"",Protocol:"iSCSI"},
+  backup:{Software:"",Schedule:"",Retention:"",Target:""},
+  tape:{Make:"",Model:"",Capacity:"",Library:""},
+  // Mobile & IoT
+  mobile:{Make:"",Model:"",OS:"",User:"",MDM:""},
+  tablet:{Make:"",Model:"",OS:"",User:""},
+  rpi:{Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:""},
+  arduino:{Model:"Uno",Firmware:"",Sensors:"",Protocol:""},
+  esp:{Model:"ESP32",Firmware:"",WiFi:"",Protocol:"MQTT"},
+  sensor:{Type:"",Protocol:"MQTT",Location:"",Unit:""},
+  camera:{Make:"",Model:"",Resolution:"",Protocol:"RTSP",IP:""},
+  plc:{Make:"",Model:"",Protocol:"Modbus",IO:""},
+  gateway:{Make:"",Model:"",Protocol:"",Upstream:""},
+  hvac:{Make:"",Model:"",Zone:"",Protocol:"BACnet"},
+  // Cloud
+  cloud:{Provider:"AWS",Region:"",Service:"",Account:""},
+  lambda:{Runtime:"Node.js 20",Trigger:"",Memory:"256MB",Timeout:"30s"},
+  queue:{Type:"SQS",MaxSize:"",DLQ:"",Delay:""},
+  cdn:{Provider:"CloudFront",Origin:"",TTL:"3600",Geo:""},
+  s3:{Provider:"AWS",Bucket:"",Region:"",Access:"Private"},
+  k8s:{Cluster:"",Namespace:"",Replicas:"",Version:""},
+  container:{Image:"",Tag:"latest",Port:"",Registry:""},
+  apigateway:{Provider:"AWS",Stage:"",Auth:"",Throttle:""},
+  // Software
+  software:{Version:"",License:"",Port:"",Platform:""},
+  api:{Endpoint:"",Method:"REST",Auth:"Bearer",Version:"v1"},
+  database:{Engine:"PostgreSQL",Port:"5432",Schema:"",HA:""},
+  service:{URL:"",Status:"Running",Port:"",SLA:""},
+  microservice:{Language:"",Port:"",Version:"",Replicas:""},
+  cache:{Type:"Redis",Port:"6379",MaxMem:"",Eviction:"LRU"},
+  broker:{Type:"Kafka",Port:"9092",Topics:"",Retention:"7d"},
+  // Security
+  ids:{Make:"",Model:"",Mode:"Inline",Ruleset:"Snort"},
+  waf:{Provider:"",Mode:"Block",Rules:"OWASP",SSL:"Yes"},
+  vault:{Type:"HashiCorp Vault",Auth:"",Secrets:"",HA:""},
+  siem:{Software:"",Sources:"",Retention:"90d",Alerts:""},
+  dlp:{Provider:"",Mode:"",Channels:"",Policy:""},
+};
+
+// sidebar category order
+const SIDEBAR_CATS = ["General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
+
+// ── Highlight matched text (returns JSX spans) ────────────────
+function highlightText(text, query) {
+  if(!query||!text) return text||"";
+  const str = String(text), q = query.trim();
+  const low = str.toLowerCase(), ql = q.toLowerCase();
+  const idx = low.indexOf(ql);
+  if(idx<0) return str;
+  return <span>
+    {str.slice(0,idx)}
+    <mark style={{background:"var(--accent2)",color:"#fff",borderRadius:2,padding:"0 1px",fontSize:"inherit"}}>
+      {str.slice(idx,idx+q.length)}
+    </mark>
+    {str.slice(idx+q.length)}
+  </span>;
+}
+
+// ── Edge style definitions ────────────────────────────────────
+const EDGE_STYLES = {
+  // Basic
+  arrow:         { label:"Arrow",        section:"Basic",   strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"One-way arrow" },
+  bidirectional: { label:"Both ways",    section:"Basic",   strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Arrow on both ends" },
+  line:          { label:"Plain line",   section:"Basic",   strokeW:2,   dash:"none", mEnd:null,       mStart:null,       desc:"No arrowhead" },
+  // Dashed
+  dashed:        { label:"Dashed →",     section:"Dashed",  strokeW:2,   dash:"8,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dashed with arrow" },
+  "dashed-bi":   { label:"Dashed ↔",    section:"Dashed",  strokeW:2,   dash:"8,5",  mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Dashed bidirectional" },
+  "dashed-line": { label:"Dashed line",  section:"Dashed",  strokeW:2,   dash:"8,5",  mEnd:null,       mStart:null,       desc:"Dashed, no arrow" },
+  // Dotted
+  dotted:        { label:"Dotted →",     section:"Dotted",  strokeW:2,   dash:"2,5",  mEnd:"nn-arr",  mStart:null,       desc:"Dotted with arrow" },
+  "dotted-bi":   { label:"Dotted ↔",    section:"Dotted",  strokeW:2,   dash:"2,5",  mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Dotted bidirectional" },
+  "dotted-line": { label:"Dotted line",  section:"Dotted",  strokeW:2,   dash:"2,5",  mEnd:null,       mStart:null,       desc:"Dotted, no arrow" },
+  // Bold
+  thick:         { label:"Bold →",       section:"Bold",    strokeW:4,   dash:"none", mEnd:"nn-tk",   mStart:null,       desc:"Bold arrow" },
+  "thick-bi":    { label:"Bold ↔",       section:"Bold",    strokeW:4,   dash:"none", mEnd:"nn-tk",   mStart:"nn-tk",    desc:"Bold bidirectional" },
+  // Double
+  double:        { label:"Double →",     section:"Double",  strokeW:1.5, dash:"none", mEnd:"nn-dbl",  mStart:null,       desc:"Double chevron" },
+  "double-bi":   { label:"Double ↔",    section:"Double",  strokeW:1.5, dash:"none", mEnd:"nn-dbl",  mStart:"nn-dbl",   desc:"Double bidirectional" },
+  // Wavy / special
+  wave:          { label:"Wave →",       section:"Special", strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"Wavy / animated", wave:true },
+  "wave-bi":     { label:"Wave ↔",      section:"Special", strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Wavy bidirectional", wave:true },
+};
+
+// Sections order for the panel
+const EDGE_SECTIONS = ["Basic","Dashed","Dotted","Bold","Double","Special"];
+
+const DEF_W=220, DEF_H=96, GRP_W=340, GRP_H=240;
+const COL_W=72,  COL_H=72; // collapsed node size
+
+// Use browser crypto for UUID - never send non-UUID to DB
+const makeId = () => typeof crypto !== 'undefined' && crypto.randomUUID
+  ? crypto.randomUUID()
+  : `${Date.now()}-${Math.random().toString(36).slice(2)}-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);});
+
+// ── Notes helpers ─────────────────────────────────────────────
+function parseNotes(raw) {
+  if (!raw) return [];
+  try {
+    const p = JSON.parse(raw);
+    if (Array.isArray(p)) return p;
+  } catch {}
+  if (typeof raw === 'string' && raw.trim())
+    return [{ id: Math.random().toString(36).slice(2), title: '', content: raw, sensitive: false }];
+  return [];
+}
+function stripHtml(html) {
+  return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+function serializeNotes(notes) {
+  return JSON.stringify(Array.isArray(notes) ? notes : []);
+}
+
+const mkNode = (type, x, y) => ({
+  id: makeId(), type, x, y,
+  w: type==="group" ? GRP_W : DEF_W,
+  h: type==="group" ? GRP_H : DEF_H,
+  title: NT[type]?.label || "Node",
+  description: "", showNotes: false,
+  notes: [], collapsed: false,
+  properties: { ...(DP[type]||{}) }, customProps: {},
+});
+
+// ── Auto-layout — topological layers, centered, no overlap ──
+function autoLayout(nodes, edges) {
+  if (!nodes.length) return nodes;
+  try {
+    const H_GAP = 80;    // min horizontal gap between nodes
+    const V_GAP = 110;   // vertical gap between layers
+    const START_X = 100;
+    const START_Y = 100;
+    const nodeW = n => n?.w || DEF_W;
+    const nodeH = n => n?.h || DEF_H;
+    const nodeById = id => nodes.find(n => n.id === id);
+
+    // ── 1. Build graph (deduplicated) ────────────────────────────────
+    const children = {}, parents = {};
+    nodes.forEach(n => { children[n.id] = []; parents[n.id] = []; });
+    edges.forEach(e => {
+      if (!children[e.from] || children[e.to] === undefined) return;
+      if (!children[e.from].includes(e.to)) {
+        children[e.from].push(e.to);
+        parents[e.to].push(e.from);
+      }
+    });
+
+    // ── 2. Break cycles (DFS back-edge removal) ──────────────────────
+    const vis = new Set(), stack = new Set();
+    function breakCycles(id) {
+      vis.add(id); stack.add(id);
+      for (const c of [...children[id]]) {
+        if (stack.has(c)) {
+          children[id] = children[id].filter(x => x !== c);
+          parents[c]   = parents[c].filter(x => x !== id);
+        } else if (!vis.has(c)) breakCycles(c);
+      }
+      stack.delete(id);
+    }
+    nodes.forEach(n => { if (!vis.has(n.id)) breakCycles(n.id); });
+
+    // ── 3. Longest-path layer assignment ─────────────────────────────
+    const memo = {};
+    function depth(id) {
+      if (memo[id] !== undefined) return memo[id];
+      const pd = parents[id].map(p => depth(p));
+      return (memo[id] = pd.length ? Math.max(...pd) + 1 : 0);
+    }
+    nodes.forEach(n => depth(n.id));
+
+    const maxL = Math.max(...nodes.map(n => memo[n.id]));
+    const layers = Array.from({length: maxL + 1}, () => []);
+    nodes.forEach(n => layers[memo[n.id]].push(n.id));
+
+    // ── 4. Barycenter crossing-minimisation (6 sweeps) ────────────────
+    function bary(li, dir) {
+      const cur = layers[li];
+      const ref = dir === 'dn' ? layers[li-1] : layers[li+1];
+      if (!ref) return;
+      const rp = {}; ref.forEach((id,i) => rp[id] = i);
+      const scored = cur.map(id => {
+        const nb = dir === 'dn' ? parents[id] : children[id];
+        const hits = nb.filter(x => rp[x] !== undefined);
+        return { id, s: hits.length ? hits.reduce((a,x)=>a+rp[x],0)/hits.length : cur.indexOf(id) };
+      });
+      scored.sort((a,b) => a.s - b.s);
+      layers[li] = scored.map(x => x.id);
+    }
+    for (let p = 0; p < 6; p++) {
+      for (let i = 1; i <= maxL; i++) bary(i, 'dn');
+      for (let i = maxL-1; i >= 0; i--) bary(i, 'up');
+    }
+
+    // ── 5. Layer Y positions ──────────────────────────────────────────
+    const layY = [];
+    let cY = START_Y;
+    for (let li = 0; li <= maxL; li++) {
+      layY[li] = cY;
+      cY += Math.max(...layers[li].map(id => nodeH(nodeById(id)))) + V_GAP;
+    }
+
+    // ── 6. Initial X: sequential placement ───────────────────────────
+    const px = {}, py = {};
+    for (let li = 0; li <= maxL; li++) {
+      let x = START_X;
+      layers[li].forEach(id => { px[id] = x; py[id] = layY[li]; x += nodeW(nodeById(id)) + H_GAP; });
+    }
+
+    // ── 7. Width of a subtree (for proportional spacing) ─────────────
+    const subtreeW = {};
+    function calcSubtree(id) {
+      if (subtreeW[id] !== undefined) return subtreeW[id];
+      const ch = children[id].filter(c => memo[c] === memo[id]+1);
+      if (!ch.length) return (subtreeW[id] = nodeW(nodeById(id)));
+      const total = ch.reduce((s,c) => s + calcSubtree(c) + H_GAP, -H_GAP);
+      return (subtreeW[id] = Math.max(nodeW(nodeById(id)), total));
+    }
+    nodes.forEach(n => calcSubtree(n.id));
+
+    // ── 8. Spread nodes proportionally in each layer ─────────────────
+    for (let li = 0; li <= maxL; li++) {
+      const ids = layers[li];
+      // compute total width needed
+      const totalW = ids.reduce((s,id) => s + nodeW(nodeById(id)), 0) + H_GAP*(ids.length-1);
+      // find parent center span
+      const parentXs = ids.flatMap(id => parents[id].map(p => px[p] + nodeW(nodeById(p))/2));
+      const centreX = parentXs.length
+        ? parentXs.reduce((a,b)=>a+b,0)/parentXs.length
+        : START_X + totalW/2;
+      let x = centreX - totalW/2;
+      x = Math.max(x, START_X);
+      ids.forEach(id => { px[id] = x; py[id] = layY[li]; x += nodeW(nodeById(id)) + H_GAP; });
+    }
+
+    // ── 9. Fine-tune: center each node over its children (bottom-up) ─
+    for (let li = maxL-1; li >= 0; li--) {
+      const sorted = [...layers[li]].sort((a,b)=>px[a]-px[b]);
+      sorted.forEach((id, idx) => {
+        const ch = children[id].filter(c => memo[c] === memo[id]+1);
+        if (!ch.length) return;
+        const lx = Math.min(...ch.map(c=>px[c]));
+        const rx = Math.max(...ch.map(c=>px[c]+nodeW(nodeById(c))));
+        const desired = (lx+rx)/2 - nodeW(nodeById(id))/2;
+        const minX = idx > 0 ? px[sorted[idx-1]] + nodeW(nodeById(sorted[idx-1])) + H_GAP : START_X;
+        px[id] = Math.max(desired, minX);
+      });
+      // re-spread siblings to avoid overlap
+      const s2 = [...layers[li]].sort((a,b)=>px[a]-px[b]);
+      for (let i=1;i<s2.length;i++) {
+        const need = px[s2[i-1]] + nodeW(nodeById(s2[i-1])) + H_GAP;
+        if (px[s2[i]] < need) px[s2[i]] = need;
+      }
+    }
+
+    // ── 10. Fine-tune: center each node under its parents (top-down) ─
+    for (let li = 1; li <= maxL; li++) {
+      const sorted = [...layers[li]].sort((a,b)=>px[a]-px[b]);
+      sorted.forEach((id, idx) => {
+        const pa = parents[id].filter(p => memo[p] === memo[id]-1);
+        if (!pa.length) return;
+        const lx = Math.min(...pa.map(p=>px[p]));
+        const rx = Math.max(...pa.map(p=>px[p]+nodeW(nodeById(p))));
+        const desired = (lx+rx)/2 - nodeW(nodeById(id))/2;
+        const minX = idx > 0 ? px[sorted[idx-1]] + nodeW(nodeById(sorted[idx-1])) + H_GAP : START_X;
+        px[id] = Math.max(desired, minX);
+      });
+    }
+
+    // ── 11. Shift to stay on canvas ───────────────────────────────────
+    const minX = Math.min(...nodes.map(n => px[n.id]??START_X));
+    if (minX < START_X) nodes.forEach(n => { if(px[n.id]!==undefined) px[n.id] += START_X - minX; });
+
+    // ── 12. Assemble ─────────────────────────────────────────────────
+    let isoX = START_X, isoY = cY + 40;
+    return nodes.map(n => {
+      if (px[n.id] !== undefined)
+        return { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) };
+      const r = { ...n, x: isoX, y: isoY };
+      isoX += nodeW(n) + H_GAP;
+      return r;
+    });
+
+  } catch(err) {
+    console.error('[autoLayout]', err);
+    return nodes;
+  }
+}
+
+// ── Edge start/end point on node rectangle edge ─────────────────
+// nw/nh are the ACTUAL rendered dimensions (not just stored node.w/node.h)
+function rectEdgePoint(node, nw, nh, targetX, targetY) {
+  const cx = node.x + nw/2, cy = node.y + nh/2;
+  const dx = targetX - cx,  dy = targetY - cy;
+  if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return { x:cx, y:cy };
+  const hw = nw/2, hh = nh/2;
+  const sx = Math.abs(dx) > 0.001 ? hw / Math.abs(dx) : Infinity;
+  const sy = Math.abs(dy) > 0.001 ? hh / Math.abs(dy) : Infinity;
+  const s  = Math.min(sx, sy);
+  return { x: cx + dx*s, y: cy + dy*s };
+}
+
+// ── Anchor system ────────────────────────────────────────────
+// anchor: { side: "top"|"bottom"|"left"|"right"|"auto", t: 0-1 }
+// t=0.5 is midpoint of that side. "auto" means compute from direction.
+function anchorToPoint(node, nw, nh, anchor) {
+  const {side, t=0.5} = anchor;
+  switch(side) {
+    case "top":    return {x: node.x + nw*t, y: node.y,      normal:{dx:0, dy:-1}};
+    case "bottom": return {x: node.x + nw*t, y: node.y + nh, normal:{dx:0, dy:1}};
+    case "left":   return {x: node.x,        y: node.y+nh*t, normal:{dx:-1,dy:0}};
+    case "right":  return {x: node.x + nw,   y: node.y+nh*t, normal:{dx:1, dy:0}};
+    default:       return null; // "auto" — use rectEdgePoint
+  }
+}
+
+// Snap a canvas-space click position to the nearest border anchor {side,t}
+function snapToAnchor(node, nw, nh, cx, cy) {
+  // distances to each face
+  const dTop    = Math.abs(cy - node.y);
+  const dBottom = Math.abs(cy - (node.y + nh));
+  const dLeft   = Math.abs(cx - node.x);
+  const dRight  = Math.abs(cx - (node.x + nw));
+  const minD = Math.min(dTop, dBottom, dLeft, dRight);
+  const SNAP_DIST = Math.min(nw, nh) * 0.3; // snap zone = 30% of smallest dim
+  if (minD > SNAP_DIST) return null; // too far from any edge — use auto
+  if      (minD === dTop)    return {side:"top",    t: Math.min(1,Math.max(0,(cx-node.x)/nw))};
+  else if (minD === dBottom) return {side:"bottom", t: Math.min(1,Math.max(0,(cx-node.x)/nw))};
+  else if (minD === dLeft)   return {side:"left",   t: Math.min(1,Math.max(0,(cy-node.y)/nh))};
+  else                       return {side:"right",  t: Math.min(1,Math.max(0,(cy-node.y)/nh))};
+}
+
+// ── PNG export ────────────────────────────────────────────────────
+async function exportAsPNG(nodes, edges, mapTitle) {
+  if(!nodes.length){alert("No nodes to export.");return;}
+  const PAD=60;
+  const minX=Math.min(...nodes.map(n=>n.x))-PAD, minY=Math.min(...nodes.map(n=>n.y))-PAD;
+  const maxX=Math.max(...nodes.map(n=>n.x+(n.collapsed?COL_W:n.w)))+PAD;
+  const maxY=Math.max(...nodes.map(n=>n.y+(n.collapsed?COL_H:n.h)))+PAD;
+  const W=maxX-minX, H=maxY-minY, DPR=2;
+  const canvas=document.createElement("canvas");
+  canvas.width=W*DPR; canvas.height=H*DPR;
+  const ctx=canvas.getContext("2d"); ctx.scale(DPR,DPR);
+  const cs=getComputedStyle(document.documentElement);
+  const bg=cs.getPropertyValue("--bg").trim()||"#0d1117";
+  const bg2=cs.getPropertyValue("--bg2").trim()||"#161b22";
+  const text=cs.getPropertyValue("--text").trim()||"#e6edf3";
+  const text3=cs.getPropertyValue("--text3").trim()||"#7d8590";
+  const acc=cs.getPropertyValue("--accent").trim()||"#58a6ff";
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+  // dot grid
+  ctx.fillStyle=cs.getPropertyValue("--canvas-dot").trim()||"#21262d";
+  for(let gx=0;gx<W;gx+=28)for(let gy=0;gy<H;gy+=28){ctx.beginPath();ctx.arc(gx,gy,1,0,Math.PI*2);ctx.fill();}
+  // edges — orthogonal bezier (same logic as canvas)
+  ctx.strokeStyle=acc; ctx.lineWidth=2; ctx.globalAlpha=0.85;
+  const pngFaceNormal=(pt,node,nw,nh)=>{
+    const eps=1;
+    if(Math.abs(pt.y-node.y)<eps)       return {dx:0,dy:-1};
+    if(Math.abs(pt.y-(node.y+nh))<eps)  return {dx:0,dy:1};
+    if(Math.abs(pt.x-node.x)<eps)       return {dx:-1,dy:0};
+    return {dx:1,dy:0};
+  };
+  edges.forEach(e=>{
+    const f=nodes.find(n=>n.id===e.from),t=nodes.find(n=>n.id===e.to); if(!f||!t)return;
+    const fw=f.collapsed?COL_W:f.w, fh=f.collapsed?COL_H:f.h;
+    const tw=t.collapsed?COL_W:t.w, th=t.collapsed?COL_H:t.h;
+    const tcx=t.x+tw/2, tcy=t.y+th/2, fcx=f.x+fw/2, fcy=f.y+fh/2;
+    const ffw=f.collapsed?COL_W:f.w, ffh=f.collapsed?COL_H:f.h;
+    const ttw=t.collapsed?COL_W:t.w, tth=t.collapsed?COL_H:t.h;
+    const fp=rectEdgePoint(f,ffw,ffh,tcx,tcy), tp=rectEdgePoint(t,ttw,tth,fcx,fcy);
+    const n1=pngFaceNormal(fp,f,fw,fh), n2=pngFaceNormal(tp,t,tw,th);
+    const dist=Math.sqrt((tp.x-fp.x)**2+(tp.y-fp.y)**2);
+    const ctrl=Math.max(60,dist*0.4);
+    const c1x=fp.x+n1.dx*ctrl, c1y=fp.y+n1.dy*ctrl;
+    const c2x=tp.x+n2.dx*ctrl, c2y=tp.y+n2.dy*ctrl;
+    ctx.beginPath();
+    ctx.moveTo(fp.x-minX,fp.y-minY);
+    ctx.bezierCurveTo(c1x-minX,c1y-minY,c2x-minX,c2y-minY,tp.x-minX,tp.y-minY);
+    ctx.setLineDash(e.style==="dashed"?[7,5]:[]);ctx.stroke();
+    // Arrowhead perpendicular to arrival face
+    const angle=Math.atan2(tp.y-c2y,tp.x-c2x);
+    ctx.save();ctx.translate(tp.x-minX,tp.y-minY);ctx.rotate(angle);
+    ctx.beginPath();ctx.moveTo(-9,-5);ctx.lineTo(0,0);ctx.lineTo(-9,5);
+    ctx.fillStyle=acc;ctx.globalAlpha=1;ctx.fill();ctx.restore();
+  });
+  ctx.globalAlpha=1;ctx.setLineDash([]);
+  // nodes
+  nodes.forEach(node=>{
+    const t=NT[node.type]||NT.note; const nx=node.x-minX,ny=node.y-minY;
+    const nw=node.collapsed?COL_W:node.w, nh=node.collapsed?COL_H:node.h;
+    const r=parseInt(cs.getPropertyValue("--radius-node")||"10");
+    ctx.shadowColor="rgba(0,0,0,.35)";ctx.shadowBlur=8;ctx.shadowOffsetY=2;
+    ctx.fillStyle=bg2;ctx.beginPath();ctx.roundRect(nx,ny,nw,nh,r);ctx.fill();
+    ctx.shadowBlur=0;ctx.shadowOffsetY=0;
+    ctx.strokeStyle=`${t.color}70`;ctx.lineWidth=1.5;ctx.stroke();
+    if(node.collapsed){
+      ctx.font="24px serif";ctx.textAlign="center";ctx.textBaseline="middle";
+      ctx.fillText(t.icon,nx+nw/2,ny+nw/2-8);
+      ctx.font=`bold 10px monospace`;ctx.fillStyle=t.color;
+      ctx.fillText(node.title.slice(0,10),nx+nw/2,ny+nh-10);
+    } else {
+      const hH=34;ctx.fillStyle=`${t.color}22`;ctx.beginPath();
+      ctx.roundRect(nx,ny,nw,hH,[r,r,0,0]);ctx.fill();
+      ctx.font="14px serif";ctx.textBaseline="middle";ctx.fillText(t.icon,nx+10,ny+hH/2);
+      ctx.font="bold 12px monospace";ctx.fillStyle=t.color;
+      ctx.fillText(node.title.length>22?node.title.slice(0,22)+"…":node.title,nx+30,ny+hH/2);
+      ctx.font="11px monospace";ctx.fillStyle=text3;ctx.textBaseline="top";
+      let py=ny+hH+7;
+      Object.entries(node.properties||{}).slice(0,3).forEach(([k,v])=>{
+        if(!v)return;ctx.fillStyle=text3;ctx.fillText(`${k}:`,nx+10,py);
+        ctx.fillStyle=text;ctx.fillText(String(v).slice(0,20),nx+50,py);py+=16;
+      });
+    }
+  });
+  ctx.font="bold 11px monospace";ctx.fillStyle=text3;ctx.globalAlpha=0.45;
+  ctx.textBaseline="bottom";ctx.textAlign="left";
+  ctx.fillText(`⬡ NoNote — ${mapTitle||"Map"}`,12,H-8);
+  const a=document.createElement("a");
+  a.download=`${(mapTitle||"nonote").replace(/\s+/g,"_")}.png`;
+  a.href=canvas.toDataURL("image/png",1);a.click();
+}
+
+// ── Style helpers ─────────────────────────────────────────────
+const tbtn=(active,color="var(--accent2)")=>({
+  padding:"5px 10px",border:"none",borderRadius:"var(--radius-btn)",cursor:"pointer",
+  fontSize:11,fontWeight:"var(--font-weight-ui)",flexShrink:0,
+  letterSpacing:"var(--letter-space)",
+  background:active?color:"var(--bg3)",
+  color:active?"#fff":"var(--text3)",
+  transition:"var(--transition-all)",
+});
+const inp=()=>({
+  width:"100%",background:"var(--bg)",border:`1px solid var(--border)`,
+  borderRadius:"var(--radius-sm)",padding:"7px 9px",color:"var(--text)",
+  fontSize:"inherit",fontFamily:"inherit",marginTop:3,
+  boxSizing:"border-box",outline:"none",
+});
+
+// ─────────────────────────────────────────────────────────────
+// Main Component
+// ─────────────────────────────────────────────────────────────
+export default function NodeCanvas({ mapId, onBack, onHome }) {
+  const { user }             = useAuth();
+  const { themeName, theme } = useTheme();
+  const canEdit              = ["owner","admin","editor"].includes(user?.role);
+
+  // ── State ──────────────────────────────────────────────────
+  const [mapMeta,      setMapMeta]      = useState(null);
+  const [nodes,        setNodes]        = useState([]);
+  const [edges,        setEdges]        = useState([]);
+  const [editMode,     setEditMode]     = useState(true);   // view vs edit mode
+  const [selected,     setSelected]     = useState(new Set()); // set of node ids
+  const [selEdge,      setSelEdge]      = useState(null);
+  const [mode,         setMode]         = useState("select");
+  const [edgeStyle,    setEdgeStyle]    = useState("arrow");
+  const [edgeColor,    setEdgeColor]    = useState("var(--accent)");
+  const [showConnPanel,setShowConnPanel]= useState(false);
+  const [draggingMid,  setDraggingMid]  = useState(null); // {edgeId, startX, startY, origOffset}
+  const [dragging,     setDragging]     = useState(null);
+  const [resizing,     setResizing]     = useState(null);
+  const [drawingEdge,  setDrawingEdge]  = useState(null);
+  // Box-select
+  const [boxSel,       setBoxSel]       = useState(null); // {startX,startY,endX,endY}
+  const boxSelRef = useRef(null); // live ref for window mousemove handler
+  const [saveState,    setSaveState]    = useState("idle");
+  const [saveMsg,      setSaveMsg]      = useState("");
+  const [loading,      setLoading]      = useState(true);
+  const [showSidebar,  setShowSidebar]  = useState(false);
+  const [showProps,    setShowProps]    = useState(false);
+  const [propsMode,    setPropsMode]    = useState(()=>localStorage.getItem('nn_props_mode')||'popup'); // 'popup'|'panel'
+  const [showExport,   setShowExport]   = useState(false);
+  const [showChat,     setShowChat]     = useState(false);
+  const [showAppearance,setShowAppearance]=useState(false);
+  const [showVersions, setShowVersions] = useState(false);
+  const [showExportMenu,  setShowExportMenu]  = useState(false);
+  const [showAppMenu,     setShowAppMenu]     = useState(false);
+  const [showConnDropdown,setShowConnDropdown]= useState(false);
+  const [contextMenu,    setContextMenu]    = useState(null);  // {x,y,nodeId}
+  const [snapToGrid,     setSnapToGrid]     = useState(false); // shift-drag snapping
+  const [snapGuides,     setSnapGuides]     = useState([]);    // [{x1,y1,x2,y2}] alignment guides
+  const [editingNotes,   setEditingNotes]   = useState(null);  // nodeId being edited
+  // Feature: Focus mode
+  const [focusMode,      setFocusMode]      = useState(false);
+  const [focusEnabled,   setFocusEnabled]   = useState(true);  // global toggle
+  // Feature: Template library
+  const [showTemplates,  setShowTemplates]  = useState(false);
+  // Feature: Inline node popup editor
+  const [nodePopup,      setNodePopup]      = useState(null); // {nodeId, tab}
+  const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
+  const [sidebarIconOnly, setSidebarIconOnly] = useState(false);
+  // Feature: Comment pins
+  const [comments,       setComments]       = useState({});    // {nodeId: [{id,text,author,ts}]}
+  const [showComments,   setShowComments]   = useState(false); // sidebar open
+  const [commentNode,    setCommentNode]    = useState(null);  // nodeId of open thread
+  const [commentDraft,   setCommentDraft]   = useState("");
+  const [showSearch,   setShowSearch]   = useState(false);
+  const [searchQuery,  setSearchQuery]  = useState("");
+  const [searchField,  setSearchField]  = useState("all"); // all|title|notes|props
+  const [searchHitIdx, setSearchHitIdx] = useState(0);
+
+  // Quick capture
+  const [quickPos,     setQuickPos]     = useState(null);
+  const [quickText,    setQuickText]    = useState("");
+  // Inline title edit
+  const [editingTitle, setEditingTitle] = useState(null);
+  // Zoom
+  const [zoom,         setZoom]         = useState(1.0);
+  // Canvas theme
+  const [canvasTheme,  setCanvasTheme]  = useState(
+    () => localStorage.getItem(`nn_canvas_${mapId}`) || "global"
+  );
+  // Undo/redo
+  const [canUndo,      setCanUndo]      = useState(false);
+  const [canRedo,      setCanRedo]      = useState(false);
+  const [globalCollapsed,setGlobalCollapsed]= useState(false); // collapse all / expand all
+
+  const canvasRef   = useRef(null);
+  const nodesRef      = useRef([]);        // live ref for box-select
+  const nodeHeightsRef= useRef({});       // actual rendered height per node id
+  const saveTimer   = useRef(null);
+  const versionTimer= useRef(null);
+  const notesTimers = useRef({});
+  const quickInpRef = useRef(null);
+  const historyRef  = useRef([]);
+  const histIdxRef  = useRef(-1);
+
+  // ── History ────────────────────────────────────────────────
+  const pushHistory = useCallback((ns, es) => {
+    historyRef.current = historyRef.current.slice(0, histIdxRef.current+1);
+    historyRef.current.push({ nodes:JSON.parse(JSON.stringify(ns)), edges:JSON.parse(JSON.stringify(es)) });
+    if (historyRef.current.length>80) historyRef.current.shift();
+    histIdxRef.current = historyRef.current.length-1;
+    setCanUndo(histIdxRef.current>0); setCanRedo(false);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (histIdxRef.current<=0) return;
+    histIdxRef.current--;
+    const s=historyRef.current[histIdxRef.current];
+    setNodes(s.nodes); setEdges(s.edges);
+    setCanUndo(histIdxRef.current>0); setCanRedo(true);
+    scheduleSave(s.nodes,s.edges);
+  }, []);
+
+  const redo = useCallback(() => {
+    if (histIdxRef.current>=historyRef.current.length-1) return;
+    histIdxRef.current++;
+    const s=historyRef.current[histIdxRef.current];
+    setNodes(s.nodes); setEdges(s.edges);
+    setCanUndo(true); setCanRedo(histIdxRef.current<historyRef.current.length-1);
+    scheduleSave(s.nodes,s.edges);
+  }, []);
+
+  // ── Save ───────────────────────────────────────────────────
+  const scheduleSave = useCallback((ns, es) => {
+    if (!canEdit) return;
+    setSaveState("saving"); setSaveMsg("Saving…");
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(async () => {
+      try {
+        await saveMap(mapId, { nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})), edges:es });
+        setSaveState("saved"); setSaveMsg("Saved ✓");
+        setTimeout(()=>{setSaveState("idle");setSaveMsg("");},2500);
+        clearTimeout(versionTimer.current);
+        versionTimer.current = setTimeout(async()=>{
+          try{ await saveVersion(mapId,{nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})),edges:es,label:"Auto-save"}); }catch{}
+        }, 5*60*1000);
+      } catch {
+        setSaveState("error"); setSaveMsg("Save failed — retry in 10s");
+        saveTimer.current = setTimeout(()=>scheduleSave(ns,es),10000);
+      }
+    }, 1000);
+  }, [mapId,canEdit]);
+
+  // applyNodes: save + history. Pass skipHistory=true during live drag.
+  const applyNodes = useCallback((fn, skipHistory=false) => {
+    setNodes(prev=>{
+      const next=typeof fn==="function"?fn(prev):fn;
+      setEdges(es=>{ scheduleSave(next,es); if(!skipHistory)pushHistory(next,es); return es; });
+      return next;
+    });
+  }, [scheduleSave,pushHistory]);
+
+  const applyEdges = useCallback((fn, skipHistory=false) => {
+    setEdges(prev=>{
+      const next=typeof fn==="function"?fn(prev):fn;
+      setNodes(ns=>{ scheduleSave(ns,next); if(!skipHistory)pushHistory(ns,next); return ns; });
+      return next;
+    });
+  }, [scheduleSave,pushHistory]);
+
+  // Keep nodesRef in sync with nodes state
+  useEffect(()=>{ nodesRef.current = nodes; },[nodes]);
+
+  // ── Actual collision dimensions (uses rendered height, not stored h) ──
+  const collW = (n) => n?.collapsed ? COL_W : (n?.w || DEF_W);
+  const collH = (n) => {
+    if (!n) return DEF_H;
+    if (n.collapsed) return COL_H;
+    // Use measured DOM height if available, else fall back to stored h
+    // Add 2px for border
+    return Math.max(n.h || DEF_H, (nodeHeightsRef.current[n.id] || 0));
+  };
+
+  // ── Load ───────────────────────────────────────────────────
+  useEffect(()=>{
+    setLoading(true);
+    getMap(mapId).then(data=>{
+      setMapMeta(data.map);
+      const ns=data.nodes.map(n=>({
+        id:n.id,type:n.node_type,x:n.x,y:n.y,w:n.w,h:n.h,
+        title:n.title,description:n.description||"",showNotes:false,notes:parseNotes(n.notes),collapsed:false,
+        properties:n.properties||{},customProps:n.custom_props||{},
+      }));
+      const es=data.edges.map(e=>({
+        id:e.id,from:e.from_node,to:e.to_node,
+        label:e.label,style:e.style,color:e.color,
+        fromAnchor:e.from_anchor||null,
+        toAnchor:e.to_anchor||null,
+        midOff:e.mid_off||null,
+      }));
+      setNodes(ns); setEdges(es); pushHistory(ns,es);
+    }).catch(err=>{ console.error('[NodeCanvas] load error:', err); }).finally(()=>setLoading(false));
+  },[mapId]);
+
+  // ── Keyboard shortcuts ────────────────────────────────────
+  useEffect(()=>{
+    const h=(e)=>{
+      const tag=e.target.tagName;
+      const isInput=["INPUT","TEXTAREA","SELECT"].includes(tag);
+      if(e.code==="Escape"){
+        if(nodePopup){setNodePopup(null);return;}
+        if(showSearch){setShowSearch(false);setSearchQuery("");return;}
+        if(editingTitle){setEditingTitle(null);return;}
+        if(quickPos){setQuickPos(null);setQuickText("");return;}
+        if(drawingEdge){setDrawingEdge(null);return;}
+        if(boxSel){setBoxSel(null);return;}
+        setMode("select"); setSelected(new Set()); setSelEdge(null); return;
+      }
+      if(isInput) return;
+      if(e.code==="Space"){
+        e.preventDefault();
+        if(!canEdit||!canvasRef.current) return;
+        if(quickPos){setQuickPos(null);setQuickText("");return;}
+        const el=canvasRef.current;
+        setQuickText(""); setQuickPos({x:el.scrollLeft+el.clientWidth/2-130,y:el.scrollTop+el.clientHeight/2-55});
+        return;
+      }
+      if(e.code==="Delete"||e.code==="Backspace"){e.preventDefault();deleteSelected();return;}
+      const mod=e.ctrlKey||e.metaKey;
+      if(mod&&e.code==="KeyZ"&&!e.shiftKey){e.preventDefault();undo();return;}
+      if((mod&&e.code==="KeyY")||(mod&&e.shiftKey&&e.code==="KeyZ")){e.preventDefault();redo();return;}
+      if(mod&&e.code==="Enter"){e.preventDefault();handleAutoLayout();return;}
+      if(mod&&e.code==="Equal"){e.preventDefault();setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)));return;}
+      if(mod&&e.code==="Minus"){e.preventDefault();setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)));return;}
+      if(mod&&e.code==="Digit0"){e.preventDefault();setZoom(1);return;}
+      // Arrow keys: move selected nodes (with collision prevention)
+      if(["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.code)&&selected.size>0){
+        e.preventDefault();
+        const step=e.shiftKey?20:4;
+        const adx=e.code==="ArrowLeft"?-step:e.code==="ArrowRight"?step:0;
+        const ady=e.code==="ArrowUp"?-step:e.code==="ArrowDown"?step:0;
+        applyNodes(ns=>{
+          const GAP=14;
+          const others=ns.filter(n=>!selected.has(n.id));
+          return ns.map(n=>{
+            if(!selected.has(n.id)) return n;
+            let nx=n.x+adx, ny=n.y+ady;
+            const dw=collW(n);
+            const dh=collH(n);
+            for(const o of others){
+              const ow=collW(o);
+              const oh=collH(o);
+              if(nx<o.x+ow+GAP && nx+dw>o.x-GAP && ny<o.y+oh+GAP && ny+dh>o.y-GAP){
+                if(adx>0) nx=o.x-GAP-dw;
+                if(adx<0) nx=o.x+ow+GAP;
+                if(ady>0) ny=o.y-GAP-dh;
+                if(ady<0) ny=o.y+oh+GAP;
+              }
+            }
+            return {...n,x:Math.max(0,nx),y:Math.max(0,ny)};
+          });
+        });
+        return;
+      }
+      if(e.code==="KeyN"&&canEdit){addNode("note");return;}
+      if(e.code==="KeyD"&&mod&&canEdit&&selected.size>0){
+        e.preventDefault();
+        const offset=24;
+        applyNodes(ns=>{
+          const newNodes=[...ns];
+          [...selected].forEach(id=>{
+            const src=ns.find(n=>n.id===id); if(!src) return;
+            newNodes.push({...src,id:makeId(),x:src.x+offset,y:src.y+offset,
+              properties:{...(src.properties||{})},customProps:{...(src.customProps||{})}});
+          });
+          return newNodes;
+        });
+        return;
+      }
+      if(e.code==="KeyC"&&canEdit){setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);return;}
+      if(e.code==="KeyS"&&canEdit){setMode("select");setDrawingEdge(null);return;}
+      if(e.code==="KeyE"&&canEdit){setEditMode(v=>!v);return;}
+      if(e.code==="KeyV"&&canEdit){setShowVersions(true);return;}
+      if(e.code==="KeyF"&&mod){e.preventDefault();setShowSearch(v=>!v);setSearchQuery("");return;}
+      if(e.code==="KeyA"&&mod){e.preventDefault();setSelected(new Set(nodes.map(n=>n.id)));return;}
+    };
+    window.addEventListener("keydown",h);
+    return ()=>window.removeEventListener("keydown",h);
+  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes,nodePopup]);
+
+  useEffect(()=>{if(quickPos)quickInpRef.current?.focus();},[quickPos]);
+
+  // Persist propsMode + auto-show/hide panel on mode switch
+  useEffect(()=>{
+    localStorage.setItem('nn_props_mode', propsMode);
+    if(propsMode==='panel'&&selected.size===1) setShowProps(true);
+    if(propsMode==='popup') setShowProps(false);
+  },[propsMode]);
+
+  // Focus mode: activate when editing title/notes
+  useEffect(()=>{
+    if(focusEnabled&&(editingTitle||editingNotes)) setFocusMode(true);
+    else setFocusMode(false);
+  },[editingTitle,editingNotes,focusEnabled]);
+
+  // ── Pinch/scroll zoom ─────────────────────────────────────
+  useEffect(()=>{
+    const el=canvasRef.current; if(!el) return;
+    const fn=(e)=>{
+      if(!e.ctrlKey&&!e.metaKey) return;
+      e.preventDefault();
+      setZoom(z=>Math.min(3,Math.max(0.2,+(z-e.deltaY*0.001).toFixed(2))));
+    };
+    el.addEventListener("wheel",fn,{passive:false});
+    return ()=>el.removeEventListener("wheel",fn);
+  },[]);
+
+  // ── Drag: single or multi-select ─────────────────────────
+  const startDrag=useCallback((cx,cy,id)=>{
+    if(!canEdit||!canvasRef.current) return;
+    if(mode==="connect") return;
+    const el=canvasRef.current;
+    const rect=el.getBoundingClientRect(); const s=1/zoom;
+    const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
+    const canvasY=(cy-rect.top)*s+el.scrollTop*s;
+    // If clicking a node not in selection, select only that node
+    const sel=selected.has(id)?new Set(selected):new Set([id]);
+    if(!selected.has(id)) setSelected(sel);
+    // Record starting positions for all selected nodes
+    const startPositions={};
+    nodes.forEach(n=>{ if(sel.has(n.id)) startPositions[n.id]={x:n.x,y:n.y}; });
+    setDragging({ids:[...sel],startX:canvasX,startY:canvasY,startPositions});
+  },[mode,nodes,selected,canEdit,zoom]);
+
+  const startResize=useCallback((e,id)=>{
+    e.stopPropagation();e.preventDefault();
+    const node=nodes.find(n=>n.id===id);
+    setResizing({id,startX:e.clientX,startY:e.clientY,origW:node.w,origH:node.h});
+  },[nodes]);
+
+  useEffect(()=>{
+    const onMove=(e)=>{
+      const isT=!!e.touches;
+      const cx=isT?e.touches[0].clientX:e.clientX;
+      const cy=isT?e.touches[0].clientY:e.clientY;
+      if(dragging&&canvasRef.current){
+        // Clear guides when not dragging single node
+        if(dragging.ids.length!==1) setSnapGuides([]);
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const canvasX=(cx-rect.left)*s+el.scrollLeft*s;
+        const canvasY=(cy-rect.top)*s+el.scrollTop*s;
+        let dx=canvasX-dragging.startX, dy=canvasY-dragging.startY;
+        // Shift = snap to 20px grid
+        const GRID=20;
+        if(e.shiftKey && dragging.ids.length===1){
+          const start0=dragging.startPositions[dragging.ids[0]];
+          if(start0){
+            const snappedX=Math.round((start0.x+dx)/GRID)*GRID;
+            const snappedY=Math.round((start0.y+dy)/GRID)*GRID;
+            dx=snappedX-start0.x; dy=snappedY-start0.y;
+          }
+        }
+        const GAP=14; // 14px minimum gap between any two node edges
+        const fixedNodes=nodesRef.current.filter(n=>!dragging.ids.includes(n.id));
+
+        // Axis-separated collision: X then Y, each fully resolved.
+        // Key: full AABB overlap check on each axis, resolve by minimum penetration.
+        const resolvedPositions={};
+
+        for(const id of dragging.ids){
+          const start=dragging.startPositions[id]; if(!start) continue;
+          const base=nodesRef.current.find(n=>n.id===id); if(!base) continue;
+          const nw=collW(base);
+          const nh=collH(base);
+
+          // Step 1: apply X delta, keep Y unchanged (old position)
+          let tx=Math.max(0,start.x+dx);
+          const oy=start.y; // old Y — unchanged during X pass
+
+          for(const o of fixedNodes){
+            const ow=collW(o);
+            const oh=collH(o);
+            // Full Y overlap check with old Y
+            if(oy+nh<=o.y||oy>=o.y+oh) continue; // no Y overlap — skip
+            // Full X overlap check
+            if(tx+nw<=o.x||tx>=o.x+ow) continue; // no X overlap — skip
+            // Resolve X: push toward smallest penetration side
+            const pLeft  = tx+nw - o.x;   // penetration through o's left face
+            const pRight = o.x+ow - tx;   // penetration through o's right face
+            if(pLeft<=pRight){ tx=o.x-nw-GAP; } else { tx=o.x+ow+GAP; }
+          }
+
+          // Step 2: apply Y delta, use resolved X from step 1
+          let ty=Math.max(0,start.y+dy);
+
+          for(const o of fixedNodes){
+            const ow=collW(o);
+            const oh=collH(o);
+            // Full X overlap check with resolved tx
+            if(tx+nw<=o.x||tx>=o.x+ow) continue; // no X overlap — skip
+            // Full Y overlap check
+            if(ty+nh<=o.y||ty>=o.y+oh) continue; // no Y overlap — skip
+            // Resolve Y: push toward smallest penetration side
+            const pTop    = ty+nh - o.y;   // penetration through o's top face
+            const pBottom = o.y+oh - ty;   // penetration through o's bottom face
+            if(pTop<=pBottom){ ty=o.y-nh-GAP; } else { ty=o.y+oh+GAP; }
+          }
+
+          resolvedPositions[id]={x:Math.max(0,tx),y:Math.max(0,ty)};
+        }
+
+        setNodes(ns=>ns.map(n=>{
+          const rp=resolvedPositions[n.id];
+          return rp?{...n,...rp}:n;
+        }));
+        // Alignment guides — single node drag only
+        if(dragging.ids.length===1){
+          const movId=dragging.ids[0];
+          const base=resolvedPositions[movId];
+          if(base){
+            const mov=nodesRef.current.find(n=>n.id===movId);
+            if(mov){
+              const mW=collW(mov),mH=collH(mov);
+              const mL=base.x,mR=base.x+mW,mCX=base.x+mW/2;
+              const mT=base.y,mB=base.y+mH,mCY=base.y+mH/2;
+              const guides=[];const TOL=6;
+              nodesRef.current.filter(n=>n.id!==movId).forEach(n=>{
+                const nW=collW(n),nH=collH(n);
+                const nL=n.x,nR=n.x+nW,nCX=n.x+nW/2;
+                const nT=n.y,nB=n.y+nH,nCY=n.y+nH/2;
+                if(Math.abs(mCX-nCX)<TOL) guides.push({x:nCX,type:"cx"});
+                if(Math.abs(mCY-nCY)<TOL) guides.push({y:nCY,type:"cy"});
+                if(Math.abs(mL-nL)<TOL)   guides.push({x:nL,type:"edge"});
+                if(Math.abs(mR-nR)<TOL)   guides.push({x:nR,type:"edge"});
+                if(Math.abs(mT-nT)<TOL)   guides.push({y:nT,type:"edge"});
+                if(Math.abs(mB-nB)<TOL)   guides.push({y:nB,type:"edge"});
+              });
+              setSnapGuides(guides);
+            }
+          }
+        } else { setSnapGuides([]); }
+      }
+      if(resizing&&canvasRef.current){
+        const s=1/zoom;
+        // Use setNodes directly — no history during resize
+        setNodes(ns=>ns.map(n=>n.id===resizing.id?{...n,w:Math.max(160,resizing.origW+(cx-resizing.startX)*s),h:Math.max(60,resizing.origH+(cy-resizing.startY)*s)}:n));
+      }
+      if(boxSelRef.current&&canvasRef.current){
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const mx=(cx-rect.left)*s+el.scrollLeft*s;
+        const my=(cy-rect.top)*s+el.scrollTop*s;
+        const updated={...boxSelRef.current,endX:mx,endY:my};
+        boxSelRef.current=updated;
+        setBoxSel(updated);
+      }
+      if(drawingEdge&&canvasRef.current){
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        setDrawingEdge(d=>({...d,mouseX:(cx-rect.left)*s+el.scrollLeft*s,mouseY:(cy-rect.top)*s+el.scrollTop*s}));
+      }
+    };
+    const onUp=()=>{
+      // Push ONE history entry when drag/resize ends (not during)
+      if(dragging||resizing){
+        setNodes(ns=>{setEdges(es=>{scheduleSave(ns,es);pushHistory(ns,es);return es;});return ns;});
+      }
+      if(boxSelRef.current){
+        const {startX,startY,endX,endY}=boxSelRef.current;
+        const x1=Math.min(startX,endX),y1=Math.min(startY,endY);
+        const x2=Math.max(startX,endX),y2=Math.max(startY,endY);
+        if(Math.abs(x2-x1)>5||Math.abs(y2-y1)>5){
+          const sel=new Set();
+          // Use nodesRef (live ref) so selection is not stale
+          nodesRef.current.forEach(n=>{
+            const nw=collW(n), nh=collH(n);
+            if(n.x<x2&&n.x+nw>x1&&n.y<y2&&n.y+nh>y1) sel.add(n.id);
+          });
+          setSelected(sel);
+        }
+        boxSelRef.current=null; setBoxSel(null);
+      }
+      setDragging(null); setResizing(null); setSnapGuides([]);
+    };
+    window.addEventListener("mousemove",onMove);
+    window.addEventListener("mouseup",onUp);
+    window.addEventListener("touchmove",onMove,{passive:true});
+    window.addEventListener("touchend",onUp);
+    return ()=>{
+      window.removeEventListener("mousemove",onMove);
+      window.removeEventListener("mouseup",onUp);
+      window.removeEventListener("touchmove",onMove);
+      window.removeEventListener("touchend",onUp);
+    };
+  },[dragging,resizing,drawingEdge,scheduleSave,pushHistory,zoom,nodes]);
+
+  // ── Node click ────────────────────────────────────────────
+  const handleNodeRightClick=useCallback((e,id)=>{
+    e.preventDefault(); e.stopPropagation();
+    if(!canEdit||!editMode) return;
+    const el=canvasRef.current; if(!el) return;
+    const rect=el.getBoundingClientRect();
+    setContextMenu({x:e.clientX-rect.left,y:e.clientY-rect.top,nodeId:id});
+    if(!selected.has(id)) setSelected(new Set([id]));
+  },[canEdit,editMode,selected]);
+
+  const handleNodeClick=useCallback((e,id)=>{
+    e.stopPropagation();
+    if(mode==="connect"){
+      if(drawingEdge){
+        if(drawingEdge.fromId!==id){
+          const toNode=nodes.find(n=>n.id===id);
+          const tnw=collW(toNode), tnh=collH(toNode);
+          const el=canvasRef.current;
+          const rect=el.getBoundingClientRect(); const s=1/zoom;
+          const clickX=(e.clientX-rect.left)*s+el.scrollLeft*s;
+          const clickY=(e.clientY-rect.top)*s+el.scrollTop*s;
+          const toAnchor=snapToAnchor(toNode,tnw,tnh,clickX,clickY) || {side:"auto"};
+          applyEdges(es=>[...es,{
+            id:makeId(), from:drawingEdge.fromId, to:id, label:"", style:edgeStyle, color:edgeColor,
+            fromAnchor:drawingEdge.fromAnchor||{side:"auto"},
+            toAnchor,
+          }]);
+        }
+        setDrawingEdge(null);
+      } else {
+        const node=nodes.find(n=>n.id===id);
+        const nw=collW(node), nh=collH(node);
+        // Compute click position in canvas space
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const clickX=(e.clientX-rect.left)*s+el.scrollLeft*s;
+        const clickY=(e.clientY-rect.top)*s+el.scrollTop*s;
+        // Snap to border anchor if near an edge, else auto
+        const anchor=snapToAnchor(node,nw,nh,clickX,clickY) || {side:"auto"};
+        const startPt = anchor.side!=="auto"
+          ? anchorToPoint(node,nw,nh,anchor)
+          : {x:node.x+nw/2, y:node.y+nh/2};
+        setDrawingEdge({fromId:id,mouseX:startPt.x,mouseY:startPt.y,fromAnchor:anchor});
+      }
+      return;
+    }
+    if(e.shiftKey||e.ctrlKey||e.metaKey){
+      // Multi-select toggle
+      setSelected(prev=>{
+        const s=new Set(prev);
+        s.has(id)?s.delete(id):s.add(id);
+        return s;
+      });
+      return;
+    }
+    setSelected(new Set([id])); setSelEdge(null);
+    if(propsMode==='panel') setShowProps(true);
+    else if(window.innerWidth<768) setShowProps(true);
+  },[mode,drawingEdge,edgeStyle,nodes,applyEdges]);
+
+  const handleEdgeClick=useCallback((e,eid)=>{
+    e.stopPropagation();
+    if(mode==="select"){setSelEdge(eid);setSelected(new Set());}
+  },[mode]);
+
+  // ── Canvas mousedown — start box select ───────────────────
+  const handleCanvasMouseDown=useCallback((e)=>{
+    if(mode!=="select"||!canEdit) return;
+    // Only start box-select if clicking directly on canvas background (not a node/edge)
+    const target=e.target;
+    if(target.closest(".nn-node")) return;
+    if(target.tagName==="path"||target.tagName==="text"||target.closest("circle")||target.closest("polygon")||target.closest("foreignObject")) return;
+    // Only start box-select on true canvas background
+    const el=canvasRef.current; if(!el) return;
+    const rect=el.getBoundingClientRect(); const s=1/zoom;
+    const x=(e.clientX-rect.left)*s+el.scrollLeft*s;
+    const y=(e.clientY-rect.top)*s+el.scrollTop*s;
+    const bs={startX:x,startY:y,endX:x,endY:y};
+    boxSelRef.current=bs; setBoxSel(bs);
+    setSelected(new Set()); setSelEdge(null);
+  },[mode,canEdit,zoom]);
+
+  // ── Add node ──────────────────────────────────────────────
+  const addNode=useCallback((type)=>{
+    if(!canEdit) return;
+    const el=canvasRef.current; if(!el) return;
+    const s=1/zoom;
+    const baseX=(el.scrollLeft+el.clientWidth/2)*s-110;
+    const baseY=(el.scrollTop+el.clientHeight/2)*s-48;
+    // Offset from any node already close to the center so they don't stack
+    const cur = nodesRef.current;
+    let ox=0, oy=0;
+    for(let tries=0; tries<20; tries++){
+      const clash = cur.some(n=>Math.abs(n.x-(baseX+ox))<(n.w||DEF_W)+20 && Math.abs(n.y-(baseY+oy))<(n.h||DEF_H)+20);
+      if(!clash) break;
+      ox += (DEF_W+30); if(ox > 600){ ox=0; oy += (DEF_H+30); }
+    }
+    const node=mkNode(type, baseX+ox, baseY+oy);
+    applyNodes(ns=>[...ns,node]);
+    setSelected(new Set([node.id])); setSelEdge(null);
+    setShowSidebar(false);
+    if(window.innerWidth<768) setShowProps(true);
+  },[zoom,applyNodes,canEdit]);
+
+  // ── Delete ─────────────────────────────────────────────────
+  const deleteSelected=useCallback(()=>{
+    if(!canEdit) return;
+    if(selEdge){
+      applyEdges(es=>es.filter(e=>e.id!==selEdge));
+      setSelEdge(null); return;
+    }
+    if(selected.size===0) return;
+    applyNodes(ns=>ns.filter(n=>!selected.has(n.id)));
+    applyEdges(es=>es.filter(e=>!selected.has(e.from)&&!selected.has(e.to)));
+    setSelected(new Set()); setShowProps(false);
+  },[selected,selEdge,canEdit,applyNodes,applyEdges]);
+
+  // ── Node updates ───────────────────────────────────────────
+  const updateNode   =(id,u)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,...u}:n));
+  const updateProp   =(id,k,v)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,properties:{...n.properties,[k]:v}}:n));
+  const updateCustom =(id,k,v)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,customProps:{...n.customProps,[k]:v}}:n));
+  const deleteCustom =(id,k)=>applyNodes(ns=>ns.map(n=>{if(n.id!==id)return n;const c={...n.customProps};delete c[k];return{...n,customProps:c};}));
+  const resetSize    =(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,w:n.type==="group"?GRP_W:DEF_W,h:n.type==="group"?GRP_H:DEF_H}:n));
+  const toggleCollapse=(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,collapsed:!n.collapsed}:n));
+  const collapseAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:true}))); setGlobalCollapsed(true); };
+  const expandAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:false}))); setGlobalCollapsed(false); };
+  const updateNotes  =(id,notes)=>{
+    setNodes(ns=>ns.map(n=>n.id===id?{...n,notes}:n));
+    clearTimeout(notesTimers.current[id]);
+    notesTimers.current[id]=setTimeout(()=>{
+      setNodes(ns=>{const u=ns.map(n=>n.id===id?{...n,notes}:n);setEdges(es=>{scheduleSave(u,es);pushHistory(u,es);return es;});return u;});
+    },800);
+  };
+
+  // ── Auto-layout ────────────────────────────────────────────
+  const handleAutoLayout=useCallback(()=>{
+    // Reset edge anchors so smart router picks best sides for new positions
+    applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null,midOff:null})));
+    applyNodes(ns=>{
+      const laid=autoLayout(ns,edges);
+      // Scroll to show nodes after a tick
+      setTimeout(()=>{
+        if(canvasRef.current) canvasRef.current.scrollTo({left:0,top:0,behavior:"smooth"});
+      },100);
+      return laid;
+    });
+  },[edges,applyNodes,zoom]);
+
+  // ── Restore version ────────────────────────────────────────
+  const handleRestore=(ns,es)=>{
+    const mappedN=ns.map(n=>({id:n.id,type:n.node_type||n.type,x:n.x,y:n.y,w:n.w,h:n.h,title:n.title,notes:parseNotes(n.notes),collapsed:false,properties:n.properties||{},customProps:n.custom_props||n.customProps||{}}));
+    const mappedE=es.map(e=>({id:e.id,from:e.from_node||e.from,to:e.to_node||e.to,label:e.label||"",style:e.style||"arrow",color:e.color||"var(--accent)",fromAnchor:e.from_anchor||e.fromAnchor||null,toAnchor:e.to_anchor||e.toAnchor||null}));
+    setNodes(mappedN);setEdges(mappedE);pushHistory(mappedN,mappedE);scheduleSave(mappedN,mappedE);
+  };
+
+  // ── Quick capture commit ───────────────────────────────────
+  const commitCapture=()=>{
+    const title=quickText.trim();
+    if(!title){setQuickPos(null);setQuickText("");return;}
+    const node=mkNode("note",quickPos.x,quickPos.y);
+    node.title=title;
+    applyNodes(ns=>[...ns,node]);
+    setSelected(new Set([node.id])); setQuickPos(null); setQuickText("");
+  };)=>{
     const fw=collW(fromNode), fh=collH(fromNode);
     const tw=collW(toNode),   th=collH(toNode);
     const fcx=fromNode.x+fw/2, fcy=fromNode.y+fh/2;
@@ -1595,7 +2904,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:"6px var(--node-pad) 5px"}}>
           {/* Row 1: icon + title + comment btn */}
           <div style={{display:"flex",alignItems:"center",gap:6,minHeight:22}}>
-            <span style={{fontSize:15,lineHeight:1,flexShrink:0}}>{t.icon}</span>
+            <span style={{fontSize:14,width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,lineHeight:1}}>{t.icon}</span>
             {editingTitle===node.id?(
               <input autoFocus value={node.title}
                 onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
@@ -1625,7 +2934,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             </button>
           </div>
           {/* Row 2: type badge */}
-          <div style={{marginTop:3,paddingLeft:21}}>
+          <div style={{marginTop:2,paddingLeft:26}}>
             <span style={{fontSize:9,color:t.color,letterSpacing:1.2,fontWeight:700,
               background:`${t.color}18`,borderRadius:3,padding:"1px 6px",display:"inline-block"}}>
               {t.label.toUpperCase()}
