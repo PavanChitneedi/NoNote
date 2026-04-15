@@ -247,12 +247,15 @@ const mkNode = (type, x, y) => ({
 function autoLayout(nodes, edges, direction='LR') {
   if (!nodes.length) return nodes;
   try {
-    const PAD_START = 80;  // padding from canvas edge
+    const LAYER_GAP = 130; // gap between depth layers (main axis)
+    const NODE_GAP  = 30;  // minimum gap between sibling subtrees (cross axis)
+    const PAD       = 80;  // canvas padding
     const nodeW = n => n?.w || DEF_W;
     const nodeH = n => n?.h || DEF_H;
     const nodeById = id => nodes.find(n => n.id === id);
+    const isHoriz = direction === 'LR' || direction === 'RL';
 
-    // ── 1. Build graph ───────────────────────────────────────────────
+    // ── 1. Build adjacency ───────────────────────────────────────────
     const children = {}, parents = {};
     nodes.forEach(n => { children[n.id] = []; parents[n.id] = []; });
     edges.forEach(e => {
@@ -263,170 +266,162 @@ function autoLayout(nodes, edges, direction='LR') {
       }
     });
 
-    // ── 2. Break cycles ──────────────────────────────────────────────
+    // ── 2. Break cycles (DFS back-edge removal) ──────────────────────
     const vis = new Set(), stk = new Set();
     function breakCycles(id) {
       vis.add(id); stk.add(id);
       for (const c of [...children[id]]) {
         if (stk.has(c)) {
           children[id] = children[id].filter(x => x !== c);
-          parents[c] = parents[c].filter(x => x !== id);
+          parents[c]   = parents[c].filter(x => x !== id);
         } else if (!vis.has(c)) breakCycles(c);
       }
       stk.delete(id);
     }
     nodes.forEach(n => { if (!vis.has(n.id)) breakCycles(n.id); });
 
-    // ── 3. Longest-path layer assignment ─────────────────────────────
-    const memo = {};
-    function layerOf(id) {
-      if (memo[id] !== undefined) return memo[id];
-      const pd = parents[id].map(p => layerOf(p));
-      return (memo[id] = pd.length ? Math.max(...pd) + 1 : 0);
-    }
-    nodes.forEach(n => layerOf(n.id));
-
-    const maxL = Math.max(...nodes.map(n => memo[n.id]));
-    const layers = Array.from({length: maxL + 1}, () => []);
-    nodes.forEach(n => layers[memo[n.id]].push(n.id));
-
-    // ── 4. Barycenter crossing minimization ───────────────────────────
-    function bary(li, dir) {
-      const cur = layers[li];
-      const ref = dir==='fwd' ? layers[li-1] : layers[li+1];
-      if (!ref) return;
-      const rp = {}; ref.forEach((id,i) => rp[id] = i);
-      const sc = cur.map(id => {
-        const nb = dir==='fwd' ? parents[id] : children[id];
-        const hits = nb.filter(x => rp[x] !== undefined);
-        return { id, s: hits.length ? hits.reduce((a,x)=>a+rp[x],0)/hits.length : cur.indexOf(id) };
+    // ── 3. For DAGs: pick ONE primary parent per node (lowest depth) ─
+    // This converts the DAG to a spanning tree while keeping edges.
+    const primaryParent = {};
+    {
+      const depthMemo = {};
+      function nodeDepth(id) {
+        if (depthMemo[id] !== undefined) return depthMemo[id];
+        const pd = parents[id].map(p => nodeDepth(p));
+        return (depthMemo[id] = pd.length ? Math.max(...pd) + 1 : 0);
+      }
+      nodes.forEach(n => nodeDepth(n.id));
+      // Build tree children using primary parent only
+      nodes.forEach(n => {
+        if (parents[n.id].length > 1) {
+          // Pick parent with highest depth (deepest = most natural parent)
+          const pp = parents[n.id].reduce((best, p) =>
+            depthMemo[p] > depthMemo[best] ? p : best
+          );
+          primaryParent[n.id] = pp;
+        } else if (parents[n.id].length === 1) {
+          primaryParent[n.id] = parents[n.id][0];
+        }
       });
-      sc.sort((a,b) => a.s - b.s);
-      layers[li] = sc.map(x => x.id);
     }
-    for (let p = 0; p < 6; p++) {
-      for (let i = 1; i <= maxL; i++) bary(i, 'fwd');
-      for (let i = maxL-1; i >= 0; i--) bary(i, 'bwd');
-    }
+    // Build tree-children (only primary parent links)
+    const treeChildren = {};
+    nodes.forEach(n => { treeChildren[n.id] = []; });
+    nodes.forEach(n => {
+      if (primaryParent[n.id]) treeChildren[primaryParent[n.id]].push(n.id);
+    });
+    const roots = nodes.filter(n => !primaryParent[n.id]).map(n => n.id);
 
-    // ── 5. RADIAL layout ─────────────────────────────────────────────
+    // ── 4. RADIAL layout ─────────────────────────────────────────────
     if (direction === 'radial') {
-      const cx = 2000, cy = 1500; // center of canvas
-      const radii = [0, 280, 520, 760, 1000, 1240];
+      const cx = 2000, cy = 1500;
+      const radii = [0, 300, 560, 820, 1080, 1340];
       const px = {}, py = {};
-      layers.forEach((layer, li) => {
-        const r = radii[Math.min(li, radii.length-1)];
+      const allByLayer = Array.from({length: 6}, () => []);
+      function assignRadialLayer(id, li) {
+        allByLayer[Math.min(li, 5)].push(id);
+        treeChildren[id].forEach(c => assignRadialLayer(c, li+1));
+      }
+      roots.forEach(r => assignRadialLayer(r, 0));
+      allByLayer.forEach((layer, li) => {
+        const r = radii[li];
         if (li === 0) {
-          // root(s) at center or spread around center
           layer.forEach((id, i) => {
-            const angle = (i / Math.max(layer.length, 1)) * Math.PI * 2;
-            px[id] = cx + (li === 0 ? 0 : r) * Math.cos(angle) - nodeW(nodeById(id))/2;
-            py[id] = cy + (li === 0 ? 0 : r) * Math.sin(angle) - nodeH(nodeById(id))/2;
+            px[id] = cx - nodeW(nodeById(id))/2 + (layer.length > 1 ? (i - layer.length/2)*180 : 0);
+            py[id] = cy - nodeH(nodeById(id))/2;
           });
         } else {
           layer.forEach((id, i) => {
-            const angle = (i / Math.max(layer.length, 1)) * Math.PI * 2 - Math.PI/2;
-            px[id] = cx + r * Math.cos(angle) - nodeW(nodeById(id))/2;
-            py[id] = cy + r * Math.sin(angle) - nodeH(nodeById(id))/2;
+            const angle = (i/Math.max(layer.length,1))*Math.PI*2 - Math.PI/2;
+            px[id] = cx + r*Math.cos(angle) - nodeW(nodeById(id))/2;
+            py[id] = cy + r*Math.sin(angle) - nodeH(nodeById(id))/2;
           });
         }
       });
       return nodes.map(n => px[n.id] !== undefined
-        ? { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) }
-        : n);
+        ? { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) } : n);
     }
 
-    // ── 6. Hierarchical layout — compute along main axis ─────────────
-    // direction: LR=left→right, TB=top→bottom, RL=right→left, BT=bottom→top
-    const isHoriz = direction==='LR' || direction==='RL';
-    const LAYER_GAP = isHoriz ? 120 : 110; // gap between layers
-    const NODE_GAP  = isHoriz ? 70  : 80;  // gap between nodes in same layer
+    // ── 5. Compute subtree "span" (cross-axis height needed) ──────────
+    // The span of a leaf = node cross-size + NODE_GAP
+    // The span of an internal node = max(own cross-size, sum of children spans) + NODE_GAP
+    const span = {};
+    function computeSpan(id) {
+      const selfSize = isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
+      const ch = treeChildren[id];
+      if (!ch.length) return (span[id] = selfSize + NODE_GAP);
+      const childrenTotal = ch.reduce((s, c) => s + computeSpan(c), 0);
+      return (span[id] = Math.max(selfSize + NODE_GAP, childrenTotal));
+    }
+    roots.forEach(r => computeSpan(r));
 
-    // Each layer's cross-axis offset
-    const layOff = [];
-    let curOff = PAD_START;
-    for (let li = 0; li <= maxL; li++) {
-      layOff[li] = curOff;
-      const maxMain = Math.max(...layers[li].map(id =>
-        isHoriz ? nodeW(nodeById(id)) : nodeH(nodeById(id))
+    // ── 6. Assign positions recursively ──────────────────────────────
+    const px = {}, py = {};
+    // depth = layer index (0 = root)
+    const depthOf = {};
+    function setDepth(id, d) { depthOf[id] = d; treeChildren[id].forEach(c => setDepth(c, d+1)); }
+    roots.forEach(r => setDepth(r, 0));
+
+    // Cumulative cross-axis offset per root group
+    let globalCross = PAD;
+
+    function placeSubtree(id, mainOffset, crossOffset) {
+      const ch = treeChildren[id];
+
+      if (!ch.length) {
+        // Leaf: center in its own span
+        const selfCross = isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
+        const center = crossOffset + span[id]/2 - selfCross/2;
+        if (isHoriz) { px[id] = mainOffset; py[id] = center; }
+        else          { py[id] = mainOffset; px[id] = center; }
+        return;
+      }
+
+      // Place each child, then center this node over all children
+      let childCross = crossOffset;
+      ch.forEach(c => {
+        placeSubtree(c, mainOffset + nodeW(nodeById(id)) + LAYER_GAP, childCross);
+        childCross += span[c];
+      });
+
+      // Center over children span
+      const firstC = ch[0], lastC = ch[ch.length-1];
+      const firstCross = isHoriz ? py[firstC] : px[firstC];
+      const lastNode   = nodeById(lastC);
+      const lastCross  = (isHoriz ? py[lastC]  : px[lastC]) +
+                         (isHoriz ? nodeH(lastNode) : nodeW(lastNode));
+      const selfCross = isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
+      const center = (firstCross + lastCross)/2 - selfCross/2;
+
+      if (isHoriz) { px[id] = mainOffset; py[id] = center; }
+      else          { py[id] = mainOffset; px[id] = center; }
+    }
+
+    roots.forEach(r => {
+      placeSubtree(r, PAD, globalCross);
+      globalCross += span[r];
+    });
+
+    // ── 7. Handle nodes not in spanning tree (secondary parents) ─────
+    // Nodes that ARE in the tree already have positions. No adjustment needed.
+
+    // ── 8. Handle RL/BT flip ─────────────────────────────────────────
+    if (direction === 'RL' || direction === 'BT') {
+      const maxMain = Math.max(...nodes.map(n =>
+        isHoriz ? (px[n.id] ?? PAD) + nodeW(n) : (py[n.id] ?? PAD) + nodeH(n)
       ));
-      curOff += maxMain + LAYER_GAP;
-    }
-
-    // Positions along the cross axis
-    const pMain = {}, pCross = {};
-    for (let li = 0; li <= maxL; li++) {
-      let cross = PAD_START;
-      layers[li].forEach(id => {
-        pMain[id]  = layOff[li];
-        pCross[id] = cross;
-        cross += (isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id))) + NODE_GAP;
+      nodes.forEach(n => {
+        if (isHoriz) px[n.id] = maxMain - (px[n.id] ?? PAD) - nodeW(n) + PAD;
+        else         py[n.id] = maxMain - (py[n.id] ?? PAD) - nodeH(n) + PAD;
       });
     }
 
-    // Center children under parent (top-down pass)
-    for (let li = 1; li <= maxL; li++) {
-      const sorted = [...layers[li]].sort((a,b) => pCross[a]-pCross[b]);
-      sorted.forEach((id, idx) => {
-        const pa = parents[id].filter(p => memo[p] === memo[id]-1);
-        if (!pa.length) return;
-        const nodeSize = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
-        const lo = Math.min(...pa.map(p => pCross[p]));
-        const hi = Math.max(...pa.map(p => pCross[p] + nodeSize(p)));
-        const desired = (lo+hi)/2 - nodeSize(id)/2;
-        const minCross = idx>0 ? pCross[sorted[idx-1]] + nodeSize(sorted[idx-1]) + NODE_GAP : PAD_START;
-        pCross[id] = Math.max(desired, minCross);
-      });
-    }
-
-    // Center parents over children (bottom-up pass)
-    for (let li = maxL-1; li >= 0; li--) {
-      const sorted = [...layers[li]].sort((a,b) => pCross[a]-pCross[b]);
-      sorted.forEach((id, idx) => {
-        const ch = children[id].filter(c => memo[c] === memo[id]+1);
-        if (!ch.length) return;
-        const nodeSize = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
-        const lo = Math.min(...ch.map(c => pCross[c]));
-        const hi = Math.max(...ch.map(c => pCross[c] + nodeSize(c)));
-        const desired = (lo+hi)/2 - nodeSize(id)/2;
-        const minCross = idx>0 ? pCross[sorted[idx-1]] + nodeSize(sorted[idx-1]) + NODE_GAP : PAD_START;
-        pCross[id] = Math.max(desired, minCross);
-      });
-      // Re-spread
-      const s2 = [...layers[li]].sort((a,b) => pCross[a]-pCross[b]);
-      const nodeSize2 = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
-      for (let i=1;i<s2.length;i++) {
-        const need = pCross[s2[i-1]] + nodeSize2(s2[i-1]) + NODE_GAP;
-        if (pCross[s2[i]] < need) pCross[s2[i]] = need;
-      }
-    }
-
-    // Clamp cross axis to canvas
-    const minCross = Math.min(...nodes.map(n => pCross[n.id] ?? PAD_START));
-    if (minCross < PAD_START) nodes.forEach(n => {
-      if (pCross[n.id] !== undefined) pCross[n.id] += PAD_START - minCross;
-    });
-
-    // Flip main axis for RL/BT
-    const totalMain = curOff;
-    const flip = direction==='RL' || direction==='BT';
-
-    let isoOff = PAD_START, isoCross = (Math.max(...nodes.map(n=>pCross[n.id]??0))||0) + 200;
-    return nodes.map(n => {
-      if (pMain[n.id] === undefined) {
-        const r = isHoriz
-          ? { ...n, x: isoOff, y: isoCross }
-          : { ...n, x: isoCross, y: isoOff };
-        isoOff += (isHoriz ? nodeW(n) : nodeH(n)) + LAYER_GAP;
-        return r;
-      }
-      const main  = flip ? totalMain - pMain[n.id] - (isHoriz?nodeW(n):nodeH(n)) : pMain[n.id];
-      const cross = pCross[n.id];
-      return { ...n,
-        x: Math.round(isHoriz ? main  : cross),
-        y: Math.round(isHoriz ? cross : main),
-      };
-    });
+    // ── 9. Assemble ───────────────────────────────────────────────────
+    return nodes.map(n => ({
+      ...n,
+      x: Math.round(px[n.id] ?? PAD),
+      y: Math.round(py[n.id] ?? PAD),
+    }));
 
   } catch(err) {
     console.error('[autoLayout]', err);
