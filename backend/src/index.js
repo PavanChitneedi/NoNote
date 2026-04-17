@@ -243,6 +243,30 @@ function broadcast(mapId, msg, exclude = null) {
   });
 }
 
+// ── DB migrations (run on every startup, all idempotent) ──────
+async function runMigrations() {
+  const migrations = [
+    "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS from_anchor JSONB",
+    "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS to_anchor JSONB",
+    "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS mid_off JSONB",
+    "ALTER TABLE maps ADD COLUMN IF NOT EXISTS group_boxes JSONB NOT NULL DEFAULT '[]'::jsonb",
+    `CREATE TABLE IF NOT EXISTS map_changelog (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      map_id UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      user_name TEXT, action TEXT NOT NULL,
+      target_id TEXT, target_label TEXT, meta JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, created_at DESC)",
+  ];
+  let applied = 0;
+  for (const sql of migrations) {
+    try { await query(sql); applied++; } catch { /* already exists */ }
+  }
+  console.log(`[migrate] ${applied}/${migrations.length} migrations applied`);
+}
+
 // ── Start ─────────────────────────────────────────────────────
 httpServer.listen(PORT, "0.0.0.0", async () => {
   console.log(`[server] NodeMap API + WS running on :${PORT}`);
