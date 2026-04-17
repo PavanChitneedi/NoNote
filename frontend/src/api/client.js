@@ -12,6 +12,10 @@ export function setTokens(access, refresh) {
   }
 }
 
+export function getAccessToken() {
+  return _accessToken;
+}
+
 export function clearTokens() {
   _accessToken = null;
   _refreshToken = null;

@@ -17,8 +17,10 @@ router.get("/", authenticate, async (req, res) => {
     const { rows } = await query(
       `SELECT m.id, m.title, m.description, m.is_public, m.created_at, m.updated_at,
               u.display_name as owner_name, u.avatar_color as owner_color,
+              m.owner_id,
               mc.permission,
-              (SELECT COUNT(*) FROM map_nodes WHERE map_id = m.id) as node_count
+              (SELECT COUNT(*) FROM map_nodes WHERE map_id = m.id) as node_count,
+              (SELECT COUNT(*) FROM map_collaborators WHERE map_id = m.id) as collab_count
        FROM maps m
        JOIN users u ON u.id = m.owner_id
        LEFT JOIN map_collaborators mc ON mc.map_id = m.id AND mc.user_id = $1

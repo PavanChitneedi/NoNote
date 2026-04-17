@@ -299,7 +299,20 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                   {map.description&&<div style={{ fontSize:11, color:"var(--text3)", marginBottom:7, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{map.description}</div>}
                   <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
                     <span style={{ fontSize:10, color:"var(--text4)" }}>{map.node_count||0} nodes</span>
-                    {map.permission&&<span style={{ fontSize:10, color:RC[map.permission]||"var(--text3)", background:`${RC[map.permission]||"#888"}18`, padding:"1px 7px", borderRadius:4 }}>{map.permission}</span>}
+                    {/* Shared-to-me badge */}
+                    {map.permission&&map.owner_id!==user?.id&&(
+                      <span style={{fontSize:9,color:"var(--accent)",background:"var(--accent)15",
+                        padding:"1px 6px",borderRadius:4,border:"1px solid var(--accent)30",fontWeight:600}}>
+                        👁 {map.permission} · {map.owner_name?"by "+map.owner_name:"shared"}
+                      </span>
+                    )}
+                    {/* Owner with collaborators */}
+                    {(map.owner_id===user?.id||!map.permission)&&(map.collab_count>0)&&(
+                      <span style={{fontSize:9,color:"#4d9be6",background:"#1565C018",
+                        padding:"1px 6px",borderRadius:4,border:"1px solid #1565C030",fontWeight:600}}>
+                        👥 Shared · {map.collab_count}
+                      </span>
+                    )}
                     {map.is_public&&<span style={{ fontSize:10, color:"var(--success)", background:"var(--success)18", padding:"1px 7px", borderRadius:4 }}>public</span>}
                   </div>
                   <div style={{ marginTop:8, fontSize:10, color:"var(--text4)" }}>Updated {new Date(map.updated_at).toLocaleDateString()}</div>

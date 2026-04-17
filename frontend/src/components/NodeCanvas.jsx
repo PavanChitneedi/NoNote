@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab } from "../api/client.js";
+import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab, getAccessToken } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
@@ -909,11 +909,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     }, 1000);
   }, [mapId,canEdit]);
 
-  // applyNodes: save + history. Pass skipHistory=true during live drag.
+  // applyNodes: save + history + broadcast when collab is on
   const applyNodes = useCallback((fn, skipHistory=false) => {
     setNodes(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setEdges(es=>{ scheduleSave(next,es); if(!skipHistory)pushHistory(next,es); return es; });
+      // Broadcast to collaborators
+      if(wsRef.current?.readyState===1)
+        wsRef.current.send(JSON.stringify({type:'nodes_update',nodes:next}));
       return next;
     });
   }, [scheduleSave,pushHistory]);
@@ -930,6 +933,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setEdges(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setNodes(ns=>{ scheduleSave(ns,next); if(!skipHistory)pushHistory(ns,next); return ns; });
+      // Broadcast to collaborators
+      if(wsRef.current?.readyState===1)
+        wsRef.current.send(JSON.stringify({type:'edges_update',edges:next}));
       return next;
     });
   }, [scheduleSave,pushHistory]);
@@ -1498,19 +1504,27 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── WebSocket real-time collaboration ────────────────────────
   useEffect(()=>{
     if(!mapId||!collab) return;
-    const token=localStorage.getItem('nn_token');
     const proto=window.location.protocol==='https:'?'wss:':'ws:';
     const ws=new WebSocket(`${proto}//${window.location.host}/ws`);
     wsRef.current=ws;
-    ws.onopen=()=>{
-      ws.send(JSON.stringify({type:'join',mapId,token}));
-      console.log('[collab] connected');
+    ws.onopen=async()=>{
+      // Get a fresh access token — apiFetch handles refresh internally
+      // We ping /auth/me to ensure the in-memory token is fresh, then read it
+      try{ await apiFetch('/auth/me'); }catch{}
+      const token=getAccessToken(); // exported getter from client.js
+      ws.send(JSON.stringify({type:'join',mapId,token:token||''}));
+      console.log('[collab] joined map',mapId);
     };
     ws.onmessage=e=>{
       try{
         const msg=JSON.parse(e.data);
-        if(msg.type==='nodes_update') applyNodes(()=>msg.nodes);
-        if(msg.type==='edges_update') applyEdges(()=>msg.edges);
+        // Only apply updates from other users (not echoed back to sender by server)
+        if(msg.type==='nodes_update'&&msg.userId!==undefined){
+          setNodes(msg.nodes); // direct set, no broadcast loop
+        }
+        if(msg.type==='edges_update'&&msg.userId!==undefined){
+          setEdges(msg.edges); // direct set
+        }
         if(msg.type==='cursor_move'){
           setCollabUsers(prev=>({...prev,[msg.userId]:{...prev[msg.userId],...msg}}));
         }
@@ -2556,6 +2570,36 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </span>
             )}
             {saveMsg&&<span style={{fontSize:9,color:saveMsgColor,whiteSpace:"nowrap",marginLeft:4}}>{saveMsg}</span>}
+            {/* Shared indicator */}
+            {mapMeta&&(()=>{
+              const isOwner = mapMeta.owner_id===user?.id;
+              const hasCollabs = (mapMeta.collaborators||[]).length>0;
+              const myPerm = mapMeta.permission; // viewer/editor if shared to me
+              if(!isOwner&&myPerm){
+                // I'm a collaborator — show owner info
+                return(
+                  <span style={{display:"flex",alignItems:"center",gap:4,marginLeft:6,
+                    background:"var(--accent)18",border:"1px solid var(--accent)40",
+                    borderRadius:4,padding:"1px 7px",fontSize:9,color:"var(--accent)",
+                    fontWeight:600,flexShrink:0}}>
+                    👁 Shared · {myPerm}
+                    {mapMeta.owner_name&&<span style={{opacity:.7}}>by {mapMeta.owner_name}</span>}
+                  </span>
+                );
+              }
+              if(isOwner&&hasCollabs){
+                return(
+                  <span style={{display:"flex",alignItems:"center",gap:4,marginLeft:6,
+                    background:"#1565C018",border:"1px solid #1565C040",
+                    borderRadius:4,padding:"1px 7px",fontSize:9,color:"#4d9be6",
+                    fontWeight:600,flexShrink:0}}
+                    title={`Shared with: ${(mapMeta.collaborators||[]).map(c=>c.display_name||c.email).join(", ")}`}>
+                    👥 Shared · {(mapMeta.collaborators||[]).length} {(mapMeta.collaborators||[]).length===1?"person":"people"}
+                  </span>
+                );
+              }
+              return null;
+            })()}
           </div>
 
           <div style={{flex:1}}/>
@@ -2683,7 +2727,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.9 ✦
+              v5.10 ✦
             </button>
           </div>
         </div>
@@ -3517,6 +3561,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.10",date:"Apr 2026",items:[
+                  "Real-time collaboration: changes now broadcast immediately via applyNodes/applyEdges hooks",
+                  "WS auth fixed: uses getAccessToken() getter instead of missing localStorage key",
+                  "Shared map indicator in topbar: collaborators see '👁 Shared · viewer/editor by Owner'",
+                  "Owner indicator: owners with active shares see '👥 Shared · N people'",
+                  "Dashboard: map cards show shared-to-me badge (with owner name) and shared-by-me badge",
+                  "Backend: maps list now returns owner_id and collab_count for badge logic",
+                ]},
                 {v:"v5.9",date:"Apr 2026",items:[
                   "Share map fixed: all API calls now use apiFetch with proper auth token (not localStorage)",
                   "Topbar reorganized into 4 logical groups: Map Resources | Import+Export | Collaboration | Appearance+View",
