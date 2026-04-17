@@ -203,13 +203,13 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                 </button>
               </form>
             ) : (
-              <button data-tut="new-map" onClick={()=>setShowNew(true)} style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              <button onClick={()=>setShowNew(true)} style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                 ＋ New Map
               </button>
             )
           )}
           {/* Import .nonote */}
-          <label data-tut="import" style={{ padding:"9px 15px", background:"var(--bg2)", border:"1px solid var(--border2)", borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
+          <label style={{ padding:"9px 15px", background:"var(--bg2)", border:"1px solid var(--border2)", borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
             ↙ Import .nonote
             <input type="file" accept=".nonote,.json" style={{ display:"none" }} onChange={handleImportFile}/>
           </label>
@@ -287,7 +287,6 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
               {maps.map(map=>(
                 <div key={map.id}
-                  data-tut={maps.indexOf(map)===0?"map-card":undefined}
                   onClick={()=>onOpenMap(map.id)}
                   onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
                   style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:12, padding:18, cursor:"pointer", transition:"all .15s", position:"relative" }}

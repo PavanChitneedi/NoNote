@@ -8,8 +8,6 @@ import NodeCanvas   from "./components/NodeCanvas.jsx";
 import AdminPanel   from "./components/AdminPanel.jsx";
 import ThemePicker  from "./components/ThemePicker.jsx";
 import UserProfile  from "./components/UserProfile.jsx";
-import Tutorial     from "./components/Tutorial.jsx";
-import HelpGuide    from "./components/HelpGuide.jsx";
 
 function AppInner() {
   const { user, loading, logout } = useAuth();
@@ -17,8 +15,6 @@ function AppInner() {
   const [view,         setView]         = useState({ page:"dashboard", mapId:null });
   const [showAppearance, setShowAppearance] = useState(false);
   const [showProfile,  setShowProfile]  = useState(false);
-  const [showTutorial, setShowTutorial] = useState(false);
-  const [showHelp,     setShowHelp]     = useState(false);
 
   const goHome    = () => setView({ page:"dashboard", mapId:null });
   const openMap   = id => setView({ page:"canvas",    mapId:id });
@@ -62,14 +58,6 @@ function AppInner() {
             <button onClick={goHome} style={hBtn}>← BACK</button>
           )}
 
-          {/* Tutorial + Help */}
-          <button onClick={() => setShowTutorial(true)} style={{...hBtn, color:"var(--accent)"}} title="Interactive tutorial — learn the app step by step">
-            🎓 Tutorial
-          </button>
-          <button onClick={() => setShowHelp(true)} style={hBtn} title="Full documentation and help guide">
-            ? Help
-          </button>
-
           {/* Appearance */}
           <button onClick={() => setShowAppearance(true)} style={hBtn} title="Theme, design & text size">
             {THEMES[themeName]?.icon} Appearance
@@ -100,8 +88,6 @@ function AppInner() {
 
       {/* Appearance modal */}
       {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
-      {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
-      {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
     </div>
   );
