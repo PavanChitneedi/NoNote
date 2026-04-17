@@ -646,6 +646,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [snapToGrid,     setSnapToGrid]     = useState(false); // shift-drag snapping
   const [snapGuides,     setSnapGuides]     = useState([]);    // [{x1,y1,x2,y2}] alignment guides
   const [editingNotes,   setEditingNotes]   = useState(null);  // nodeId being edited
+  const [inlineEditField,setInlineEditField]= useState(null); // {nodeId, field: 'title'|'desc'|noteId}
   // Feature: Focus mode
   const [focusMode,      setFocusMode]      = useState(false);
   const [focusEnabled,   setFocusEnabled]   = useState(true);  // global toggle
@@ -656,6 +657,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
+  const [showChangelog, setShowChangelog]  = useState(false);
   const [sidebarIconOnly, setSidebarIconOnly] = useState(false);
   const [sidebarDense,    setSidebarDense]    = useState(false); // multi-icon-per-row
   // Feature: Comment pins
@@ -854,6 +856,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         return;
       }
       if(e.code==="KeyN"&&canEdit){addNode("note");return;}
+      if(e.code==="F2"&&selected.size===1){
+        e.preventDefault();
+        setEditingTitle([...selected][0]);
+        return;
+      }
       if(e.code==="KeyD"&&mod&&canEdit&&selected.size>0){
         e.preventDefault();
         const offset=24;
@@ -870,7 +877,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
       if(e.code==="KeyC"&&canEdit){setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);return;}
       if(e.code==="KeyS"&&canEdit){setMode("select");setDrawingEdge(null);return;}
-      if(e.code==="KeyE"&&canEdit){setEditMode(v=>!v);return;}
+      if(e.code==="KeyE"&&canEdit){
+        if(selected.size===1&&propsMode==='popup'&&!nodePopup){
+          setNodePopup({nodeId:[...selected][0],tab:'notes'});
+        } else { setEditMode(v=>!v); }
+        return;
+      }
+      // N = quick add note to selected node
+      if(e.code==="KeyN"&&!isInput&&canEdit&&editMode&&selected.size===1){
+        const nid=[...selected][0];
+        const nd=nodesRef.current.find(n=>n.id===nid);
+        if(nd){
+          const nn={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false};
+          const arr=[...(Array.isArray(nd.notes)?nd.notes:[]),nn];
+          updateNotes(nid,arr);
+          setNodePopup({nodeId:nid,tab:'notes'});
+        }
+        return;
+      }
       if(e.code==="KeyV"&&canEdit){setShowVersions(true);return;}
       if(e.code==="KeyF"&&mod){e.preventDefault();setShowSearch(v=>!v);setSearchQuery("");return;}
       if(e.code==="KeyA"&&mod){e.preventDefault();setSelected(new Set(nodes.map(n=>n.id)));return;}
@@ -1407,7 +1431,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       c2x=tp.x*0.25+mx*0.75; c2y=tp.y*0.25+my*0.75;
     }
 
-    const path=`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`;
+    // For bidirectional: pull back start/end by marker length so arrowheads clear the node
+    const hasMStart=edge.style&&(EDGE_STYLES[edge.style]?.mStart);
+    const ARROW_PULL=hasMStart?10:0; // px to pull start point back along tangent
+    let fpx=fp.x,fpy=fp.y,tpx=tp.x,tpy=tp.y;
+    if(ARROW_PULL>0){
+      const d=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
+      fpx=fp.x+(c1x-fp.x)/d*ARROW_PULL;
+      fpy=fp.y+(c1y-fp.y)/d*ARROW_PULL;
+    }
+    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tpx} ${tpy}`;
     const mid={
       x:0.125*(fp.x+tp.x)+0.375*(c1x+c2x),
       y:0.125*(fp.y+tp.y)+0.375*(c1y+c2y),
@@ -1854,20 +1887,54 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     padding:"1px 5px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700,boxSizing:"border-box"}}
                 />
               ):(
-                <div style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",
-                  textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:canEdit&&editMode?"text":"default",lineHeight:1.3}}
-                  title={canEdit&&editMode?"Double-click to edit":node.title}>
-                  {node.title}
+                <div style={{display:"flex",alignItems:"center",gap:3,minWidth:0,flex:1}}>
+                  <div style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",
+                    textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,lineHeight:1.3,
+                    cursor:canEdit&&editMode?"text":"default"}}
+                    title={node.title} onDoubleClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingTitle(node.id);}}>
+                    {node.title}
+                  </div>
+                  {canEdit&&editMode&&(
+                    <button className="nn-pencil-btn"
+                      onMouseDown={e=>e.stopPropagation()}
+                      onClick={e=>{e.stopPropagation();setEditingTitle(node.id);}}
+                      title="Edit title (F2)"
+                      style={{background:"none",border:"none",cursor:"pointer",padding:"1px 2px",
+                        flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)"}}>✏</button>
+                  )}
                 </div>
               )}
               {/* Description directly under title */}
-              {node.description&&(
-                <div style={{fontSize:10,color:"var(--text4)",marginTop:1,lineHeight:1.3,
-                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
-                  title={node.description}>
-                  {node.description}
+              {node.description?(
+                <div style={{display:"flex",alignItems:"center",gap:2,marginTop:1,minWidth:0}}>
+                  {inlineEditField?.nodeId===node.id&&inlineEditField?.field==='desc'?(
+                    <input autoFocus value={node.description||""}
+                      onChange={e=>{e.stopPropagation();updateNode(node.id,{description:e.target.value});}}
+                      onMouseDown={e=>e.stopPropagation()}
+                      onBlur={()=>setInlineEditField(null)}
+                      onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setInlineEditField(null);}}
+                      style={{flex:1,background:"none",border:"none",borderBottom:"1px solid var(--accent)",
+                        outline:"none",fontSize:10,color:"var(--text3)",fontFamily:"var(--font-ui)",padding:"0"}}
+                    />
+                  ):(
+                    <>
+                      <div style={{fontSize:10,color:"var(--text4)",lineHeight:1.3,flex:1,
+                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
+                        title={node.description}>
+                        {node.description}
+                      </div>
+                      {canEdit&&editMode&&(
+                        <button className="nn-pencil-btn"
+                          onMouseDown={e=>e.stopPropagation()}
+                          onClick={e=>{e.stopPropagation();setInlineEditField({nodeId:node.id,field:'desc'});}}
+                          title="Edit description"
+                          style={{background:"none",border:"none",cursor:"pointer",padding:"0",
+                            flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)"}}>✏</button>
+                      )}
+                    </>
+                  )}
                 </div>
-              )}
+              ):null}
             </div>
             {/* Comment button */}
             <button className="nn-comment-btn" onMouseDown={e=>e.stopPropagation()}
@@ -1884,21 +1951,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               )}
             </button>
           </div>
-          {/* Row 2: type badge + collapse button on right */}
-          <div style={{display:"flex",alignItems:"center",marginTop:2,paddingLeft:26,gap:4}}>
-            <span style={{fontSize:9,color:t.color,letterSpacing:1,fontWeight:600,
-              background:`${t.color}15`,borderRadius:3,padding:"1px 5px",display:"inline-block",flex:1}}>
-              {t.label.toUpperCase()}
+          {/* Row 2: type badge (right, subtle) + collapse */}
+          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginTop:1,gap:4}}>
+            <span style={{fontSize:8,color:`${t.color}90`,letterSpacing:.8,fontWeight:500,
+              opacity:.7,marginRight:"auto"}}>
+              {t.label}
             </span>
             {canEdit&&(
               <button className="nn-collapse-btn"
                 onMouseDown={e=>e.stopPropagation()}
                 onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
                 title={node.collapsed?"Expand node":"Collapse node"}
-                style={{background:"none",border:`1px solid ${t.color}50`,borderRadius:3,
-                  color:t.color,cursor:"pointer",fontSize:10,width:16,height:16,
+                style={{background:"none",border:`1px solid ${t.color}40`,borderRadius:3,
+                  color:t.color,cursor:"pointer",fontSize:9,width:14,height:14,
                   display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
-                  opacity:0,transition:"opacity .15s",flexShrink:0,marginRight:2}}>
+                  opacity:0,transition:"opacity .15s",flexShrink:0}}>
                 ⊟
               </button>
             )}
@@ -2159,8 +2226,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {!isMobile&&<kbd style={{fontSize:8,color:showSearch?"rgba(255,255,255,.7)":"var(--text4)",background:showSearch?"rgba(255,255,255,.15)":"var(--bg3)",border:`1px solid ${showSearch?"rgba(255,255,255,.3)":"var(--border)"}`,borderRadius:3,padding:"1px 4px",fontFamily:"var(--font-ui)"}}>Ctrl+F</kbd>}
             </button>
 
-            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find in map\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View mode\nV  Version history\nC  Connect mode\nSpace  Quick capture"}
+            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find in map\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View mode (or open popup)\nF2  Rename selected node\nN  Add note to selected node\nV  Version history\nC  Connect mode\nSpace  Quick capture"}
               style={{fontSize:11,color:"var(--text4)",cursor:"help",borderBottom:"1px dashed var(--text4)",padding:"0 3px",marginLeft:2}}>⌨</span>}
+            <button onClick={()=>setShowChangelog(true)}
+              style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
+              title="What's new">
+              v5.0 ✦
+            </button>
           </div>
         </div>
 
@@ -2723,6 +2795,111 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         )}
       </div>
 
+      {/* ── Changelog Modal ── */}
+      {showChangelog&&(
+        <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>setShowChangelog(false)}>
+          <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:"var(--radius-lg)",
+            boxShadow:"0 24px 64px rgba(0,0,0,.7)",width:560,maxWidth:"94vw",maxHeight:"80vh",
+            display:"flex",flexDirection:"column",overflow:"hidden"}}
+            onClick={e=>e.stopPropagation()}>
+            {/* Header */}
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",
+              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+              <div>
+                <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What's New</div>
+                <div style={{fontSize:10,color:"var(--text4)",marginTop:2}}>Full changelog across all versions</div>
+              </div>
+              <button onClick={()=>setShowChangelog(false)}
+                style={{marginLeft:"auto",background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+            </div>
+            {/* Content */}
+            <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
+              {[
+                {v:"v5.0",date:"2026",items:[
+                  "Bidirectional arrows now correctly show both arrowheads",
+                  "Inline text editing: pencil icon on title and description (F2 to rename)",
+                  "Keyboard shortcuts: E opens node popup, N adds note, F2 renames",
+                  "Compact sidebar mode: multi-icon dense grid",
+                  "Node type badge moved to right-bottom, less distracting",
+                  "Node description displayed directly under title",
+                  "Export/Import .nonote bundle format",
+                  "Focus mode activates on node click",
+                  "Resize snap guides",
+                  "Notes on node: expand per title, expand all button",
+                  "Quick add note button on node hover",
+                ]},
+                {v:"v4.46–4.47",date:"2026",items:[
+                  "Recursive subtree auto-layout (no overlapping nodes)",
+                  "5 layout directions: L→R, T→B, R→L, B→T, Radial",
+                  "Layout direction picker dropdown",
+                  "Popup closes on canvas click",
+                  "Absolute layer positions eliminate X-axis overlap",
+                ]},
+                {v:"v4.42–4.45",date:"2026",items:[
+                  "Complete search rewrite — searches all node data including note titles",
+                  "Edge routing: smart right→left preference for horizontal layouts",
+                  "Endpoint drag: slide t-offset along side, reset button",
+                  "Left-to-right tree layout",
+                ]},
+                {v:"v4.38–4.41",date:"2026",items:[
+                  "Canvas area restored + renderEdges/renderNodes helpers",
+                  "Node Library: collapse, icon-only, dense modes",
+                  "5-direction auto layout (LR/TB/RL/BT/Radial)",
+                  "Smart edge router with bestSides()",
+                  "Improved search covering note titles and descriptions",
+                ]},
+                {v:"v4.33–4.37",date:"2026",items:[
+                  "Multi-note per node (array of notes)",
+                  "Rich text editor with formatting toolbar",
+                  "Sensitive data toggle on notes (redacted in LLM export)",
+                  "Inline node editor popup on double-click (4 tabs)",
+                  "Node type picker in popup",
+                  "POPUP / PANEL toggle for properties mode",
+                  "Redesigned 2-row topbar with functional grouping",
+                  "Command-palette search overlay",
+                ]},
+                {v:"v4.25–4.32",date:"2026",items:[
+                  "Right-click context menu",
+                  "Snap-to-grid (Shift+drag)",
+                  "Alignment guides during drag",
+                  "Status dots on collapsed nodes",
+                  "Template library (Homelab, Microservices, Mind Map)",
+                  "Comment pins with threaded sidebar",
+                  "15 connection styles",
+                  "Focus mode (dims non-active nodes)",
+                  "Quick capture (Space bar)",
+                  "Ctrl+D duplicate",
+                ]},
+                {v:"v4.0–4.24",date:"2025–2026",items:[
+                  "Full-stack app: Node.js + PostgreSQL + Redis + Docker",
+                  "60+ node types across 9 categories",
+                  "Collision prevention with AABB detection",
+                  "Anchor system for connection endpoints",
+                  "Version history with restore",
+                  "LLM export and AI Chat panel",
+                  "Custom node properties and themes",
+                  "PNG export",
+                ]},
+              ].map(({v,date,items})=>(
+                <div key={v} style={{marginBottom:18}}>
+                  <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:8}}>
+                    <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>{v}</span>
+                    <span style={{fontSize:10,color:"var(--text4)"}}>{date}</span>
+                  </div>
+                  {items.map((item,i)=>(
+                    <div key={i} style={{display:"flex",gap:6,marginBottom:4,fontSize:11,color:"var(--text2)"}}>
+                      <span style={{color:"var(--accent)",flexShrink:0,marginTop:1}}>•</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
@@ -2737,8 +2914,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         .nn-node:hover .nn-comment-btn { opacity: 0.65 !important; }
         .nn-comment-btn:hover { opacity: 1 !important; }
         .nn-node:hover .nn-addnote-btn { opacity: 0.6 !important; }
+        .nn-node:hover .nn-pencil-btn { opacity: 0.5 !important; }
+        .nn-pencil-btn:hover { opacity: 1 !important; color: var(--accent) !important; }
         .nn-addnote-btn:hover { opacity: 1 !important; }
         .nn-node:hover .nn-addnote-btn { opacity: 0.6 !important; }
+        .nn-node:hover .nn-pencil-btn { opacity: 0.5 !important; }
+        .nn-pencil-btn:hover { opacity: 1 !important; color: var(--accent) !important; }
         .nn-addnote-btn:hover { opacity: 1 !important; }
         .nn-node:hover .nn-collapse-btn { opacity: 0.7 !important; }
         .nn-collapse-btn:hover { opacity: 1 !important; }
@@ -2923,7 +3104,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
         {visibleCats.map(cat=>{
           const items=groups[cat]||[];
           const isOpen=catOpen[cat]===undefined?true:catOpen[cat];
-          const showOpen=q?true:isOpen; // always expand during search
+          const showOpen=q||dense?true:isOpen; // always expand during search or in dense
 
           return(
             <div key={cat}>
@@ -2944,7 +3125,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
               )}
 
               {/* Items */}
-              {(showOpen||iconOnly)&&(
+              {(showOpen||iconOnly||dense)&&(
                 iconOnly||dense?(
                   // Dense icon grid — multiple per row, tooltip on hover
                   <div style={{display:"flex",flexWrap:"wrap",justifyContent:"flex-start",padding:"3px 4px",gap:dense?1:2}}>
