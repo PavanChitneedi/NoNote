@@ -1431,24 +1431,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       c2x=tp.x*0.25+mx*0.75; c2y=tp.y*0.25+my*0.75;
     }
 
-    // For bidirectional: pull BOTH start and end back by marker length
+    // markerEnd (refX=10): tip IS at path endpoint — no offset needed
+    // markerStart (auto-start-reverse, refX=0): tip extends BACKWARD from fp
+    //   by markerWidth*strokeWidth ≈ 20px — move fp FORWARD to compensate
     const hasMStart=edge.style&&(EDGE_STYLES[edge.style]?.mStart);
-    const hasMEnd  =edge.style&&(EDGE_STYLES[edge.style]?.mEnd);
-    const PULL = 14; // px — large enough to clear the node border
-    let fpx=fp.x, fpy=fp.y, tpx=tp.x, tpy=tp.y;
-    if(hasMStart){
-      // Pull start along tangent c1→fp direction reversed
+    const sw=EDGE_STYLES[edge.style]?.strokeW||2;
+    const PULL=hasMStart ? sw*11 : 0; // markerWidth(10)*sw + 1px buffer
+    let fpx=fp.x, fpy=fp.y;
+    if(PULL>0){
       const d1=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
       fpx=fp.x+(c1x-fp.x)/d1*PULL;
       fpy=fp.y+(c1y-fp.y)/d1*PULL;
     }
-    if(hasMEnd){
-      // Pull end along tangent c2→tp direction reversed
-      const d2=Math.sqrt((c2x-tp.x)**2+(c2y-tp.y)**2)||1;
-      tpx=tp.x+(c2x-tp.x)/d2*PULL;
-      tpy=tp.y+(c2y-tp.y)/d2*PULL;
-    }
-    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tpx} ${tpy}`;
+    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`;
     const mid={
       x:0.125*(fp.x+tp.x)+0.375*(c1x+c2x),
       y:0.125*(fp.y+tp.y)+0.375*(c1y+c2y),
@@ -2312,7 +2307,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.1 ✦
+              v5.2 ✦
             </button>
           </div>
         </div>
@@ -2660,6 +2655,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             collapsed={sidebarCollapsed} onToggleCollapse={()=>setSidebarCollapsed(v=>!v)}
             iconOnly={sidebarIconOnly} onToggleIconOnly={()=>setSidebarIconOnly(v=>!v)}
             dense={sidebarDense} onToggleDense={()=>setSidebarDense(v=>!v)}
+            onCycleMode={()=>{
+              if(sidebarIconOnly){setSidebarIconOnly(false);setSidebarDense(false);}
+              else if(sidebarDense){setSidebarIconOnly(true);setSidebarDense(false);}
+              else{setSidebarDense(true);}
+            }}
           />
         )}
 
@@ -2897,7 +2897,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
-                {v:"v5.1",date:"Apr 2026",items:[
+                {v:"v5.2",date:"Apr 2026",items:[
+                  "Arrow endpoint pull fixed: markerEnd no longer creates gap, markerStart correctly offset",
+                  "Compact sidebar mode now works — fixed out-of-scope state call bug",
+                  "Node library title no longer truncates in compact/icon modes",
                   "Note content inline editable directly on canvas — click ✎ to edit",
                   "Bidirectional arrow endpoints now correctly clear both node borders",
                   "Node header redesigned: title + description in header, type label at right-bottom",
@@ -3094,7 +3097,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
 }
 
 // ── Node Sidebar ──────────────────────────────────────────────
-function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly,dense,onToggleDense}){
+function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly,dense,onToggleDense,onCycleMode}){
   const [search, setSearch]     = useState("");
   const [catOpen, setCatOpen]   = useState({});
   const [tooltip, setTooltip]   = useState(null); // {key, label, color, x, y}
@@ -3138,10 +3141,10 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
       <div style={{padding:"7px 8px 5px",borderBottom:"1px solid var(--border2)",flexShrink:0}}>
         {/* Title + controls row */}
         <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:iconOnly?3:5}}>
-          {!iconOnly&&!dense&&<span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:1.5,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>NODE LIBRARY</span>}
+          {!iconOnly&&!dense&&<span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:.5,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>NODES</span>}
           {(iconOnly||dense)&&<div style={{flex:1}}/>}
           {/* Mode: Full / Dense / Icon */}
-          <button onClick={()=>{if(iconOnly){setSidebarIconOnly(false);setSidebarDense(false);}else if(dense){setSidebarIconOnly(true);setSidebarDense(false);}else{setSidebarDense(true);}}}
+          <button onClick={onCycleMode}
             title={iconOnly?"Switch to full labels":dense?"Switch to icons only":"Switch to compact multi-icon mode"}
             style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",
               color:dense||iconOnly?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:9,
@@ -3175,7 +3178,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
 
         {/* Icon-only or dense: search icon button */}
         {(iconOnly||dense)&&(
-          <button onClick={()=>{setSidebarIconOnly(false);setSidebarDense(false);}} title="Switch to full view to search"
+          <button onClick={()=>{if(iconOnly||dense) onCycleMode&&(iconOnly?onCycleMode():onCycleMode());}} title="Switch to full view to search"
             style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
               fontSize:12,width:"100%",display:"flex",justifyContent:"center",alignItems:"center",gap:3,marginTop:2}}>
             🔍 <span style={{fontSize:9}}>Search</span>
