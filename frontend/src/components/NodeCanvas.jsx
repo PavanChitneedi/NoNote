@@ -1431,14 +1431,22 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       c2x=tp.x*0.25+mx*0.75; c2y=tp.y*0.25+my*0.75;
     }
 
-    // For bidirectional: pull back start/end by marker length so arrowheads clear the node
+    // For bidirectional: pull BOTH start and end back by marker length
     const hasMStart=edge.style&&(EDGE_STYLES[edge.style]?.mStart);
-    const ARROW_PULL=hasMStart?10:0; // px to pull start point back along tangent
-    let fpx=fp.x,fpy=fp.y,tpx=tp.x,tpy=tp.y;
-    if(ARROW_PULL>0){
-      const d=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
-      fpx=fp.x+(c1x-fp.x)/d*ARROW_PULL;
-      fpy=fp.y+(c1y-fp.y)/d*ARROW_PULL;
+    const hasMEnd  =edge.style&&(EDGE_STYLES[edge.style]?.mEnd);
+    const PULL = 14; // px — large enough to clear the node border
+    let fpx=fp.x, fpy=fp.y, tpx=tp.x, tpy=tp.y;
+    if(hasMStart){
+      // Pull start along tangent c1→fp direction reversed
+      const d1=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
+      fpx=fp.x+(c1x-fp.x)/d1*PULL;
+      fpy=fp.y+(c1y-fp.y)/d1*PULL;
+    }
+    if(hasMEnd){
+      // Pull end along tangent c2→tp direction reversed
+      const d2=Math.sqrt((c2x-tp.x)**2+(c2y-tp.y)**2)||1;
+      tpx=tp.x+(c2x-tp.x)/d2*PULL;
+      tpy=tp.y+(c2y-tp.y)/d2*PULL;
     }
     const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tpx} ${tpy}`;
     const mid={
@@ -2096,11 +2104,42 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                             </div>
                           )}
                         </div>
-                        {/* Note content — only when expanded */}
+                        {/* Note content — only when expanded, click ✎ to edit */}
                         {isExpanded&&!nt.sensitive&&(
-                          <div style={{padding:"3px 8px 6px",fontSize:10,color:"var(--text3)",
-                            lineHeight:1.55,borderTop:`1px solid ${t.color}15`}}
-                            dangerouslySetInnerHTML={{__html:nt.content}}/>
+                          <div style={{borderTop:`1px solid ${t.color}15`}}>
+                            {inlineEditField?.noteId===nt.id&&inlineEditField?.field==='noteContent'?(
+                              <textarea autoFocus value={stripHtml(nt.content)||""}
+                                onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
+                                onChange={e=>{
+                                  e.stopPropagation();
+                                  const arr=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,content:e.target.value}:n);
+                                  updateNotes(node.id,arr);
+                                }}
+                                onBlur={()=>setInlineEditField(null)}
+                                onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape")setInlineEditField(null);}}
+                                placeholder="Write note content…"
+                                rows={3}
+                                style={{width:"100%",boxSizing:"border-box",padding:"4px 8px",background:"var(--bg3)",
+                                  border:"none",outline:"1px solid var(--accent)",resize:"vertical",
+                                  fontSize:10,color:"var(--text2)",fontFamily:"var(--font-ui)",lineHeight:1.55,
+                                  borderRadius:0}}
+                              />
+                            ):(
+                              <div style={{position:"relative",padding:"3px 8px 6px"}}>
+                                <div style={{fontSize:10,color:"var(--text3)",lineHeight:1.55,paddingRight:16}}
+                                  dangerouslySetInnerHTML={{__html:nt.content||"<em style='color:var(--text4)'>Empty — click ✎ to add content</em>"}}/>
+                                {canEdit&&editMode&&(
+                                  <button className="nn-pencil-btn"
+                                    onMouseDown={e=>e.stopPropagation()}
+                                    onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteContent'});}}
+                                    title="Edit note content"
+                                    style={{position:"absolute",top:4,right:4,background:"none",border:"none",
+                                      cursor:"pointer",padding:"0",opacity:0,transition:"opacity .15s",
+                                      fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                                )}
+                              </div>
+                            )}
+                          </div>
                         )}
                       </div>
                     );
@@ -2273,7 +2312,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.0 ✦
+              v5.1 ✦
             </button>
           </div>
         </div>
@@ -2858,8 +2897,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
-                {v:"v5.0",date:"2026",items:[
-                  "Bidirectional arrows now correctly show both arrowheads",
+                {v:"v5.1",date:"Apr 2026",items:[
+                  "Note content inline editable directly on canvas — click ✎ to edit",
+                  "Bidirectional arrow endpoints now correctly clear both node borders",
+                  "Node header redesigned: title + description in header, type label at right-bottom",
+                  "Comment 💬 and Collapse ⊟ icons share one row, no overlap",
+                  "Pencil ✎ icons on title, description, note title, and note content",
+                  "Inline note title editing without opening popup",
+                  "Changelog now maintained automatically in every version",
+                ]},
+                {v:"v5.0",date:"Apr 2026",items:[
+                  "Bidirectional arrows correctly show both arrowheads (auto-start-reverse)",
                   "Inline text editing: pencil icon on title and description (F2 to rename)",
                   "Keyboard shortcuts: E opens node popup, N adds note, F2 renames",
                   "Compact sidebar mode: multi-icon dense grid",
