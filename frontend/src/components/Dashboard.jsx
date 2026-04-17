@@ -7,6 +7,8 @@ const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"v
 
 export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [showChangelog, setShowChangelog] = React.useState(false);
+  const [menuMap,   setMenuMap]   = useState(null);  // {id, title, x, y} for context menu
+  const [renaming,  setRenaming]  = useState(null);  // {id, title}
   const { user } = useAuth();
   const [maps, setMaps]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,6 +32,52 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       onOpenMap(d.map.id);
     } catch (err) { setError(err.message); }
     finally { setCreating(false); }
+  };
+
+  const handleRename = async (id, title) => {
+    try {
+      await fetch(`/api/maps/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type":"application/json", Authorization:`Bearer ${localStorage.getItem('nn_token')}` },
+        body: JSON.stringify({ title })
+      });
+      setMaps(m => m.map(x => x.id===id ? {...x,title} : x));
+    } catch {}
+    setRenaming(null);
+  };
+
+  const handleDuplicate = async (map) => {
+    try {
+      const r = await fetch(`/api/maps/${map.id}/duplicate`, {
+        method: "POST",
+        headers: { Authorization:`Bearer ${localStorage.getItem('nn_token')}` }
+      });
+      if (r.ok) { const d = await r.json(); setMaps(m=>[d.map,...m]); }
+    } catch {}
+  };
+
+  const handleImportFile = (e) => {
+    const f = e.target.files?.[0]; if(!f) return;
+    const r = new FileReader();
+    r.onload = async ev => {
+      try {
+        const b = JSON.parse(ev.target.result);
+        if (b.app === "NoNote" && b.nodes) {
+          // Create map then populate it
+          const d = await createMap({ title: b.title||f.name.replace(/\.nonote$/,"") });
+          if (d.map?.id) {
+            await fetch(`/api/maps/${d.map.id}/save`, {
+              method: "POST",
+              headers: { "Content-Type":"application/json", Authorization:`Bearer ${localStorage.getItem('nn_token')}` },
+              body: JSON.stringify({ nodes: b.nodes, edges: b.edges||[] })
+            });
+            onOpenMap(d.map.id);
+          }
+        } else { alert("Not a valid .nonote file"); }
+      } catch(err) { alert("Could not read file: "+err.message); }
+    };
+    r.readAsText(f);
+    e.target.value = "";
   };
 
   const handleDelete = async (id, e) => {
@@ -144,26 +192,32 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
           </div>
         )}
 
-        {/* New map */}
-        {["owner","admin","editor"].includes(user?.role) && (
-          showNew ? (
-            <form onSubmit={handleCreate} style={{ display:"flex", gap:8, marginBottom:20 }}>
-              <input autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Map title…"
-                style={{ flex:1, background:"var(--bg2)", border:`1px solid var(--accent)`, borderRadius:8, padding:"10px 14px", color:"var(--text)", fontSize:13, outline:"none" }}
-              />
-              <button type="submit" disabled={creating} style={{ padding:"10px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                {creating?"…":"CREATE"}
+        {/* ── Action bar ── */}
+        <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
+          {["owner","admin","editor"].includes(user?.role) && (
+            showNew ? (
+              <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
+                <input autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Map title…"
+                  style={{ flex:1, background:"var(--bg2)", border:`1px solid var(--accent)`, borderRadius:8, padding:"9px 14px", color:"var(--text)", fontSize:13, outline:"none" }}/>
+                <button type="submit" disabled={creating} style={{ padding:"9px 16px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                  {creating?"…":"CREATE"}
+                </button>
+                <button type="button" onClick={()=>setShowNew(false)} style={{ padding:"9px 12px", background:"var(--bg3)", border:"none", borderRadius:8, color:"var(--text3)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                  CANCEL
+                </button>
+              </form>
+            ) : (
+              <button onClick={()=>setShowNew(true)} style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                ＋ New Map
               </button>
-              <button type="button" onClick={()=>setShowNew(false)} style={{ padding:"10px 14px", background:"var(--bg3)", border:"none", borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
-                CANCEL
-              </button>
-            </form>
-          ) : (
-            <button onClick={()=>setShowNew(true)} style={{ padding:"10px 20px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", marginBottom:20, fontFamily:"inherit" }}>
-              ＋ NEW MAP
-            </button>
-          )
-        )}
+            )
+          )}
+          {/* Import .nonote */}
+          <label style={{ padding:"9px 15px", background:"var(--bg2)", border:"1px solid var(--border2)", borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
+            ↙ Import .nonote
+            <input type="file" accept=".nonote,.json" style={{ display:"none" }} onChange={handleImportFile}/>
+          </label>
+        </div>
 
         {/* Map grid */}
         {loading ? (
@@ -174,45 +228,90 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             No maps yet. Create your first one.
           </div>
         ) : (
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
-            {maps.map(map=>(
-              <div key={map.id}
-                onClick={()=>onOpenMap(map.id)}
-                style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:12, padding:18, cursor:"pointer", transition:"all .15s", position:"relative" }}
-                onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent)";e.currentTarget.style.transform="translateY(-2px)";}}
-                onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border2)";e.currentTarget.style.transform="translateY(0)";}}
-              >
-                <div style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:20 }}>
-                  {map.title}
-                </div>
-                {map.description && (
-                  <div style={{ fontSize:11, color:"var(--text3)", marginBottom:7, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                    {map.description}
+          <>
+            {/* Rename inline overlay */}
+            {renaming&&(
+              <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center"}}
+                onClick={()=>setRenaming(null)}>
+                <div style={{background:"var(--bg2)",borderRadius:10,padding:20,minWidth:340,boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}
+                  onClick={e=>e.stopPropagation()}>
+                  <div style={{fontSize:13,fontWeight:700,color:"var(--text)",marginBottom:10}}>Rename Map</div>
+                  <input autoFocus value={renaming.title}
+                    onChange={e=>setRenaming(r=>({...r,title:e.target.value}))}
+                    onKeyDown={e=>{if(e.key==="Enter")handleRename(renaming.id,renaming.title);if(e.key==="Escape")setRenaming(null);}}
+                    style={{width:"100%",boxSizing:"border-box",padding:"8px 12px",background:"var(--bg3)",border:"1px solid var(--accent)",borderRadius:8,color:"var(--text)",fontSize:13,outline:"none",marginBottom:10}}/>
+                  <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
+                    <button onClick={()=>setRenaming(null)} style={{padding:"6px 14px",background:"var(--bg3)",border:"none",borderRadius:7,color:"var(--text3)",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Cancel</button>
+                    <button onClick={()=>handleRename(renaming.id,renaming.title)} style={{padding:"6px 16px",background:"var(--accent2)",border:"none",borderRadius:7,color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Rename</button>
                   </div>
-                )}
-                <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                  <span style={{ fontSize:10, color:"var(--text4)" }}>{map.node_count||0} nodes</span>
-                  {map.permission && (
-                    <span style={{ fontSize:10, color:RC[map.permission]||"var(--text3)", background:`${RC[map.permission]||"#888"}18`, padding:"1px 7px", borderRadius:4 }}>
-                      {map.permission}
-                    </span>
-                  )}
-                  {map.is_public && (
-                    <span style={{ fontSize:10, color:"var(--success)", background:"var(--success)18", padding:"1px 7px", borderRadius:4 }}>public</span>
-                  )}
                 </div>
-                <div style={{ marginTop:10, fontSize:10, color:"var(--text4)" }}>
-                  Updated {new Date(map.updated_at).toLocaleDateString()}
-                </div>
-                {/* Delete */}
-                <button onClick={e=>handleDelete(map.id,e)}
-                  style={{ position:"absolute", top:12, right:12, background:"none", border:"none", color:"var(--text4)", cursor:"pointer", fontSize:18, lineHeight:1, padding:"0 2px" }}
-                  onMouseEnter={e=>e.currentTarget.style.color="var(--danger)"}
-                  onMouseLeave={e=>e.currentTarget.style.color="var(--text4)"}
-                >×</button>
               </div>
-            ))}
-          </div>
+            )}
+            {/* Context menu */}
+            {menuMap&&(
+              <>
+                <div style={{position:"fixed",inset:0,zIndex:699}} onClick={()=>setMenuMap(null)}/>
+                <div style={{position:"fixed",left:menuMap.x,top:menuMap.y,zIndex:700,background:"var(--bg2)",
+                  border:"1px solid var(--border2)",borderRadius:9,boxShadow:"0 8px 28px rgba(0,0,0,.5)",
+                  minWidth:170,overflow:"hidden"}}>
+                  {[
+                    {icon:"↗",label:"Open",action:()=>{onOpenMap(menuMap.id);setMenuMap(null);}},
+                    {icon:"✎",label:"Rename",action:()=>{setRenaming({id:menuMap.id,title:menuMap.title});setMenuMap(null);}},
+                    {icon:"⧉",label:"Duplicate",action:()=>{handleDuplicate(menuMap);setMenuMap(null);}},
+                    {icon:"↙",label:"Export .nonote",action:()=>{
+                      fetch(`/api/maps/${menuMap.id}`,{headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}})
+                        .then(r=>r.json()).then(d=>{
+                          const b={version:1,app:"NoNote",title:d.map?.title||menuMap.title,exported:new Date().toISOString(),nodes:d.map?.nodes||[],edges:d.map?.edges||[]};
+                          const a=document.createElement("a");
+                          a.href=URL.createObjectURL(new Blob([JSON.stringify(b,null,2)],{type:"application/json"}));
+                          a.download=`${(menuMap.title||"map").replace(/[^a-z0-9]/gi,"-")}.nonote`;
+                          a.click();
+                        });
+                      setMenuMap(null);
+                    }},
+                    {icon:"✕",label:"Delete",color:"var(--danger)",action:()=>{handleDelete(menuMap.id,{stopPropagation:()=>{}});setMenuMap(null);}},
+                  ].map(({icon,label,action,color})=>(
+                    <div key={label} onClick={action}
+                      style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",
+                        fontSize:12,color:color||"var(--text2)",transition:"background .1s"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <span style={{width:16,textAlign:"center",opacity:.7}}>{icon}</span>{label}
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
+              {maps.map(map=>(
+                <div key={map.id}
+                  onClick={()=>onOpenMap(map.id)}
+                  onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
+                  style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:12, padding:18, cursor:"pointer", transition:"all .15s", position:"relative" }}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent)";e.currentTarget.style.transform="translateY(-2px)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border2)";e.currentTarget.style.transform="translateY(0)";}}
+                >
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:28 }}>
+                    {map.title}
+                  </div>
+                  {map.description&&<div style={{ fontSize:11, color:"var(--text3)", marginBottom:7, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{map.description}</div>}
+                  <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+                    <span style={{ fontSize:10, color:"var(--text4)" }}>{map.node_count||0} nodes</span>
+                    {map.permission&&<span style={{ fontSize:10, color:RC[map.permission]||"var(--text3)", background:`${RC[map.permission]||"#888"}18`, padding:"1px 7px", borderRadius:4 }}>{map.permission}</span>}
+                    {map.is_public&&<span style={{ fontSize:10, color:"var(--success)", background:"var(--success)18", padding:"1px 7px", borderRadius:4 }}>public</span>}
+                  </div>
+                  <div style={{ marginTop:8, fontSize:10, color:"var(--text4)" }}>Updated {new Date(map.updated_at).toLocaleDateString()}</div>
+                  {/* ⋮ options button */}
+                  <button
+                    onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
+                    style={{ position:"absolute", top:10, right:10, background:"none", border:"1px solid transparent", borderRadius:6, color:"var(--text4)", cursor:"pointer", fontSize:16, lineHeight:1, padding:"2px 6px", transition:"all .12s" }}
+                    onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--text2)";}}
+                    onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";e.currentTarget.style.color="var(--text4)";}}
+                    title="Map options">⋮</button>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

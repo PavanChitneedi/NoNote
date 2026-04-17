@@ -2404,7 +2404,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.5 ✦
+              v5.6 ✦
             </button>
           </div>
         </div>
@@ -2421,7 +2421,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
           {/* ── MODE GROUP ── edit/view + props mode ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-            {canEdit&&(
+            {canEdit&&(<>
               {/* Collab toggle */}
               <button onClick={()=>setCollab(v=>!v)}
                 style={{...tbtn(collab,"#7B1FA2"),display:"flex",alignItems:"center",gap:4,position:"relative"}}
@@ -2441,7 +2441,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 title="Toggle edit/view mode (E)">
                 {editMode?"✏ Edit":"👁 View"}
               </button>
-            )}
+            </>)}
             {/* POPUP / PANEL — how you open node details */}
             <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",border:"1.5px solid var(--border)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
               title="How to view node details">
@@ -3118,6 +3118,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.6",date:"Apr 2026",items:[
+                  "Build fix: JSX fragment wrapper for Collab button inside canEdit&&()",
+                  "Dashboard: Import .nonote opens map directly (no empty map created first)",
+                  "Dashboard: Map cards have ⋮ context menu — Open, Rename, Duplicate, Export, Delete",
+                  "Dashboard: right-click map card also opens context menu",
+                  "Backend: PATCH /maps/:id for rename, POST /maps/:id/duplicate",
+                  "Backend: GET /maps/:id/collaborators endpoint added",
+                ]},
                 {v:"v5.5",date:"Apr 2026",items:[
                   "Share map: 👥 button to invite collaborators with Viewer/Editor roles",
                   "Real-time collaboration: WebSocket sync — 🟢 Collab toggle broadcasts changes live",

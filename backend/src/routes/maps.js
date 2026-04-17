@@ -127,6 +127,46 @@ router.put(
 );
 
 // ── DELETE /api/maps/:mapId ───────────────────────────────────
+router.patch(
+  "/:mapId",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
+  async (req, res) => {
+    const { title, description } = req.body;
+    try {
+      const result = await query(
+        `UPDATE maps SET title=COALESCE($1,title), description=COALESCE($2,description),
+         updated_at=NOW() WHERE id=$3 RETURNING *`,
+        [title||null, description||null, req.params.mapId]
+      );
+      res.json({ map: result.rows[0] });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to update map" });
+    }
+  }
+);
+
+router.post(
+  "/:mapId/duplicate",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const orig = await query("SELECT * FROM maps WHERE id=$1",[req.params.mapId]);
+      if (!orig.rows.length) return res.status(404).json({error:"Not found"});
+      const m = orig.rows[0];
+      const newMap = await query(
+        `INSERT INTO maps (owner_id,title,description,node_data,edge_data,is_public)
+         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
+        [req.user.id, m.title+" (copy)", m.description, m.node_data, m.edge_data, false]
+      );
+      res.json({ map: newMap.rows[0] });
+    } catch (err) {
+      res.status(500).json({ error: "Failed to duplicate map" });
+    }
+  }
+);
+
 router.delete(
   "/:mapId",
   authenticate,
