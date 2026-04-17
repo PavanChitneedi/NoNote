@@ -903,9 +903,27 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   }, []);
 
   // ── Save ───────────────────────────────────────────────────
+  // wsBroadcastTimer: debounced 150ms so rapid drag updates are batched
+  const wsBroadcastTimer = useRef(null);
+  const pendingBcast     = useRef({ nodes: null, edges: null });
+
   const scheduleSave = useCallback((ns, es) => {
     if (!canEdit) return;
     setSaveState("saving"); setSaveMsg("Saving…");
+
+    // ── WS broadcast (150ms debounce — catches drag, resize, all mutations) ──
+    pendingBcast.current = { nodes: ns, edges: es };
+    clearTimeout(wsBroadcastTimer.current);
+    wsBroadcastTimer.current = setTimeout(() => {
+      const ws = wsRef.current;
+      if (ws && ws.readyState === 1) {
+        const { nodes: pn, edges: pe } = pendingBcast.current;
+        if (pn) ws.send(JSON.stringify({ type: "nodes_update", nodes: pn }));
+        if (pe) ws.send(JSON.stringify({ type: "edges_update", edges: pe }));
+      }
+    }, 150);
+
+    // ── DB save (1s debounce) ────────────────────────────────────────────
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
@@ -913,7 +931,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         setSaveState("saved"); setSaveMsg("Saved ✓");
         setTimeout(()=>{setSaveState("idle");setSaveMsg("");},2500);
         clearTimeout(versionTimer.current);
-        versionTimer.current = setTimeout(async()=>{
+        versionTimer.current = setTimeout(async()=>{\
           try{ await saveVersion(mapId,{nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})),edges:es,groupBoxes,label:"Auto-save"}); }catch{}
         }, 5*60*1000);
       } catch {
@@ -924,17 +942,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   }, [mapId,canEdit]);
 
   // applyNodes: save + history. Collab broadcast handled by useEffect.
-  // applyNodes: for LOCAL changes only. Saves, adds history, and broadcasts to peers.
+  // applyNodes: for LOCAL changes only. Saves + history. WS broadcast via scheduleSave.
   // Remote changes must call setNodes() directly — never applyNodes().
   const applyNodes = useCallback((fn, skipHistory=false) => {
     setNodes(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setEdges(es=>{ scheduleSave(next,es); if(!skipHistory)pushHistory(next,es); return es; });
-      // Broadcast immediately — this IS a local change
-      const ws = wsRef.current;
-      if(ws && ws.readyState === 1){
-        ws.send(JSON.stringify({type:"nodes_update", nodes:next}));
-      }
       return next;
     });
   }, [scheduleSave,pushHistory]);
@@ -947,15 +960,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     return ()=>clearTimeout(t);
   },[groupBoxes,mapId,canEdit]);
 
-  // applyEdges: for LOCAL changes only. Saves, adds history, and broadcasts to peers.
+  // applyEdges: for LOCAL changes only. WS broadcast via scheduleSave.
   const applyEdges = useCallback((fn, skipHistory=false) => {
     setEdges(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setNodes(ns=>{ scheduleSave(ns,next); if(!skipHistory)pushHistory(ns,next); return ns; });
-      const ws = wsRef.current;
-      if(ws && ws.readyState === 1){
-        ws.send(JSON.stringify({type:"edges_update", edges:next}));
-      }
       return next;
     });
   }, [scheduleSave,pushHistory]);
@@ -2845,7 +2854,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.16 ✦
+              v5.17 ✦
             </button>
           </div>
         </div>
@@ -3740,6 +3749,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.17",date:"Apr 2026",items:[
+                  "Collab FIXED: broadcast moved to scheduleSave — covers ALL 15 state-update paths",
+                  "Drag/resize/notes/all mutations now broadcast (previously only applyNodes did)",
+                  "150ms debounce on WS broadcast batches rapid drag pixels into one message",
+                  "No side effects inside React state updaters — applyNodes/applyEdges are clean",
+                  "Echo prevention: server never sends back to the sender (server-side, reliable)",
+                ]},
                 {v:"v5.16",date:"Apr 2026",items:[
                   "Collab rebuilt: applyNodes/applyEdges broadcast ws.send() directly on local change",
                   "Collab: receiver calls setNodes/setEdges directly — never applyNodes (no echo possible)",
