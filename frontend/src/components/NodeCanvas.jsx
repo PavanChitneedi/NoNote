@@ -481,6 +481,23 @@ function snapToAnchor(node, nw, nh, cx, cy) {
 }
 
 // ── PNG export ────────────────────────────────────────────────────
+function exportAsNoNote(nodes, edges, mapMeta) {
+  const bundle = {
+    version: 1,
+    app: "NoNote",
+    title: mapMeta?.title || "Untitled",
+    exported: new Date().toISOString(),
+    nodes: nodes.map(n => ({...n, notes: Array.isArray(n.notes) ? n.notes : []})),
+    edges,
+  };
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], {type:"application/json"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${(mapMeta?.title||"map").replace(/[^a-z0-9]/gi,"-")}.nonote`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 async function exportAsPNG(nodes, edges, mapTitle) {
   if(!nodes.length){alert("No nodes to export.");return;}
   const PAD=60;
@@ -640,6 +657,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [sidebarIconOnly, setSidebarIconOnly] = useState(false);
+  const [sidebarDense,    setSidebarDense]    = useState(false); // multi-icon-per-row
   // Feature: Comment pins
   const [comments,       setComments]       = useState({});    // {nodeId: [{id,text,author,ts}]}
   const [showComments,   setShowComments]   = useState(false); // sidebar open
@@ -870,11 +888,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     if(propsMode==='popup') setShowProps(false);
   },[propsMode]);
 
-  // Focus mode: activate when editing title/notes
+  // Focus mode: activate when editing title/notes OR when a single node is selected
   useEffect(()=>{
-    if(focusEnabled&&(editingTitle||editingNotes)) setFocusMode(true);
+    if(!focusEnabled){ setFocusMode(false); return; }
+    if(editingTitle||editingNotes||selected.size===1) setFocusMode(true);
     else setFocusMode(false);
-  },[editingTitle,editingNotes,focusEnabled]);
+  },[editingTitle,editingNotes,focusEnabled,selected]);
 
   // ── Pinch/scroll zoom ─────────────────────────────────────
   useEffect(()=>{
@@ -1016,8 +1035,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
       if(resizing&&canvasRef.current){
         const s=1/zoom;
-        // Use setNodes directly — no history during resize
-        setNodes(ns=>ns.map(n=>n.id===resizing.id?{...n,w:Math.max(160,resizing.origW+(cx-resizing.startX)*s),h:Math.max(60,resizing.origH+(cy-resizing.startY)*s)}:n));
+        const newW=Math.max(160,resizing.origW+(cx-resizing.startX)*s);
+        const newH=Math.max(60,resizing.origH+(cy-resizing.startY)*s);
+        setNodes(ns=>ns.map(n=>n.id===resizing.id?{...n,w:newW,h:newH}:n));
+        // Snap guides during resize: right edge and bottom edge alignment
+        const resNode=nodesRef.current.find(n=>n.id===resizing.id);
+        if(resNode){
+          const guides=[];const TOL=8;
+          const rR=resNode.x+newW, rB=resNode.y+newH;
+          nodesRef.current.filter(n=>n.id!==resizing.id).forEach(n=>{
+            const nR=n.x+collW(n), nB=n.y+collH(n);
+            if(Math.abs(rR-n.x)<TOL)   guides.push({x:n.x,type:"edge"});
+            if(Math.abs(rR-nR)<TOL)    guides.push({x:nR,type:"edge"});
+            if(Math.abs(rB-n.y)<TOL)   guides.push({y:n.y,type:"edge"});
+            if(Math.abs(rB-nB)<TOL)    guides.push({y:nB,type:"edge"});
+          });
+          setSnapGuides(guides);
+        }
       }
       if(boxSelRef.current&&canvasRef.current){
         const el=canvasRef.current;
@@ -1209,9 +1243,61 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null,midOff:null})));
     applyNodes(ns=>{
       const laid=autoLayout(ns,edges,d);
+
+      // Post-layout: assign exit ports so multiple edges from/to same node
+      // side are spread out (t values) rather than all exiting at center.
+      // This prevents a "fan" of arrows all colliding at the same point.
       setTimeout(()=>{
+        applyEdges(es=>{
+          // Group edges by (nodeId, side) to assign t offsets
+          const groups = {}; // key="nodeId:side" -> [edgeId,...]
+          const nodeMap = {};
+          laid.forEach(n=>{ nodeMap[n.id]=n; });
+
+          // First pass: determine which side each edge will use
+          const sideOf = {}; // edgeId -> {fromSide, toSide}
+          es.forEach(e=>{
+            const fn=nodeMap[e.from], tn=nodeMap[e.to];
+            if(!fn||!tn) return;
+            const fw=fn.w||DEF_W, fh=fn.h||DEF_H;
+            const tw=tn.w||DEF_W, th=tn.h||DEF_H;
+            const dx=(tn.x+tw/2)-(fn.x+fw/2), dy=(tn.y+th/2)-(fn.y+fh/2);
+            const ax=Math.abs(dx), ay=Math.abs(dy);
+            let fromSide, toSide;
+            if(ax>ay*0.5){ fromSide=dx>0?"right":"left"; toSide=dx>0?"left":"right"; }
+            else { fromSide=dy>0?"bottom":"top"; toSide=dy>0?"top":"bottom"; }
+            sideOf[e.id]={fromSide,toSide};
+            // Group by exit side
+            const fk=`${e.from}:${fromSide}`, tk=`${e.to}:${toSide}`;
+            if(!groups[fk]) groups[fk]=[];
+            if(!groups[tk]) groups[tk]=[];
+            groups[fk].push({eid:e.id,isFrom:true});
+            groups[tk].push({eid:e.id,isFrom:false});
+          });
+
+          // Second pass: assign evenly-spaced t values
+          const anchorOverrides = {}; // edgeId -> {fromAnchor?, toAnchor?}
+          Object.entries(groups).forEach(([key,items])=>{
+            if(items.length<2) return; // only spread if multiple edges share a port
+            const [nid,side]=key.split(":");
+            items.forEach((item,i)=>{
+              const t=(i+1)/(items.length+1); // e.g. 2 edges: 0.33, 0.67
+              if(!anchorOverrides[item.eid]) anchorOverrides[item.eid]={};
+              if(item.isFrom) anchorOverrides[item.eid].fromAnchor={side,t};
+              else            anchorOverrides[item.eid].toAnchor={side,t};
+            });
+          });
+
+          return es.map(e=>({
+            ...e,
+            fromAnchor: anchorOverrides[e.id]?.fromAnchor || null,
+            toAnchor:   anchorOverrides[e.id]?.toAnchor   || null,
+            midOff: null,
+          }));
+        });
         if(canvasRef.current) canvasRef.current.scrollTo({left:0,top:0,behavior:"smooth"});
-      },100);
+      },50);
+
       return laid;
     });
   },[edges,applyNodes,zoom,layoutDir]);
@@ -1517,6 +1603,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const renderEdges = () => (
     <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
       <defs>
+        {/* Forward markers (markerEnd) */}
         <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
           <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
         </marker>
@@ -1524,6 +1611,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
         </marker>
         <marker id="nn-dbl" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto" markerUnits="strokeWidth">
+          <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+          <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+        </marker>
+        {/* Reverse markers (markerStart) — auto-start-reverse flips direction */}
+        <marker id="nn-arr-r" markerWidth="10" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+          <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
+        </marker>
+        <marker id="nn-tk-r" markerWidth="8" markerHeight="7" refX="0" refY="3.5" orient="auto-start-reverse" markerUnits="strokeWidth">
+          <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
+        </marker>
+        <marker id="nn-dbl-r" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
           <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
           <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
         </marker>
@@ -1559,7 +1657,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               const sw=isSel?3:def.strokeW;
               const da=def.dash==="none"?"none":def.dash;
               const mEnd=def.mEnd?`url(#${def.mEnd})`:undefined;
-              const mStart=def.mStart?`url(#${def.mStart})`:undefined;
+              const mStart=def.mStart?`url(#${def.mStart}-r)`:undefined;
               const usePath = def.wave ? (()=>{
                 const dx=tp.x-fp.x, dy=tp.y-fp.y;
                 const len=Math.sqrt(dx*dx+dy*dy)||1;
@@ -1698,7 +1796,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const isCollapsed=node.collapsed;
     const nw=isCollapsed?COL_W:node.w;
     const nh=isCollapsed?COL_H:node.h;
-    const isFocused=(focusMode&&(editingTitle===node.id||editingNotes===node.id));
+    const isFocused=(focusMode&&(editingTitle===node.id||editingNotes===node.id||selected.has(node.id)));
     const focusDim=focusMode&&!isFocused?"0.15":"1";
 
     if(isCollapsed) return(
@@ -1740,55 +1838,80 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         }}>
         {/* Header — 2 lines: title row + type badge row */}
         <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:"6px var(--node-pad) 5px"}}>
-          {/* Row 1: icon + title + comment btn */}
-          <div style={{display:"flex",alignItems:"center",gap:6,minHeight:22}}>
-            <span style={{fontSize:14,width:20,height:20,display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,lineHeight:1}}>{t.icon}</span>
-            {editingTitle===node.id?(
-              <input autoFocus value={node.title}
-                onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
-                onMouseDown={e=>e.stopPropagation()}
-                onBlur={()=>setEditingTitle(null)}
-                onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"||e.key==="Escape")setEditingTitle(null);}}
-                style={{flex:1,background:"var(--bg)",border:`1px solid ${t.color}`,borderRadius:"var(--radius-xs)",padding:"1px 5px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700}}
-              />
-            ):(
-              <span style={{fontSize:13,fontWeight:"var(--font-weight-node)",color:"var(--text)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:canEdit&&editMode?"text":"default"}}
-                title={canEdit&&editMode?"Double-click to edit":node.title}>
-                {node.title}
-              </span>
-            )}
+          {/* Row 1: icon + title + comment */}
+          <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
+            <span style={{fontSize:14,width:20,height:20,display:"flex",alignItems:"center",
+              justifyContent:"center",flexShrink:0,lineHeight:1,marginTop:2}}>{t.icon}</span>
+            <div style={{flex:1,minWidth:0}}>
+              {/* Title */}
+              {editingTitle===node.id?(
+                <input autoFocus value={node.title}
+                  onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
+                  onMouseDown={e=>e.stopPropagation()}
+                  onBlur={()=>setEditingTitle(null)}
+                  onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"||e.key==="Escape")setEditingTitle(null);}}
+                  style={{width:"100%",background:"var(--bg)",border:`1px solid ${t.color}`,borderRadius:"var(--radius-xs)",
+                    padding:"1px 5px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700,boxSizing:"border-box"}}
+                />
+              ):(
+                <div style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",
+                  textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:canEdit&&editMode?"text":"default",lineHeight:1.3}}
+                  title={canEdit&&editMode?"Double-click to edit":node.title}>
+                  {node.title}
+                </div>
+              )}
+              {/* Description directly under title */}
+              {node.description&&(
+                <div style={{fontSize:10,color:"var(--text4)",marginTop:1,lineHeight:1.3,
+                  overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
+                  title={node.description}>
+                  {node.description}
+                </div>
+              )}
+            </div>
+            {/* Comment button */}
             <button className="nn-comment-btn" onMouseDown={e=>e.stopPropagation()}
               onClick={e=>{e.stopPropagation();setCommentNode(node.id);setShowComments(true);}}
               title={`Comments (${(comments[node.id]||[]).length})`}
               style={{background:"none",border:"none",cursor:"pointer",padding:"0 2px",flexShrink:0,
-                opacity:0,transition:"opacity .15s",
-                color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",fontSize:12,lineHeight:1,position:"relative"}}>
+                opacity:0,transition:"opacity .15s",marginTop:1,
+                color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",fontSize:11,lineHeight:1,position:"relative"}}>
               💬{(comments[node.id]||[]).length>0&&(
                 <span style={{position:"absolute",top:-3,right:-3,fontSize:7,background:"var(--accent)",
-                  color:"#fff",borderRadius:"50%",width:11,height:11,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
+                  color:"#fff",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
                   {(comments[node.id]||[]).length}
                 </span>
               )}
             </button>
           </div>
-          {/* Row 2: type badge */}
-          <div style={{marginTop:2,paddingLeft:26}}>
-            <span style={{fontSize:9,color:t.color,letterSpacing:1.2,fontWeight:700,
-              background:`${t.color}18`,borderRadius:3,padding:"1px 6px",display:"inline-block"}}>
+          {/* Row 2: type badge + collapse button on right */}
+          <div style={{display:"flex",alignItems:"center",marginTop:2,paddingLeft:26,gap:4}}>
+            <span style={{fontSize:9,color:t.color,letterSpacing:1,fontWeight:600,
+              background:`${t.color}15`,borderRadius:3,padding:"1px 5px",display:"inline-block",flex:1}}>
               {t.label.toUpperCase()}
             </span>
+            {canEdit&&(
+              <button className="nn-collapse-btn"
+                onMouseDown={e=>e.stopPropagation()}
+                onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
+                title={node.collapsed?"Expand node":"Collapse node"}
+                style={{background:"none",border:`1px solid ${t.color}50`,borderRadius:3,
+                  color:t.color,cursor:"pointer",fontSize:10,width:16,height:16,
+                  display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
+                  opacity:0,transition:"opacity .15s",flexShrink:0,marginRight:2}}>
+                ⊟
+              </button>
+            )}
           </div>
         </div>
         {/* Body */}
         {!isGroup&&(
           <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
-            {node.description?(
-              <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.5,marginBottom:3}}>{node.description}</div>
-            ):(canEdit&&editMode&&(
-              <div style={{fontSize:10,color:"var(--text4)",fontStyle:"italic",marginBottom:3}}>Double-click to edit…</div>
-            ))}
-            {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:4,marginTop:2}}>
+            {!node.description&&canEdit&&editMode&&(
+              <div style={{fontSize:10,color:"var(--text4)",fontStyle:"italic",marginBottom:3,marginTop:2}}>Double-click to add description…</div>
+            )}
+            <div style={{display:"flex",alignItems:"center",gap:4,marginTop:3}}>
+              {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
                 <button onMouseDown={e=>e.stopPropagation()}
                   onClick={e=>{e.stopPropagation();updateNode(node.id,{showNotes:!node.showNotes});}}
                   style={{display:"flex",alignItems:"center",gap:3,background:"none",border:`1px solid ${t.color}40`,
@@ -1796,21 +1919,86 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     color:node.showNotes?t.color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0}}>
                   {node.showNotes?"▲":"▼"} {(Array.isArray(node.notes)?node.notes:[]).length} note{(Array.isArray(node.notes)?node.notes:[]).length!==1?"s":""}
                 </button>
-                {(Array.isArray(node.notes)?node.notes:[]).some(n=>n.sensitive)&&(
-                  <span title="Contains sensitive notes" style={{fontSize:10,color:"var(--danger)"}}>🔒</span>
-                )}
-              </div>
-            )}
-            {node.showNotes&&(Array.isArray(node.notes)?node.notes:[]).filter(nt=>!nt.sensitive||canEdit).map(nt=>(
-              <div key={nt.id} style={{marginTop:5,paddingTop:5,borderTop:`1px solid ${t.color}20`}}>
-                {nt.title&&<div style={{fontSize:9,fontWeight:700,color:t.color,marginBottom:2,letterSpacing:.5}}>{nt.title.toUpperCase()}</div>}
-                {nt.sensitive?(
-                  <div style={{fontSize:9,color:"var(--danger)",fontStyle:"italic"}}>🔒 Sensitive</div>
-                ):(
-                  <div style={{fontSize:10,color:"var(--text2)",lineHeight:1.55}} dangerouslySetInnerHTML={{__html:nt.content}}/>
-                )}
-              </div>
-            ))}
+              )}
+              {(Array.isArray(node.notes)?node.notes:[]).some(n=>n.sensitive)&&(
+                <span title="Contains sensitive notes" style={{fontSize:10,color:"var(--danger)"}}>🔒</span>
+              )}
+              {canEdit&&editMode&&(
+                <button onMouseDown={e=>e.stopPropagation()}
+                  onClick={e=>{
+                    e.stopPropagation();
+                    const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false};
+                    const arr=[...(Array.isArray(node.notes)?node.notes:[]),newNote];
+                    updateNotes(node.id,arr);
+                    // Open popup to edit immediately
+                    setNodePopup({nodeId:node.id,tab:"notes"});
+                  }}
+                  title="Add note (opens editor)"
+                  style={{display:"flex",alignItems:"center",gap:2,background:"none",border:`1px solid ${t.color}40`,
+                    borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
+                    color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0,opacity:0,transition:"opacity .15s"}}
+                  className="nn-addnote-btn">
+                  + note
+                </button>
+              )}
+            </div>
+            {node.showNotes&&(()=>{
+              const noteArr=(Array.isArray(node.notes)?node.notes:[]).filter(nt=>!nt.sensitive||canEdit);
+              if(!noteArr.length) return null;
+              // Per-node expanded state stored in a transient set (just use a local state-like approach)
+              // We'll store expanded notes in node.expandedNotes (array of ids) via updateNode
+              const expandedSet=new Set(node.expandedNoteIds||[]);
+              const allExpanded=noteArr.every(nt=>expandedSet.has(nt.id));
+              return(
+                <div style={{marginTop:6,borderTop:`1px solid ${t.color}20`,paddingTop:4}}>
+                  {/* Expand-all button */}
+                  <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginBottom:3}}>
+                    <button onMouseDown={e=>e.stopPropagation()}
+                      onClick={e=>{
+                        e.stopPropagation();
+                        const newSet=allExpanded?new Set():new Set(noteArr.map(n=>n.id));
+                        updateNode(node.id,{expandedNoteIds:[...newSet]});
+                      }}
+                      style={{fontSize:8,background:"none",border:`1px solid ${t.color}30`,borderRadius:3,
+                        color:"var(--text4)",cursor:"pointer",padding:"0 5px",fontFamily:"var(--font-ui)"}}>
+                      {allExpanded?"▲ Collapse all":"▼ Expand all"}
+                    </button>
+                  </div>
+                  {noteArr.map(nt=>{
+                    const isExpanded=expandedSet.has(nt.id);
+                    return(
+                      <div key={nt.id} style={{marginBottom:4,borderRadius:4,overflow:"hidden",
+                        border:`1px solid ${t.color}20`,background:`${t.color}08`}}>
+                        {/* Note title row — always visible, click to expand */}
+                        <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",
+                          cursor:"pointer",userSelect:"none"}}
+                          onMouseDown={e=>e.stopPropagation()}
+                          onClick={e=>{
+                            e.stopPropagation();
+                            const newSet=new Set(expandedSet);
+                            if(isExpanded) newSet.delete(nt.id); else newSet.add(nt.id);
+                            updateNode(node.id,{expandedNoteIds:[...newSet]});
+                          }}>
+                          <span style={{fontSize:8,color:t.color,flexShrink:0}}>
+                            {isExpanded?"▾":"▸"}
+                          </span>
+                          <span style={{fontSize:10,fontWeight:600,color:"var(--text2)",flex:1,
+                            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            {nt.sensitive?"🔒 Sensitive":nt.title||"Untitled note"}
+                          </span>
+                        </div>
+                        {/* Note content — only when expanded */}
+                        {isExpanded&&!nt.sensitive&&(
+                          <div style={{padding:"3px 8px 6px",fontSize:10,color:"var(--text3)",
+                            lineHeight:1.55,borderTop:`1px solid ${t.color}15`}}
+                            dangerouslySetInnerHTML={{__html:nt.content}}/>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
           </div>
         )}
         {/* Anchor dots in connect mode */}
@@ -1837,19 +2025,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             style={{position:"absolute",bottom:0,right:0,width:12,height:12,cursor:"se-resize",
               background:"transparent",borderRight:`2px solid ${t.color}60`,borderBottom:`2px solid ${t.color}60`}}/>
         )}
-        {/* Collapse button */}
-        {canEdit&&(
-          <button className="nn-collapse-btn"
-            onMouseDown={e=>e.stopPropagation()}
-            onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
-            title={node.collapsed?"Expand node":"Collapse node"}
-            style={{position:"absolute",top:2,right:2,background:"none",border:`1px solid ${t.color}60`,
-              borderRadius:3,color:t.color,cursor:"pointer",fontSize:11,width:18,height:18,
-              display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
-              opacity:0,transition:"opacity .15s"}}>
-            ⊟
-          </button>
-        )}
+
       </div>
     );
   });
@@ -1906,8 +2082,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
                 <div style={{position:"fixed",top:82,right:0,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
-                  {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],["🖼","PNG Image","Visual snapshot"]].map(([ic,lbl,desc],i)=>(
-                    <div key={i} onClick={()=>{setShowExportMenu(false);if(i===2)exportAsPNG(nodes,edges,mapMeta?.title);else setShowExport(true);}}
+                  {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],["🖼","PNG Image","Visual snapshot"],["📦",".nonote","Re-importable bundle"]].map(([ic,lbl,desc],i)=>(
+                    <div key={i} onClick={()=>{setShowExportMenu(false);if(i===2)exportAsPNG(nodes,edges,mapMeta?.title);else if(i===3)exportAsNoNote(nodes,edges,mapMeta);else setShowExport(true);}}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
                       onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -1940,6 +2116,28 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </div>
               </>)}
             </div>
+
+            {/* Import .nonote file */}
+            <label title="Import .nonote map file" style={{...tbtn(false),cursor:"pointer",display:"flex",alignItems:"center",gap:3,padding:"4px 8px",borderRadius:"var(--radius-sm)"}}>
+              ↙ <span style={{fontSize:10}}>Import</span>
+              <input type="file" accept=".nonote,.json" style={{display:"none"}}
+                onChange={e=>{
+                  const f=e.target.files?.[0]; if(!f) return;
+                  const r=new FileReader();
+                  r.onload=ev=>{
+                    try{
+                      const b=JSON.parse(ev.target.result);
+                      if(b.app==="NoNote"&&b.nodes){
+                        const ns=b.nodes.map(n=>({...n,notes:Array.isArray(n.notes)?n.notes:[],collapsed:false}));
+                        applyNodes(()=>ns); applyEdges(()=>b.edges||[]);
+                        alert(`Imported "${b.title}" — ${ns.length} nodes`);
+                      } else { alert("Not a valid .nonote file"); }
+                    } catch{ alert("Could not read file"); }
+                  };
+                  r.readAsText(f);
+                  e.target.value="";
+                }}/>
+            </label>
 
             <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
 
@@ -2308,6 +2506,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             cats={SIDEBAR_CATS} addNode={addNode} canEdit={canEdit&&editMode}
             collapsed={sidebarCollapsed} onToggleCollapse={()=>setSidebarCollapsed(v=>!v)}
             iconOnly={sidebarIconOnly} onToggleIconOnly={()=>setSidebarIconOnly(v=>!v)}
+            dense={sidebarDense} onToggleDense={()=>setSidebarDense(v=>!v)}
           />
         )}
 
@@ -2537,6 +2736,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         .nn-node .nn-collapse-btn:hover { opacity: 1 !important; }
         .nn-node:hover .nn-comment-btn { opacity: 0.65 !important; }
         .nn-comment-btn:hover { opacity: 1 !important; }
+        .nn-node:hover .nn-addnote-btn { opacity: 0.6 !important; }
+        .nn-addnote-btn:hover { opacity: 1 !important; }
+        .nn-node:hover .nn-addnote-btn { opacity: 0.6 !important; }
+        .nn-addnote-btn:hover { opacity: 1 !important; }
+        .nn-node:hover .nn-collapse-btn { opacity: 0.7 !important; }
+        .nn-collapse-btn:hover { opacity: 1 !important; }
         g:hover .nn-mid-handle { opacity: 1 !important; }
         .nn-mid-handle { transition: opacity .15s; }
       `}</style>
@@ -2618,7 +2823,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
 }
 
 // ── Node Sidebar ──────────────────────────────────────────────
-function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly}){
+function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly,dense,onToggleDense}){
   const [search, setSearch]     = useState("");
   const [catOpen, setCatOpen]   = useState({});
   const [tooltip, setTooltip]   = useState(null); // {key, label, color, x, y}
@@ -2659,31 +2864,30 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
       overflow:"hidden",transition:"width .18s",position:"relative"}}>
 
       {/* Header */}
-      <div style={{padding:"8px 8px 6px",borderBottom:"1px solid var(--border2)",flexShrink:0}}>
-        {/* Title row with collapse + icon-only toggle */}
-        <div style={{display:"flex",alignItems:"center",gap:4,marginBottom:iconOnly?0:6}}>
-          {!iconOnly&&<span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>NODE LIBRARY</span>}
-          {iconOnly&&<div style={{flex:1}}/>}
-          {/* Icon-only toggle */}
-          <button onClick={onToggleIconOnly}
-            title={iconOnly?"Show labels":"Icon only"}
+      <div style={{padding:"7px 8px 5px",borderBottom:"1px solid var(--border2)",flexShrink:0}}>
+        {/* Title + controls row */}
+        <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:iconOnly?3:5}}>
+          {!iconOnly&&!dense&&<span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:1.5,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>NODE LIBRARY</span>}
+          {(iconOnly||dense)&&<div style={{flex:1}}/>}
+          {/* Mode: Full / Dense / Icon */}
+          <button onClick={()=>{if(iconOnly){setSidebarIconOnly(false);setSidebarDense(false);}else if(dense){setSidebarIconOnly(true);setSidebarDense(false);}else{setSidebarDense(true);}}}
+            title={iconOnly?"Switch to full labels":dense?"Switch to icons only":"Switch to compact multi-icon mode"}
             style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",
-              color:iconOnly?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:10,
-              width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",
-              lineHeight:1,flexShrink:0}}>
-            {iconOnly?"☰":"⊡"}
+              color:dense||iconOnly?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:9,
+              padding:"0 4px",height:16,display:"flex",alignItems:"center",justifyContent:"center",
+              lineHeight:1,flexShrink:0,whiteSpace:"nowrap"}}>
+            {iconOnly?"☰ Full":dense?"⊞ Icons":"⊡ Compact"}
           </button>
-          {/* Collapse toggle */}
-          <button onClick={onToggleCollapse}
-            title="Collapse sidebar"
+          {/* Collapse */}
+          <button onClick={onToggleCollapse} title="Collapse sidebar"
             style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",
               color:"var(--text4)",cursor:"pointer",fontSize:10,
-              width:18,height:18,display:"flex",alignItems:"center",justifyContent:"center",
+              width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",
               lineHeight:1,flexShrink:0}}>‹</button>
         </div>
 
-        {/* Search — hidden in icon-only mode */}
-        {!iconOnly&&(
+        {/* Search — hidden in icon-only or dense mode */}
+        {!iconOnly&&!dense&&(
           <div style={{position:"relative"}}>
             <span style={{position:"absolute",left:7,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--text4)",pointerEvents:"none"}}>🔍</span>
             <input value={search} onChange={e=>setSearch(e.target.value)}
@@ -2698,11 +2902,13 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
           </div>
         )}
 
-        {/* Icon-only: search icon button */}
-        {iconOnly&&(
-          <button onClick={onToggleIconOnly} title="Switch to full view to search"
+        {/* Icon-only or dense: search icon button */}
+        {(iconOnly||dense)&&(
+          <button onClick={()=>{setSidebarIconOnly(false);setSidebarDense(false);}} title="Switch to full view to search"
             style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
-              fontSize:13,width:"100%",display:"flex",justifyContent:"center",marginTop:2}}>🔍</button>
+              fontSize:12,width:"100%",display:"flex",justifyContent:"center",alignItems:"center",gap:3,marginTop:2}}>
+            🔍 <span style={{fontSize:9}}>Search</span>
+          </button>
         )}
       </div>
 
@@ -2722,7 +2928,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
           return(
             <div key={cat}>
               {/* Category header */}
-              {!iconOnly&&(
+              {!iconOnly&&!dense&&(
                 <div onClick={()=>toggle(cat)}
                   style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",
                     cursor:"pointer",background:"var(--bg3)",
@@ -2739,9 +2945,9 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
 
               {/* Items */}
               {(showOpen||iconOnly)&&(
-                iconOnly?(
-                  // Icon grid
-                  <div style={{display:"flex",flexWrap:"wrap",justifyContent:"center",padding:"4px 2px",gap:2}}>
+                iconOnly||dense?(
+                  // Dense icon grid — multiple per row, tooltip on hover
+                  <div style={{display:"flex",flexWrap:"wrap",justifyContent:"flex-start",padding:"3px 4px",gap:dense?1:2}}>
                     {items.map(([key,t])=>(
                       <div key={key}
                         onClick={()=>canEdit&&addNode(key)}
@@ -2750,9 +2956,9 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                           setTooltip({key,label:t.label,color:t.color,x:r.right+6,y:r.top+r.height/2});
                         }}
                         title={t.label}
-                        style={{width:36,height:36,borderRadius:"var(--radius-sm)",display:"flex",
-                          alignItems:"center",justifyContent:"center",fontSize:18,cursor:canEdit?"pointer":"default",
-                          transition:"background .1s",border:"1.5px solid transparent"}}
+                        style={{width:dense?28:36,height:dense?28:36,borderRadius:"var(--radius-sm)",display:"flex",
+                          alignItems:"center",justifyContent:"center",fontSize:dense?14:18,cursor:canEdit?"pointer":"default",
+                          transition:"background .1s",border:"1.5px solid transparent",flexShrink:0}}
                         onMouseLeave={()=>setTooltip(null)}
                         onMouseOver={e=>{e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.borderColor=t.color+"60";}}
                         onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="transparent";}}>
