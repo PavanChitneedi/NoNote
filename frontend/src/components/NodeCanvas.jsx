@@ -498,6 +498,15 @@ function exportAsNoNote(nodes, edges, mapMeta) {
   URL.revokeObjectURL(a.href);
 }
 
+// Consistent colour per userId (deterministic)
+const USER_COLORS = ["#f97316","#06b6d4","#a855f7","#22c55e","#f59e0b","#ef4444","#3b82f6","#ec4899"];
+function userColor(userId) {
+  if (!userId) return USER_COLORS[0];
+  let h = 0;
+  for (let i = 0; i < userId.length; i++) h = (h * 31 + userId.charCodeAt(i)) >>> 0;
+  return USER_COLORS[h % USER_COLORS.length];
+}
+
 function exportAsPDF(nodes, edges, mapTitle) {
   if(!nodes.length){ alert("No nodes to export."); return; }
   // Build same HTML as visual export, open print-optimised version
@@ -811,7 +820,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [showChangelog,    setShowChangelog]    = useState(false);
   const [showCollabLog,    setShowCollabLog]    = useState(false);
-  const [collabLog,        setCollabLog]        = useState([]); // map change history
+  const [collabLog,        setCollabLog]        = useState([]);
   const [editingMapTitle,  setEditingMapTitle]  = useState(null); // null or string
   const [groupBoxes,       setGroupBoxes]       = useState([]); // [{id,x,y,w,h,label,color,lineStyle,bgColor}]
   const [drawingGroupBox,  setDrawingGroupBox]  = useState(null); // {startX,startY,endX,endY} while drawing
@@ -819,8 +828,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [draggingGB,       setDraggingGB]       = useState(null); // {id,startMX,startMY,origX,origY}
   const [resizingGB,       setResizingGB]       = useState(null); // {id,startMX,startMY,origW,origH,origX,origY}
   const [showShare,     setShowShare]      = useState(false);
-  const [collab,        setCollab]         = useState(false); // collaboration mode on
-  const [collabUsers,   setCollabUsers]    = useState({}); // {userId: {cursor,color,name}}
+  // WS is always-on — auto-connects when map loads, no toggle needed
+  const [collabUsers,   setCollabUsers]    = useState({}); // {userId: {x,y,userName}}
+  const [wsConnected,   setWsConnected]    = useState(false);
   const wsRef = useRef(null);
   const [shareUsers,    setShareUsers]     = useState([]);
   const [shareEmail,    setShareEmail]     = useState("");
@@ -1280,8 +1290,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           ?{...b,w:Math.max(80,resizingGB.origW+dx),h:Math.max(60,resizingGB.origH+dy)}:b));
         return;
       }
-      // Broadcast cursor position when collab is on
-      if(collab&&canvasRef.current){
+      // Broadcast cursor position to other users
+      if(canvasRef.current){
         const el=canvasRef.current;
         const rect=el.getBoundingClientRect(); const s=1/zoom;
         const cx2=(cx-rect.left)*s+el.scrollLeft*s;
@@ -1514,99 +1524,62 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     },800);
   };
 
-  // ── WebSocket real-time collaboration ────────────────────────────
-  //
-  // Design:
-  //  • wsConnected (React state) ensures broadcast effects fire AFTER WS opens.
-  //  • Echo prevention: compare JSON.stringify of current vs last-received data.
-  //    setNodes(remote) stores an object; JSON.stringify catches all changes.
-  //  • Server broadcasts to all OTHER clients — no server-side echo.
-  //  • Cursor throttled to 20fps max.
-  //
-  const [wsConnected, setWsConnected] = useState(false);
-  const lastRxNodesJSON = useRef(null); // JSON of last nodes received from remote
-  const lastRxEdgesJSON = useRef(null); // JSON of last edges received from remote
-  const cursorThrottle  = useRef(0);    // timestamp of last cursor send
+  // ── WebSocket — always-on, auto-connects on map load ──────────────
+  // No toggle button. Automatically connects whenever a map is open.
+  // Echo prevention: JSON.stringify comparison against last received state.
+  const lastRxNodesJSON = useRef(null);
+  const lastRxEdgesJSON = useRef(null);
+  const cursorThrottle  = useRef(0);
 
   useEffect(() => {
-    if (!mapId || !collab) {
-      setWsConnected(false);
-      return;
-    }
-
+    if (!mapId) return;
     let ws;
     let reconnectTimer;
-    let active = true; // flag to prevent reconnect after intentional close
+    let active = true;
 
     const connect = () => {
       const token = getAccessToken();
-      if (!token) {
-        console.error("[collab] no token — turn Collab off and on after logging in");
-        setCollab(false);
-        return;
-      }
-
+      if (!token) return; // not logged in yet — auth will cause re-render and retry
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
       ws = new WebSocket(`${proto}//${window.location.host}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log("[collab] connected, joining map", mapId);
         ws.send(JSON.stringify({ type: "join", mapId, token }));
       };
 
       ws.onmessage = (e) => {
-        let msg;
-        try { msg = JSON.parse(e.data); } catch { return; }
+        let msg; try { msg = JSON.parse(e.data); } catch { return; }
 
-        if (msg.type === "auth_error") {
-          console.error("[collab] auth error:", msg.message);
-          setCollab(false);
-          ws.close(1000);
-          return;
-        }
+        if (msg.type === "auth_error") { ws.close(1000); return; }
 
         if (msg.type === "room_state") {
-          // Server acknowledged our join — we are now fully connected
           setWsConnected(true);
           const others = msg.users || [];
-          setCollabUsers(() => Object.fromEntries(others.map(u => [u.userId, u])));
-          // If others are in the room, broadcast our current state to sync them
+          setCollabUsers(Object.fromEntries(others.map(u => [u.userId, u])));
           if (others.length > 0 && ws.readyState === 1) {
-            const nodesJson = JSON.stringify(nodesRef.current);
-            const edgesJson = JSON.stringify(edgesRef.current);
             ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
             ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
-            // Mark as "sent from us" so broadcast effects don't double-send
-            lastRxNodesJSON.current = nodesJson;
-            lastRxEdgesJSON.current = edgesJson;
           }
         }
-
         else if (msg.type === "user_joined") {
           setCollabUsers(prev => ({ ...prev, [msg.userId]: { userId: msg.userId, userName: msg.userName || "User" } }));
-          // A new user joined — send them our state (server will broadcast to them)
           if (ws.readyState === 1) {
             ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
             ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
           }
         }
-
         else if (msg.type === "user_left") {
           setCollabUsers(prev => { const n = { ...prev }; delete n[msg.userId]; return n; });
         }
-
         else if (msg.type === "nodes_update") {
-          // Store the JSON BEFORE applying so identity check works
           lastRxNodesJSON.current = JSON.stringify(msg.nodes);
           setNodes(msg.nodes);
         }
-
         else if (msg.type === "edges_update") {
           lastRxEdgesJSON.current = JSON.stringify(msg.edges);
           setEdges(msg.edges);
         }
-
         else if (msg.type === "cursor_move") {
           setCollabUsers(prev => ({
             ...prev,
@@ -1615,22 +1588,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         }
       };
 
-      ws.onerror = (err) => console.error("[collab] ws error", err);
-
+      ws.onerror = () => {};
       ws.onclose = (ev) => {
         wsRef.current = null;
         setWsConnected(false);
-        console.log("[collab] closed", ev.code, ev.reason || "");
         if (active && ev.code !== 1000 && ev.code !== 1008) {
-          // Unexpected close — reconnect after 3s
-          console.log("[collab] reconnecting in 3s...");
-          reconnectTimer = setTimeout(connect, 3000);
+          reconnectTimer = setTimeout(connect, 4000);
         }
       };
     };
 
     connect();
-
     return () => {
       active = false;
       clearTimeout(reconnectTimer);
@@ -1639,37 +1607,34 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       setWsConnected(false);
       setCollabUsers({});
     };
-  }, [mapId, collab]); // eslint-disable-line
+  }, [mapId]); // eslint-disable-line
 
-  // ── Broadcast node changes when collab is on ────────────────────
-  // Only sends if this is a LOCAL change (not one we received from remote).
+  // ── Broadcast local changes to other users ────────────────────────
   useEffect(() => {
-    if (!collab || !wsConnected) return;
     const ws = wsRef.current;
     if (!ws || ws.readyState !== 1) return;
-    const currentJSON = JSON.stringify(nodes);
-    if (currentJSON === lastRxNodesJSON.current) return; // remote update — skip
+    const j = JSON.stringify(nodes);
+    if (j === lastRxNodesJSON.current) return;
     ws.send(JSON.stringify({ type: "nodes_update", nodes }));
-  }, [nodes, collab, wsConnected]); // eslint-disable-line
+  }, [nodes]); // eslint-disable-line
 
   useEffect(() => {
-    if (!collab || !wsConnected) return;
     const ws = wsRef.current;
     if (!ws || ws.readyState !== 1) return;
-    const currentJSON = JSON.stringify(edges);
-    if (currentJSON === lastRxEdgesJSON.current) return;
+    const j = JSON.stringify(edges);
+    if (j === lastRxEdgesJSON.current) return;
     ws.send(JSON.stringify({ type: "edges_update", edges }));
-  }, [edges, collab, wsConnected]); // eslint-disable-line
+  }, [edges]); // eslint-disable-line
 
-  // ── Send cursor position (throttled to 20fps) ───────────────────
+  // ── Send cursor (throttled 20fps) ────────────────────────────────
   const sendCursor = useCallback((x, y) => {
     const ws = wsRef.current;
-    if (!collab || !ws || ws.readyState !== 1) return;
+    if (!ws || ws.readyState !== 1) return;
     const now = Date.now();
-    if (now - cursorThrottle.current < 50) return; // max 20fps
+    if (now - cursorThrottle.current < 50) return;
     cursorThrottle.current = now;
     ws.send(JSON.stringify({ type: "cursor_move", x, y }));
-  }, [collab]);
+  }, []);
 
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback((dir)=>{
@@ -2694,36 +2659,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </span>
             )}
             {saveMsg&&<span style={{fontSize:9,color:saveMsgColor,whiteSpace:"nowrap",marginLeft:4}}>{saveMsg}</span>}
-            {/* Shared indicator */}
-            {mapMeta&&(()=>{
-              const isOwner = mapMeta.owner_id===user?.id;
-              const hasCollabs = (mapMeta.collaborators||[]).length>0;
-              const myPerm = mapMeta.permission; // viewer/editor if shared to me
-              if(!isOwner&&myPerm){
-                // I'm a collaborator — show owner info
-                return(
-                  <span style={{display:"flex",alignItems:"center",gap:4,marginLeft:6,
-                    background:"var(--accent)18",border:"1px solid var(--accent)40",
-                    borderRadius:4,padding:"1px 7px",fontSize:9,color:"var(--accent)",
-                    fontWeight:600,flexShrink:0}}>
-                    👁 Shared · {myPerm}
-                    {mapMeta.owner_name&&<span style={{opacity:.7}}>by {mapMeta.owner_name}</span>}
+            {/* Live presence indicator — subtle dot when others are viewing */}
+            {Object.keys(collabUsers).length>0&&(
+              <span style={{display:"flex",alignItems:"center",gap:5,marginLeft:6,
+                background:"var(--bg3)",border:"1px solid var(--border)",
+                borderRadius:10,padding:"1px 8px 1px 5px",fontSize:9,color:"var(--text3)",flexShrink:0}}>
+                <span style={{width:6,height:6,borderRadius:"50%",background:"#22c55e",
+                  display:"inline-block",boxShadow:"0 0 0 2px #22c55e30",animation:"nn-pulse 2s infinite"}}/>
+                {Object.values(collabUsers).map(u=>(
+                  <span key={u.userId} title={u.userName}
+                    style={{width:16,height:16,borderRadius:"50%",fontSize:8,fontWeight:700,
+                      color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",
+                      background:userColor(u.userId),marginLeft:-3,border:"1.5px solid var(--bg2)"}}>
+                    {(u.userName||"?")[0].toUpperCase()}
                   </span>
-                );
-              }
-              if(isOwner&&hasCollabs){
-                return(
-                  <span style={{display:"flex",alignItems:"center",gap:4,marginLeft:6,
-                    background:"#1565C018",border:"1px solid #1565C040",
-                    borderRadius:4,padding:"1px 7px",fontSize:9,color:"#4d9be6",
-                    fontWeight:600,flexShrink:0}}
-                    title={`Shared with: ${(mapMeta.collaborators||[]).map(c=>c.display_name||c.email).join(", ")}`}>
-                    👥 Shared · {(mapMeta.collaborators||[]).length} {(mapMeta.collaborators||[]).length===1?"person":"people"}
-                  </span>
-                );
-              }
-              return null;
-            })()}
+                ))}
+                <span>{Object.keys(collabUsers).length} live</span>
+              </span>
+            )}
           </div>
 
           <div style={{flex:1}}/>
@@ -2860,7 +2813,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.14 ✦
+              v5.15 ✦
             </button>
           </div>
         </div>
@@ -2877,27 +2830,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
           {/* ── MODE GROUP ── edit/view + props mode ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-            {canEdit&&(<>
-              {/* Collab toggle */}
-              <button onClick={()=>setCollab(v=>!v)}
-                style={{...tbtn(collab,"#7B1FA2"),display:"flex",alignItems:"center",gap:4,position:"relative"}}
-                title={collab?(wsConnected?"Collaboration LIVE — syncing in real-time":"Collaboration ON — connecting…"):"Enable real-time collaboration"}>
-                {collab?(wsConnected?"🟢":"🟡"):"⚪"} <span style={{fontSize:10}}>Collab</span>
-                {collab&&Object.keys(collabUsers).length>0&&(
-                  <span style={{position:"absolute",top:-4,right:-4,fontSize:7,
-                    background:"var(--success)",color:"#fff",borderRadius:"50%",
-                    width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
-                    {Object.keys(collabUsers).length}
-                  </span>
-                )}
-              </button>
-
+            {canEdit&&(
               <button onClick={()=>setEditMode(v=>!v)}
                 style={{...tbtn(!editMode,"var(--success)"),minWidth:58}}
                 title="Toggle edit/view mode (E)">
                 {editMode?"✏ Edit":"👁 View"}
               </button>
-            </>)}
+            )}
             {/* POPUP / PANEL — how you open node details */}
             <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",border:"1.5px solid var(--border)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
               title="How to view node details">
@@ -3385,22 +3324,26 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 );
               })()}
 
-              {/* ── Remote user cursors ── */}
-              {collab&&Object.values(collabUsers).map(u=>{
-                if(!u.x&&!u.y) return null;
-                const colors=['#f97316','#06b6d4','#a855f7','#22c55e','#f59e0b','#ef4444'];
-                const color=u.color||colors[Math.abs((u.userId||'').charCodeAt(0))%colors.length];
+              {/* ── Remote user cursors — MS Office style ── */}
+              {Object.values(collabUsers).map(u=>{
+                if(u.x==null||u.y==null) return null;
+                const color = userColor(u.userId);
+                const initials = (u.userName||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
                 return(
                   <div key={u.userId} style={{position:"absolute",left:u.x,top:u.y,
-                    pointerEvents:"none",zIndex:9999,transform:"translate(-2px,-2px)"}}>
-                    {/* Cursor dot */}
-                    <div style={{width:10,height:10,borderRadius:"50%",
-                      background:color,border:"2px solid #fff",boxShadow:"0 1px 4px rgba(0,0,0,.4)"}}/>
-                    {/* Name tag */}
-                    <div style={{position:"absolute",top:12,left:4,whiteSpace:"nowrap",
-                      background:color,color:"#fff",fontSize:9,fontWeight:700,
-                      padding:"1px 5px",borderRadius:3,fontFamily:"var(--font-ui)",
-                      boxShadow:"0 1px 4px rgba(0,0,0,.3)"}}>
+                    pointerEvents:"none",zIndex:9999,transform:"translate(-6px,-6px)",
+                    transition:"left 80ms linear,top 80ms linear"}}>
+                    {/* Cursor arrow */}
+                    <svg width="16" height="20" viewBox="0 0 16 20" style={{display:"block",filter:`drop-shadow(0 1px 2px rgba(0,0,0,.4))`}}>
+                      <path d="M0 0 L0 14 L4 10 L7 18 L9 17 L6 9 L11 9 Z" fill={color} stroke="#fff" strokeWidth="1"/>
+                    </svg>
+                    {/* Name badge — MS Office style */}
+                    <div style={{position:"absolute",top:16,left:10,
+                      background:color,color:"#fff",
+                      fontSize:9,fontWeight:700,lineHeight:"18px",
+                      padding:"0 6px",borderRadius:"0 9px 9px 9px",
+                      whiteSpace:"nowrap",fontFamily:"var(--font-ui)",
+                      boxShadow:"0 2px 6px rgba(0,0,0,.35)"}}>
                       {u.userName||"User"}
                     </div>
                   </div>
@@ -3765,6 +3708,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.15",date:"Apr 2026",items:[
+                  "Collaboration is now always-on — auto-connects when any map is open (no toggle button)",
+                  "MS Office-style cursor presence: colored cursor arrow + name badge per user",
+                  "Live presence pill in topbar shows avatars + count when others are viewing",
+                  "Deterministic per-user color (consistent across sessions)",
+                  "Backend crash fix: runMigrations function was missing (was causing restarting loop)",
+                  "Login fix: /auth/me and /auth/logout now correctly send access token",
+                ]},
                 {v:"v5.14",date:"Apr 2026",items:[
                   "Login fix: apiFetch skips stale token and 401-retry for /auth/* endpoints",
                   "Refresh fix: access token stored in sessionStorage — survives page reload",
