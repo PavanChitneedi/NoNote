@@ -1869,14 +1869,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           outline:searchHitIds.has(node.id)&&!isSel?"2px solid var(--success)":selected.size>1&&isSel?"2px solid var(--accent)":"none",
           outlineOffset:searchHitIds.has(node.id)&&!isSel?"2px":"0",
         }}>
-        {/* Header — 2 lines: title row + type badge row */}
-        <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:"6px var(--node-pad) 5px"}}>
-          {/* Row 1: icon + title + comment */}
-          <div style={{display:"flex",alignItems:"flex-start",gap:6}}>
+        {/* Header */}
+        <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:"7px 10px 5px"}}>
+
+          {/* ── Row 1: icon + title + comment + collapse in ONE line ── */}
+          <div style={{display:"flex",alignItems:"center",gap:5,minHeight:22}}>
+
+            {/* Icon */}
             <span style={{fontSize:14,width:20,height:20,display:"flex",alignItems:"center",
-              justifyContent:"center",flexShrink:0,lineHeight:1,marginTop:2}}>{t.icon}</span>
+              justifyContent:"center",flexShrink:0,lineHeight:1}}>{t.icon}</span>
+
+            {/* Title — editable inline */}
             <div style={{flex:1,minWidth:0}}>
-              {/* Title */}
               {editingTitle===node.id?(
                 <input autoFocus value={node.title}
                   onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
@@ -1887,89 +1891,101 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     padding:"1px 5px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700,boxSizing:"border-box"}}
                 />
               ):(
-                <div style={{display:"flex",alignItems:"center",gap:3,minWidth:0,flex:1}}>
-                  <div style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",
+                <div style={{display:"flex",alignItems:"center",gap:3,minWidth:0}}>
+                  <span style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",
                     textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,lineHeight:1.3,
                     cursor:canEdit&&editMode?"text":"default"}}
-                    title={node.title} onDoubleClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingTitle(node.id);}}>
+                    title={node.title}
+                    onDoubleClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingTitle(node.id);}}>
                     {node.title}
-                  </div>
+                  </span>
                   {canEdit&&editMode&&(
                     <button className="nn-pencil-btn"
                       onMouseDown={e=>e.stopPropagation()}
                       onClick={e=>{e.stopPropagation();setEditingTitle(node.id);}}
                       title="Edit title (F2)"
                       style={{background:"none",border:"none",cursor:"pointer",padding:"1px 2px",
-                        flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)"}}>✏</button>
+                        flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
                   )}
                 </div>
               )}
-              {/* Description directly under title */}
-              {node.description?(
-                <div style={{display:"flex",alignItems:"center",gap:2,marginTop:1,minWidth:0}}>
-                  {inlineEditField?.nodeId===node.id&&inlineEditField?.field==='desc'?(
-                    <input autoFocus value={node.description||""}
-                      onChange={e=>{e.stopPropagation();updateNode(node.id,{description:e.target.value});}}
-                      onMouseDown={e=>e.stopPropagation()}
-                      onBlur={()=>setInlineEditField(null)}
-                      onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setInlineEditField(null);}}
-                      style={{flex:1,background:"none",border:"none",borderBottom:"1px solid var(--accent)",
-                        outline:"none",fontSize:10,color:"var(--text3)",fontFamily:"var(--font-ui)",padding:"0"}}
-                    />
-                  ):(
-                    <>
-                      <div style={{fontSize:10,color:"var(--text4)",lineHeight:1.3,flex:1,
-                        overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}
-                        title={node.description}>
-                        {node.description}
-                      </div>
-                      {canEdit&&editMode&&(
-                        <button className="nn-pencil-btn"
-                          onMouseDown={e=>e.stopPropagation()}
-                          onClick={e=>{e.stopPropagation();setInlineEditField({nodeId:node.id,field:'desc'});}}
-                          title="Edit description"
-                          style={{background:"none",border:"none",cursor:"pointer",padding:"0",
-                            flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)"}}>✏</button>
-                      )}
-                    </>
-                  )}
-                </div>
-              ):null}
             </div>
-            {/* Comment button */}
-            <button className="nn-comment-btn" onMouseDown={e=>e.stopPropagation()}
+
+            {/* Comment icon */}
+            <button className="nn-comment-btn"
+              onMouseDown={e=>e.stopPropagation()}
               onClick={e=>{e.stopPropagation();setCommentNode(node.id);setShowComments(true);}}
               title={`Comments (${(comments[node.id]||[]).length})`}
-              style={{background:"none",border:"none",cursor:"pointer",padding:"0 2px",flexShrink:0,
-                opacity:0,transition:"opacity .15s",marginTop:1,
-                color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",fontSize:11,lineHeight:1,position:"relative"}}>
-              💬{(comments[node.id]||[]).length>0&&(
+              style={{background:"none",border:"none",cursor:"pointer",padding:"1px",flexShrink:0,
+                opacity:0,transition:"opacity .15s",lineHeight:1,position:"relative",
+                color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",fontSize:11}}>
+              💬
+              {(comments[node.id]||[]).length>0&&(
                 <span style={{position:"absolute",top:-3,right:-3,fontSize:7,background:"var(--accent)",
-                  color:"#fff",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
+                  color:"#fff",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",
+                  justifyContent:"center",fontWeight:700}}>
                   {(comments[node.id]||[]).length}
                 </span>
               )}
             </button>
-          </div>
-          {/* Row 2: type badge (right, subtle) + collapse */}
-          <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginTop:1,gap:4}}>
-            <span style={{fontSize:8,color:`${t.color}90`,letterSpacing:.8,fontWeight:500,
-              opacity:.7,marginRight:"auto"}}>
-              {t.label}
-            </span>
+
+            {/* Collapse icon — same line, no gap fight */}
             {canEdit&&(
               <button className="nn-collapse-btn"
                 onMouseDown={e=>e.stopPropagation()}
                 onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
                 title={node.collapsed?"Expand node":"Collapse node"}
-                style={{background:"none",border:`1px solid ${t.color}40`,borderRadius:3,
-                  color:t.color,cursor:"pointer",fontSize:9,width:14,height:14,
+                style={{background:"none",border:`1px solid ${t.color}50`,borderRadius:3,
+                  color:t.color,cursor:"pointer",fontSize:9,width:15,height:15,flexShrink:0,
                   display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
-                  opacity:0,transition:"opacity .15s",flexShrink:0}}>
+                  opacity:0,transition:"opacity .15s"}}>
                 ⊟
               </button>
             )}
           </div>
+
+          {/* ── Row 2: description (editable) ── */}
+          {(node.description||(canEdit&&editMode))&&(
+            <div style={{marginTop:2,paddingLeft:25,paddingRight:4}}>
+              {inlineEditField?.nodeId===node.id&&inlineEditField?.field==='desc'?(
+                <input autoFocus value={node.description||""}
+                  onChange={e=>{e.stopPropagation();updateNode(node.id,{description:e.target.value});}}
+                  onMouseDown={e=>e.stopPropagation()}
+                  onBlur={()=>setInlineEditField(null)}
+                  onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setInlineEditField(null);}}
+                  placeholder="Add description…"
+                  style={{width:"100%",background:"none",border:"none",borderBottom:"1px solid var(--accent)",
+                    outline:"none",fontSize:10,color:"var(--text3)",fontFamily:"var(--font-ui)",padding:"0",boxSizing:"border-box"}}
+                />
+              ):(
+                <div style={{display:"flex",alignItems:"center",gap:3}}>
+                  <span style={{fontSize:10,color:"var(--text4)",lineHeight:1.3,flex:1,
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
+                    fontStyle:node.description?"normal":"italic"}}
+                    title={node.description||""}>
+                    {node.description||(canEdit&&editMode?"Double-click to add description…":"")}
+                  </span>
+                  {canEdit&&editMode&&(
+                    <button className="nn-pencil-btn"
+                      onMouseDown={e=>e.stopPropagation()}
+                      onClick={e=>{e.stopPropagation();setInlineEditField({nodeId:node.id,field:'desc'});}}
+                      title="Edit description"
+                      style={{background:"none",border:"none",cursor:"pointer",padding:"0",
+                        flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── Row 3: node type — right-aligned, very subtle ── */}
+          <div style={{display:"flex",justifyContent:"flex-end",marginTop:2,paddingRight:2}}>
+            <span style={{fontSize:8,color:`${t.color}80`,letterSpacing:.5,fontWeight:400,
+              fontFamily:"var(--font-ui)",userSelect:"none"}}>
+              {t.label}
+            </span>
+          </div>
+
         </div>
         {/* Body */}
         {!isGroup&&(
@@ -2041,6 +2057,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           cursor:"pointer",userSelect:"none"}}
                           onMouseDown={e=>e.stopPropagation()}
                           onClick={e=>{
+                            if(e.target.tagName==="BUTTON"||e.target.tagName==="INPUT") return;
                             e.stopPropagation();
                             const newSet=new Set(expandedSet);
                             if(isExpanded) newSet.delete(nt.id); else newSet.add(nt.id);
@@ -2049,10 +2066,35 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           <span style={{fontSize:8,color:t.color,flexShrink:0}}>
                             {isExpanded?"▾":"▸"}
                           </span>
-                          <span style={{fontSize:10,fontWeight:600,color:"var(--text2)",flex:1,
-                            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                            {nt.sensitive?"🔒 Sensitive":nt.title||"Untitled note"}
-                          </span>
+                          {inlineEditField?.noteId===nt.id&&inlineEditField?.field==='noteTitle'?(
+                            <input autoFocus value={nt.title||""}
+                              onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
+                              onChange={e=>{
+                                e.stopPropagation();
+                                const arr=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,title:e.target.value}:n);
+                                updateNotes(node.id,arr);
+                              }}
+                              onBlur={()=>setInlineEditField(null)}
+                              onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setInlineEditField(null);}}
+                              style={{flex:1,background:"none",border:"none",borderBottom:"1px solid var(--accent)",
+                                outline:"none",fontSize:10,fontWeight:600,color:"var(--text2)",fontFamily:"var(--font-ui)",padding:"0"}}
+                            />
+                          ):(
+                            <div style={{display:"flex",alignItems:"center",gap:2,flex:1,minWidth:0}}>
+                              <span style={{fontSize:10,fontWeight:600,color:"var(--text2)",flex:1,
+                                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                                {nt.sensitive?"🔒 Sensitive":nt.title||"Untitled note"}
+                              </span>
+                              {canEdit&&editMode&&!nt.sensitive&&(
+                                <button className="nn-pencil-btn"
+                                  onMouseDown={e=>e.stopPropagation()}
+                                  onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteTitle'});}}
+                                  title="Edit note title (click ✎)"
+                                  style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
+                                    flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                              )}
+                            </div>
+                          )}
                         </div>
                         {/* Note content — only when expanded */}
                         {isExpanded&&!nt.sensitive&&(
