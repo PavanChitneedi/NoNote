@@ -186,3 +186,17 @@ CREATE INDEX idx_map_versions_map_id ON map_versions(map_id);
 ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS from_anchor JSONB;
 ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS to_anchor   JSONB;
 ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS mid_off     JSONB;
+
+-- ── Map change log (collaboration history) ───────────────────────────
+CREATE TABLE IF NOT EXISTS map_changelog (
+  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  map_id      UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+  user_id     UUID REFERENCES users(id) ON DELETE SET NULL,
+  user_name   TEXT,
+  action      TEXT NOT NULL,  -- 'add_node','delete_node','move_node','edit_node','add_edge','delete_edge'
+  target_id   TEXT,           -- node/edge id affected
+  target_label TEXT,          -- node title or edge label for readability
+  meta        JSONB,          -- extra context
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, created_at DESC);

@@ -330,4 +330,24 @@ router.delete(
   }
 );
 
+// ── GET /api/maps/:mapId/changelog ────────────────────────────
+router.get(
+  "/:mapId/changelog",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const result = await query(
+        `SELECT id, user_id, user_name, action, target_id, target_label, meta, created_at
+         FROM map_changelog WHERE map_id=$1
+         ORDER BY created_at DESC LIMIT 100`,
+        [req.params.mapId]
+      );
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch changelog" });
+    }
+  }
+);
+
 export default router;

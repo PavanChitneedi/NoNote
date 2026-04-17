@@ -808,6 +808,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [showChangelog,    setShowChangelog]    = useState(false);
+  const [showCollabLog,    setShowCollabLog]    = useState(false);
+  const [collabLog,        setCollabLog]        = useState([]); // map change history
   const [editingMapTitle,  setEditingMapTitle]  = useState(null); // null or string
   const [groupBoxes,       setGroupBoxes]       = useState([]); // [{id,x,y,w,h,label,color,lineStyle,bgColor}]
   const [drawingGroupBox,  setDrawingGroupBox]  = useState(null); // {startX,startY,endX,endY} while drawing
@@ -1272,6 +1274,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           ?{...b,w:Math.max(80,resizingGB.origW+dx),h:Math.max(60,resizingGB.origH+dy)}:b));
         return;
       }
+      // Broadcast cursor position when collab is on
+      if(collab&&canvasRef.current){
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const cx2=(cx-rect.left)*s+el.scrollLeft*s;
+        const cy2=(cy-rect.top)*s+el.scrollTop*s;
+        sendCursor(cx2, cy2);
+      }
       if(groupBoxDrawRef.current&&canvasRef.current){
         const el=canvasRef.current;
         const rect=el.getBoundingClientRect(); const s=1/zoom;
@@ -1495,73 +1505,112 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     },800);
   };
 
-  // ── WebSocket real-time collaboration ────────────────────────
-  const wsFromRemote = useRef(false); // guard: don't re-broadcast incoming changes
+  // ── WebSocket real-time collaboration ─────────────────────────────
+  //
+  // Echo-prevention via object identity:
+  // When we receive nodes from remote and call setNodes(msg.nodes),
+  // React stores msg.nodes as the state. In the next render, nodes===msg.nodes
+  // (same reference). The broadcast effect checks this and skips re-sending.
+  //
+  const lastRemoteNodes = useRef(null);
+  const lastRemoteEdges = useRef(null);
 
   useEffect(()=>{
     if(!mapId||!collab) return;
     let ws;
     const connect = async () => {
-      // Ensure token is fresh
       try{ await apiFetch('/auth/me'); }catch{}
       const token = getAccessToken();
-      if(!token){ console.warn('[collab] no token, cannot connect'); return; }
-      const proto=window.location.protocol==='https:'?'wss:':'ws:';
+      if(!token){
+        console.error('[collab] No auth token — cannot connect. Try re-logging in.');
+        setCollab(false); return;
+      }
+      const proto = window.location.protocol==='https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${proto}//${window.location.host}/ws`);
       wsRef.current = ws;
+
       ws.onopen = () => {
         ws.send(JSON.stringify({type:'join', mapId, token}));
-        console.log('[collab] joined map', mapId, 'token length:', token.length);
+        console.log('[collab] WS open, joining map', mapId);
       };
+
       ws.onmessage = e => {
-        try{
+        try {
           const msg = JSON.parse(e.data);
-          if(msg.type==='nodes_update'){
-            wsFromRemote.current = true;
+          console.log('[collab] recv', msg.type, msg.userId||'');
+
+          if (msg.type === 'nodes_update') {
+            // Store the received reference BEFORE setNodes so identity check works
+            lastRemoteNodes.current = msg.nodes;
             setNodes(msg.nodes);
-            wsFromRemote.current = false;
           }
-          if(msg.type==='edges_update'){
-            wsFromRemote.current = true;
+          if (msg.type === 'edges_update') {
+            lastRemoteEdges.current = msg.edges;
             setEdges(msg.edges);
-            wsFromRemote.current = false;
           }
-          if(msg.type==='cursor_move'){
-            setCollabUsers(prev=>({...prev,[msg.userId]:{...prev[msg.userId],...msg}}));
+          if (msg.type === 'cursor_move') {
+            setCollabUsers(prev=>({...prev, [msg.userId]:{
+              userId: msg.userId, userName: msg.userName||'User',
+              x: msg.x, y: msg.y, color: msg.color||'#f97316'
+            }}));
           }
-          if(msg.type==='user_left'){
+          if (msg.type === 'user_joined' || msg.type === 'room_state') {
+            const users = msg.type==='user_joined'
+              ? [{userId:msg.userId, userName:msg.userName}]
+              : (msg.users||[]);
+            setCollabUsers(prev=>{
+              const n={...prev};
+              users.forEach(u=>{ n[u.userId]={...( n[u.userId]||{}), ...u}; });
+              return n;
+            });
+          }
+          if (msg.type === 'user_left') {
             setCollabUsers(prev=>{const n={...prev};delete n[msg.userId];return n;});
           }
-        }catch(err){ console.error('[collab] msg error', err); }
+        } catch(err){ console.error('[collab] parse error', err); }
       };
-      ws.onerror = err => console.error('[collab] ws error', err);
+
+      ws.onerror = err => console.error('[collab] WS error', err);
       ws.onclose = ev => {
         wsRef.current = null;
-        console.log('[collab] disconnected', ev.code, ev.reason);
+        console.warn('[collab] disconnected', ev.code, ev.reason||'');
+        // Auto-reconnect once after unexpected close
+        if(ev.code !== 1000 && ev.code !== 1008) {
+          setTimeout(()=>{ if(collab) connect(); }, 3000);
+        }
       };
     };
     connect();
-    return ()=>{ if(ws) ws.close(); wsRef.current=null; };
-  },[mapId,collab]);
+    return ()=>{
+      if(ws && ws.readyState <= 1) ws.close(1000, 'leaving');
+      wsRef.current = null;
+    };
+  },[mapId, collab]);
 
-  // ── Broadcast changes to other users (useEffect — correct pattern) ──
-  const prevNodesRef = useRef(null);
-  const prevEdgesRef = useRef(null);
+  // ── Send nodes when they change (skip if this change came from remote) ──
   useEffect(()=>{
-    if(!collab||!wsRef.current||wsRef.current.readyState!==1) return;
-    if(wsFromRemote.current) return; // don't echo received changes
-    if(prevNodesRef.current===nodes) return; // no change
-    prevNodesRef.current = nodes;
-    wsRef.current.send(JSON.stringify({type:'nodes_update', nodes}));
-  },[nodes,collab]);
+    if(!collab) return;
+    const ws = wsRef.current;
+    if(!ws || ws.readyState !== 1) return;
+    // Identity check: if nodes IS the object we just received, don't echo it back
+    if(nodes === lastRemoteNodes.current) return;
+    ws.send(JSON.stringify({type:'nodes_update', nodes}));
+  },[nodes, collab]);
 
   useEffect(()=>{
-    if(!collab||!wsRef.current||wsRef.current.readyState!==1) return;
-    if(wsFromRemote.current) return;
-    if(prevEdgesRef.current===edges) return;
-    prevEdgesRef.current = edges;
-    wsRef.current.send(JSON.stringify({type:'edges_update', edges}));
-  },[edges,collab]);
+    if(!collab) return;
+    const ws = wsRef.current;
+    if(!ws || ws.readyState !== 1) return;
+    if(edges === lastRemoteEdges.current) return;
+    ws.send(JSON.stringify({type:'edges_update', edges}));
+  },[edges, collab]);
+
+  // ── Send cursor position ───────────────────────────────────────────
+  const sendCursor = useCallback((x, y)=>{
+    const ws = wsRef.current;
+    if(!collab||!ws||ws.readyState!==1) return;
+    ws.send(JSON.stringify({type:'cursor_move', x, y}));
+  },[collab]);
 
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback((dir)=>{
@@ -2630,6 +2679,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowVersions(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:4}} title="Version history (V)">
               🕐 <span style={{fontSize:10}}>History</span>
             </button>
+            <button onClick={()=>{
+                setShowCollabLog(v=>!v);
+                if(!showCollabLog) apiFetch(`/maps/${mapId}/changelog`)
+                  .then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});
+              }}
+              style={{...tbtn(showCollabLog,"#7B1FA2"),display:"flex",alignItems:"center",gap:4}}
+              title="Map change history — who changed what">
+              📋 <span style={{fontSize:10}}>Changes</span>
+            </button>
 
                         <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
 
@@ -2743,7 +2801,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.10 ✦
+              v5.11 ✦
             </button>
           </div>
         </div>
@@ -3268,6 +3326,28 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 );
               })()}
 
+              {/* ── Remote user cursors ── */}
+              {collab&&Object.values(collabUsers).map(u=>{
+                if(!u.x&&!u.y) return null;
+                const colors=['#f97316','#06b6d4','#a855f7','#22c55e','#f59e0b','#ef4444'];
+                const color=u.color||colors[Math.abs((u.userId||'').charCodeAt(0))%colors.length];
+                return(
+                  <div key={u.userId} style={{position:"absolute",left:u.x,top:u.y,
+                    pointerEvents:"none",zIndex:9999,transform:"translate(-2px,-2px)"}}>
+                    {/* Cursor dot */}
+                    <div style={{width:10,height:10,borderRadius:"50%",
+                      background:color,border:"2px solid #fff",boxShadow:"0 1px 4px rgba(0,0,0,.4)"}}/>
+                    {/* Name tag */}
+                    <div style={{position:"absolute",top:12,left:4,whiteSpace:"nowrap",
+                      background:color,color:"#fff",fontSize:9,fontWeight:700,
+                      padding:"1px 5px",borderRadius:3,fontFamily:"var(--font-ui)",
+                      boxShadow:"0 1px 4px rgba(0,0,0,.3)"}}>
+                      {u.userName||"User"}
+                    </div>
+                  </div>
+                );
+              })}
+
               {renderEdges()}
 
               {/* Nodes */}
@@ -3424,6 +3504,55 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         )}
       </div>
 
+      {/* ── Collab Change Log Panel ── */}
+      {showCollabLog&&(
+        <div style={{position:"fixed",top:76,right:8,zIndex:800,width:320,maxHeight:"70vh",
+          background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
+          boxShadow:"0 12px 40px rgba(0,0,0,.6)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          <div style={{display:"flex",alignItems:"center",padding:"10px 14px",
+            borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+            <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>📋 Map Changes</span>
+            <button onClick={()=>apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{})}
+              style={{background:"none",border:"1px solid var(--border)",borderRadius:4,
+                color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"2px 6px",marginRight:6}}>↺</button>
+            <button onClick={()=>setShowCollabLog(false)}
+              style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+          </div>
+          <div style={{flex:1,overflowY:"auto",padding:8}}>
+            {collabLog.length===0?(
+              <div style={{fontSize:11,color:"var(--text4)",textAlign:"center",padding:"20px 0"}}>
+                No changes recorded yet.<br/>Changes appear here when collaborating.
+              </div>
+            ):collabLog.map((entry,i)=>{
+              const actionMap={add_node:"➕ Added",delete_node:"🗑 Deleted",edit_node:"✏ Edited",
+                add_edge:"🔗 Connected",delete_edge:"✂ Removed",move_node:"↕ Moved"};
+              const colors=['#f97316','#06b6d4','#a855f7','#22c55e','#f59e0b'];
+              const color=colors[Math.abs((entry.user_id||'').charCodeAt(0))%colors.length];
+              const when=new Date(entry.created_at);
+              const ago=Date.now()-when>86400000?when.toLocaleDateString():when.toLocaleTimeString();
+              return(
+                <div key={entry.id||i} style={{display:"flex",gap:8,padding:"6px 4px",
+                  borderBottom:"1px solid var(--border2)"}}>
+                  <div style={{width:22,height:22,borderRadius:"50%",background:color,flexShrink:0,
+                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,
+                    color:"#fff",fontWeight:700,marginTop:1}}>
+                    {(entry.user_name||"?")[0].toUpperCase()}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,color:"var(--text)"}}>
+                      <span style={{fontWeight:600,color}}>{entry.user_name||"User"}</span>
+                      {" "}{actionMap[entry.action]||entry.action}
+                      {entry.target_label&&<span style={{color:"var(--accent)"}}> "{entry.target_label}"</span>}
+                    </div>
+                    <div style={{fontSize:9,color:"var(--text4)",marginTop:2}}>{ago}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* ── Share Modal ── */}
       {showShare&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center"}}
@@ -3577,6 +3706,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.11",date:"Apr 2026",items:[
+                  "Collab WS: echo prevention fixed using object identity (nodes===lastRemoteNodes.current)",
+                  "Collab WS: backend now fetches display_name, broadcasts room_state + user_joined events",
+                  "Collab WS: auto-reconnect on unexpected disconnect (3s delay)",
+                  "Remote cursors: colored dots with name tags show each user's position live",
+                  "Changes panel (📋): floating panel showing who changed what with timestamps",
+                  "Backend logs add/delete/edit_node and add/delete_edge to map_changelog table",
+                  "WS server broadcasts userId+userName so all receiving clients know who made changes",
+                ]},
                 {v:"v5.10",date:"Apr 2026",items:[
                   "Real-time collaboration: changes now broadcast immediately via applyNodes/applyEdges hooks",
                   "WS auth fixed: uses getAccessToken() getter instead of missing localStorage key",

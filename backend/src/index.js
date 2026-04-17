@@ -123,32 +123,117 @@ const rooms = new Map();
 wss.on("connection", (ws, req) => {
   let mapId = null;
   let userId = null;
+  let userDisplayName = "Unknown";
 
-  ws.on("message", raw => {
+  ws.on("message", async raw => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 
     if (msg.type === "join") {
-      // Authenticate token
       try {
         const payload = jwt.verify(msg.token, process.env.JWT_SECRET);
         userId = payload.sub || payload.id;
-      } catch { ws.close(1008, "Unauthorized"); return; }
+      } catch (e) {
+        console.warn("[ws] auth failed:", e.message);
+        ws.close(1008, "Unauthorized"); return;
+      }
       mapId = msg.mapId;
+      // Fetch display name
+      try {
+        const u = await query("SELECT display_name FROM users WHERE id=$1", [userId]);
+        if (u.rows[0]) userDisplayName = u.rows[0].display_name || "User";
+      } catch {}
       if (!rooms.has(mapId)) rooms.set(mapId, new Set());
       rooms.get(mapId).add(ws);
-      ws.mapId = mapId;
-      ws.userId = userId;
-      console.log(`[ws] user ${userId} joined map ${mapId}`);
+      ws.mapId = mapId; ws.userId = userId; ws.userName = userDisplayName;
+      console.log(`[ws] "${userDisplayName}" joined map ${mapId}`);
+      // Tell the joining user who else is in the room
+      const others = [];
+      rooms.get(mapId).forEach(c => {
+        if (c !== ws && c.readyState === 1)
+          others.push({ userId: c.userId, userName: c.userName });
+      });
+      ws.send(JSON.stringify({ type: "room_state", users: others }));
+      // Tell others this user joined
+      rooms.get(mapId).forEach(c => {
+        if (c !== ws && c.readyState === 1)
+          c.send(JSON.stringify({ type: "user_joined", userId, userName: userDisplayName }));
+      });
       return;
     }
 
-    if (!mapId) return; // not joined yet
+    if (!mapId || !userId) return;
 
-    // Broadcast to all OTHER clients in the room
     const room = rooms.get(mapId);
     if (!room) return;
-    const out = JSON.stringify({ ...msg, userId });
+
+    // Log significant changes to map_changelog
+    if (msg.type === "nodes_update" && Array.isArray(msg.nodes)) {
+      try {
+        // Detect what changed by comparing with last snapshot
+        const snap = ws._lastNodes;
+        if (snap) {
+          const snapById = {};
+          snap.forEach(n => { snapById[n.id] = n; });
+          const curById = {};
+          msg.nodes.forEach(n => { curById[n.id] = n; });
+          // New nodes
+          for (const n of msg.nodes) {
+            if (!snapById[n.id]) {
+              await query(
+                "INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
+                [mapId, userId, userDisplayName, "add_node", n.id, n.title || n.type]
+              );
+            } else if (snapById[n.id].title !== n.title && n.title) {
+              await query(
+                "INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
+                [mapId, userId, userDisplayName, "edit_node", n.id, n.title]
+              );
+            }
+          }
+          // Deleted nodes
+          for (const n of snap) {
+            if (!curById[n.id]) {
+              await query(
+                "INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
+                [mapId, userId, userDisplayName, "delete_node", n.id, n.title || n.type]
+              );
+            }
+          }
+        }
+        ws._lastNodes = msg.nodes;
+      } catch (e) { console.error("[ws] changelog err:", e.message); }
+    }
+
+    if (msg.type === "edges_update" && Array.isArray(msg.edges)) {
+      try {
+        const snap = ws._lastEdges;
+        if (snap) {
+          const snapIds = new Set(snap.map(e => e.id));
+          for (const e of msg.edges) {
+            if (!snapIds.has(e.id)) {
+              await query(
+                "INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
+                [mapId, userId, userDisplayName, "add_edge", e.id, e.label || "edge"]
+              );
+            }
+          }
+          const curIds = new Set(msg.edges.map(e => e.id));
+          for (const e of snap) {
+            if (!curIds.has(e.id)) {
+              await query(
+                "INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
+                [mapId, userId, userDisplayName, "delete_edge", e.id, e.label || "edge"]
+              );
+            }
+          }
+        }
+        ws._lastEdges = msg.edges;
+      } catch (e) { console.error("[ws] changelog err:", e.message); }
+    }
+
+    // Broadcast to all OTHER clients
+    const out = JSON.stringify({ ...msg, userId, userName: userDisplayName });
     room.forEach(client => {
       if (client !== ws && client.readyState === 1) client.send(out);
     });
@@ -158,10 +243,9 @@ wss.on("connection", (ws, req) => {
     if (mapId && rooms.has(mapId)) {
       rooms.get(mapId).delete(ws);
       if (rooms.get(mapId).size === 0) rooms.delete(mapId);
-      // Notify others user left
       const room = rooms.get(mapId);
       if (room) {
-        const out = JSON.stringify({ type: "user_left", userId });
+        const out = JSON.stringify({ type: "user_left", userId, userName: userDisplayName });
         room.forEach(c => { if (c.readyState === 1) c.send(out); });
       }
     }
