@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { getMap, saveMap, saveVersion } from "../api/client.js";
+import { getMap, saveMap, saveVersion, apiFetch } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
