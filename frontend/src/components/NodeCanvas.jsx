@@ -1507,22 +1507,26 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── WebSocket real-time collaboration ─────────────────────────────
   //
-  // Echo-prevention via object identity:
-  // When we receive nodes from remote and call setNodes(msg.nodes),
-  // React stores msg.nodes as the state. In the next render, nodes===msg.nodes
-  // (same reference). The broadcast effect checks this and skips re-sending.
+  // KEY DESIGN:
+  // 1. wsConnected (React state) triggers re-renders so broadcast effects
+  //    fire correctly after the async WS connect completes.
+  // 2. Echo prevention via object identity: setNodes(msg.nodes) stores
+  //    that exact reference. The broadcast effect checks nodes===lastRemoteNodes
+  //    to know "this change came from remote, don't echo it back".
+  // 3. On joining a room, we broadcast our full state so other users sync.
   //
+  const [wsConnected, setWsConnected] = useState(false);
   const lastRemoteNodes = useRef(null);
   const lastRemoteEdges = useRef(null);
 
   useEffect(()=>{
-    if(!mapId||!collab) return;
+    if(!mapId || !collab){ setWsConnected(false); return; }
     let ws;
     const connect = async () => {
       try{ await apiFetch('/auth/me'); }catch{}
       const token = getAccessToken();
       if(!token){
-        console.error('[collab] No auth token — cannot connect. Try re-logging in.');
+        console.error('[collab] No auth token');
         setCollab(false); return;
       }
       const proto = window.location.protocol==='https:' ? 'wss:' : 'ws:';
@@ -1531,52 +1535,60 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       ws.onopen = () => {
         ws.send(JSON.stringify({type:'join', mapId, token}));
-        console.log('[collab] WS open, joining map', mapId);
+        console.log('[collab] WS open, joining', mapId);
+        setWsConnected(true); // ← triggers broadcast effects to fire with open WS
       };
 
       ws.onmessage = e => {
         try {
           const msg = JSON.parse(e.data);
-          console.log('[collab] recv', msg.type, msg.userId||'');
-
           if (msg.type === 'nodes_update') {
-            // Store the received reference BEFORE setNodes so identity check works
-            lastRemoteNodes.current = msg.nodes;
+            lastRemoteNodes.current = msg.nodes; // store ref BEFORE setNodes
             setNodes(msg.nodes);
           }
-          if (msg.type === 'edges_update') {
+          else if (msg.type === 'edges_update') {
             lastRemoteEdges.current = msg.edges;
             setEdges(msg.edges);
           }
-          if (msg.type === 'cursor_move') {
+          else if (msg.type === 'cursor_move') {
             setCollabUsers(prev=>({...prev, [msg.userId]:{
-              userId: msg.userId, userName: msg.userName||'User',
-              x: msg.x, y: msg.y, color: msg.color||'#f97316'
+              userId:msg.userId, userName:msg.userName||'User',
+              x:msg.x, y:msg.y
             }}));
           }
-          if (msg.type === 'user_joined' || msg.type === 'room_state') {
-            const users = msg.type==='user_joined'
-              ? [{userId:msg.userId, userName:msg.userName}]
-              : (msg.users||[]);
-            setCollabUsers(prev=>{
-              const n={...prev};
-              users.forEach(u=>{ n[u.userId]={...( n[u.userId]||{}), ...u}; });
-              return n;
-            });
+          else if (msg.type === 'user_joined') {
+            setCollabUsers(prev=>({...prev, [msg.userId]:{userId:msg.userId,userName:msg.userName||'User'}}));
+            // New user joined — send them our current state
+            if(ws.readyState===1){
+              ws.send(JSON.stringify({type:'nodes_update', nodes:nodesRef.current}));
+              ws.send(JSON.stringify({type:'edges_update', edges:edgesRef.current}));
+            }
           }
-          if (msg.type === 'user_left') {
+          else if (msg.type === 'room_state') {
+            (msg.users||[]).forEach(u=>{
+              setCollabUsers(prev=>({...prev,[u.userId]:{...( prev[u.userId]||{}),...u}}));
+            });
+            // Room already has users — broadcast our state to sync with them
+            setTimeout(()=>{
+              if(ws.readyState===1){
+                ws.send(JSON.stringify({type:'nodes_update', nodes:nodesRef.current}));
+                ws.send(JSON.stringify({type:'edges_update', edges:edgesRef.current}));
+              }
+            }, 300);
+          }
+          else if (msg.type === 'user_left') {
             setCollabUsers(prev=>{const n={...prev};delete n[msg.userId];return n;});
           }
-        } catch(err){ console.error('[collab] parse error', err); }
+        } catch(err){ console.error('[collab] msg error', err); }
       };
 
-      ws.onerror = err => console.error('[collab] WS error', err);
+      ws.onerror = err => console.error('[collab] ws error', err);
       ws.onclose = ev => {
         wsRef.current = null;
-        console.warn('[collab] disconnected', ev.code, ev.reason||'');
-        // Auto-reconnect once after unexpected close
-        if(ev.code !== 1000 && ev.code !== 1008) {
-          setTimeout(()=>{ if(collab) connect(); }, 3000);
+        setWsConnected(false);
+        console.warn('[collab] closed', ev.code, ev.reason||'');
+        if(ev.code !== 1000 && ev.code !== 1008){
+          setTimeout(()=>{ if(collab && mapId) connect(); }, 3000);
         }
       };
     };
@@ -1584,28 +1596,29 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     return ()=>{
       if(ws && ws.readyState <= 1) ws.close(1000, 'leaving');
       wsRef.current = null;
+      setWsConnected(false);
     };
   },[mapId, collab]);
 
-  // ── Send nodes when they change (skip if this change came from remote) ──
+  // ── Broadcast node changes ────────────────────────────────────────
+  // Depends on wsConnected so it fires when WS opens, not just when nodes change.
   useEffect(()=>{
-    if(!collab) return;
+    if(!collab || !wsConnected) return;
     const ws = wsRef.current;
     if(!ws || ws.readyState !== 1) return;
-    // Identity check: if nodes IS the object we just received, don't echo it back
-    if(nodes === lastRemoteNodes.current) return;
+    if(nodes === lastRemoteNodes.current) return; // came from remote, don't echo
     ws.send(JSON.stringify({type:'nodes_update', nodes}));
-  },[nodes, collab]);
+  },[nodes, collab, wsConnected]);
 
   useEffect(()=>{
-    if(!collab) return;
+    if(!collab || !wsConnected) return;
     const ws = wsRef.current;
     if(!ws || ws.readyState !== 1) return;
     if(edges === lastRemoteEdges.current) return;
     ws.send(JSON.stringify({type:'edges_update', edges}));
-  },[edges, collab]);
+  },[edges, collab, wsConnected]);
 
-  // ── Send cursor position ───────────────────────────────────────────
+  // ── Send cursor position ─────────────────────────────────────────
   const sendCursor = useCallback((x, y)=>{
     const ws = wsRef.current;
     if(!collab||!ws||ws.readyState!==1) return;
@@ -2822,8 +2835,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {/* Collab toggle */}
               <button onClick={()=>setCollab(v=>!v)}
                 style={{...tbtn(collab,"#7B1FA2"),display:"flex",alignItems:"center",gap:4,position:"relative"}}
-                title={collab?"Collaboration ON — changes sync in real-time":"Enable real-time collaboration"}>
-                {collab?"🟢":"⚪"} <span style={{fontSize:10}}>Collab</span>
+                title={collab?(wsConnected?"Collaboration LIVE — syncing in real-time":"Collaboration ON — connecting…"):"Enable real-time collaboration"}>
+                {collab?(wsConnected?"🟢":"🟡"):"⚪"} <span style={{fontSize:10}}>Collab</span>
                 {collab&&Object.keys(collabUsers).length>0&&(
                   <span style={{position:"absolute",top:-4,right:-4,fontSize:7,
                     background:"var(--success)",color:"#fff",borderRadius:"50%",
