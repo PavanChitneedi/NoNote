@@ -3442,7 +3442,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       const collabs = await apiFetch(`/maps/${mapId}/collaborators`).catch(()=>[]);
                       setShareUsers(Array.isArray(collabs)?collabs:[]);
                       setTimeout(()=>setShareStatus(null),3000);
-                    }catch(err){setShareStatus("✗ "+(err?.message||"Failed"));setTimeout(()=>setShareStatus(null),5000);}  id="nn-share-invite-btn"
+                    }catch(err){setShareStatus("✗ "+(err?.message||"Failed"));setTimeout(()=>setShareStatus(null),5000);}
+                  }}
+                  id="nn-share-invite-btn"
                   style={{background:"var(--accent)",border:"none",borderRadius:"var(--radius-sm)",
                     padding:"6px 14px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"var(--font-ui)",fontWeight:700}}>
                   Invite
