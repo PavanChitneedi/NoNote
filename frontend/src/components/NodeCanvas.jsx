@@ -498,6 +498,156 @@ function exportAsNoNote(nodes, edges, mapMeta) {
   URL.revokeObjectURL(a.href);
 }
 
+function exportAsPDF(nodes, edges, mapTitle) {
+  if(!nodes.length){ alert("No nodes to export."); return; }
+  // Build same HTML as visual export, open print-optimised version
+  const PAD=60;
+  const minX=Math.min(...nodes.map(n=>n.x))-PAD;
+  const minY=Math.min(...nodes.map(n=>n.y))-PAD;
+  const maxX=Math.max(...nodes.map(n=>n.x+(n.w||220)))+PAD;
+  const maxY=Math.max(...nodes.map(n=>n.y+(n.h||96)))+PAD;
+  const W=maxX-minX, H=maxY-minY;
+
+  const svgEdges = edges.map(e=>{
+    const fn=nodes.find(n=>n.id===e.from), tn=nodes.find(n=>n.id===e.to);
+    if(!fn||!tn) return "";
+    const fcx=fn.x-minX+(fn.w||220)/2, fcy=fn.y-minY+(fn.h||96)/2;
+    const tcx=tn.x-minX+(tn.w||220)/2, tcy=tn.y-minY+(tn.h||96)/2;
+    const ctrl=Math.max(50,Math.sqrt((tcx-fcx)**2+(tcy-fcy)**2)*0.4);
+    const dx=tcx-fcx,dy=tcy-fcy,d=Math.sqrt(dx*dx+dy*dy)||1;
+    return `<path d="M ${fcx} ${fcy} C ${fcx+dx/d*ctrl} ${fcy+dy/d*ctrl}, ${tcx-dx/d*ctrl} ${tcy-dy/d*ctrl}, ${tcx} ${tcy}" stroke="#4d9be6" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>`;
+  }).join("");
+
+  const nodeHtml = nodes.map(n=>{
+    const t=NT[n.type]||NT.note;
+    const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
+    return `<div class="nn-node" style="left:${n.x-minX}px;top:${n.y-minY}px;width:${n.w||220}px;min-height:${n.h||96}px;border-color:${t.color}65">
+      <div class="nn-hdr" style="background:${t.color}15;border-bottom:1px solid ${t.color}28;padding:7px 10px 4px">
+        <b style="font-size:13px">${t.icon} ${n.title||""}</b>
+        ${n.description?`<div style="font-size:10px;color:#666;margin-top:2px">${n.description}</div>`:""}
+        <div style="font-size:8px;text-align:right;color:${t.color};opacity:.7;margin-top:1px">${t.label}</div>
+      </div>
+      ${notes.length?`<div style="padding:6px 10px;font-size:10px">${notes.map(nt=>`<div><b style="color:${t.color}">${nt.title||"Note"}</b><div>${(nt.content||"").replace(/<[^>]+>/g," ")}</div></div>`).join("")}</div>`:""}
+    </div>`;
+  }).join("");
+
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${mapTitle||"NoNote"}</title>
+<style>
+  @page{size:${Math.ceil(W*0.75+40)}px ${Math.ceil(H*0.75+80)}px;margin:20px}
+  body{margin:0;background:#fff;font-family:Arial,sans-serif}
+  .canvas{position:relative;width:${W}px;height:${H}px;transform:scale(0.75);transform-origin:top left}
+  .nn-node{position:absolute;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;overflow:hidden;font-size:12px}
+  svg{position:absolute;inset:0;pointer-events:none}
+</style></head><body>
+<h2 style="margin:0 0 10px;font-size:14px;color:#333">${mapTitle||"NoNote Map"} — ${new Date().toLocaleDateString()}</h2>
+<div class="canvas">
+  <svg width="${W}" height="${H}"><defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4d9be6"/></marker></defs>${svgEdges}</svg>
+  ${nodeHtml}
+</div>
+<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
+</body></html>`;
+
+  const w=window.open("","_blank","width=800,height=600");
+  if(w){ w.document.write(html); w.document.close(); }
+  else alert("Allow popups to use PDF export.");
+}
+
+function exportAsHTML(nodes, edges, mapTitle) {
+  if(!nodes.length){ alert("No nodes to export."); return; }
+  const PAD=60;
+  const minX=Math.min(...nodes.map(n=>n.x))-PAD;
+  const minY=Math.min(...nodes.map(n=>n.y))-PAD;
+  const maxX=Math.max(...nodes.map(n=>n.x+(n.w||220)))+PAD;
+  const maxY=Math.max(...nodes.map(n=>n.y+(n.h||96)))+PAD;
+  const W=maxX-minX, H=maxY-minY;
+
+  const nodeHtml = nodes.map(n=>{
+    const t=NT[n.type]||NT.note;
+    const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
+    return `<div class="nn-node" style="left:${n.x-minX}px;top:${n.y-minY}px;width:${n.w||220}px;min-height:${n.h||96}px;border-color:${t.color}65;">
+      <div class="nn-header" style="background:${t.color}1a;border-bottom-color:${t.color}28">
+        <span class="nn-icon">${t.icon}</span>
+        <span class="nn-title">${n.title||""}</span>
+        ${n.description?`<div class="nn-desc">${n.description}</div>`:""}
+        <span class="nn-type" style="color:${t.color}80">${t.label}</span>
+      </div>
+      ${notes.length?`<div class="nn-notes">${notes.map(nt=>`<div class="nn-note"><div class="nn-note-title">${nt.title||"Note"}</div><div class="nn-note-content">${nt.content||""}</div></div>`).join("")}</div>`:""}
+    </div>`;
+  }).join("");
+
+  // Build edge SVG paths
+  const svgEdges = edges.map(e=>{
+    const fn=nodes.find(n=>n.id===e.from), tn=nodes.find(n=>n.id===e.to);
+    if(!fn||!tn) return "";
+    const fcx=fn.x-minX+(fn.w||220)/2, fcy=fn.y-minY+(fn.h||96)/2;
+    const tcx=tn.x-minX+(tn.w||220)/2, tcy=tn.y-minY+(tn.h||96)/2;
+    const ctrl=Math.max(50,Math.sqrt((tcx-fcx)**2+(tcy-fcy)**2)*0.4);
+    const dx=tcx-fcx, dy=tcy-fcy;
+    const d=Math.sqrt(dx*dx+dy*dy)||1;
+    const nx=dx/d, ny=dy/d;
+    const c1x=fcx+nx*ctrl, c1y=fcy+ny*ctrl;
+    const c2x=tcx-nx*ctrl, c2y=tcy-ny*ctrl;
+    return `<path d="M ${fcx} ${fcy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tcx} ${tcy}" stroke="#4d9be6" stroke-width="1.5" fill="none" marker-end="url(#arr)"/>`;
+  }).join("");
+
+  const html=`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><title>${mapTitle||"NoNote Map"}</title>
+<style>
+  body{margin:0;background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
+  .canvas{position:relative;width:${W}px;height:${H}px;margin:20px auto;}
+  .nn-node{position:absolute;background:#161b22;border:1px solid #30363d;border-radius:8px;overflow:hidden;}
+  .nn-header{padding:8px 10px 5px;}
+  .nn-icon{font-size:13px;margin-right:6px;}
+  .nn-title{font-size:13px;font-weight:700;color:#e6edf3;}
+  .nn-desc{font-size:10px;color:#7d8590;margin-top:2px;}
+  .nn-type{font-size:8px;opacity:.7;display:block;text-align:right;margin-top:2px;}
+  .nn-notes{padding:6px 10px;border-top:1px solid #21262d;}
+  .nn-note{margin-bottom:6px;}
+  .nn-note-title{font-size:10px;font-weight:600;color:#58a6ff;}
+  .nn-note-content{font-size:10px;color:#7d8590;margin-top:2px;}
+  svg.edges{position:absolute;inset:0;pointer-events:none;}
+</style></head>
+<body><div class="canvas">
+  <svg class="edges" width="${W}" height="${H}">
+    <defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4d9be6"/></marker></defs>
+    ${svgEdges}
+  </svg>
+  ${nodeHtml}
+</div></body></html>`;
+
+  const blob=new Blob([html],{type:"text/html"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`${(mapTitle||"map").replace(/[^a-z0-9]/gi,"-")}.html`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
+function exportAsDoc(nodes, mapTitle) {
+  // Plain-text documentation export (Simple mode — no LLM)
+  const lines=[`# ${mapTitle||"NoNote Map"}`,`*Exported: ${new Date().toLocaleDateString()}*`,""];
+  nodes.forEach(n=>{
+    const t=NT[n.type]||NT.note;
+    lines.push(`## ${t.icon} ${n.title||"Untitled"} (${t.label})`);
+    if(n.description) lines.push(`*${n.description}*`);
+    const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
+    if(notes.length){
+      lines.push("### Notes");
+      notes.forEach(nt=>{
+        lines.push(`**${nt.title||"Note"}**`);
+        lines.push((nt.content||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim());
+      });
+    }
+    lines.push("");
+  });
+  const blob=new Blob([lines.join("\n")],{type:"text/markdown"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`${(mapTitle||"map").replace(/[^a-z0-9]/gi,"-")}.md`;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+
 async function exportAsPNG(nodes, edges, mapTitle) {
   if(!nodes.length){alert("No nodes to export.");return;}
   const PAD=60;
@@ -657,7 +807,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
-  const [showChangelog, setShowChangelog]  = useState(false);
+  const [showChangelog,    setShowChangelog]    = useState(false);
+  const [editingMapTitle,  setEditingMapTitle]  = useState(null); // null or string
+  const [groupBoxes,       setGroupBoxes]       = useState([]); // [{id,x,y,w,h,label,color,lineStyle,bgColor}]
+  const [drawingGroupBox,  setDrawingGroupBox]  = useState(null); // {startX,startY,endX,endY} while drawing
+  const [editingGroupBox,  setEditingGroupBox]  = useState(null); // id of box being edited
+  const [draggingGB,       setDraggingGB]       = useState(null); // {id,startMX,startMY,origX,origY}
+  const [resizingGB,       setResizingGB]       = useState(null); // {id,startMX,startMY,origW,origH,origX,origY}
   const [showShare,     setShowShare]      = useState(false);
   const [collab,        setCollab]         = useState(false); // collaboration mode on
   const [collabUsers,   setCollabUsers]    = useState({}); // {userId: {cursor,color,name}}
@@ -666,6 +822,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [shareEmail,    setShareEmail]     = useState("");
   const [sharePerm,     setSharePerm]      = useState("viewer");
   const [shareStatus,   setShareStatus]    = useState(null);
+  const [shareSearch,   setShareSearch]    = useState([]); // user search results
   const [sidebarIconOnly, setSidebarIconOnly] = useState(false);
   const [sidebarDense,    setSidebarDense]    = useState(false); // multi-icon-per-row
   // Feature: Comment pins
@@ -738,12 +895,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        await saveMap(mapId, { nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})), edges:es });
+        await saveMap(mapId, { nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})), edges:es, groupBoxes });
         setSaveState("saved"); setSaveMsg("Saved ✓");
         setTimeout(()=>{setSaveState("idle");setSaveMsg("");},2500);
         clearTimeout(versionTimer.current);
         versionTimer.current = setTimeout(async()=>{
-          try{ await saveVersion(mapId,{nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})),edges:es,label:"Auto-save"}); }catch{}
+          try{ await saveVersion(mapId,{nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})),edges:es,groupBoxes,label:"Auto-save"}); }catch{}
         }, 5*60*1000);
       } catch {
         setSaveState("error"); setSaveMsg("Save failed — retry in 10s");
@@ -760,6 +917,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       return next;
     });
   }, [scheduleSave,pushHistory]);
+  useEffect(()=>{
+    if(!mapId||!canEdit) return;
+    // Debounced save when group boxes change
+    const t=setTimeout(()=>{
+      setNodes(ns=>{ setEdges(es=>{ scheduleSave(ns,es); return es; }); return ns; });
+    },800);
+    return ()=>clearTimeout(t);
+  },[groupBoxes,mapId,canEdit]);
 
   const applyEdges = useCallback((fn, skipHistory=false) => {
     setEdges(prev=>{
@@ -799,6 +964,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         toAnchor:e.to_anchor||null,
         midOff:e.mid_off||null,
       }));
+      if(Array.isArray(data.groupBoxes)) setGroupBoxes(data.groupBoxes);
       setNodes(ns); setEdges(es); pushHistory(ns,es);
     }).catch(err=>{ console.error('[NodeCanvas] load error:', err); }).finally(()=>setLoading(false));
   },[mapId]);
@@ -884,6 +1050,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         return;
       }
       if(e.code==="KeyC"&&canEdit){setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);return;}
+      if(e.code==="KeyG"&&!isInput&&canEdit){setMode(m=>m==="groupbox"?"select":"groupbox");return;}
       if(e.code==="KeyS"&&canEdit){setMode("select");setDrawingEdge(null);return;}
       if(e.code==="KeyE"&&canEdit){
         if(selected.size===1&&propsMode==='popup'&&!nodePopup){
@@ -1085,6 +1252,35 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           setSnapGuides(guides);
         }
       }
+      if(draggingGB&&canvasRef.current){
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const mx=(cx-rect.left)*s+el.scrollLeft*s;
+        const my=(cy-rect.top)*s+el.scrollTop*s;
+        const dx=mx-draggingGB.startMX, dy=my-draggingGB.startMY;
+        setGroupBoxes(bs=>bs.map(b=>b.id===draggingGB.id
+          ?{...b,x:draggingGB.origX+dx,y:draggingGB.origY+dy}:b));
+        return;
+      }
+      if(resizingGB&&canvasRef.current){
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const mx=(cx-rect.left)*s+el.scrollLeft*s;
+        const my=(cy-rect.top)*s+el.scrollTop*s;
+        const dx=mx-resizingGB.startMX, dy=my-resizingGB.startMY;
+        setGroupBoxes(bs=>bs.map(b=>b.id===resizingGB.id
+          ?{...b,w:Math.max(80,resizingGB.origW+dx),h:Math.max(60,resizingGB.origH+dy)}:b));
+        return;
+      }
+      if(groupBoxDrawRef.current&&canvasRef.current){
+        const el=canvasRef.current;
+        const rect=el.getBoundingClientRect(); const s=1/zoom;
+        const mx=(cx-rect.left)*s+el.scrollLeft*s;
+        const my=(cy-rect.top)*s+el.scrollTop*s;
+        const updated={...groupBoxDrawRef.current,endX:mx,endY:my};
+        groupBoxDrawRef.current=updated;
+        setDrawingGroupBox(updated);
+      }
       if(boxSelRef.current&&canvasRef.current){
         const el=canvasRef.current;
         const rect=el.getBoundingClientRect(); const s=1/zoom;
@@ -1119,6 +1315,22 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           setSelected(sel);
         }
         boxSelRef.current=null; setBoxSel(null);
+        // Commit group box
+        if(groupBoxDrawRef.current){
+          const {startX,startY,endX,endY}=groupBoxDrawRef.current;
+          const w=Math.abs(endX-startX), h=Math.abs(endY-startY);
+          if(w>30&&h>30){
+            const newBox={
+              id:Math.random().toString(36).slice(2),
+              x:Math.min(startX,endX), y:Math.min(startY,endY), w, h,
+              label:"Group",color:"var(--accent)",lineStyle:"solid",bgColor:"transparent"
+            };
+            setGroupBoxes(prev=>[...prev,newBox]);
+          }
+          groupBoxDrawRef.current=null; setDrawingGroupBox(null);
+        if(draggingGB) setDraggingGB(null);
+        if(resizingGB) setResizingGB(null);
+        }
       }
       setDragging(null); setResizing(null); setSnapGuides([]);
     };
@@ -1200,8 +1412,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   },[mode]);
 
   // ── Canvas mousedown — start box select ───────────────────
+  // ── Group box drawing ─────────────────────────────────────
+  const groupBoxDrawRef = useRef(null);
+
   const handleCanvasMouseDown=useCallback((e)=>{
-    if(mode!=="select"||!canEdit) return;
+    if(mode==="groupbox"&&canEdit){
+      const target=e.target;
+      if(target.closest(".nn-node")) return;
+      const el=canvasRef.current; if(!el) return;
+      const rect=el.getBoundingClientRect(); const s=1/zoom;
+      const x=(e.clientX-rect.left)*s+el.scrollLeft*s;
+      const y=(e.clientY-rect.top)*s+el.scrollTop*s;
+      const gb={startX:x,startY:y,endX:x,endY:y};
+      groupBoxDrawRef.current=gb;
+      setDrawingGroupBox(gb);
+      return;
+    }
+    if(mode!=="select") return; // allow box-select in view mode too
     // Only start box-select if clicking directly on canvas background (not a node/edge)
     const target=e.target;
     if(target.closest(".nn-node")) return;
@@ -1345,16 +1572,36 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             groups[tk].push({eid:e.id,isFrom:false});
           });
 
-          // Second pass: assign evenly-spaced t values
+          // Second pass: sort items by other-node cross-axis center, assign t values
+          // This ensures arrows going to higher nodes get lower t-offsets (no crossing)
           const anchorOverrides = {}; // edgeId -> {fromAnchor?, toAnchor?}
+          const edgeMap = {};
+          es.forEach(e=>{ edgeMap[e.id]=e; });
+
           Object.entries(groups).forEach(([key,items])=>{
-            if(items.length<2) return; // only spread if multiple edges share a port
             const [nid,side]=key.split(":");
-            items.forEach((item,i)=>{
-              const t=(i+1)/(items.length+1); // e.g. 2 edges: 0.33, 0.67
+            const isHorizSide = side==="left"||side==="right";
+            
+            // Sort by the cross-axis center of the other node
+            const sorted = [...items].sort((a,b)=>{
+              const ea=edgeMap[a.eid], eb=edgeMap[b.eid];
+              if(!ea||!eb) return 0;
+              const oaId = a.isFrom ? ea.to   : ea.from;
+              const obId = b.isFrom ? eb.to   : eb.from;
+              const na=nodeMap[oaId], nb=nodeMap[obId];
+              if(!na||!nb) return 0;
+              // For horizontal sides (left/right), sort by Y of target
+              if(isHorizSide) return (na.y+(na.h||DEF_H)/2) - (nb.y+(nb.h||DEF_H)/2);
+              // For vertical sides (top/bottom), sort by X of target
+              return (na.x+(na.w||DEF_W)/2) - (nb.x+(nb.w||DEF_W)/2);
+            });
+            
+            sorted.forEach((item,i)=>{
+              const n = sorted.length;
+              const t = n===1 ? 0.5 : (i+1)/(n+1);
               if(!anchorOverrides[item.eid]) anchorOverrides[item.eid]={};
-              if(item.isFrom) anchorOverrides[item.eid].fromAnchor={side,t};
-              else            anchorOverrides[item.eid].toAnchor={side,t};
+              if(item.isFrom) anchorOverrides[item.eid].fromAnchor={side,t:Math.round(t*100)/100};
+              else            anchorOverrides[item.eid].toAnchor={side,t:Math.round(t*100)/100};
             });
           });
 
@@ -2280,7 +2527,34 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <span onClick={onHome} title="Home" style={{fontSize:17,cursor:"pointer",padding:"0 3px",userSelect:"none",lineHeight:1}}>⬡</span>
             <button onClick={onBack} style={tbtn(false)}>← Maps</button>
             <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
-            <span style={{fontSize:12,fontWeight:700,color:"var(--accent)",maxWidth:130,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{mapMeta?.title}</span>
+            {editingMapTitle?(
+              <input autoFocus value={editingMapTitle}
+                onChange={e=>setEditingMapTitle(e.target.value)}
+                onBlur={()=>{
+                  if(editingMapTitle.trim()&&editingMapTitle!==mapMeta?.title){
+                    fetch(`/api/maps/${mapId}`,{method:"PATCH",
+                      headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem('nn_token')}`},
+                      body:JSON.stringify({title:editingMapTitle.trim()})})
+                      .then(()=>setMapMeta(m=>({...m,title:editingMapTitle.trim()})));
+                  }
+                  setEditingMapTitle(null);
+                }}
+                onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape")e.target.blur();e.stopPropagation();}}
+                style={{fontSize:12,fontWeight:700,color:"var(--accent)",background:"var(--bg3)",
+                  border:"1px solid var(--accent)",borderRadius:4,padding:"1px 6px",outline:"none",
+                  maxWidth:180,fontFamily:"var(--font-ui)"}}
+              />
+            ):(
+              <span onClick={()=>setEditingMapTitle(mapMeta?.title||"")}
+                title="Click to rename map"
+                style={{fontSize:12,fontWeight:700,color:"var(--accent)",maxWidth:160,overflow:"hidden",
+                  textOverflow:"ellipsis",whiteSpace:"nowrap",cursor:"pointer",
+                  borderBottom:"1px dashed transparent",transition:"border-color .15s"}}
+                onMouseEnter={e=>e.currentTarget.style.borderBottomColor="var(--accent)"}
+                onMouseLeave={e=>e.currentTarget.style.borderBottomColor="transparent"}>
+                {mapMeta?.title}
+              </span>
+            )}
             {saveMsg&&<span style={{fontSize:9,color:saveMsgColor,whiteSpace:"nowrap",marginLeft:4}}>{saveMsg}</span>}
           </div>
 
@@ -2320,10 +2594,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </button>
               {showExportMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
-                <div style={{position:"fixed",top:82,right:0,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
+                <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
-                  {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],["🖼","PNG Image","Visual snapshot"],["📦",".nonote","Re-importable bundle"]].map(([ic,lbl,desc],i)=>(
-                    <div key={i} onClick={()=>{setShowExportMenu(false);if(i===2)exportAsPNG(nodes,edges,mapMeta?.title);else if(i===3)exportAsNoNote(nodes,edges,mapMeta);else setShowExport(true);}}
+                  {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],["🖼","PNG Image","Visual snapshot"],["📦",".nonote","Re-importable bundle"],["🌐","HTML View","Interactive read-only page"],["📝","Markdown Doc","Documentation"],["🖨","PDF Print","Print / Save as PDF"]].map(([ic,lbl,desc],i)=>(
+                    <div key={i} onClick={()=>{setShowExportMenu(false);
+                      if(i===2) exportAsPNG(nodes,edges,mapMeta?.title);
+                      else if(i===3) exportAsNoNote(nodes,edges,mapMeta);
+                      else if(i===4) exportAsHTML(nodes,edges,mapMeta?.title);
+                      else if(i===5) exportAsDoc(nodes,mapMeta?.title);
+                      else if(i===6) exportAsPDF(nodes,edges,mapMeta?.title);
+                      else setShowExport(true);}}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
                       onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
@@ -2344,7 +2624,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </button>
               {showAppMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
-                <div style={{position:"fixed",top:82,right:0,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:6,minWidth:160}}>
+                <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:6,minWidth:160}}>
                   {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
                     <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
                       style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
@@ -2399,12 +2679,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {!isMobile&&<kbd style={{fontSize:8,color:showSearch?"rgba(255,255,255,.7)":"var(--text4)",background:showSearch?"rgba(255,255,255,.15)":"var(--bg3)",border:`1px solid ${showSearch?"rgba(255,255,255,.3)":"var(--border)"}`,borderRadius:3,padding:"1px 4px",fontFamily:"var(--font-ui)"}}>Ctrl+F</kbd>}
             </button>
 
-            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find in map\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View mode (or open popup)\nF2  Rename selected node\nN  Add note to selected node\nV  Version history\nC  Connect mode\nSpace  Quick capture"}
+            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find in map\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View mode (or open popup)\nF2  Rename selected node\nN  Add note to selected node\nV  Version history\nC  Connect mode\nG  Draw group box\nSpace  Quick capture"}
               style={{fontSize:11,color:"var(--text4)",cursor:"help",borderBottom:"1px dashed var(--text4)",padding:"0 3px",marginLeft:2}}>⌨</span>}
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.6 ✦
+              v5.8 ✦
             </button>
           </div>
         </div>
@@ -2481,6 +2761,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
               <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select mode (S)">↖ Select</button>
               <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} style={tbtn(mode==="connect","#6C63FF")} title="Connect nodes (C)">⤳ Connect</button>
+              <button onClick={()=>setMode(m=>m==="groupbox"?"select":"groupbox")}
+                style={tbtn(mode==="groupbox","#FF9800")} title="Draw group box (G)">▭ Group</button>
 
               {/* Connection style — only in connect mode */}
               {mode==="connect"&&(
@@ -2494,7 +2776,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   </button>
                   {showConnDropdown&&(<>
                     <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
-                    <div style={{position:"fixed",top:82,left:8,zIndex:501,background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
+                    <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
                       {EDGE_SECTIONS.map(section=>{
                         const ss=Object.entries(EDGE_STYLES).filter(([,s])=>s.section===section);
                         return(<div key={section}>
@@ -2546,7 +2828,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </div>
                 {showLayoutMenu&&(<>
                   <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowLayoutMenu(false)}/>
-                  <div style={{position:"fixed",top:82,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",
+                  <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",
                     borderRadius:"var(--radius-md)",boxShadow:"0 8px 28px rgba(0,0,0,.5)",
                     padding:6,minWidth:190,overflow:"hidden"}}>
                     <div style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:1,padding:"4px 8px 6px"}}>LAYOUT DIRECTION</div>
@@ -2822,15 +3104,111 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               )}
 
               {/* Box selection rect */}
-              {boxRect&&boxRect.w>2&&boxRect.h>2&&(
+              {boxRect&&boxRect.w>4&&boxRect.h>4&&(
                 <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:1}}>
                   <rect x={boxRect.x} y={boxRect.y} width={boxRect.w} height={boxRect.h}
-                    fill="var(--accent2)" fillOpacity="0.08"
+                    fill="var(--accent2)" fillOpacity="0.1"
                     stroke="var(--accent)" strokeWidth="1.5" strokeDasharray="5,3"/>
+                  {/* Live count of nodes inside */}
+                  <foreignObject x={boxRect.x+4} y={boxRect.y+4} width="80" height="18">
+                    <div style={{fontSize:9,color:"var(--accent)",background:"var(--bg2)",
+                      padding:"1px 5px",borderRadius:3,display:"inline-block",
+                      border:"1px solid var(--accent)40",opacity:.9,fontFamily:"var(--font-ui)"}}>
+                      {nodesRef.current.filter(n=>{const nw=collW(n),nh=collH(n);return n.x<boxRect.x+boxRect.w&&n.x+nw>boxRect.x&&n.y<boxRect.y+boxRect.h&&n.y+nh>boxRect.y;}).length} nodes
+                    </div>
+                  </foreignObject>
                 </svg>
               )}
 
               {/* Edge SVG — DOM-order before nodes = renders behind nodes */}
+              {/* ── Group boxes (rendered under edges and nodes) ── */}
+              {groupBoxes.map(gb=>(
+                <div key={gb.id}
+                  onMouseDown={e=>{
+                    if(e.target.closest("input")||e.target.closest("button")) return;
+                    e.stopPropagation();
+                    const el=canvasRef.current; if(!el) return;
+                    const rect=el.getBoundingClientRect(); const s=1/zoom;
+                    const mx=(e.clientX-rect.left)*s+el.scrollLeft*s;
+                    const my=(e.clientY-rect.top)*s+el.scrollTop*s;
+                    setDraggingGB({id:gb.id,startMX:mx,startMY:my,origX:gb.x,origY:gb.y});
+                  }}
+                  style={{position:"absolute",left:gb.x,top:gb.y,width:gb.w,height:gb.h,
+                    border:`2px ${gb.lineStyle||"solid"} ${gb.color||"var(--accent)"}`,
+                    borderRadius:6,
+                    background:gb.bgColor&&gb.bgColor!=="transparent"?gb.bgColor+"22":"transparent",
+                    pointerEvents:"all",cursor:"move",boxSizing:"border-box"}}>
+                  {/* Label bar */}
+                  <div style={{position:"absolute",top:-14,left:8,fontSize:10,fontWeight:700,
+                    color:gb.color||"var(--accent)",background:"var(--bg2)",padding:"0 5px",
+                    borderRadius:3,userSelect:"none",display:"flex",alignItems:"center",gap:3}}>
+                    {editingGroupBox===gb.id?(
+                      <input autoFocus value={gb.label||""}
+                        onMouseDown={e=>e.stopPropagation()}
+                        onChange={e=>setGroupBoxes(bs=>bs.map(b=>b.id===gb.id?{...b,label:e.target.value}:b))}
+                        onBlur={()=>setEditingGroupBox(null)}
+                        onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setEditingGroupBox(null);}}
+                        style={{background:"none",border:"none",outline:"none",fontSize:10,fontWeight:700,
+                          color:gb.color||"var(--accent)",fontFamily:"var(--font-ui)",width:90,padding:0}}/>
+                    ):(
+                      <span onDoubleClick={e=>{e.stopPropagation();setEditingGroupBox(gb.id);}}
+                        title="Double-click to rename" style={{cursor:"text"}}>{gb.label||"Group"}</span>
+                    )}
+                    {/* Line style cycle */}
+                    <button onMouseDown={e=>e.stopPropagation()}
+                      onClick={e=>{e.stopPropagation();
+                        const ls=["solid","dashed","dotted"];
+                        const cur=gb.lineStyle||"solid";
+                        setGroupBoxes(bs=>bs.map(b=>b.id===gb.id?{...b,lineStyle:ls[(ls.indexOf(cur)+1)%ls.length]}:b));
+                      }} title={`Line: ${gb.lineStyle||"solid"} — click to change`}
+                      style={{background:"none",border:"none",cursor:"pointer",fontSize:9,color:"var(--text4)",padding:0,lineHeight:1}}>
+                      {(gb.lineStyle||"solid")==="dotted"?"···":(gb.lineStyle||"solid")==="dashed"?"---":"—"}
+                    </button>
+                    {/* Border color */}
+                    <input type="color" value={gb.color&&gb.color.startsWith("#")?gb.color:"#58a6ff"}
+                      onMouseDown={e=>e.stopPropagation()}
+                      onChange={e=>setGroupBoxes(bs=>bs.map(b=>b.id===gb.id?{...b,color:e.target.value}:b))}
+                      title="Border color"
+                      style={{width:13,height:13,border:"none",borderRadius:2,cursor:"pointer",padding:0,background:"none"}}/>
+                    {/* BG color */}
+                    <input type="color" value={gb.bgColor&&gb.bgColor.startsWith("#")?gb.bgColor:"#000000"}
+                      onMouseDown={e=>e.stopPropagation()}
+                      onChange={e=>setGroupBoxes(bs=>bs.map(b=>b.id===gb.id?{...b,bgColor:e.target.value}:b))}
+                      title="Fill color"
+                      style={{width:13,height:13,border:"none",borderRadius:2,cursor:"pointer",padding:0,background:"none",opacity:.7}}/>
+                    <button onMouseDown={e=>e.stopPropagation()}
+                      onClick={e=>{e.stopPropagation();setGroupBoxes(bs=>bs.filter(b=>b.id!==gb.id));}}
+                      style={{background:"none",border:"none",cursor:"pointer",fontSize:11,color:"var(--text4)",padding:0,lineHeight:1}}>×</button>
+                  </div>
+                  {/* SE resize grip */}
+                  <div onMouseDown={e=>{
+                      e.stopPropagation();
+                      const el=canvasRef.current; if(!el) return;
+                      const rect=el.getBoundingClientRect(); const s=1/zoom;
+                      const mx=(e.clientX-rect.left)*s+el.scrollLeft*s;
+                      const my=(e.clientY-rect.top)*s+el.scrollTop*s;
+                      setResizingGB({id:gb.id,startMX:mx,startMY:my,origW:gb.w,origH:gb.h});
+                    }}
+                    style={{position:"absolute",bottom:0,right:0,width:14,height:14,
+                      cursor:"se-resize",
+                      borderRight:`2px solid ${gb.color||"var(--accent)"}70`,
+                      borderBottom:`2px solid ${gb.color||"var(--accent)"}70`,
+                      borderRadius:"0 0 5px 0"}}/>
+                </div>
+              ))}
+              {/* Drawing preview */}
+              {drawingGroupBox&&(()=>{
+                const x=Math.min(drawingGroupBox.startX,drawingGroupBox.endX);
+                const y=Math.min(drawingGroupBox.startY,drawingGroupBox.endY);
+                const w=Math.abs(drawingGroupBox.endX-drawingGroupBox.startX);
+                const h=Math.abs(drawingGroupBox.endY-drawingGroupBox.startY);
+                return w>4&&h>4&&(
+                  <div style={{position:"absolute",left:x,top:y,width:w,height:h,
+                    border:"2px dashed var(--accent)",borderRadius:6,
+                    background:"var(--accent)0a",pointerEvents:"none"}}/>
+                );
+              })()}
+
               {renderEdges()}
 
               {/* Nodes */}
@@ -3009,11 +3387,45 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Invite row */}
             <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border2)"}}>
               <div style={{display:"flex",gap:6,marginBottom:8}}>
-                <input value={shareEmail} onChange={e=>setShareEmail(e.target.value)}
-                  placeholder="Enter user email…"
-                  onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.nextSibling?.nextSibling?.click();}}
-                  style={{flex:1,background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
-                    padding:"6px 10px",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",outline:"none"}}/>
+                <div style={{flex:1,position:"relative"}}>
+                  <input value={shareEmail}
+                    onChange={e=>{
+                      setShareEmail(e.target.value);
+                      const q=e.target.value.trim();
+                      if(q.length>=2){
+                        fetch(`/api/users/search?q=${encodeURIComponent(q)}`,
+                          {headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}})
+                          .then(r=>r.ok?r.json():[]).then(d=>setShareSearch(Array.isArray(d)?d:[])).catch(()=>{});
+                      } else { setShareSearch([]); }
+                    }}
+                    placeholder="Search by name or email…"
+                    onKeyDown={e=>{if(e.key==="Enter"){const btn=document.getElementById('nn-share-invite-btn');btn&&btn.click();}}}
+                    style={{width:"100%",boxSizing:"border-box",background:"var(--bg3)",border:"1px solid var(--border)",
+                      borderRadius:"var(--radius-sm)",padding:"6px 10px",color:"var(--text)",fontSize:12,
+                      fontFamily:"var(--font-ui)",outline:"none"}}/>
+                  {shareSearch.length>0&&(
+                    <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,
+                      background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                      boxShadow:"0 4px 16px rgba(0,0,0,.4)",marginTop:2,maxHeight:140,overflowY:"auto"}}>
+                      {shareSearch.map(u=>(
+                        <div key={u.id} onClick={()=>{setShareEmail(u.email);setShareSearch([]);}}
+                          style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",cursor:"pointer",fontSize:11}}
+                          onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          <div style={{width:24,height:24,borderRadius:"50%",background:"var(--accent)",
+                            display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,
+                            color:"#fff",fontWeight:700,flexShrink:0}}>
+                            {(u.display_name||u.email)[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <div style={{fontWeight:600,color:"var(--text)"}}>{u.display_name||u.email}</div>
+                            <div style={{fontSize:9,color:"var(--text4)"}}>{u.email}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <select value={sharePerm} onChange={e=>setSharePerm(e.target.value)}
                   style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
                     padding:"6px 8px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}>
@@ -3030,20 +3442,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem('nn_token')}`},
                         body:JSON.stringify({email:shareEmail.trim(),permission:sharePerm})
                       });
+                      const data=await r.json().catch(()=>({}));
                       if(r.ok){
-                        setShareStatus("✓ Invited!");
-                        setShareEmail("");
+                        setShareStatus("✓ Invited "+shareEmail.trim()+"!");
+                        setShareEmail(""); setShareSearch([]);
                         // Refresh list
-                        const d=await fetch(`/api/maps/${mapId}/collaborators`,{headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}}).then(r2=>r2.json());
+                        const d=await fetch(`/api/maps/${mapId}/collaborators`,{headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}}).then(r2=>r2.json()).catch(()=>[]);
                         setShareUsers(Array.isArray(d)?d:[]);
                         setTimeout(()=>setShareStatus(null),3000);
                       } else {
-                        const e=await r.json();
-                        setShareStatus("✗ "+(e.error||"Failed"));
-                        setTimeout(()=>setShareStatus(null),4000);
+                        // Show specific error — include "user not found" details
+                        const msg=data.error||"Failed to invite";
+                        setShareStatus("✗ "+msg);
+                        setTimeout(()=>setShareStatus(null),5000);
                       }
                     }catch{setShareStatus("✗ Network error");}
                   }}
+                  id="nn-share-invite-btn"
                   style={{background:"var(--accent)",border:"none",borderRadius:"var(--radius-sm)",
                     padding:"6px 14px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"var(--font-ui)",fontWeight:700}}>
                   Invite
@@ -3118,6 +3533,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.8",date:"Apr 2026",items:[
+                  "Group boxes: drag to move, SE corner resize, border color picker, fill color picker",
+                  "PDF export: print-dialog PDF with embedded node structure (🖨 Print / Save as PDF)",
+                  "Group boxes persisted to DB (group_boxes JSONB column in maps table)",
+                  "nginx WebSocket proxy added (/ws location) — real-time collaboration now fully routable",
+                  "Keyboard shortcut G added to tooltip reference",
+                ]},
+                {v:"v5.7",date:"Apr 2026",items:[
+                  "Arrow crossing minimization: port t-values sorted by target position, no crossing between parallel edges",
+                  "Map title inline editable in topbar (click to rename)",
+                  "Box select: live node count shown inside selection rect, works in view mode",
+                  "All dropdowns open below their button (not fixed top-right corner)",
+                  "Share modal: user search autocomplete as you type, better error messages",
+                  "Group box drawing (G key): label, solid/dashed/dotted, click × to delete",
+                  "Export: HTML (view-only interactive page) and Markdown documentation",
+                  "Dashboard: Share option in map context menu",
+                ]},
                 {v:"v5.6",date:"Apr 2026",items:[
                   "Build fix: JSX fragment wrapper for Collab button inside canEdit&&()",
                   "Dashboard: Import .nonote opens map directly (no empty map created first)",

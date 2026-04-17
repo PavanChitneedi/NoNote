@@ -149,7 +149,8 @@ CREATE TABLE llm_conversations (
   provider_id  UUID NOT NULL REFERENCES llm_providers(id) ON DELETE CASCADE,
   title        TEXT NOT NULL DEFAULT 'New Chat',
   created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  group_boxes  JSONB NOT NULL DEFAULT '[]'::jsonb
 );
 
 CREATE INDEX idx_llm_conversations_map_id ON llm_conversations(map_id);

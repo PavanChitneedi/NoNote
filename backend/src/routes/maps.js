@@ -94,6 +94,7 @@ router.get(
         nodes:         nodesRes.rows,
         edges:         edgesRes.rows,
         collaborators: collabRes.rows,
+        groupBoxes: mapRes.rows[0].group_boxes || [],
       });
     } catch (err) {
       console.error("[maps] get error:", err);
@@ -189,7 +190,7 @@ router.post(
   async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
   async (req, res) => {
     try {
-      const { nodes, edges } = req.body;
+      const { nodes, edges, groupBoxes } = req.body;
       const { mapId } = req.params;
 
       const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -248,7 +249,11 @@ router.post(
           }
         }
 
-        await client.query("UPDATE maps SET updated_at=NOW() WHERE id=$1", [mapId]);
+        // Save groupBoxes as JSON in maps metadata
+        await client.query(
+          "UPDATE maps SET updated_at=NOW(), group_boxes=$2::jsonb WHERE id=$1",
+          [mapId, JSON.stringify(groupBoxes || [])]
+        );
       });
 
       res.json({ ok: true });

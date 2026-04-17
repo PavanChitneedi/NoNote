@@ -167,4 +167,22 @@ router.get("/audit", authenticate, requireRole("admin"), async (req, res) => {
   }
 });
 
+// ── GET /api/users/search?q= (for share autocomplete) ───────
+router.get("/search", authenticate, async (req, res) => {
+  const q = (req.query.q || "").trim();
+  if (q.length < 2) return res.json([]);
+  try {
+    const result = await query(
+      `SELECT id, email, display_name FROM users
+       WHERE (email ILIKE $1 OR display_name ILIKE $1)
+         AND id != $2
+       LIMIT 8`,
+      [`%${q}%`, req.user.id]
+    );
+    res.json(result.rows);
+  } catch (err) {
+    res.status(500).json({ error: "Search failed" });
+  }
+});
+
 export default router;

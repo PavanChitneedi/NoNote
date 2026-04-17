@@ -269,6 +269,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                         });
                       setMenuMap(null);
                     }},
+                    {icon:"👥",label:"Share / Collaborate",action:()=>{
+                      window._shareMapId=menuMap.id;
+                      // Open the map then trigger share dialog
+                      onOpenMap(menuMap.id);
+                      setMenuMap(null);
+                    }},
                     {icon:"✕",label:"Delete",color:"var(--danger)",action:()=>{handleDelete(menuMap.id,{stopPropagation:()=>{}});setMenuMap(null);}},
                   ].map(({icon,label,action,color})=>(
                     <div key={label} onClick={action}
