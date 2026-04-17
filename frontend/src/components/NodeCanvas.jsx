@@ -1447,11 +1447,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       fpy=fp.y+(c1y-fp.y)/d1*PULL;
     }
     if(hasMEnd){
-      // Nudge end slightly BACKWARD along the approach tangent so tip is flush
-      const NUDGE=sw*1.5;
+      // Push endpoint slightly INTO the node (past the edge) so arrowhead
+      // tip is flush — move tp in direction AWAY from c2 (into the node)
+      const NUDGE=sw*2.5;
       const d2=Math.sqrt((c2x-tp.x)**2+(c2y-tp.y)**2)||1;
-      tpx=tp.x+(c2x-tp.x)/d2*NUDGE;
-      tpy=tp.y+(c2y-tp.y)/d2*NUDGE;
+      // Opposite of c2→tp direction = tp→c2 direction inverted = move tp further
+      tpx=tp.x-(c2x-tp.x)/d2*NUDGE;
+      tpy=tp.y-(c2y-tp.y)/d2*NUDGE;
     }
     const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tpx} ${tpy}`;
     const mid={
@@ -2003,9 +2005,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {/* Body */}
         {!isGroup&&(
           <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
-            {!node.description&&canEdit&&editMode&&(
-              <div style={{fontSize:10,color:"var(--text4)",fontStyle:"italic",marginBottom:3,marginTop:2}}>Double-click to add description…</div>
-            )}
+
             <div style={{display:"flex",alignItems:"center",gap:4,marginTop:3}}>
               {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
                 <button onMouseDown={e=>e.stopPropagation()}
@@ -2317,7 +2317,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.3 ✦
+              v5.4 ✦
             </button>
           </div>
         </div>
@@ -2907,6 +2907,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.4",date:"Apr 2026",items:[
+                  "Arrow tip flush fix: endpoint nudged INTO node so arrowhead is visually flush",
+                  "Description placeholder no longer shown twice (removed duplicate from node body)",
+                  "Icon grid uses CSS auto-fill — no more trailing empty gap in last row",
+                ]},
                 {v:"v5.3",date:"Apr 2026",items:[
                   "Compact sidebar redesigned: narrower 136px panel, categories preserved, search works in all modes",
                   "Arrow gap fix: markerEnd nudged slightly inward so arrowhead is flush with node edge",
@@ -3238,9 +3243,10 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
               {/* Items */}
               {showOpen&&(
                 iconOnly||dense?(
-                  // Compact / icon grid with proper wrapping per category
-                  <div style={{display:"flex",flexWrap:"wrap",padding:dense?"3px 4px":"3px 2px",
-                    gap:dense?2:3,justifyContent:"flex-start"}}>
+                  // Compact / icon grid — CSS grid auto-fills to eliminate trailing gap
+                  <div style={{display:"grid",
+                    gridTemplateColumns:dense?"repeat(auto-fill,minmax(30px,1fr))":"repeat(auto-fill,minmax(36px,1fr))",
+                    gap:dense?2:3,padding:dense?"3px 4px":"3px 2px"}}>
                     {items.map(([key,t])=>(
                       <div key={key}
                         onClick={()=>canEdit&&addNode(key)}
@@ -3250,11 +3256,11 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                         }}
                         onMouseLeave={()=>setTooltip(null)}
                         title={t.label}
-                        style={{width:dense?30:36,height:dense?30:36,borderRadius:5,
+                        style={{aspectRatio:"1",borderRadius:5,
                           display:"flex",alignItems:"center",justifyContent:"center",
                           fontSize:dense?15:18,cursor:canEdit?"pointer":"default",
                           transition:"background .1s,border-color .1s",
-                          border:"1.5px solid transparent",flexShrink:0}}
+                          border:"1.5px solid transparent"}}
                         onMouseOver={e=>{
                           e.currentTarget.style.background="var(--bg3)";
                           e.currentTarget.style.borderColor=t.color+"70";
