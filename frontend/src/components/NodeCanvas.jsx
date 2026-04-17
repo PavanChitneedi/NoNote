@@ -931,7 +931,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         setSaveState("saved"); setSaveMsg("Saved ✓");
         setTimeout(()=>{setSaveState("idle");setSaveMsg("");},2500);
         clearTimeout(versionTimer.current);
-        versionTimer.current = setTimeout(async()=>{\
+        versionTimer.current = setTimeout(async()=>{
           try{ await saveVersion(mapId,{nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})),edges:es,groupBoxes,label:"Auto-save"}); }catch{}
         }, 5*60*1000);
       } catch {
