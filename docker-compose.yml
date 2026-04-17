@@ -64,6 +64,8 @@ services:
       REGISTRATION_OPEN: ${REGISTRATION_OPEN:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?required}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?required}
+    volumes:
+      - ./postgres/migrate.sql:/app/postgres/migrate.sql:ro
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
