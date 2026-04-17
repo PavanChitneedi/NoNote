@@ -774,6 +774,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showConnPanel,setShowConnPanel]= useState(false);
   const [draggingMid,  setDraggingMid]  = useState(null); // {edgeId, startX, startY, origOffset}
   const [dragging,     setDragging]     = useState(null);
+  const draggingRef   = useRef(null);   // mirror for stable handler
+  const resizingRef   = useRef(null);   // mirror for stable handler
   const [resizing,     setResizing]     = useState(null);
   const [drawingEdge,  setDrawingEdge]  = useState(null);
   // Box-select
@@ -938,6 +940,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // Keep nodesRef in sync with nodes state
   useEffect(()=>{ nodesRef.current = nodes; },[nodes]);
+  useEffect(()=>{ draggingRef.current = dragging; }, [dragging]);
+  useEffect(()=>{ resizingRef.current = resizing; }, [resizing]);
 
   // ── Actual collision dimensions (uses rendered height, not stored h) ──
   const collW = (n) => n?.collapsed ? COL_W : (n?.w || DEF_W);
@@ -1136,7 +1140,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const isT=!!e.touches;
       const cx=isT?e.touches[0].clientX:e.clientX;
       const cy=isT?e.touches[0].clientY:e.clientY;
-      if(dragging&&canvasRef.current){
+      if(draggingRef.current&&canvasRef.current){
+        const dragging=draggingRef.current;
         // Clear guides when not dragging single node
         if(dragging.ids.length!==1) setSnapGuides([]);
         const el=canvasRef.current;
@@ -1234,7 +1239,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           }
         } else { setSnapGuides([]); }
       }
-      if(resizing&&canvasRef.current){
+      if(resizingRef.current&&canvasRef.current){
+        const resizing=resizingRef.current;
         const s=1/zoom;
         const newW=Math.max(160,resizing.origW+(cx-resizing.startX)*s);
         const newH=Math.max(60,resizing.origH+(cy-resizing.startY)*s);
@@ -1308,7 +1314,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     };
     const onUp=()=>{
       // 1. Push history when drag/resize ends
-      if(dragging||resizing){
+      if(draggingRef.current||resizingRef.current){
         setNodes(ns=>{setEdges(es=>{scheduleSave(ns,es);pushHistory(ns,es);return es;});return ns;});
       }
       setDragging(null); setResizing(null); setSnapGuides([]);
@@ -1357,7 +1363,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       window.removeEventListener("touchmove",onMove);
       window.removeEventListener("touchend",onUp);
     };
-  },[dragging,resizing,drawingEdge,scheduleSave,pushHistory,zoom,nodes]);
+  },[zoom,scheduleSave,pushHistory]); // dragging/resizing accessed via refs — stable handler
 
   // ── Node click ────────────────────────────────────────────
   const handleNodeRightClick=useCallback((e,id)=>{
@@ -2854,7 +2860,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.13 ✦
+              v5.14 ✦
             </button>
           </div>
         </div>
@@ -3759,6 +3765,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.14",date:"Apr 2026",items:[
+                  "Login fix: apiFetch skips stale token and 401-retry for /auth/* endpoints",
+                  "Refresh fix: access token stored in sessionStorage — survives page reload",
+                  "Perf: mousemove handler now stable (deps [zoom] only) — no re-create on every drag pixel",
+                  "Perf: draggingRef/resizingRef mirror state — handler reads refs, not captured state",
+                  "Drag select fixed: onUp handler restructured with correct separate blocks",
+                ]},
                 {v:"v5.13",date:"Apr 2026",items:[
                   "Logout on refresh fixed: access token stored in sessionStorage (survives refresh)",
                   "Drag select fixed: onUp handler restructured — box-select, group-box, GB drag all separate",
