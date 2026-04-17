@@ -829,7 +829,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [resizingGB,       setResizingGB]       = useState(null); // {id,startMX,startMY,origW,origH,origX,origY}
   const [showShare,     setShowShare]      = useState(false);
   // WS is always-on — auto-connects when map loads, no toggle needed
-  const [collabUsers,   setCollabUsers]    = useState({}); // {userId: {x,y,userName}}
+  // remoteSelections: who's selecting/editing what on the shared canvas
+  // {userId: {userName, color, selectedIds: Set, editingId: string|null}}
+  const [remoteSelections, setRemoteSelections] = useState({});
   const [wsConnected,   setWsConnected]    = useState(false);
   const wsRef = useRef(null);
   const [shareUsers,    setShareUsers]     = useState([]);
@@ -951,6 +953,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       return next;
     });
   }, [scheduleSave,pushHistory]);
+
+  // Broadcast local selection to collaborators whenever it changes
+  useEffect(() => {
+    broadcastSelection(selected, editingTitle || inlineEditField?.nodeId || null);
+  }, [selected, editingTitle, inlineEditField]); // eslint-disable-line
+
   useEffect(()=>{
     if(!mapId||!canEdit) return;
     // Debounced save when group boxes change
@@ -1313,14 +1321,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           ?{...b,w:Math.max(80,resizingGB.origW+dx),h:Math.max(60,resizingGB.origH+dy)}:b));
         return;
       }
-      // Broadcast cursor position to other users
-      if(canvasRef.current){
-        const el=canvasRef.current;
-        const rect=el.getBoundingClientRect(); const s=1/zoom;
-        const cx2=(cx-rect.left)*s+el.scrollLeft*s;
-        const cy2=(cy-rect.top)*s+el.scrollTop*s;
-        sendCursor(cx2, cy2);
-      }
+
       if(groupBoxDrawRef.current&&canvasRef.current){
         const el=canvasRef.current;
         const rect=el.getBoundingClientRect(); const s=1/zoom;
@@ -1591,7 +1592,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         if (msg.type === "room_state") {
           console.log("[collab] joined room, peers:", msg.users?.length || 0);
           setWsConnected(true);
-          setCollabUsers(Object.fromEntries((msg.users || []).map(u => [u.userId, u])));
+          setRemoteSelections(Object.fromEntries((msg.users || []).map(u => [
+            u.userId, { userName: u.userName || "User", color: userColor(u.userId), selectedIds: new Set(), editingId: null }
+          ])));
           // Push our full current state so latecomers sync
           if ((msg.users || []).length > 0) {
             ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
@@ -1602,7 +1605,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
         if (msg.type === "user_joined") {
           console.log("[collab] user joined:", msg.userName);
-          setCollabUsers(prev => ({ ...prev, [msg.userId]: { userId: msg.userId, userName: msg.userName || "User" } }));
+          setRemoteSelections(prev => ({ ...prev, [msg.userId]: { userName: msg.userName || "User", color: userColor(msg.userId), selectedIds: new Set(), editingId: null } }));
           // Send them our current canvas state
           ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
           ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
@@ -1610,7 +1613,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         }
 
         if (msg.type === "user_left") {
-          setCollabUsers(prev => { const n = { ...prev }; delete n[msg.userId]; return n; });
+          setRemoteSelections(prev => { const n = { ...prev }; delete n[msg.userId]; return n; });
           return;
         }
 
@@ -1627,14 +1630,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           return;
         }
 
-        if (msg.type === "cursor_move") {
-          setCollabUsers(prev => ({
+        if (msg.type === "selection_update") {
+          setRemoteSelections(prev => ({
             ...prev,
             [msg.userId]: {
-              ...(prev[msg.userId] || {}),
-              userId: msg.userId,
               userName: msg.userName || "User",
-              x: msg.x, y: msg.y,
+              color: userColor(msg.userId),
+              selectedIds: new Set(msg.selectedIds || []),
+              editingId: msg.editingId || null,
             }
           }));
           return;
@@ -1662,20 +1665,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if (ws && ws.readyState <= 1) ws.close(1000, "leaving");
       wsRef.current = null;
       setWsConnected(false);
-      setCollabUsers({});
+      setRemoteSelections({});
     };
   }, [mapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Cursor broadcast (throttled, no echo needed) ─────────────────
-  const cursorThrottle = useRef(0);
-  const sendCursor = useCallback((x, y) => {
+  // ── Broadcast local selection to collaborators ───────────────────
+  // Called whenever selected nodes or editing state changes
+  const broadcastSelection = useCallback((selectedSet, editingId) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== 1) return;
-    const now = Date.now();
-    if (now - cursorThrottle.current < 50) return; // 20fps max
-    cursorThrottle.current = now;
-    ws.send(JSON.stringify({ type: "cursor_move", x, y }));
-  }, []);
+    ws.send(JSON.stringify({
+      type: "selection_update",
+      selectedIds: [...(selectedSet || selected)],
+      editingId: editingId !== undefined ? editingId : (editingTitle || inlineEditField?.nodeId || null),
+    }));
+  }, [selected, editingTitle, inlineEditField]);
 
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback((dir)=>{
@@ -2700,23 +2704,41 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </span>
             )}
             {saveMsg&&<span style={{fontSize:9,color:saveMsgColor,whiteSpace:"nowrap",marginLeft:4}}>{saveMsg}</span>}
-            {/* Live presence indicator — subtle dot when others are viewing */}
-            {Object.keys(collabUsers).length>0&&(
-              <span style={{display:"flex",alignItems:"center",gap:5,marginLeft:6,
-                background:"var(--bg3)",border:"1px solid var(--border)",
-                borderRadius:10,padding:"1px 8px 1px 5px",fontSize:9,color:"var(--text3)",flexShrink:0}}>
-                <span style={{width:6,height:6,borderRadius:"50%",background:"#22c55e",
-                  display:"inline-block",boxShadow:"0 0 0 2px #22c55e30",animation:"nn-pulse 2s infinite"}}/>
-                {Object.values(collabUsers).map(u=>(
-                  <span key={u.userId} title={u.userName}
-                    style={{width:16,height:16,borderRadius:"50%",fontSize:8,fontWeight:700,
-                      color:"#fff",display:"inline-flex",alignItems:"center",justifyContent:"center",
-                      background:userColor(u.userId),marginLeft:-3,border:"1.5px solid var(--bg2)"}}>
-                    {(u.userName||"?")[0].toUpperCase()}
-                  </span>
-                ))}
-                <span>{Object.keys(collabUsers).length} live</span>
-              </span>
+            {/* Live user presence — Excel-style avatar stack */}
+            {Object.entries(remoteSelections).length>0&&(
+              <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:6,flexShrink:0}}>
+                {/* Stacked avatars */}
+                <div style={{display:"flex",alignItems:"center"}}>
+                  {Object.entries(remoteSelections).map(([uid, rs], i)=>{
+                    const initials=(rs.userName||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+                    const hasSelection = rs.selectedIds&&rs.selectedIds.size>0;
+                    return(
+                      <div key={uid} title={rs.userName+(hasSelection?" (selecting)":"")}
+                        style={{width:22,height:22,borderRadius:"50%",
+                          background:rs.color,color:"#fff",
+                          fontSize:9,fontWeight:700,
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          border:"2px solid var(--bg2)",
+                          marginLeft:i>0?-7:0,
+                          position:"relative",zIndex:Object.keys(remoteSelections).length-i,
+                          boxShadow:hasSelection?`0 0 0 2px ${rs.color}60`:"none",
+                          cursor:"default",
+                        }}>
+                        {initials}
+                        {/* Green dot = active/selecting */}
+                        {hasSelection&&(
+                          <div style={{position:"absolute",bottom:-1,right:-1,
+                            width:7,height:7,borderRadius:"50%",
+                            background:"#22c55e",border:"1.5px solid var(--bg2)"}}/>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                <span style={{fontSize:9,color:"var(--text4)",paddingLeft:2}}>
+                  {Object.keys(remoteSelections).length} viewing
+                </span>
+              </div>
             )}
           </div>
 
@@ -2854,7 +2876,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.17 ✦
+              v5.18 ✦
             </button>
           </div>
         </div>
@@ -3365,30 +3387,56 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 );
               })()}
 
-              {/* ── Remote user cursors — MS Office style ── */}
-              {Object.values(collabUsers).map(u=>{
-                if(u.x==null||u.y==null) return null;
-                const color = userColor(u.userId);
-                const initials = (u.userName||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-                return(
-                  <div key={u.userId} style={{position:"absolute",left:u.x,top:u.y,
-                    pointerEvents:"none",zIndex:9999,transform:"translate(-6px,-6px)",
-                    transition:"left 80ms linear,top 80ms linear"}}>
-                    {/* Cursor arrow */}
-                    <svg width="16" height="20" viewBox="0 0 16 20" style={{display:"block",filter:`drop-shadow(0 1px 2px rgba(0,0,0,.4))`}}>
-                      <path d="M0 0 L0 14 L4 10 L7 18 L9 17 L6 9 L11 9 Z" fill={color} stroke="#fff" strokeWidth="1"/>
-                    </svg>
-                    {/* Name badge — MS Office style */}
-                    <div style={{position:"absolute",top:16,left:10,
-                      background:color,color:"#fff",
-                      fontSize:9,fontWeight:700,lineHeight:"18px",
-                      padding:"0 6px",borderRadius:"0 9px 9px 9px",
-                      whiteSpace:"nowrap",fontFamily:"var(--font-ui)",
-                      boxShadow:"0 2px 6px rgba(0,0,0,.35)"}}>
-                      {u.userName||"User"}
+              {/* ── Remote selection overlays — Excel style ── */}
+              {Object.entries(remoteSelections).map(([uid, rs])=>{
+                if(!rs.selectedIds||rs.selectedIds.size===0) return null;
+                return [...rs.selectedIds].map(nodeId=>{
+                  const node = nodesRef.current.find(n=>n.id===nodeId);
+                  if(!node) return null;
+                  const nw = node.w||220;
+                  const nh = nodeHeightsRef.current[nodeId]||node.h||96;
+                  const isEditing = rs.editingId===nodeId;
+                  const initials = (rs.userName||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+                  return(
+                    <div key={uid+"-"+nodeId} style={{
+                      position:"absolute",
+                      left:node.x-3, top:node.y-3,
+                      width:nw+6, height:nh+6,
+                      border:`2px solid ${rs.color}`,
+                      borderRadius:10,
+                      pointerEvents:"none",
+                      zIndex:50,
+                      boxShadow:`0 0 0 1px ${rs.color}40`,
+                      animation: isEditing ? "nn-collab-pulse 1.5s infinite" : "none",
+                    }}>
+                      {/* Name badge — top-right corner like Excel */}
+                      <div style={{
+                        position:"absolute", top:-10, right:6,
+                        background:rs.color, color:"#fff",
+                        fontSize:9, fontWeight:700, lineHeight:"16px",
+                        padding:"0 5px", borderRadius:3,
+                        whiteSpace:"nowrap", fontFamily:"var(--font-ui)",
+                        boxShadow:"0 1px 4px rgba(0,0,0,.4)",
+                        display:"flex", alignItems:"center", gap:4,
+                      }}>
+                        <span style={{
+                          width:14,height:14,borderRadius:"50%",
+                          background:"rgba(255,255,255,.3)",
+                          display:"inline-flex",alignItems:"center",justifyContent:"center",
+                          fontSize:8,fontWeight:800
+                        }}>{initials}</span>
+                        {rs.userName}
+                        {isEditing && <span style={{opacity:.8}}>· editing</span>}
+                      </div>
+                      {/* Corner handle dot — Excel style */}
+                      <div style={{
+                        position:"absolute", bottom:-4, right:-4,
+                        width:7,height:7,borderRadius:1,
+                        background:rs.color,
+                      }}/>
                     </div>
-                  </div>
-                );
+                  );
+                });
               })}
 
               {renderEdges()}
@@ -3749,6 +3797,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.18",date:"Apr 2026",items:[
+                  "Collab: Excel-style selection overlays — selected nodes get colored border + name badge",
+                  "Collab: editing state shows '· editing' in the badge (like Google Docs)",
+                  "Collab: stacked avatar pill in topbar with green dot = user is actively selecting",
+                  "Collab: removed cursor tracking — only selection state is broadcast",
+                  "Collab: corner handle dot on selected node (Excel fill handle style)",
+                ]},
                 {v:"v5.17",date:"Apr 2026",items:[
                   "Collab FIXED: broadcast moved to scheduleSave — covers ALL 15 state-update paths",
                   "Drag/resize/notes/all mutations now broadcast (previously only applyNodes did)",
