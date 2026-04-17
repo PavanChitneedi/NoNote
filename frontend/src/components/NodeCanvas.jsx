@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { getMap, saveMap, saveVersion, apiFetch } from "../api/client.js";
+import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
@@ -2629,7 +2629,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>{
                 setShowShare(true);
                 if(mapId) apiFetch(`/maps/${mapId}/collaborators`)
-                  .then(r=>r.ok?r.json():[]).then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});
+                  .then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});
               }}
               style={{...tbtn(false,"#1565C0"),display:"flex",alignItems:"center",gap:4}}
               title="Share map with teammates">
@@ -3393,7 +3393,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       const q=e.target.value.trim();
                       if(q.length>=2){
                         apiFetch(`/users/search?q=${encodeURIComponent(q)}`)
-                          .then(r=>r.ok?r.json():[]).then(d=>setShareSearch(Array.isArray(d)?d:[])).catch(()=>{});
+                          .then(d=>setShareSearch(Array.isArray(d)?d:[])).catch(()=>{});
                       } else { setShareSearch([]); }
                     }}
                     placeholder="Search by name or email…"
@@ -3435,27 +3435,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     if(!shareEmail.trim()) return;
                     setShareStatus("Sending…");
                     try{
-                      const r=await apiFetch(`/maps/${mapId}/collaborators`,{
-                        method:"POST",
-                        body:JSON.stringify({email:shareEmail.trim(),permission:sharePerm})
-                      });
-                      const data=await r.json().catch(()=>({}));
-                      if(r.ok){
-                        setShareStatus("✓ Invited "+shareEmail.trim()+"!");
-                        setShareEmail(""); setShareSearch([]);
-                        // Refresh list
-                        const d=await apiFetch(`/maps/${mapId}/collaborators`).then(r2=>r2.json()).catch(()=>[]);
-                        setShareUsers(Array.isArray(d)?d:[]);
-                        setTimeout(()=>setShareStatus(null),3000);
-                      } else {
-                        // Show specific error — include "user not found" details
-                        const msg=data.error||"Failed to invite";
-                        setShareStatus("✗ "+msg);
-                        setTimeout(()=>setShareStatus(null),5000);
-                      }
-                    }catch{setShareStatus("✗ Network error");}
-                  }}
-                  id="nn-share-invite-btn"
+                      // apiFetch throws on error, returns JSON on success
+                      const data = await addCollab(mapId, {email:shareEmail.trim(), permission:sharePerm});
+                      setShareStatus("✓ Invited "+shareEmail.trim()+"!");
+                      setShareEmail(""); setShareSearch([]);
+                      const collabs = await apiFetch(`/maps/${mapId}/collaborators`).catch(()=>[]);
+                      setShareUsers(Array.isArray(collabs)?collabs:[]);
+                      setTimeout(()=>setShareStatus(null),3000);
+                    }catch(err){setShareStatus("✗ "+(err?.message||"Failed"));setTimeout(()=>setShareStatus(null),5000);}  id="nn-share-invite-btn"
                   style={{background:"var(--accent)",border:"none",borderRadius:"var(--radius-sm)",
                     padding:"6px 14px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"var(--font-ui)",fontWeight:700}}>
                   Invite
@@ -3495,7 +3482,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     {u.permission||"viewer"}
                   </span>
                   <button onClick={async()=>{
-                    await apiFetch(`/maps/${mapId}/collaborators/${u.user_id}`,{method:"DELETE"});
+                    await removeCollab(mapId, u.user_id);
                     setShareUsers(v=>v.filter(x=>x.user_id!==u.user_id));
                   }}
                   style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",
