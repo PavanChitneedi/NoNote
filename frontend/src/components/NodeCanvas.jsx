@@ -909,14 +909,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     }, 1000);
   }, [mapId,canEdit]);
 
-  // applyNodes: save + history + broadcast when collab is on
+  // applyNodes: save + history. Collab broadcast handled by useEffect.
   const applyNodes = useCallback((fn, skipHistory=false) => {
     setNodes(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setEdges(es=>{ scheduleSave(next,es); if(!skipHistory)pushHistory(next,es); return es; });
-      // Broadcast to collaborators
-      if(wsRef.current?.readyState===1)
-        wsRef.current.send(JSON.stringify({type:'nodes_update',nodes:next}));
       return next;
     });
   }, [scheduleSave,pushHistory]);
@@ -933,9 +930,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setEdges(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setNodes(ns=>{ scheduleSave(ns,next); if(!skipHistory)pushHistory(ns,next); return ns; });
-      // Broadcast to collaborators
-      if(wsRef.current?.readyState===1)
-        wsRef.current.send(JSON.stringify({type:'edges_update',edges:next}));
       return next;
     });
   }, [scheduleSave,pushHistory]);
@@ -1502,50 +1496,72 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   };
 
   // ── WebSocket real-time collaboration ────────────────────────
+  const wsFromRemote = useRef(false); // guard: don't re-broadcast incoming changes
+
   useEffect(()=>{
     if(!mapId||!collab) return;
-    const proto=window.location.protocol==='https:'?'wss:':'ws:';
-    const ws=new WebSocket(`${proto}//${window.location.host}/ws`);
-    wsRef.current=ws;
-    ws.onopen=async()=>{
-      // Get a fresh access token — apiFetch handles refresh internally
-      // We ping /auth/me to ensure the in-memory token is fresh, then read it
+    let ws;
+    const connect = async () => {
+      // Ensure token is fresh
       try{ await apiFetch('/auth/me'); }catch{}
-      const token=getAccessToken(); // exported getter from client.js
-      ws.send(JSON.stringify({type:'join',mapId,token:token||''}));
-      console.log('[collab] joined map',mapId);
+      const token = getAccessToken();
+      if(!token){ console.warn('[collab] no token, cannot connect'); return; }
+      const proto=window.location.protocol==='https:'?'wss:':'ws:';
+      ws = new WebSocket(`${proto}//${window.location.host}/ws`);
+      wsRef.current = ws;
+      ws.onopen = () => {
+        ws.send(JSON.stringify({type:'join', mapId, token}));
+        console.log('[collab] joined map', mapId, 'token length:', token.length);
+      };
+      ws.onmessage = e => {
+        try{
+          const msg = JSON.parse(e.data);
+          if(msg.type==='nodes_update'){
+            wsFromRemote.current = true;
+            setNodes(msg.nodes);
+            wsFromRemote.current = false;
+          }
+          if(msg.type==='edges_update'){
+            wsFromRemote.current = true;
+            setEdges(msg.edges);
+            wsFromRemote.current = false;
+          }
+          if(msg.type==='cursor_move'){
+            setCollabUsers(prev=>({...prev,[msg.userId]:{...prev[msg.userId],...msg}}));
+          }
+          if(msg.type==='user_left'){
+            setCollabUsers(prev=>{const n={...prev};delete n[msg.userId];return n;});
+          }
+        }catch(err){ console.error('[collab] msg error', err); }
+      };
+      ws.onerror = err => console.error('[collab] ws error', err);
+      ws.onclose = ev => {
+        wsRef.current = null;
+        console.log('[collab] disconnected', ev.code, ev.reason);
+      };
     };
-    ws.onmessage=e=>{
-      try{
-        const msg=JSON.parse(e.data);
-        // Only apply updates from other users (not echoed back to sender by server)
-        if(msg.type==='nodes_update'&&msg.userId!==undefined){
-          setNodes(msg.nodes); // direct set, no broadcast loop
-        }
-        if(msg.type==='edges_update'&&msg.userId!==undefined){
-          setEdges(msg.edges); // direct set
-        }
-        if(msg.type==='cursor_move'){
-          setCollabUsers(prev=>({...prev,[msg.userId]:{...prev[msg.userId],...msg}}));
-        }
-        if(msg.type==='user_left'){
-          setCollabUsers(prev=>{const n={...prev};delete n[msg.userId];return n;});
-        }
-      }catch{}
-    };
-    ws.onclose=()=>{ wsRef.current=null; console.log('[collab] disconnected'); };
-    return()=>{ ws.close(); wsRef.current=null; };
+    connect();
+    return ()=>{ if(ws) ws.close(); wsRef.current=null; };
   },[mapId,collab]);
 
-  // Broadcast node/edge changes when collaboration is on
-  const broadcastNodes=useCallback((ns)=>{
-    if(wsRef.current?.readyState===1)
-      wsRef.current.send(JSON.stringify({type:'nodes_update',nodes:ns}));
-  },[]);
-  const broadcastEdges=useCallback((es)=>{
-    if(wsRef.current?.readyState===1)
-      wsRef.current.send(JSON.stringify({type:'edges_update',edges:es}));
-  },[]);
+  // ── Broadcast changes to other users (useEffect — correct pattern) ──
+  const prevNodesRef = useRef(null);
+  const prevEdgesRef = useRef(null);
+  useEffect(()=>{
+    if(!collab||!wsRef.current||wsRef.current.readyState!==1) return;
+    if(wsFromRemote.current) return; // don't echo received changes
+    if(prevNodesRef.current===nodes) return; // no change
+    prevNodesRef.current = nodes;
+    wsRef.current.send(JSON.stringify({type:'nodes_update', nodes}));
+  },[nodes,collab]);
+
+  useEffect(()=>{
+    if(!collab||!wsRef.current||wsRef.current.readyState!==1) return;
+    if(wsFromRemote.current) return;
+    if(prevEdgesRef.current===edges) return;
+    prevEdgesRef.current = edges;
+    wsRef.current.send(JSON.stringify({type:'edges_update', edges}));
+  },[edges,collab]);
 
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback((dir)=>{
