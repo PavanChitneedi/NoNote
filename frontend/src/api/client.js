@@ -47,13 +47,13 @@ async function doRefresh() {
 }
 
 export async function apiFetch(path, options = {}) {
-  // Auth endpoints don't need a token and shouldn't trigger token refresh
-  const isAuthPath = path.startsWith("/auth/");
+  // Only these three endpoints don't need/use an access token
+  const noTokenNeeded = path === "/auth/login" || path === "/auth/register" || path === "/auth/refresh";
 
   const doRequest = async (token) => {
     const headers = {
       "Content-Type": "application/json",
-      ...(!isAuthPath && token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(!noTokenNeeded && token ? { Authorization: `Bearer ${token}` } : {}),
       ...options.headers,
     };
     return fetch(`${BASE}${path}`, { ...options, headers });
@@ -61,8 +61,8 @@ export async function apiFetch(path, options = {}) {
 
   let res = await doRequest(_accessToken);
 
-  // Only attempt token refresh for non-auth protected endpoints
-  if (res.status === 401 && _refreshToken && !isAuthPath) {
+  // On 401: try refresh — but not for the endpoints that don't use tokens
+  if (res.status === 401 && _refreshToken && !noTokenNeeded) {
     if (!_refreshPromise) {
       _refreshPromise = doRefresh().finally(() => { _refreshPromise = null; });
     }
