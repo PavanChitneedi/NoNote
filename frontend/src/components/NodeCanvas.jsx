@@ -924,10 +924,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   }, [mapId,canEdit]);
 
   // applyNodes: save + history. Collab broadcast handled by useEffect.
+  // applyNodes: for LOCAL changes only. Saves, adds history, and broadcasts to peers.
+  // Remote changes must call setNodes() directly — never applyNodes().
   const applyNodes = useCallback((fn, skipHistory=false) => {
     setNodes(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setEdges(es=>{ scheduleSave(next,es); if(!skipHistory)pushHistory(next,es); return es; });
+      // Broadcast immediately — this IS a local change
+      const ws = wsRef.current;
+      if(ws && ws.readyState === 1){
+        ws.send(JSON.stringify({type:"nodes_update", nodes:next}));
+      }
       return next;
     });
   }, [scheduleSave,pushHistory]);
@@ -940,16 +947,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     return ()=>clearTimeout(t);
   },[groupBoxes,mapId,canEdit]);
 
+  // applyEdges: for LOCAL changes only. Saves, adds history, and broadcasts to peers.
   const applyEdges = useCallback((fn, skipHistory=false) => {
     setEdges(prev=>{
       const next=typeof fn==="function"?fn(prev):fn;
       setNodes(ns=>{ scheduleSave(ns,next); if(!skipHistory)pushHistory(ns,next); return ns; });
+      const ws = wsRef.current;
+      if(ws && ws.readyState === 1){
+        ws.send(JSON.stringify({type:"edges_update", edges:next}));
+      }
       return next;
     });
   }, [scheduleSave,pushHistory]);
 
   // Keep nodesRef in sync with nodes state
+  const edgesRef = useRef([]);
   useEffect(()=>{ nodesRef.current = nodes; },[nodes]);
+  useEffect(()=>{ edgesRef.current = edges; },[edges]);
   useEffect(()=>{ draggingRef.current = dragging; }, [dragging]);
   useEffect(()=>{ resizingRef.current = resizing; }, [resizing]);
 
@@ -1524,81 +1538,116 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     },800);
   };
 
-  // ── WebSocket — always-on, auto-connects on map load ──────────────
-  // No toggle button. Automatically connects whenever a map is open.
-  // Echo prevention: JSON.stringify comparison against last received state.
-  const lastRxNodesJSON = useRef(null);
-  const lastRxEdgesJSON = useRef(null);
-  const cursorThrottle  = useRef(0);
+  // ── WebSocket collaboration — always-on ─────────────────────────
+  //
+  // Architecture (correct):
+  //   LOCAL change  → applyNodes(fn)  → setNodes() + ws.send() directly inside
+  //   REMOTE change → setNodes(data)  directly, NEVER via applyNodes
+  //
+  // No useEffect broadcasting. No echo prevention needed.
+  // The server only sends to OTHER clients — sender never receives their own message.
+  //
+  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
     if (!mapId) return;
-    let ws;
-    let reconnectTimer;
+    let ws = null;
+    let reconnectTimer = null;
     let active = true;
 
     const connect = () => {
       const token = getAccessToken();
-      if (!token) return; // not logged in yet — auth will cause re-render and retry
+      if (!token) {
+        // Not logged in yet — try again shortly
+        reconnectTimer = setTimeout(connect, 2000);
+        return;
+      }
       const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
       ws = new WebSocket(`${proto}//${window.location.host}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {
+        console.log("[collab] connected, joining map", mapId);
         ws.send(JSON.stringify({ type: "join", mapId, token }));
       };
 
       ws.onmessage = (e) => {
-        let msg; try { msg = JSON.parse(e.data); } catch { return; }
+        let msg;
+        try { msg = JSON.parse(e.data); } catch { return; }
 
-        if (msg.type === "auth_error") { ws.close(1000); return; }
+        if (msg.type === "auth_error") {
+          console.warn("[collab] auth error — reconnect skipped");
+          active = false; ws.close(1000); return;
+        }
 
         if (msg.type === "room_state") {
+          console.log("[collab] joined room, peers:", msg.users?.length || 0);
           setWsConnected(true);
-          const others = msg.users || [];
-          setCollabUsers(Object.fromEntries(others.map(u => [u.userId, u])));
-          if (others.length > 0 && ws.readyState === 1) {
+          setCollabUsers(Object.fromEntries((msg.users || []).map(u => [u.userId, u])));
+          // Push our full current state so latecomers sync
+          if ((msg.users || []).length > 0) {
             ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
             ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
           }
+          return;
         }
-        else if (msg.type === "user_joined") {
+
+        if (msg.type === "user_joined") {
+          console.log("[collab] user joined:", msg.userName);
           setCollabUsers(prev => ({ ...prev, [msg.userId]: { userId: msg.userId, userName: msg.userName || "User" } }));
-          if (ws.readyState === 1) {
-            ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
-            ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
-          }
+          // Send them our current canvas state
+          ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
+          ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
+          return;
         }
-        else if (msg.type === "user_left") {
+
+        if (msg.type === "user_left") {
           setCollabUsers(prev => { const n = { ...prev }; delete n[msg.userId]; return n; });
+          return;
         }
-        else if (msg.type === "nodes_update") {
-          lastRxNodesJSON.current = JSON.stringify(msg.nodes);
-          setNodes(msg.nodes);
+
+        // ── Apply remote canvas changes DIRECTLY (not via applyNodes) ──
+        if (msg.type === "nodes_update" && Array.isArray(msg.nodes)) {
+          console.log("[collab] recv nodes from", msg.userName, "count:", msg.nodes.length);
+          setNodes(msg.nodes); // direct set — no broadcast, no history
+          return;
         }
-        else if (msg.type === "edges_update") {
-          lastRxEdgesJSON.current = JSON.stringify(msg.edges);
-          setEdges(msg.edges);
+
+        if (msg.type === "edges_update" && Array.isArray(msg.edges)) {
+          console.log("[collab] recv edges from", msg.userName, "count:", msg.edges.length);
+          setEdges(msg.edges); // direct set — no broadcast, no history
+          return;
         }
-        else if (msg.type === "cursor_move") {
+
+        if (msg.type === "cursor_move") {
           setCollabUsers(prev => ({
             ...prev,
-            [msg.userId]: { ...(prev[msg.userId] || {}), userId: msg.userId, userName: msg.userName || "User", x: msg.x, y: msg.y }
+            [msg.userId]: {
+              ...(prev[msg.userId] || {}),
+              userId: msg.userId,
+              userName: msg.userName || "User",
+              x: msg.x, y: msg.y,
+            }
           }));
+          return;
         }
       };
 
-      ws.onerror = () => {};
+      ws.onerror = (err) => console.error("[collab] error", err);
+
       ws.onclose = (ev) => {
         wsRef.current = null;
         setWsConnected(false);
+        console.log("[collab] closed", ev.code);
         if (active && ev.code !== 1000 && ev.code !== 1008) {
+          console.log("[collab] reconnecting in 4s…");
           reconnectTimer = setTimeout(connect, 4000);
         }
       };
     };
 
     connect();
+
     return () => {
       active = false;
       clearTimeout(reconnectTimer);
@@ -1607,31 +1656,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       setWsConnected(false);
       setCollabUsers({});
     };
-  }, [mapId]); // eslint-disable-line
+  }, [mapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Broadcast local changes to other users ────────────────────────
-  useEffect(() => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== 1) return;
-    const j = JSON.stringify(nodes);
-    if (j === lastRxNodesJSON.current) return;
-    ws.send(JSON.stringify({ type: "nodes_update", nodes }));
-  }, [nodes]); // eslint-disable-line
-
-  useEffect(() => {
-    const ws = wsRef.current;
-    if (!ws || ws.readyState !== 1) return;
-    const j = JSON.stringify(edges);
-    if (j === lastRxEdgesJSON.current) return;
-    ws.send(JSON.stringify({ type: "edges_update", edges }));
-  }, [edges]); // eslint-disable-line
-
-  // ── Send cursor (throttled 20fps) ────────────────────────────────
+  // ── Cursor broadcast (throttled, no echo needed) ─────────────────
+  const cursorThrottle = useRef(0);
   const sendCursor = useCallback((x, y) => {
     const ws = wsRef.current;
     if (!ws || ws.readyState !== 1) return;
     const now = Date.now();
-    if (now - cursorThrottle.current < 50) return;
+    if (now - cursorThrottle.current < 50) return; // 20fps max
     cursorThrottle.current = now;
     ws.send(JSON.stringify({ type: "cursor_move", x, y }));
   }, []);
@@ -2813,7 +2846,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.15 ✦
+              v5.16 ✦
             </button>
           </div>
         </div>
@@ -3708,6 +3741,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.16",date:"Apr 2026",items:[
+                  "Collab rebuilt: applyNodes/applyEdges broadcast ws.send() directly on local change",
+                  "Collab: receiver calls setNodes/setEdges directly — never applyNodes (no echo possible)",
+                  "Collab: no useEffect broadcasting — React batch timing issues eliminated entirely",
+                  "Collab: always-on WS, auto-reconnects on disconnect, no toggle button",
+                  "MS Office cursors: colored arrow + name badge per collaborator",
+                ]},
                 {v:"v5.15",date:"Apr 2026",items:[
                   "Collaboration is now always-on — auto-connects when any map is open (no toggle button)",
                   "MS Office-style cursor presence: colored cursor arrow + name badge per user",
