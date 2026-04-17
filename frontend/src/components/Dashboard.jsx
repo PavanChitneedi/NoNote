@@ -1,3 +1,4 @@
+import React from 'react';
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap } from "../api/client.js";
@@ -5,6 +6,7 @@ import { getMaps, createMap, deleteMap } from "../api/client.js";
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
 
 export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
+  const [showChangelog, setShowChangelog] = React.useState(false);
   const { user } = useAuth();
   const [maps, setMaps]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,13 +44,99 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       <div style={{ maxWidth:920, margin:"0 auto" }}>
 
         {/* Welcome */}
-        <div style={{ marginBottom:26 }}>
-          <div style={{ fontSize:22, fontWeight:700, color:"var(--text)", marginBottom:5 }}>Your Maps</div>
-          <div style={{ fontSize:12, color:"var(--text4)" }}>
-            {user?.display_name} ·{" "}
-            <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span>
+        <div style={{ marginBottom:26, display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+          <div>
+            <div style={{ fontSize:22, fontWeight:700, color:"var(--text)", marginBottom:5 }}>Your Maps</div>
+            <div style={{ fontSize:12, color:"var(--text4)" }}>
+              {user?.display_name} ·{" "}
+              <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span>
+            </div>
           </div>
+          <button onClick={()=>setShowChangelog(true)}
+            style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
+              padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
+              cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
+            v5.5 ✦ What's new
+          </button>
         </div>
+
+        {/* ── Changelog Modal ── */}
+        {showChangelog&&(
+          <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
+            onClick={()=>setShowChangelog(false)}>
+            <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:12,
+              boxShadow:"0 24px 64px rgba(0,0,0,.7)",width:540,maxWidth:"94vw",maxHeight:"80vh",
+              display:"flex",flexDirection:"column",overflow:"hidden"}}
+              onClick={e=>e.stopPropagation()}>
+              <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",
+                borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+                <div style={{flex:1}}>
+                  <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What's New</div>
+                  <div style={{fontSize:10,color:"var(--text4)",marginTop:2}}>Full changelog across all versions</div>
+                </div>
+                <button onClick={()=>setShowChangelog(false)}
+                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+              </div>
+              <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
+                {[
+                  {v:"v5.5",date:"Apr 2026",items:[
+                    "Share map: invite team members with Viewer/Editor permissions",
+                    "Real-time collaboration: 🟢 Collab toggle — changes sync instantly across users",
+                    "Inline formatting toolbar: Bold, Italic, Underline, Strikethrough, HR on note edit",
+                    "Changelog now shown on home page (this modal)",
+                    "Arrow fix: markerEnd arrowhead always flush with destination node edge",
+                  ]},
+                  {v:"v5.3–5.4",date:"Apr 2026",items:[
+                    "Compact sidebar redesigned: 136px, categories preserved, search works in all modes",
+                    "Icon grid uses CSS auto-fill — no trailing gaps in last row",
+                    "Arrow endpoint pull corrected for both forward and bidirectional arrows",
+                    "Description shown only once (removed duplicate from node body)",
+                  ]},
+                  {v:"v5.1–5.2",date:"Apr 2026",items:[
+                    "Note content inline editable on canvas (✎ pencil, textarea inline)",
+                    "Bidirectional arrow endpoints pull BOTH ends (PULL=14px) to clear node borders",
+                    "Node header redesign: title + description in header, type label at right-bottom",
+                    "Comment 💬 and Collapse ⊟ in one row, no overlap",
+                    "Compact sidebar cycling fixed (onCycleMode prop pattern)",
+                  ]},
+                  {v:"v5.0",date:"Apr 2026",items:[
+                    "Bidirectional arrows correctly show both arrowheads (auto-start-reverse)",
+                    "Inline text editing: pencil icon on title and description (F2 to rename)",
+                    "Keyboard shortcuts: E opens node popup, N adds note, F2 renames",
+                    "Export/Import .nonote bundle format",
+                    "Focus mode activates on node click",
+                    "Changelog maintained automatically in every version",
+                  ]},
+                  {v:"v4.46–4.47",date:"Apr 2026",items:[
+                    "Recursive subtree auto-layout (no overlapping nodes)",
+                    "5 layout directions: L→R, T→B, R→L, B→T, Radial",
+                    "Popup closes on canvas click",
+                  ]},
+                  {v:"v4.0–4.45",date:"2025–2026",items:[
+                    "Full-stack: Node.js + PostgreSQL + Redis + Docker",
+                    "60+ node types, 15 connection styles, AABB collision prevention",
+                    "Version history, LLM export, AI Chat, custom themes, PNG export",
+                    "Multi-note per node, rich text editor, sensitive data toggle",
+                    "Smart edge router, anchor system, endpoint drag handles",
+                  ]},
+                ].map(({v,date,items})=>(
+                  <div key={v} style={{marginBottom:18}}>
+                    <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:6}}>
+                      <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>{v}</span>
+                      <span style={{fontSize:10,color:"var(--text4)"}}>{date}</span>
+                    </div>
+                    {items.map((item,i)=>(
+                      <div key={i} style={{display:"flex",gap:6,marginBottom:4,fontSize:11,color:"var(--text2)"}}>
+                        <span style={{color:"var(--accent)",flexShrink:0}}>•</span>
+                        <span>{item}</span>
+                      </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {error && (
           <div style={{ background:"var(--danger)18", border:`1px solid var(--danger)40`, borderRadius:8, padding:"10px 14px", fontSize:12, color:"var(--danger)", marginBottom:16 }}>

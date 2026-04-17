@@ -658,6 +658,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [showChangelog, setShowChangelog]  = useState(false);
+  const [showShare,     setShowShare]      = useState(false);
+  const [collab,        setCollab]         = useState(false); // collaboration mode on
+  const [collabUsers,   setCollabUsers]    = useState({}); // {userId: {cursor,color,name}}
+  const wsRef = useRef(null);
+  const [shareUsers,    setShareUsers]     = useState([]);
+  const [shareEmail,    setShareEmail]     = useState("");
+  const [sharePerm,     setSharePerm]      = useState("viewer");
+  const [shareStatus,   setShareStatus]    = useState(null);
   const [sidebarIconOnly, setSidebarIconOnly] = useState(false);
   const [sidebarDense,    setSidebarDense]    = useState(false); // multi-icon-per-row
   // Feature: Comment pins
@@ -1260,6 +1268,44 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     },800);
   };
 
+  // ── WebSocket real-time collaboration ────────────────────────
+  useEffect(()=>{
+    if(!mapId||!collab) return;
+    const token=localStorage.getItem('nn_token');
+    const proto=window.location.protocol==='https:'?'wss:':'ws:';
+    const ws=new WebSocket(`${proto}//${window.location.host}/ws`);
+    wsRef.current=ws;
+    ws.onopen=()=>{
+      ws.send(JSON.stringify({type:'join',mapId,token}));
+      console.log('[collab] connected');
+    };
+    ws.onmessage=e=>{
+      try{
+        const msg=JSON.parse(e.data);
+        if(msg.type==='nodes_update') applyNodes(()=>msg.nodes);
+        if(msg.type==='edges_update') applyEdges(()=>msg.edges);
+        if(msg.type==='cursor_move'){
+          setCollabUsers(prev=>({...prev,[msg.userId]:{...prev[msg.userId],...msg}}));
+        }
+        if(msg.type==='user_left'){
+          setCollabUsers(prev=>{const n={...prev};delete n[msg.userId];return n;});
+        }
+      }catch{}
+    };
+    ws.onclose=()=>{ wsRef.current=null; console.log('[collab] disconnected'); };
+    return()=>{ ws.close(); wsRef.current=null; };
+  },[mapId,collab]);
+
+  // Broadcast node/edge changes when collaboration is on
+  const broadcastNodes=useCallback((ns)=>{
+    if(wsRef.current?.readyState===1)
+      wsRef.current.send(JSON.stringify({type:'nodes_update',nodes:ns}));
+  },[]);
+  const broadcastEdges=useCallback((es)=>{
+    if(wsRef.current?.readyState===1)
+      wsRef.current.send(JSON.stringify({type:'edges_update',edges:es}));
+  },[]);
+
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback((dir)=>{
     const d=dir||layoutDir;
@@ -1435,27 +1481,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     // into the source node by markerWidth*sw. Move fp forward to compensate.
     // markerEnd (refX=10): TIP is AT path endpoint. Path endpoint is AT node edge. Correct.
     // BUT: markerEnd actual tip overshoots by ~2px due to strokeWidth. Nudge tp inward too.
+    // markerStart (auto-start-reverse): tip extends backward past fp into source node.
+    // Compensate by moving fp forward along path tangent by markerWidth*strokeWidth.
+    // markerEnd (refX=10): tip IS at path endpoint (node edge). No adjustment needed.
     const hasMStart=edge.style&&(EDGE_STYLES[edge.style]?.mStart);
-    const hasMEnd  =edge.style&&(EDGE_STYLES[edge.style]?.mEnd);
     const sw=EDGE_STYLES[edge.style]?.strokeW||2;
-    let fpx=fp.x, fpy=fp.y, tpx=tp.x, tpy=tp.y;
+    let fpx=fp.x, fpy=fp.y;
     if(hasMStart){
-      // Move start FORWARD by markerWidth*sw so reversed tip lands at node edge
-      const PULL=sw*10;
+      const PULL=sw*10; // markerWidth(10) × strokeWidth
       const d1=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
       fpx=fp.x+(c1x-fp.x)/d1*PULL;
       fpy=fp.y+(c1y-fp.y)/d1*PULL;
     }
-    if(hasMEnd){
-      // Push endpoint slightly INTO the node (past the edge) so arrowhead
-      // tip is flush — move tp in direction AWAY from c2 (into the node)
-      const NUDGE=sw*2.5;
-      const d2=Math.sqrt((c2x-tp.x)**2+(c2y-tp.y)**2)||1;
-      // Opposite of c2→tp direction = tp→c2 direction inverted = move tp further
-      tpx=tp.x-(c2x-tp.x)/d2*NUDGE;
-      tpy=tp.y-(c2y-tp.y)/d2*NUDGE;
-    }
-    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tpx} ${tpy}`;
+    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`;
     const mid={
       x:0.125*(fp.x+tp.x)+0.375*(c1x+c2x),
       y:0.125*(fp.y+tp.y)+0.375*(c1y+c2y),
@@ -2113,22 +2151,59 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         {isExpanded&&!nt.sensitive&&(
                           <div style={{borderTop:`1px solid ${t.color}15`}}>
                             {inlineEditField?.noteId===nt.id&&inlineEditField?.field==='noteContent'?(
-                              <textarea autoFocus value={stripHtml(nt.content)||""}
-                                onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
-                                onChange={e=>{
-                                  e.stopPropagation();
-                                  const arr=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,content:e.target.value}:n);
-                                  updateNotes(node.id,arr);
-                                }}
-                                onBlur={()=>setInlineEditField(null)}
-                                onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape")setInlineEditField(null);}}
-                                placeholder="Write note content…"
-                                rows={3}
-                                style={{width:"100%",boxSizing:"border-box",padding:"4px 8px",background:"var(--bg3)",
-                                  border:"none",outline:"1px solid var(--accent)",resize:"vertical",
-                                  fontSize:10,color:"var(--text2)",fontFamily:"var(--font-ui)",lineHeight:1.55,
-                                  borderRadius:0}}
-                              />
+                              <div style={{position:"relative"}}>
+                                <textarea autoFocus id={`nt-edit-${nt.id}`} value={stripHtml(nt.content)||""}
+                                  onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
+                                  onChange={e=>{
+                                    e.stopPropagation();
+                                    const arr=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,content:e.target.value}:n);
+                                    updateNotes(node.id,arr);
+                                  }}
+                                  onBlur={()=>setInlineEditField(null)}
+                                  onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape")setInlineEditField(null);}}
+                                  placeholder="Write note content…"
+                                  rows={3}
+                                  style={{width:"100%",boxSizing:"border-box",padding:"4px 8px",background:"var(--bg3)",
+                                    border:"none",outline:"1px solid var(--accent)",resize:"vertical",
+                                    fontSize:10,color:"var(--text2)",fontFamily:"var(--font-ui)",lineHeight:1.55,
+                                    borderRadius:0}}
+                                />
+                                {/* Mini format bar */}
+                                <div style={{display:"flex",gap:1,padding:"1px 3px",
+                                  background:"var(--bg2)",border:"1px solid var(--border)",
+                                  borderRadius:3,position:"absolute",top:-22,left:0,zIndex:10,
+                                  boxShadow:"0 2px 8px rgba(0,0,0,.4)"}}>
+                                  {[["B","bold"],["I","italic"],["U","underline"],["S","strikethrough"],["—","insertHorizontalRule"]].map(([lbl,cmd])=>(
+                                    <button key={cmd}
+                                      onMouseDown={e=>{
+                                        e.preventDefault();e.stopPropagation();
+                                        // Wrap selected text with markdown-style tags
+                                        const ta=document.getElementById(`nt-edit-${nt.id}`);
+                                        if(!ta) return;
+                                        const s=ta.selectionStart, e2=ta.selectionEnd, val=ta.value;
+                                        if(s===e2) return;
+                                        const sel=val.slice(s,e2);
+                                        const wrap={bold:"**",italic:"_",underline:"__",strikethrough:"~~",insertHorizontalRule:""}[cmd];
+                                        let newVal;
+                                        if(cmd==="insertHorizontalRule") newVal=val.slice(0,s)+"\n---\n"+val.slice(e2);
+                                        else newVal=val.slice(0,s)+wrap+sel+wrap+val.slice(e2);
+                                        const arr2=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,content:newVal}:n);
+                                        updateNotes(node.id,arr2);
+                                        setTimeout(()=>{ta.selectionStart=s+wrap.length;ta.selectionEnd=e2+wrap.length;ta.focus();},0);
+                                      }}
+                                      style={{background:"none",border:"none",cursor:"pointer",
+                                        padding:"0 4px",fontSize:lbl==="B"?11:10,
+                                        fontWeight:lbl==="B"?"700":"400",
+                                        fontStyle:lbl==="I"?"italic":"normal",
+                                        textDecoration:lbl==="U"?"underline":lbl==="S"?"line-through":"none",
+                                        color:"var(--text2)",lineHeight:"18px",borderRadius:2,
+                                        minWidth:18,textAlign:"center"}}
+                                      title={cmd}>
+                                      {lbl}
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
                             ):(
                               <div style={{position:"relative",padding:"3px 8px 6px"}}>
                                 <div style={{fontSize:10,color:"var(--text3)",lineHeight:1.55,paddingRight:16}}
@@ -2228,6 +2303,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
             {/* EXPORT — take it out */}
             <div style={{position:"relative"}}>
+              <button onClick={()=>{
+                  setShowShare(true);
+                  // Load current collaborators
+                  if(mapId) fetch(`/api/maps/${mapId}/collaborators`,
+                    {headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}})
+                    .then(r=>r.ok?r.json():[]).then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});
+                }}
+                style={{...tbtn(false,"#1565C0"),display:"flex",alignItems:"center",gap:4}}
+                title="Share map">
+                👥 <span style={{fontSize:10}}>Share</span>
+              </button>
+
               <button onClick={()=>setShowExportMenu(v=>!v)} style={{...tbtn(showExportMenu,"#238636"),display:"flex",alignItems:"center",gap:4}} title="Export map">
                 ↗ <span style={{fontSize:10}}>Export</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
               </button>
@@ -2317,7 +2404,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.4 ✦
+              v5.5 ✦
             </button>
           </div>
         </div>
@@ -2335,6 +2422,20 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           {/* ── MODE GROUP ── edit/view + props mode ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
             {canEdit&&(
+              {/* Collab toggle */}
+              <button onClick={()=>setCollab(v=>!v)}
+                style={{...tbtn(collab,"#7B1FA2"),display:"flex",alignItems:"center",gap:4,position:"relative"}}
+                title={collab?"Collaboration ON — changes sync in real-time":"Enable real-time collaboration"}>
+                {collab?"🟢":"⚪"} <span style={{fontSize:10}}>Collab</span>
+                {collab&&Object.keys(collabUsers).length>0&&(
+                  <span style={{position:"absolute",top:-4,right:-4,fontSize:7,
+                    background:"var(--success)",color:"#fff",borderRadius:"50%",
+                    width:12,height:12,display:"flex",alignItems:"center",justifyContent:"center",fontWeight:700}}>
+                    {Object.keys(collabUsers).length}
+                  </span>
+                )}
+              </button>
+
               <button onClick={()=>setEditMode(v=>!v)}
                 style={{...tbtn(!editMode,"var(--success)"),minWidth:58}}
                 title="Toggle edit/view mode (E)">
@@ -2886,6 +2987,116 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         )}
       </div>
 
+      {/* ── Share Modal ── */}
+      {showShare&&(
+        <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center"}}
+          onClick={()=>{setShowShare(false);setShareStatus(null);setShareEmail("");}}>
+          <div style={{background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
+            boxShadow:"0 24px 64px rgba(0,0,0,.7)",width:440,maxWidth:"94vw",
+            display:"flex",flexDirection:"column",overflow:"hidden"}}
+            onClick={e=>e.stopPropagation()}>
+            {/* Header */}
+            <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",
+              borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+              <span style={{fontSize:18}}>👥</span>
+              <div style={{flex:1}}>
+                <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Share Map</div>
+                <div style={{fontSize:10,color:"var(--text4)",marginTop:1}}>Invite teammates to view or edit this map</div>
+              </div>
+              <button onClick={()=>setShowShare(false)}
+                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+            </div>
+            {/* Invite row */}
+            <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border2)"}}>
+              <div style={{display:"flex",gap:6,marginBottom:8}}>
+                <input value={shareEmail} onChange={e=>setShareEmail(e.target.value)}
+                  placeholder="Enter user email…"
+                  onKeyDown={e=>{if(e.key==="Enter")e.currentTarget.nextSibling?.nextSibling?.click();}}
+                  style={{flex:1,background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                    padding:"6px 10px",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",outline:"none"}}/>
+                <select value={sharePerm} onChange={e=>setSharePerm(e.target.value)}
+                  style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                    padding:"6px 8px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}>
+                  <option value="viewer">Viewer</option>
+                  <option value="editor">Editor</option>
+                </select>
+                <button
+                  onClick={async()=>{
+                    if(!shareEmail.trim()) return;
+                    setShareStatus("Sending…");
+                    try{
+                      const r=await fetch(`/api/maps/${mapId}/collaborators`,{
+                        method:"POST",
+                        headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem('nn_token')}`},
+                        body:JSON.stringify({email:shareEmail.trim(),permission:sharePerm})
+                      });
+                      if(r.ok){
+                        setShareStatus("✓ Invited!");
+                        setShareEmail("");
+                        // Refresh list
+                        const d=await fetch(`/api/maps/${mapId}/collaborators`,{headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}}).then(r2=>r2.json());
+                        setShareUsers(Array.isArray(d)?d:[]);
+                        setTimeout(()=>setShareStatus(null),3000);
+                      } else {
+                        const e=await r.json();
+                        setShareStatus("✗ "+(e.error||"Failed"));
+                        setTimeout(()=>setShareStatus(null),4000);
+                      }
+                    }catch{setShareStatus("✗ Network error");}
+                  }}
+                  style={{background:"var(--accent)",border:"none",borderRadius:"var(--radius-sm)",
+                    padding:"6px 14px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"var(--font-ui)",fontWeight:700}}>
+                  Invite
+                </button>
+              </div>
+              {shareStatus&&(
+                <div style={{fontSize:11,color:shareStatus.startsWith("✓")?"var(--success)":"var(--danger)",marginTop:4}}>
+                  {shareStatus}
+                </div>
+              )}
+            </div>
+            {/* Collaborator list */}
+            <div style={{padding:"10px 18px",maxHeight:220,overflowY:"auto"}}>
+              {shareUsers.length===0?(
+                <div style={{fontSize:11,color:"var(--text4)",textAlign:"center",padding:"12px 0"}}>
+                  No collaborators yet. Invite someone above.
+                </div>
+              ):shareUsers.map(u=>(
+                <div key={u.user_id||u.email} style={{display:"flex",alignItems:"center",gap:8,padding:"6px 0",
+                  borderBottom:"1px solid var(--border2)"}}>
+                  <div style={{width:28,height:28,borderRadius:"50%",background:"var(--accent)",
+                    display:"flex",alignItems:"center",justifyContent:"center",fontSize:12,
+                    color:"#fff",fontWeight:700,flexShrink:0}}>
+                    {(u.display_name||u.email||"?")[0].toUpperCase()}
+                  </div>
+                  <div style={{flex:1,minWidth:0}}>
+                    <div style={{fontSize:11,fontWeight:600,color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {u.display_name||u.email}
+                    </div>
+                    <div style={{fontSize:9,color:"var(--text4)"}}>{u.email}</div>
+                  </div>
+                  <span style={{fontSize:9,padding:"2px 7px",borderRadius:10,
+                    background:u.permission==="editor"?"var(--accent)20":"var(--bg3)",
+                    color:u.permission==="editor"?"var(--accent)":"var(--text4)",
+                    border:"1px solid "+(u.permission==="editor"?"var(--accent)40":"var(--border)"),
+                    fontWeight:600}}>
+                    {u.permission||"viewer"}
+                  </span>
+                  <button onClick={async()=>{
+                    await fetch(`/api/maps/${mapId}/collaborators/${u.user_id}`,{
+                      method:"DELETE",headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}
+                    });
+                    setShareUsers(v=>v.filter(x=>x.user_id!==u.user_id));
+                  }}
+                  style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",
+                    fontSize:14,padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Changelog Modal ── */}
       {showChangelog&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
@@ -2907,6 +3118,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.5",date:"Apr 2026",items:[
+                  "Share map: 👥 button to invite collaborators with Viewer/Editor roles",
+                  "Real-time collaboration: WebSocket sync — 🟢 Collab toggle broadcasts changes live",
+                  "Inline formatting toolbar on note edit: Bold, Italic, Underline, Strikethrough, HR",
+                  "Changelog now shown on home page (Dashboard)",
+                  "Arrow markerEnd arrowhead flush fix — removed incorrect endpoint nudge",
+                ]},
                 {v:"v5.4",date:"Apr 2026",items:[
                   "Arrow tip flush fix: endpoint nudged INTO node so arrowhead is visually flush",
                   "Description placeholder no longer shown twice (removed duplicate from node body)",

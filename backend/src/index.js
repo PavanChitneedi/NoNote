@@ -1,4 +1,7 @@
 import express from "express";
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
+import jwt from "jsonwebtoken";
 import helmet from "helmet";
 import cors from "cors";
 import compression from "compression";
@@ -110,8 +113,63 @@ async function seedAdmin() {
   console.log(`[seed] Created owner admin: ${email}`);
 }
 
+// ── WebSocket collaboration server ───────────────────────────
+const httpServer = createServer(app);
+const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
+
+// mapId → Set of ws clients
+const rooms = new Map();
+
+wss.on("connection", (ws, req) => {
+  let mapId = null;
+  let userId = null;
+
+  ws.on("message", raw => {
+    let msg;
+    try { msg = JSON.parse(raw); } catch { return; }
+
+    if (msg.type === "join") {
+      // Authenticate token
+      try {
+        const payload = jwt.verify(msg.token, process.env.JWT_SECRET);
+        userId = payload.sub || payload.id;
+      } catch { ws.close(1008, "Unauthorized"); return; }
+      mapId = msg.mapId;
+      if (!rooms.has(mapId)) rooms.set(mapId, new Set());
+      rooms.get(mapId).add(ws);
+      ws.mapId = mapId;
+      ws.userId = userId;
+      console.log(`[ws] user ${userId} joined map ${mapId}`);
+      return;
+    }
+
+    if (!mapId) return; // not joined yet
+
+    // Broadcast to all OTHER clients in the room
+    const room = rooms.get(mapId);
+    if (!room) return;
+    const out = JSON.stringify({ ...msg, userId });
+    room.forEach(client => {
+      if (client !== ws && client.readyState === 1) client.send(out);
+    });
+  });
+
+  ws.on("close", () => {
+    if (mapId && rooms.has(mapId)) {
+      rooms.get(mapId).delete(ws);
+      if (rooms.get(mapId).size === 0) rooms.delete(mapId);
+      // Notify others user left
+      const room = rooms.get(mapId);
+      if (room) {
+        const out = JSON.stringify({ type: "user_left", userId });
+        room.forEach(c => { if (c.readyState === 1) c.send(out); });
+      }
+    }
+  });
+});
+
 // ── Start ─────────────────────────────────────────────────────
-app.listen(PORT, "0.0.0.0", async () => {
-  console.log(`[server] NodeMap API running on :${PORT}`);
+httpServer.listen(PORT, "0.0.0.0", async () => {
+  console.log(`[server] NodeMap API + WS running on :${PORT}`);
   await seedAdmin().catch(console.error);
 });

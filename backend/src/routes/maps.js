@@ -246,6 +246,26 @@ router.post(
   }
 );
 
+router.get(
+  "/:mapId/collaborators",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const result = await query(
+        `SELECT mc.user_id, mc.permission, u.email, u.display_name
+         FROM map_collaborators mc JOIN users u ON u.id = mc.user_id
+         WHERE mc.map_id = $1
+         ORDER BY mc.invited_at`,
+        [req.params.mapId]
+      );
+      res.json(result.rows);
+    } catch (err) {
+      res.status(500).json({ error: "Failed to fetch collaborators" });
+    }
+  }
+);
+
 router.delete(
   "/:mapId/collaborators/:userId",
   authenticate,
