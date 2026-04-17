@@ -789,7 +789,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [drawingEdge,  setDrawingEdge]  = useState(null);
   // Box-select
   const [boxSel,       setBoxSel]       = useState(null); // {startX,startY,endX,endY}
-  const boxSelRef = useRef(null); // live ref for window mousemove handler
+  const boxSelRef    = useRef(null); // live ref for window mousemove handler
+  const didBoxSel    = useRef(false); // true if last mouseup committed a box-selection
   const [saveState,    setSaveState]    = useState("idle");
   const [saveMsg,      setSaveMsg]      = useState("");
   const [loading,      setLoading]      = useState(true);
@@ -1364,7 +1365,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             const nw=n.w||DEF_W, nh=nodeHeightsRef.current[n.id]||n.h||DEF_H;
             if(n.x<x2 && n.x+nw>x1 && n.y<y2 && n.y+nh>y1) sel.add(n.id);
           });
-          setSelected(sel);
+          if(sel.size>0){ setSelected(sel); didBoxSel.current=true; }
         }
         boxSelRef.current=null; setBoxSel(null);
       }
@@ -2129,8 +2130,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const mid=result.mid||{x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
         const isSel=selEdge===edge.id;
         const isThisEdgeSel=isSel;
+        // Focus mode: dim edge if neither endpoint is focused
+        const edgeFocused = !focusMode || selected.has(edge.from) || selected.has(edge.to) ||
+          editingTitle===edge.from || editingTitle===edge.to ||
+          editingNotes===edge.from || editingNotes===edge.to;
         return(
-          <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all"}} onClick={e=>handleEdgeClick(e,edge.id)}>
+          <g key={edge.id} style={{cursor:"pointer",pointerEvents:"all",opacity:edgeFocused?"1":"0.08",transition:"opacity .2s"}} onClick={e=>handleEdgeClick(e,edge.id)}>
             <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
             {(()=>{
               const def=EDGE_STYLES[edge.style]||EDGE_STYLES.arrow;
@@ -2876,7 +2881,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.18 ✦
+              v5.19 ✦
             </button>
           </div>
         </div>
@@ -3240,6 +3245,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           onClick={e=>{
             if(e.target.closest(".nn-node")) return;
             if(e.target.tagName==="path"||e.target.tagName==="text") return;
+            // Skip clearing selection if a box-select drag just committed
+            if(didBoxSel.current){ didBoxSel.current=false; return; }
             setSelected(new Set()); setSelEdge(null);
             if(drawingEdge) setDrawingEdge(null);
             setContextMenu(null);
@@ -3797,6 +3804,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.19",date:"Apr 2026",items:[
+                  "Focus mode now dims edges too (not just nodes)",
+                  "Drag select fixed: canvas onClick was clearing box-selection immediately after commit",
+                ]},
                 {v:"v5.18",date:"Apr 2026",items:[
                   "Collab: Excel-style selection overlays — selected nodes get colored border + name badge",
                   "Collab: editing state shows '· editing' in the badge (like Google Docs)",
