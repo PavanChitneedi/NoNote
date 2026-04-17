@@ -2560,35 +2560,42 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
           <div style={{flex:1}}/>
 
-          {/* ── Document-level tools (right side) ── */}
+          {/* ── Document-level tools — grouped by function ── */}
           <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
 
-            {/* TEMPLATES — starting point for new maps */}
-            <button onClick={()=>setShowTemplates(v=>!v)} style={{...tbtn(showTemplates,"#FF9800"),display:"flex",alignItems:"center",gap:4}} title="Template library — start from a preset">
+            {/* ── GROUP 1: Map resources ── */}
+            <button onClick={()=>setShowTemplates(v=>!v)} style={{...tbtn(showTemplates,"#FF9800"),display:"flex",alignItems:"center",gap:4}} title="Template library (start from a preset)">
               📋 <span style={{fontSize:10}}>Templates</span>
             </button>
-
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
-
-            {/* HISTORY / VERSIONS — time-travel */}
-            <button onClick={()=>setShowVersions(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:4}} title="Version history — restore previous saves (V)">
+            <button onClick={()=>setShowVersions(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:4}} title="Version history (V)">
               🕐 <span style={{fontSize:10}}>History</span>
             </button>
 
-            {/* EXPORT — take it out */}
-            <div style={{position:"relative"}}>
-              <button onClick={()=>{
-                  setShowShare(true);
-                  // Load current collaborators
-                  if(mapId) fetch(`/api/maps/${mapId}/collaborators`,
-                    {headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}})
-                    .then(r=>r.ok?r.json():[]).then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});
-                }}
-                style={{...tbtn(false,"#1565C0"),display:"flex",alignItems:"center",gap:4}}
-                title="Share map">
-                👥 <span style={{fontSize:10}}>Share</span>
-              </button>
+                        <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
 
+            {/* ── GROUP 2: Import / Export — data in and out ── */}
+            <label title="Import .nonote map file" style={{...tbtn(false),cursor:"pointer",display:"flex",alignItems:"center",gap:3,padding:"4px 8px",borderRadius:"var(--radius-sm)"}}>
+              ↙ <span style={{fontSize:10}}>Import</span>
+              <input type="file" accept=".nonote,.json" style={{display:"none"}}
+                onChange={e=>{
+                  const f=e.target.files?.[0]; if(!f) return;
+                  const r=new FileReader();
+                  r.onload=ev=>{
+                    try{
+                      const b=JSON.parse(ev.target.result);
+                      if(b.app==="NoNote"&&b.nodes){
+                        const ns=b.nodes.map(n=>({...n,notes:Array.isArray(n.notes)?n.notes:[],collapsed:false}));
+                        applyNodes(()=>ns); applyEdges(()=>b.edges||[]);
+                        alert(`Imported "${b.title}" — ${ns.length} nodes`);
+                      } else { alert("Not a valid .nonote file"); }
+                    } catch{ alert("Could not read file"); }
+                  };
+                  r.readAsText(f);
+                  e.target.value="";
+                }}/>
+            </label>
+
+            <div style={{position:"relative"}}>
               <button onClick={()=>setShowExportMenu(v=>!v)} style={{...tbtn(showExportMenu,"#238636"),display:"flex",alignItems:"center",gap:4}} title="Export map">
                 ↗ <span style={{fontSize:10}}>Export</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
               </button>
@@ -2615,9 +2622,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </>)}
             </div>
 
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
 
-            {/* APPEARANCE — look & feel */}
+                        <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
+
+            {/* ── GROUP 3: Collaboration ── */}
+            <button onClick={()=>{
+                setShowShare(true);
+                if(mapId) apiFetch(`/maps/${mapId}/collaborators`)
+                  .then(r=>r.ok?r.json():[]).then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});
+              }}
+              style={{...tbtn(false,"#1565C0"),display:"flex",alignItems:"center",gap:4}}
+              title="Share map with teammates">
+              👥 <span style={{fontSize:10}}>Share</span>
+            </button>
+
+                        <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
+
+            {/* ── GROUP 4: Appearance ── */}
             <div style={{position:"relative"}}>
               <button onClick={()=>setShowAppMenu(v=>!v)} style={{...tbtn(showAppMenu,"#6C63FF"),display:"flex",alignItems:"center",gap:4}} title="Appearance — themes, canvas style">
                 🎨 <span style={{fontSize:10}}>Theme</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
@@ -2637,29 +2658,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </>)}
             </div>
 
-            {/* Import .nonote file */}
-            <label title="Import .nonote map file" style={{...tbtn(false),cursor:"pointer",display:"flex",alignItems:"center",gap:3,padding:"4px 8px",borderRadius:"var(--radius-sm)"}}>
-              ↙ <span style={{fontSize:10}}>Import</span>
-              <input type="file" accept=".nonote,.json" style={{display:"none"}}
-                onChange={e=>{
-                  const f=e.target.files?.[0]; if(!f) return;
-                  const r=new FileReader();
-                  r.onload=ev=>{
-                    try{
-                      const b=JSON.parse(ev.target.result);
-                      if(b.app==="NoNote"&&b.nodes){
-                        const ns=b.nodes.map(n=>({...n,notes:Array.isArray(n.notes)?n.notes:[],collapsed:false}));
-                        applyNodes(()=>ns); applyEdges(()=>b.edges||[]);
-                        alert(`Imported "${b.title}" — ${ns.length} nodes`);
-                      } else { alert("Not a valid .nonote file"); }
-                    } catch{ alert("Could not read file"); }
-                  };
-                  r.readAsText(f);
-                  e.target.value="";
-                }}/>
-            </label>
 
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
 
             {/* ZOOM */}
             <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
@@ -2684,7 +2683,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.8 ✦
+              v5.9 ✦
             </button>
           </div>
         </div>
@@ -3393,8 +3392,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       setShareEmail(e.target.value);
                       const q=e.target.value.trim();
                       if(q.length>=2){
-                        fetch(`/api/users/search?q=${encodeURIComponent(q)}`,
-                          {headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}})
+                        apiFetch(`/users/search?q=${encodeURIComponent(q)}`)
                           .then(r=>r.ok?r.json():[]).then(d=>setShareSearch(Array.isArray(d)?d:[])).catch(()=>{});
                       } else { setShareSearch([]); }
                     }}
@@ -3437,9 +3435,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     if(!shareEmail.trim()) return;
                     setShareStatus("Sending…");
                     try{
-                      const r=await fetch(`/api/maps/${mapId}/collaborators`,{
+                      const r=await apiFetch(`/maps/${mapId}/collaborators`,{
                         method:"POST",
-                        headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem('nn_token')}`},
                         body:JSON.stringify({email:shareEmail.trim(),permission:sharePerm})
                       });
                       const data=await r.json().catch(()=>({}));
@@ -3447,7 +3444,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         setShareStatus("✓ Invited "+shareEmail.trim()+"!");
                         setShareEmail(""); setShareSearch([]);
                         // Refresh list
-                        const d=await fetch(`/api/maps/${mapId}/collaborators`,{headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}}).then(r2=>r2.json()).catch(()=>[]);
+                        const d=await apiFetch(`/maps/${mapId}/collaborators`).then(r2=>r2.json()).catch(()=>[]);
                         setShareUsers(Array.isArray(d)?d:[]);
                         setTimeout(()=>setShareStatus(null),3000);
                       } else {
@@ -3498,9 +3495,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     {u.permission||"viewer"}
                   </span>
                   <button onClick={async()=>{
-                    await fetch(`/api/maps/${mapId}/collaborators/${u.user_id}`,{
-                      method:"DELETE",headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}
-                    });
+                    await apiFetch(`/maps/${mapId}/collaborators/${u.user_id}`,{method:"DELETE"});
                     setShareUsers(v=>v.filter(x=>x.user_id!==u.user_id));
                   }}
                   style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",
@@ -3533,6 +3528,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.9",date:"Apr 2026",items:[
+                  "Share map fixed: all API calls now use apiFetch with proper auth token (not localStorage)",
+                  "Topbar reorganized into 4 logical groups: Map Resources | Import+Export | Collaboration | Appearance+View",
+                  "Share button no longer overlaps Export — each has its own group with separators",
+                  "Dashboard fetch calls (rename, duplicate, export) also fixed to use apiFetch",
+                ]},
                 {v:"v5.8",date:"Apr 2026",items:[
                   "Group boxes: drag to move, SE corner resize, border color picker, fill color picker",
                   "PDF export: print-dialog PDF with embedded node structure (🖨 Print / Save as PDF)",

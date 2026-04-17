@@ -1,7 +1,7 @@
 import React from 'react';
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getMaps, createMap, deleteMap } from "../api/client.js";
+import { getMaps, createMap, deleteMap, apiFetch } from "../api/client.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
 
@@ -36,9 +36,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   const handleRename = async (id, title) => {
     try {
-      await fetch(`/api/maps/${id}`, {
+      await apiFetch(`/maps/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type":"application/json", Authorization:`Bearer ${localStorage.getItem('nn_token')}` },
         body: JSON.stringify({ title })
       });
       setMaps(m => m.map(x => x.id===id ? {...x,title} : x));
@@ -48,10 +47,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   const handleDuplicate = async (map) => {
     try {
-      const r = await fetch(`/api/maps/${map.id}/duplicate`, {
-        method: "POST",
-        headers: { Authorization:`Bearer ${localStorage.getItem('nn_token')}` }
-      });
+      const r = await apiFetch(`/maps/${map.id}/duplicate`, { method: "POST" });
       if (r.ok) { const d = await r.json(); setMaps(m=>[d.map,...m]); }
     } catch {}
   };
@@ -259,7 +255,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                     {icon:"✎",label:"Rename",action:()=>{setRenaming({id:menuMap.id,title:menuMap.title});setMenuMap(null);}},
                     {icon:"⧉",label:"Duplicate",action:()=>{handleDuplicate(menuMap);setMenuMap(null);}},
                     {icon:"↙",label:"Export .nonote",action:()=>{
-                      fetch(`/api/maps/${menuMap.id}`,{headers:{Authorization:`Bearer ${localStorage.getItem('nn_token')}`}})
+                      apiFetch(`/maps/${menuMap.id}`)
                         .then(r=>r.json()).then(d=>{
                           const b={version:1,app:"NoNote",title:d.map?.title||menuMap.title,exported:new Date().toISOString(),nodes:d.map?.nodes||[],edges:d.map?.edges||[]};
                           const a=document.createElement("a");
