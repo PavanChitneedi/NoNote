@@ -1431,19 +1431,29 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       c2x=tp.x*0.25+mx*0.75; c2y=tp.y*0.25+my*0.75;
     }
 
-    // markerEnd (refX=10): tip IS at path endpoint — no offset needed
     // markerStart (auto-start-reverse, refX=0): tip extends BACKWARD from fp
-    //   by markerWidth*strokeWidth ≈ 20px — move fp FORWARD to compensate
+    // into the source node by markerWidth*sw. Move fp forward to compensate.
+    // markerEnd (refX=10): TIP is AT path endpoint. Path endpoint is AT node edge. Correct.
+    // BUT: markerEnd actual tip overshoots by ~2px due to strokeWidth. Nudge tp inward too.
     const hasMStart=edge.style&&(EDGE_STYLES[edge.style]?.mStart);
+    const hasMEnd  =edge.style&&(EDGE_STYLES[edge.style]?.mEnd);
     const sw=EDGE_STYLES[edge.style]?.strokeW||2;
-    const PULL=hasMStart ? sw*11 : 0; // markerWidth(10)*sw + 1px buffer
-    let fpx=fp.x, fpy=fp.y;
-    if(PULL>0){
+    let fpx=fp.x, fpy=fp.y, tpx=tp.x, tpy=tp.y;
+    if(hasMStart){
+      // Move start FORWARD by markerWidth*sw so reversed tip lands at node edge
+      const PULL=sw*10;
       const d1=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
       fpx=fp.x+(c1x-fp.x)/d1*PULL;
       fpy=fp.y+(c1y-fp.y)/d1*PULL;
     }
-    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`;
+    if(hasMEnd){
+      // Nudge end slightly BACKWARD along the approach tangent so tip is flush
+      const NUDGE=sw*1.5;
+      const d2=Math.sqrt((c2x-tp.x)**2+(c2y-tp.y)**2)||1;
+      tpx=tp.x+(c2x-tp.x)/d2*NUDGE;
+      tpy=tp.y+(c2y-tp.y)/d2*NUDGE;
+    }
+    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tpx} ${tpy}`;
     const mid={
       x:0.125*(fp.x+tp.x)+0.375*(c1x+c2x),
       y:0.125*(fp.y+tp.y)+0.375*(c1y+c2y),
@@ -2307,7 +2317,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.2 ✦
+              v5.3 ✦
             </button>
           </div>
         </div>
@@ -2897,6 +2907,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.3",date:"Apr 2026",items:[
+                  "Compact sidebar redesigned: narrower 136px panel, categories preserved, search works in all modes",
+                  "Arrow gap fix: markerEnd nudged slightly inward so arrowhead is flush with node edge",
+                  "Arrow bidirectional start correctly pulled forward by markerWidth×strokeWidth",
+                  "Icon sidebar tooltip shown in compact mode too",
+                ]},
                 {v:"v5.2",date:"Apr 2026",items:[
                   "Arrow endpoint pull fixed: markerEnd no longer creates gap, markerStart correctly offset",
                   "Compact sidebar mode now works — fixed out-of-scope state call bug",
@@ -3097,99 +3113,97 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
 }
 
 // ── Node Sidebar ──────────────────────────────────────────────
+// Modes: full (178px) → compact (136px icons+labels) → icons (48px) → full
 function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly,dense,onToggleDense,onCycleMode}){
-  const [search, setSearch]     = useState("");
-  const [catOpen, setCatOpen]   = useState({});
-  const [tooltip, setTooltip]   = useState(null); // {key, label, color, x, y}
+  const [search, setSearch]   = useState("");
+  const [catOpen, setCatOpen] = useState({});
+  const [tooltip, setTooltip] = useState(null);
 
-  const toggle = cat => setCatOpen(p=>({...p,[cat]:!p[cat]}));
-
+  const toggle = cat => setCatOpen(p=>({...p,[cat]:!(p[cat]===undefined?true:p[cat])}));
   const q = search.trim().toLowerCase();
-  const filtered = Object.entries(NT).filter(([,t])=>{
-    if(!q) return true;
-    return t.label.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q);
-  });
+
+  const filtered = Object.entries(NT).filter(([,t])=>
+    !q || t.label.toLowerCase().includes(q) || t.cat.toLowerCase().includes(q)
+  );
   const groups = {};
   filtered.forEach(([k,t])=>{ if(!groups[t.cat]) groups[t.cat]=[]; groups[t.cat].push([k,t]); });
   const visibleCats = SIDEBAR_CATS.filter(c=>groups[c]?.length);
 
-  const COL_W_ICON = 48; // icon-only sidebar width
-  const FULL_W     = 178; // full sidebar width (matches --sidebar-w)
+  const COMPACT_W = 136;
+  const ICON_W    = 48;
+  const FULL_W    = 178;
 
-  // Collapsed: just a thin toggle bar
+  const sideW = iconOnly ? ICON_W : dense ? COMPACT_W : FULL_W;
+
+  // ── Collapsed bar ────────────────────────────────────────────
   if(collapsed){
     return(
       <div style={{width:28,flexShrink:0,background:"var(--bg2)",borderRight:"1px solid var(--border2)",
         display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,gap:6,overflow:"hidden"}}>
         <button onClick={onToggleCollapse}
-          title="Expand node library"
           style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
             color:"var(--text4)",cursor:"pointer",fontSize:13,width:20,height:20,display:"flex",
-            alignItems:"center",justifyContent:"center",lineHeight:1,flexShrink:0}}>›</button>
+            alignItems:"center",justifyContent:"center",lineHeight:1}}>›</button>
         <div style={{writingMode:"vertical-rl",fontSize:9,fontWeight:700,color:"var(--text4)",
-          letterSpacing:2,marginTop:8,userSelect:"none",opacity:.6}}>NODE LIBRARY</div>
+          letterSpacing:2,marginTop:8,userSelect:"none",opacity:.6}}>NODES</div>
       </div>
     );
   }
 
   return(
-    <div style={{width:iconOnly?COL_W_ICON:FULL_W,flexShrink:0,background:"var(--bg2)",
+    <div style={{width:sideW,flexShrink:0,background:"var(--bg2)",
       borderRight:"1px solid var(--border2)",display:"flex",flexDirection:"column",
       overflow:"hidden",transition:"width .18s",position:"relative"}}>
 
-      {/* Header */}
-      <div style={{padding:"7px 8px 5px",borderBottom:"1px solid var(--border2)",flexShrink:0}}>
-        {/* Title + controls row */}
-        <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:iconOnly?3:5}}>
-          {!iconOnly&&!dense&&<span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:.5,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>NODES</span>}
-          {(iconOnly||dense)&&<div style={{flex:1}}/>}
-          {/* Mode: Full / Dense / Icon */}
+      {/* ── Header ── */}
+      <div style={{padding:"6px 8px 5px",borderBottom:"1px solid var(--border2)",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:3,marginBottom:4}}>
+          {!iconOnly&&<span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:.5,flex:1,
+            overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>
+            {dense?"NODES":"NODES"}
+          </span>}
+          {iconOnly&&<div style={{flex:1}}/>}
+          {/* Mode cycle button */}
           <button onClick={onCycleMode}
-            title={iconOnly?"Switch to full labels":dense?"Switch to icons only":"Switch to compact multi-icon mode"}
+            title={iconOnly?"Switch to full mode":dense?"Switch to icons only":"Switch to compact mode"}
             style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",
-              color:dense||iconOnly?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:9,
-              padding:"0 4px",height:16,display:"flex",alignItems:"center",justifyContent:"center",
-              lineHeight:1,flexShrink:0,whiteSpace:"nowrap"}}>
-            {iconOnly?"☰ Full":dense?"⊞ Icons":"⊡ Compact"}
+              color:dense||iconOnly?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:8,
+              padding:"1px 4px",height:15,display:"flex",alignItems:"center",
+              lineHeight:1,flexShrink:0,whiteSpace:"nowrap",gap:2}}>
+            {iconOnly?"⊞ Full":dense?"⊡ Icons":"⊟ Compact"}
           </button>
-          {/* Collapse */}
-          <button onClick={onToggleCollapse} title="Collapse sidebar"
+          <button onClick={onToggleCollapse} title="Collapse"
             style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",
-              color:"var(--text4)",cursor:"pointer",fontSize:10,
-              width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",
-              lineHeight:1,flexShrink:0}}>‹</button>
+              color:"var(--text4)",cursor:"pointer",fontSize:10,width:15,height:15,
+              display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,flexShrink:0}}>‹</button>
         </div>
 
-        {/* Search — hidden in icon-only or dense mode */}
-        {!iconOnly&&!dense&&(
+        {/* Search — visible in all modes */}
+        {!iconOnly?(
           <div style={{position:"relative"}}>
-            <span style={{position:"absolute",left:7,top:"50%",transform:"translateY(-50%)",fontSize:11,color:"var(--text4)",pointerEvents:"none"}}>🔍</span>
+            <span style={{position:"absolute",left:6,top:"50%",transform:"translateY(-50%)",
+              fontSize:10,color:"var(--text4)",pointerEvents:"none"}}>🔍</span>
             <input value={search} onChange={e=>setSearch(e.target.value)}
-              placeholder="Search types…"
-              style={{width:"100%",boxSizing:"border-box",paddingLeft:24,paddingRight:search?22:6,
-                paddingTop:4,paddingBottom:4,background:"var(--bg3)",border:"1px solid var(--border)",
-                borderRadius:"var(--radius-sm)",color:"var(--text)",fontSize:11,
+              placeholder={dense?"Search…":"Search types…"}
+              style={{width:"100%",boxSizing:"border-box",paddingLeft:20,paddingRight:search?18:5,
+                paddingTop:3,paddingBottom:3,background:"var(--bg3)",border:"1px solid var(--border)",
+                borderRadius:"var(--radius-sm)",color:"var(--text)",fontSize:dense?9:11,
                 fontFamily:"var(--font-ui)",outline:"none"}}/>
             {search&&<span onClick={()=>setSearch("")}
-              style={{position:"absolute",right:6,top:"50%",transform:"translateY(-50%)",
-                fontSize:12,color:"var(--text4)",cursor:"pointer"}}>×</span>}
+              style={{position:"absolute",right:5,top:"50%",transform:"translateY(-50%)",
+                fontSize:11,color:"var(--text4)",cursor:"pointer"}}>×</span>}
           </div>
-        )}
-
-        {/* Icon-only or dense: search icon button */}
-        {(iconOnly||dense)&&(
-          <button onClick={()=>{if(iconOnly||dense) onCycleMode&&(iconOnly?onCycleMode():onCycleMode());}} title="Switch to full view to search"
+        ):(
+          <button onClick={onCycleMode} title="Switch to full view to search"
             style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
-              fontSize:12,width:"100%",display:"flex",justifyContent:"center",alignItems:"center",gap:3,marginTop:2}}>
-            🔍 <span style={{fontSize:9}}>Search</span>
-          </button>
+              fontSize:11,width:"100%",display:"flex",justifyContent:"center",paddingTop:2}}>🔍</button>
         )}
       </div>
 
-      {/* Node list */}
-      <div style={{flex:1,overflow:"auto"}} onMouseLeave={()=>setTooltip(null)}>
-        {!iconOnly&&visibleCats.length===0&&q&&(
-          <div style={{padding:"20px 10px",color:"var(--text4)",fontSize:11,textAlign:"center"}}>
+      {/* ── Node list ── */}
+      <div style={{flex:1,overflowY:"auto",overflowX:"hidden"}} onMouseLeave={()=>setTooltip(null)}>
+        {visibleCats.length===0&&q&&(
+          <div style={{padding:"16px 10px",color:"var(--text4)",fontSize:10,textAlign:"center"}}>
             No nodes match "{search}"
           </div>
         )}
@@ -3197,31 +3211,36 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
         {visibleCats.map(cat=>{
           const items=groups[cat]||[];
           const isOpen=catOpen[cat]===undefined?true:catOpen[cat];
-          const showOpen=q||dense?true:isOpen; // always expand during search or in dense
+          const showOpen=q?true:isOpen;
 
           return(
             <div key={cat}>
-              {/* Category header */}
-              {!iconOnly&&!dense&&(
-                <div onClick={()=>toggle(cat)}
-                  style={{display:"flex",alignItems:"center",gap:5,padding:"5px 10px",
-                    cursor:"pointer",background:"var(--bg3)",
-                    borderBottom:"1px solid var(--border2)",borderTop:"1px solid var(--border2)",
-                    userSelect:"none",position:"sticky",top:0,zIndex:1}}>
-                  <span style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>
-                    {cat.toUpperCase()}
-                  </span>
-                  <span style={{fontSize:9,color:"var(--text4)",marginRight:2}}>{items.length}</span>
-                  <span style={{fontSize:9,color:"var(--text4)",transition:"transform .15s",display:"inline-block",
-                    transform:showOpen?"rotate(0deg)":"rotate(-90deg)"}}>▾</span>
-                </div>
-              )}
+              {/* Category header — always shown in all modes */}
+              <div onClick={()=>toggle(cat)}
+                style={{display:"flex",alignItems:"center",padding:iconOnly?"4px 0":"4px 8px",
+                  cursor:"pointer",background:"var(--bg3)",
+                  borderBottom:"1px solid var(--border2)",borderTop:"1px solid var(--border2)",
+                  userSelect:"none",position:"sticky",top:0,zIndex:1,gap:3}}>
+                {!iconOnly&&(
+                  <>
+                    <span style={{fontSize:8,fontWeight:700,color:"var(--text4)",letterSpacing:dense?0.5:1.5,flex:1,
+                      overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                      {dense?cat.slice(0,8).toUpperCase():cat.toUpperCase()}
+                    </span>
+                    <span style={{fontSize:8,color:"var(--text4)",opacity:.7}}>{items.length}</span>
+                    <span style={{fontSize:8,color:"var(--text4)",transition:"transform .15s",display:"inline-block",
+                      transform:showOpen?"rotate(0deg)":"rotate(-90deg)"}}>▾</span>
+                  </>
+                )}
+                {iconOnly&&<div style={{width:"100%",height:2,background:"var(--border2)",margin:"0 4px",borderRadius:1}}/>}
+              </div>
 
               {/* Items */}
-              {(showOpen||iconOnly||dense)&&(
+              {showOpen&&(
                 iconOnly||dense?(
-                  // Dense icon grid — multiple per row, tooltip on hover
-                  <div style={{display:"flex",flexWrap:"wrap",justifyContent:"flex-start",padding:"3px 4px",gap:dense?1:2}}>
+                  // Compact / icon grid with proper wrapping per category
+                  <div style={{display:"flex",flexWrap:"wrap",padding:dense?"3px 4px":"3px 2px",
+                    gap:dense?2:3,justifyContent:"flex-start"}}>
                     {items.map(([key,t])=>(
                       <div key={key}
                         onClick={()=>canEdit&&addNode(key)}
@@ -3229,13 +3248,21 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                           const r=e.currentTarget.getBoundingClientRect();
                           setTooltip({key,label:t.label,color:t.color,x:r.right+6,y:r.top+r.height/2});
                         }}
-                        title={t.label}
-                        style={{width:dense?28:36,height:dense?28:36,borderRadius:"var(--radius-sm)",display:"flex",
-                          alignItems:"center",justifyContent:"center",fontSize:dense?14:18,cursor:canEdit?"pointer":"default",
-                          transition:"background .1s",border:"1.5px solid transparent",flexShrink:0}}
                         onMouseLeave={()=>setTooltip(null)}
-                        onMouseOver={e=>{e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.borderColor=t.color+"60";}}
-                        onMouseOut={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="transparent";}}>
+                        title={t.label}
+                        style={{width:dense?30:36,height:dense?30:36,borderRadius:5,
+                          display:"flex",alignItems:"center",justifyContent:"center",
+                          fontSize:dense?15:18,cursor:canEdit?"pointer":"default",
+                          transition:"background .1s,border-color .1s",
+                          border:"1.5px solid transparent",flexShrink:0}}
+                        onMouseOver={e=>{
+                          e.currentTarget.style.background="var(--bg3)";
+                          e.currentTarget.style.borderColor=t.color+"70";
+                        }}
+                        onMouseOut={e=>{
+                          e.currentTarget.style.background="transparent";
+                          e.currentTarget.style.borderColor="transparent";
+                        }}>
                         {t.icon}
                       </div>
                     ))}
@@ -3245,12 +3272,13 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                   items.map(([key,t])=>(
                     <div key={key} onClick={()=>canEdit&&addNode(key)}
                       style={{display:"flex",alignItems:"center",gap:8,padding:"5px 10px",
-                        cursor:canEdit?"pointer":"default",fontSize:12,
+                        cursor:canEdit?"pointer":"default",
                         borderLeft:"3px solid transparent",transition:"background .1s,border-color .1s"}}
                       onMouseEnter={e=>{if(canEdit){e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.borderLeftColor=t.color;}}}
                       onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderLeftColor="transparent";}}>
                       <span style={{fontSize:15,width:20,textAlign:"center",flexShrink:0}}>{t.icon}</span>
-                      <span style={{color:"var(--text2)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",fontSize:11}}>{t.label}</span>
+                      <span style={{color:"var(--text2)",flex:1,overflow:"hidden",textOverflow:"ellipsis",
+                        whiteSpace:"nowrap",fontSize:11}}>{t.label}</span>
                       <span style={{width:5,height:5,borderRadius:"50%",background:t.color,flexShrink:0}}/>
                     </div>
                   ))
@@ -3261,11 +3289,11 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
         })}
       </div>
 
-      {/* Tooltip for icon-only mode */}
-      {iconOnly&&tooltip&&(
+      {/* Tooltip for icon/compact modes */}
+      {(iconOnly||dense)&&tooltip&&(
         <div style={{position:"fixed",left:tooltip.x,top:tooltip.y-14,zIndex:999,
           background:"var(--bg2)",border:`1.5px solid ${tooltip.color}`,
-          borderRadius:"var(--radius-sm)",padding:"4px 10px",fontSize:11,
+          borderRadius:"var(--radius-sm)",padding:"3px 9px",fontSize:11,
           fontWeight:700,color:tooltip.color,
           boxShadow:"0 4px 16px rgba(0,0,0,.4)",pointerEvents:"none",whiteSpace:"nowrap"}}>
           {tooltip.label}
@@ -3273,12 +3301,13 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
       )}
 
       {!canEdit&&!iconOnly&&(
-        <div style={{padding:"6px 10px",fontSize:9,color:"var(--text4)",borderTop:"1px solid var(--border2)"}}>View only</div>
+        <div style={{padding:"5px 10px",fontSize:9,color:"var(--text4)",borderTop:"1px solid var(--border2)"}}>
+          View only
+        </div>
       )}
     </div>
   );
 }
-
 // ── Props Panel ───────────────────────────────────────────────
 function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdateProp,onUpdateCustom,onDeleteCustom,onAddCustom,onUpdateEdge,onDeleteEdge,onResetSize,onUpdateNotes,onStartEditTitle,onToggleCollapse}){
   const t=NT[node.type]||NT.note;
