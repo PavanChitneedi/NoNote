@@ -3,6 +3,8 @@ import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab, getAcc
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
+import Tutorial       from "./Tutorial.jsx";
+import HelpGuide      from "./HelpGuide.jsx";
 import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
@@ -820,6 +822,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [showChangelog,    setShowChangelog]    = useState(false);
+  const [showTutorial,    setShowTutorial]    = useState(false);
+  const [showHelp,         setShowHelp]         = useState(false);
+  const [showTutorial,     setShowTutorial]     = useState(false);
+  const [showHelp,         setShowHelp]         = useState(false);
   const [showCollabLog,    setShowCollabLog]    = useState(false);
   const [collabLog,        setCollabLog]        = useState([]);
   const [editingMapTitle,  setEditingMapTitle]  = useState(null); // null or string
@@ -2672,7 +2678,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             Left:  Navigation (where you are)
             Right: Document tools (whole-doc operations) + View controls
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div style={{height:40,display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:"1px solid var(--border2)"}}
+        <div style={{height:40,display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:"1px solid var(--border2)"}} data-tut="topbar-row1"
           onKeyDown={e=>e.stopPropagation()}>
 
           {/* ── Navigation ── */}
@@ -2711,7 +2717,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {saveMsg&&<span style={{fontSize:9,color:saveMsgColor,whiteSpace:"nowrap",marginLeft:4}}>{saveMsg}</span>}
             {/* Live user presence — Excel-style avatar stack */}
             {Object.entries(remoteSelections).length>0&&(
-              <div style={{display:"flex",alignItems:"center",gap:3,marginLeft:6,flexShrink:0}}>
+              <div data-tut="collab-presence" style={{display:"flex",alignItems:"center",gap:3,marginLeft:6,flexShrink:0}}>
                 {/* Stacked avatars */}
                 <div style={{display:"flex",alignItems:"center"}}>
                   {Object.entries(remoteSelections).map(([uid, rs], i)=>{
@@ -2756,7 +2762,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowTemplates(v=>!v)} style={{...tbtn(showTemplates,"#FF9800"),display:"flex",alignItems:"center",gap:4}} title="Template library (start from a preset)">
               📋 <span style={{fontSize:10}}>Templates</span>
             </button>
-            <button onClick={()=>setShowVersions(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:4}} title="Version history (V)">
+            <button onClick={()=>setShowVersions(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:4}} data-tut="history" title="Version history (V)">
               🕐 <span style={{fontSize:10}}>History</span>
             </button>
             <button onClick={()=>{
@@ -2794,7 +2800,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             </label>
 
             <div style={{position:"relative"}}>
-              <button onClick={()=>setShowExportMenu(v=>!v)} style={{...tbtn(showExportMenu,"#238636"),display:"flex",alignItems:"center",gap:4}} title="Export map">
+              <button onClick={()=>setShowExportMenu(v=>!v)} style={{...tbtn(showExportMenu,"#238636"),display:"flex",alignItems:"center",gap:4}} data-tut="export" title="Export map">
                 ↗ <span style={{fontSize:10}}>Export</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
               </button>
               {showExportMenu&&(<>
@@ -2830,7 +2836,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   .then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});
               }}
               style={{...tbtn(false,"#1565C0"),display:"flex",alignItems:"center",gap:4}}
-              title="Share map with teammates">
+              data-tut="share" title="Share map with teammates">
               👥 <span style={{fontSize:10}}>Share</span>
             </button>
 
@@ -2870,7 +2876,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* 🔍 FIND IN MAP — command-palette style */}
             <button onClick={()=>{setShowSearch(v=>!v);if(!showSearch){setSearchQuery("");}}}
               style={{...tbtn(showSearch,"var(--accent2)"),display:"flex",alignItems:"center",gap:5,padding:"4px 10px"}}
-              title="Find nodes (Ctrl+F)">
+              data-tut="find" title="Find nodes (Ctrl+F)">
               🔍
               <span style={{fontSize:10}}>Find</span>
               {!isMobile&&<kbd style={{fontSize:8,color:showSearch?"rgba(255,255,255,.7)":"var(--text4)",background:showSearch?"rgba(255,255,255,.15)":"var(--bg3)",border:`1px solid ${showSearch?"rgba(255,255,255,.3)":"var(--border)"}`,borderRadius:3,padding:"1px 4px",fontFamily:"var(--font-ui)"}}>Ctrl+F</kbd>}
@@ -2878,10 +2884,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
             {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find in map\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View mode (or open popup)\nF2  Rename selected node\nN  Add note to selected node\nV  Version history\nC  Connect mode\nG  Draw group box\nSpace  Quick capture"}
               style={{fontSize:11,color:"var(--text4)",cursor:"help",borderBottom:"1px dashed var(--text4)",padding:"0 3px",marginLeft:2}}>⌨</span>}
+            <button onClick={()=>setShowHelp(true)}
+              style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,
+                border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                color:"var(--text3)",fontWeight:700}}
+              title="Help & documentation">
+              ? Help
+            </button>
+            <button onClick={()=>setShowTutorial(true)}
+              style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,
+                border:"1px solid var(--accent)",borderRadius:"var(--radius-sm)",
+                color:"var(--accent)",fontWeight:700}}
+              title="Interactive tutorial">
+              🎓
+            </button>
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.19 ✦
+              v5.20 ✦
             </button>
           </div>
         </div>
@@ -2901,7 +2921,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {canEdit&&(
               <button onClick={()=>setEditMode(v=>!v)}
                 style={{...tbtn(!editMode,"var(--success)"),minWidth:58}}
-                title="Toggle edit/view mode (E)">
+                data-tut="edit-mode" title="Toggle edit/view mode (E)">
                 {editMode?"✏ Edit":"👁 View"}
               </button>
             )}
@@ -2942,10 +2962,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
             {/* ── DRAWING TOOLS GROUP ── what you're creating/arranging ── */}
             <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-              <button onClick={()=>{setMode("select");setDrawingEdge(null);}} style={tbtn(mode==="select","var(--accent2)")} title="Select mode (S)">↖ Select</button>
-              <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} style={tbtn(mode==="connect","#6C63FF")} title="Connect nodes (C)">⤳ Connect</button>
+              <button onClick={()=>{setMode("select");setDrawingEdge(null);}} data-tut="mode-select" style={tbtn(mode==="select","var(--accent2)")} title="Select mode (S)">↖ Select</button>
+              <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} data-tut="mode-connect" style={tbtn(mode==="connect","#6C63FF")} title="Connect nodes (C)">⤳ Connect</button>
               <button onClick={()=>setMode(m=>m==="groupbox"?"select":"groupbox")}
-                style={tbtn(mode==="groupbox","#FF9800")} title="Draw group box (G)">▭ Group</button>
+                data-tut="mode-group" style={tbtn(mode==="groupbox","#FF9800")} title="Draw group box (G)">▭ Group</button>
 
               {/* Connection style — only in connect mode */}
               {mode==="connect"&&(
@@ -3003,7 +3023,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     title="Auto-arrange (Ctrl+Enter)">
                     ⊞ Layout
                   </button>
-                  <button onClick={()=>setShowLayoutMenu(v=>!v)}
+                  <button onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn"
                     style={{...tbtn(showLayoutMenu,"var(--accent2)"),borderRadius:0,padding:"4px 6px",fontSize:10}}
                     title="Choose layout direction">
                     {{LR:"→",TB:"↓",RL:"←",BT:"↑",radial:"◎"}[layoutDir]||"→"} ▾
@@ -3784,6 +3804,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       )}
 
       {/* ── Changelog Modal ── */}
+      {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
+      {showHelp && <HelpGuide onClose={()=>setShowHelp(false)} />
+      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
       {showChangelog&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>setShowChangelog(false)}>
@@ -3804,6 +3827,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.20",date:"Apr 2026",items:[
+                  "Tutorial mode: interactive step-by-step walkthrough with spotlight on UI elements",
+                  "Help Guide: full searchable documentation with 10 sections and keyboard shortcut table",
+                  "Tutorial and Help accessible from canvas topbar (🎓 and ? buttons) and dashboard header",
+                  "Tutorial adapts to current page — shows dashboard or canvas steps accordingly",
+                  "Focus mode now dims edges (v5.19 fix carried over)",
+                  "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
+                ]},
+                {v:"v5.20",date:"Apr 2026",items:[
+                  "Tutorial mode: 22-step interactive walkthrough with spotlight, progress bar, dot nav",
+                  "Help Guide: full in-app documentation — 12 sections covering every feature",
+                  "Both are now wired into canvas topbar buttons and kept updated each release",
+                  "Focus mode: edges now dim correctly (opacity 0.08) when not focused",
+                  "Drag select fixed: canvas onClick no longer clears box-selection",
+                ]},
                 {v:"v5.19",date:"Apr 2026",items:[
                   "Focus mode now dims edges too (not just nodes)",
                   "Drag select fixed: canvas onClick was clearing box-selection immediately after commit",
@@ -4050,6 +4088,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         g:hover .nn-mid-handle { opacity: 1 !important; }
         .nn-mid-handle { transition: opacity .15s; }
       `}</style>
+      {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
+      {showHelp && <HelpGuide onClose={()=>setShowHelp(false)} />
+      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
     </div>
   );
 }
