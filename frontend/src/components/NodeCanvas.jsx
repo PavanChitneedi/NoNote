@@ -1547,7 +1547,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // No useEffect broadcasting. No echo prevention needed.
   // The server only sends to OTHER clients — sender never receives their own message.
   //
-  const [wsConnected, setWsConnected] = useState(false);
 
   useEffect(() => {
     if (!mapId) return;
