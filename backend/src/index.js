@@ -9,7 +9,6 @@ import morgan from "morgan";
 import { rateLimit } from "express-rate-limit";
 import bcrypt from "bcryptjs";
 import { query } from "./db/pool.js";
-import { createClient as createRedisClient } from "./db/redis.js";
 import authRouter  from "./routes/auth.js";
 import mapsRouter  from "./routes/maps.js";
 import usersRouter from "./routes/users.js";
@@ -114,185 +113,134 @@ async function seedAdmin() {
   console.log(`[seed] Created owner admin: ${email}`);
 }
 
-// ── WebSocket collaboration server (Redis pub/sub) ──────────────
+// ── WebSocket collaboration server ──────────────────────────────
+// Simple single-instance model: rooms Map holds connected clients per map.
+// On any message, broadcast to all OTHER clients in the same room.
+// No Redis needed — straightforward and reliable.
+
 const httpServer = createServer(app);
 const wss = new WebSocketServer({ server: httpServer, path: "/ws" });
 
-// localRooms: mapId → Set<ws> for clients on THIS instance
-// redisSubs:  mapId → ioredis subscriber client
-const localRooms = new Map();
-const redisSubs  = new Map();
-
-async function getOrCreateSub(mapId) {
-  if (redisSubs.has(mapId)) return redisSubs.get(mapId);
-  const sub = createRedisClient();
-  // ioredis pub/sub: messages come via 'message' event, NOT the subscribe callback
-  sub.on("message", (channel, raw) => {
-    if (channel !== `map:${mapId}`) return;
-    const clients = localRooms.get(mapId);
-    if (!clients) return;
-    let senderId = null;
-    try { senderId = JSON.parse(raw).userId; } catch {}
-    // Deliver to all local clients except the sender
-    clients.forEach(c => {
-      if (c.readyState === 1 && c.userId !== senderId) c.send(raw);
-    });
-  });
-  await sub.subscribe(`map:${mapId}`);
-  redisSubs.set(mapId, sub);
-  return sub;
-}
-
-function cleanupRoom(mapId) {
-  const clients = localRooms.get(mapId);
-  if (clients && clients.size === 0) {
-    localRooms.delete(mapId);
-    const sub = redisSubs.get(mapId);
-    if (sub) { sub.unsubscribe().catch(()=>{}); sub.quit().catch(()=>{}); redisSubs.delete(mapId); }
-  }
-}
+const rooms = new Map(); // mapId → Set<ws>
 
 wss.on("connection", (ws) => {
-  let mapId = null;
-  let userId = null;
-  let userDisplayName = "User";
-  let pubClient = null;
+  let mapId   = null;
+  let userId  = null;
+  let userName = "User";
 
   ws.on("message", async (raw) => {
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 
-    // ── JOIN ─────────────────────────────────────────────────
+    // ── JOIN ──────────────────────────────────────────────────
     if (msg.type === "join") {
+      // Verify JWT
       try {
         const payload = jwt.verify(msg.token, process.env.JWT_ACCESS_SECRET);
         userId = payload.sub;
       } catch (e) {
-        console.warn("[ws] auth failed:", e.message);
-        ws.send(JSON.stringify({ type: "error", message: "Unauthorized" }));
+        console.warn("[ws] auth rejected:", e.message);
+        ws.send(JSON.stringify({ type: "auth_error", message: "Invalid token" }));
         ws.close(1008, "Unauthorized");
         return;
       }
+
       mapId = msg.mapId;
+      ws.userId   = userId;
+      ws.mapId    = mapId;
+
+      // Fetch display name from DB
       try {
-        const u = await query("SELECT display_name FROM users WHERE id=$1", [userId]);
-        userDisplayName = u.rows[0]?.display_name || "User";
+        const row = await query("SELECT display_name FROM users WHERE id=$1", [userId]);
+        userName = row.rows[0]?.display_name || "User";
+        ws.userName = userName;
       } catch {}
 
-      if (!localRooms.has(mapId)) localRooms.set(mapId, new Set());
-      localRooms.get(mapId).add(ws);
-      ws.userId = userId;
-      ws.userName = userDisplayName;
+      // Register in room
+      if (!rooms.has(mapId)) rooms.set(mapId, new Set());
+      rooms.get(mapId).add(ws);
 
-      try { await getOrCreateSub(mapId); } catch (e) {
-        console.error("[ws] redis subscribe failed:", e.message);
-      }
-      try { pubClient = createRedisClient(); } catch (e) {
-        console.error("[ws] redis pub client failed:", e.message);
-      }
+      console.log(`[ws] "${userName}" joined map ${mapId} (${rooms.get(mapId).size} total)`);
 
-      console.log(`[ws] "${userDisplayName}" joined map ${mapId}`);
-
-      // Tell joiner who else is in the room
+      // Tell the joiner who else is here
       const others = [];
-      localRooms.get(mapId).forEach(c => {
-        if (c !== ws && c.userId) others.push({ userId: c.userId, userName: c.userName });
+      rooms.get(mapId).forEach(c => {
+        if (c !== ws && c.userId)
+          others.push({ userId: c.userId, userName: c.userName || "User" });
       });
       ws.send(JSON.stringify({ type: "room_state", users: others }));
 
-      // Announce join to room
-      if (pubClient) {
-        const joinMsg = JSON.stringify({ type: "user_joined", userId, userName: userDisplayName });
-        pubClient.publish(`map:${mapId}`, joinMsg).catch(console.error);
-      }
+      // Tell everyone else this user joined
+      broadcast(mapId, { type: "user_joined", userId, userName }, ws);
       return;
     }
 
-    if (!mapId || !userId) return;
+    if (!mapId || !userId) return; // must join first
 
-    // ── CHANGELOG (fire-and-forget) ───────────────────────────
+    // ── LOG significant canvas changes ────────────────────────
     if (msg.type === "nodes_update" && Array.isArray(msg.nodes)) {
-      const snap = ws._lastNodes;
-      if (snap) {
-        const prevById = Object.fromEntries(snap.map(n => [n.id, n]));
-        const curById  = Object.fromEntries(msg.nodes.map(n => [n.id, n]));
+      const prev = ws._snapNodes;
+      if (prev) {
+        const pById = Object.fromEntries(prev.map(n => [n.id, n]));
+        const cById = Object.fromEntries(msg.nodes.map(n => [n.id, n]));
         for (const n of msg.nodes) {
-          if (!prevById[n.id])
+          if (!pById[n.id])
             query("INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
-              [mapId, userId, userDisplayName, "add_node", n.id, n.title||n.type||"node"]).catch(()=>{});
-          else if (prevById[n.id].title !== n.title && n.title)
+              [mapId,userId,userName,"add_node",n.id,n.title||n.type||"node"]).catch(()=>{});
+          else if (pById[n.id].title !== n.title && n.title)
             query("INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
-              [mapId, userId, userDisplayName, "edit_node", n.id, n.title]).catch(()=>{});
+              [mapId,userId,userName,"edit_node",n.id,n.title]).catch(()=>{});
         }
-        for (const n of snap) {
-          if (!curById[n.id])
+        for (const n of prev)
+          if (!cById[n.id])
             query("INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
-              [mapId, userId, userDisplayName, "delete_node", n.id, n.title||"node"]).catch(()=>{});
-        }
+              [mapId,userId,userName,"delete_node",n.id,n.title||"node"]).catch(()=>{});
       }
-      ws._lastNodes = msg.nodes;
+      ws._snapNodes = msg.nodes;
     }
     if (msg.type === "edges_update" && Array.isArray(msg.edges)) {
-      const snap = ws._lastEdges;
-      if (snap) {
-        const snapIds = new Set(snap.map(e => e.id));
-        const curIds  = new Set(msg.edges.map(e => e.id));
-        for (const e of msg.edges) {
-          if (!snapIds.has(e.id))
+      const prev = ws._snapEdges;
+      if (prev) {
+        const pIds = new Set(prev.map(e => e.id));
+        const cIds = new Set(msg.edges.map(e => e.id));
+        for (const e of msg.edges)
+          if (!pIds.has(e.id))
             query("INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
-              [mapId, userId, userDisplayName, "add_edge", e.id, e.label||"edge"]).catch(()=>{});
-        }
-        for (const e of snap) {
-          if (!curIds.has(e.id))
+              [mapId,userId,userName,"add_edge",e.id,e.label||"edge"]).catch(()=>{});
+        for (const e of prev)
+          if (!cIds.has(e.id))
             query("INSERT INTO map_changelog(map_id,user_id,user_name,action,target_id,target_label) VALUES($1,$2,$3,$4,$5,$6)",
-              [mapId, userId, userDisplayName, "delete_edge", e.id, e.label||"edge"]).catch(()=>{});
-        }
+              [mapId,userId,userName,"delete_edge",e.id,e.label||"edge"]).catch(()=>{});
       }
-      ws._lastEdges = msg.edges;
+      ws._snapEdges = msg.edges;
     }
 
-    // ── PUBLISH to Redis ──────────────────────────────────────
-    if (pubClient) {
-      const out = JSON.stringify({ ...msg, userId, userName: userDisplayName });
-      pubClient.publish(`map:${mapId}`, out).catch(console.error);
-    }
+    // ── BROADCAST to everyone else in the room ─────────────────
+    broadcast(mapId, { ...msg, userId, userName }, ws);
   });
 
   ws.on("close", () => {
-    if (mapId && localRooms.has(mapId)) {
-      localRooms.get(mapId).delete(ws);
-      cleanupRoom(mapId);
-      if (pubClient) {
-        const leaveMsg = JSON.stringify({ type: "user_left", userId, userName: userDisplayName });
-        pubClient.publish(`map:${mapId}`, leaveMsg).catch(()=>{});
-        pubClient.quit().catch(()=>{});
+    if (mapId && rooms.has(mapId)) {
+      rooms.get(mapId).delete(ws);
+      console.log(`[ws] "${userName}" left map ${mapId}`);
+      if (rooms.get(mapId).size === 0) {
+        rooms.delete(mapId);
+      } else {
+        broadcast(mapId, { type: "user_left", userId, userName });
       }
     }
   });
+
+  ws.on("error", err => console.error("[ws] error:", err.message));
 });
 
-// ── DB migrations (inline — no file I/O, runs safely on every startup) ─
-async function runMigrations() {
-  const migrations = [
-    "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS from_anchor JSONB",
-    "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS to_anchor JSONB",
-    "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS mid_off JSONB",
-    "ALTER TABLE maps ADD COLUMN IF NOT EXISTS group_boxes JSONB NOT NULL DEFAULT '[]'::jsonb",
-    `CREATE TABLE IF NOT EXISTS map_changelog (
-      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-      map_id UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
-      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-      user_name TEXT, action TEXT NOT NULL,
-      target_id TEXT, target_label TEXT, meta JSONB,
-      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-    )`,
-    "CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, created_at DESC)",
-  ];
-  let applied = 0;
-  for (const sql of migrations) {
-    try { await query(sql); applied++; } catch { /* already applied */ }
-  }
-  console.log(`[migrate] ${applied}/${migrations.length} statements applied`);
+function broadcast(mapId, msg, exclude = null) {
+  const room = rooms.get(mapId);
+  if (!room) return;
+  const raw = JSON.stringify(msg);
+  room.forEach(c => {
+    if (c !== exclude && c.readyState === 1) c.send(raw);
+  });
 }
 
 // ── Start ─────────────────────────────────────────────────────

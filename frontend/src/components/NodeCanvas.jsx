@@ -1307,42 +1307,45 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
     };
     const onUp=()=>{
-      // Push ONE history entry when drag/resize ends (not during)
+      // 1. Push history when drag/resize ends
       if(dragging||resizing){
         setNodes(ns=>{setEdges(es=>{scheduleSave(ns,es);pushHistory(ns,es);return es;});return ns;});
       }
+      setDragging(null); setResizing(null); setSnapGuides([]);
+
+      // 2. Commit box-select
       if(boxSelRef.current){
         const {startX,startY,endX,endY}=boxSelRef.current;
-        const x1=Math.min(startX,endX),y1=Math.min(startY,endY);
-        const x2=Math.max(startX,endX),y2=Math.max(startY,endY);
-        if(Math.abs(x2-x1)>5||Math.abs(y2-y1)>5){
+        const x1=Math.min(startX,endX), y1=Math.min(startY,endY);
+        const x2=Math.max(startX,endX), y2=Math.max(startY,endY);
+        if(Math.abs(x2-x1)>5 || Math.abs(y2-y1)>5){
           const sel=new Set();
-          // Use nodesRef (live ref) so selection is not stale
           nodesRef.current.forEach(n=>{
-            const nw=collW(n), nh=collH(n);
-            if(n.x<x2&&n.x+nw>x1&&n.y<y2&&n.y+nh>y1) sel.add(n.id);
+            const nw=n.w||DEF_W, nh=nodeHeightsRef.current[n.id]||n.h||DEF_H;
+            if(n.x<x2 && n.x+nw>x1 && n.y<y2 && n.y+nh>y1) sel.add(n.id);
           });
           setSelected(sel);
         }
         boxSelRef.current=null; setBoxSel(null);
-        // Commit group box
-        if(groupBoxDrawRef.current){
-          const {startX,startY,endX,endY}=groupBoxDrawRef.current;
-          const w=Math.abs(endX-startX), h=Math.abs(endY-startY);
-          if(w>30&&h>30){
-            const newBox={
-              id:Math.random().toString(36).slice(2),
-              x:Math.min(startX,endX), y:Math.min(startY,endY), w, h,
-              label:"Group",color:"var(--accent)",lineStyle:"solid",bgColor:"transparent"
-            };
-            setGroupBoxes(prev=>[...prev,newBox]);
-          }
-          groupBoxDrawRef.current=null; setDrawingGroupBox(null);
-        if(draggingGB) setDraggingGB(null);
-        if(resizingGB) setResizingGB(null);
-        }
       }
-      setDragging(null); setResizing(null); setSnapGuides([]);
+
+      // 3. Commit group-box draw
+      if(groupBoxDrawRef.current){
+        const {startX,startY,endX,endY}=groupBoxDrawRef.current;
+        const w=Math.abs(endX-startX), h=Math.abs(endY-startY);
+        if(w>30&&h>30){
+          setGroupBoxes(prev=>[...prev,{
+            id:Math.random().toString(36).slice(2),
+            x:Math.min(startX,endX), y:Math.min(startY,endY), w, h,
+            label:"Group",color:"var(--accent)",lineStyle:"solid",bgColor:"transparent"
+          }]);
+        }
+        groupBoxDrawRef.current=null; setDrawingGroupBox(null);
+      }
+
+      // 4. End group-box drag/resize
+      if(draggingGB) setDraggingGB(null);
+      if(resizingGB) setResizingGB(null);
     };
     window.addEventListener("mousemove",onMove);
     window.addEventListener("mouseup",onUp);
@@ -1505,134 +1508,161 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     },800);
   };
 
-  // ── WebSocket real-time collaboration (Redis pub/sub backend) ──────
+  // ── WebSocket real-time collaboration ────────────────────────────
   //
-  // Echo prevention: the server filters out messages from the sender
-  // (identified by userId). No client-side echo handling needed.
-  //
-  // wsConnected (React state) ensures broadcast effects fire after
-  // the async WS connect, not just when nodes/edges change.
+  // Design:
+  //  • wsConnected (React state) ensures broadcast effects fire AFTER WS opens.
+  //  • Echo prevention: compare JSON.stringify of current vs last-received data.
+  //    setNodes(remote) stores an object; JSON.stringify catches all changes.
+  //  • Server broadcasts to all OTHER clients — no server-side echo.
+  //  • Cursor throttled to 20fps max.
   //
   const [wsConnected, setWsConnected] = useState(false);
-  const lastRemoteNodes = useRef(null);
-  const lastRemoteEdges = useRef(null);
+  const lastRxNodesJSON = useRef(null); // JSON of last nodes received from remote
+  const lastRxEdgesJSON = useRef(null); // JSON of last edges received from remote
+  const cursorThrottle  = useRef(0);    // timestamp of last cursor send
 
-  useEffect(()=>{
-    if(!mapId || !collab){ setWsConnected(false); return; }
+  useEffect(() => {
+    if (!mapId || !collab) {
+      setWsConnected(false);
+      return;
+    }
+
     let ws;
-    const connect = async () => {
-      // Refresh token then read in-memory token
-      try{ await apiFetch('/auth/me'); } catch{}
+    let reconnectTimer;
+    let active = true; // flag to prevent reconnect after intentional close
+
+    const connect = () => {
       const token = getAccessToken();
-      if(!token){
-        console.error('[collab] No token available');
-        setCollab(false); return;
+      if (!token) {
+        console.error("[collab] no token — turn Collab off and on after logging in");
+        setCollab(false);
+        return;
       }
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+      const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
       ws = new WebSocket(`${proto}//${window.location.host}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'join', mapId, token }));
-        console.log('[collab] WS open, joining map', mapId);
+        console.log("[collab] connected, joining map", mapId);
+        ws.send(JSON.stringify({ type: "join", mapId, token }));
       };
 
-      ws.onmessage = e => {
-        try {
-          const msg = JSON.parse(e.data);
+      ws.onmessage = (e) => {
+        let msg;
+        try { msg = JSON.parse(e.data); } catch { return; }
 
-          if (msg.type === 'error') {
-            console.error('[collab] server error:', msg.message);
-            if (msg.message === 'Unauthorized') { setCollab(false); ws.close(); }
-            return;
+        if (msg.type === "auth_error") {
+          console.error("[collab] auth error:", msg.message);
+          setCollab(false);
+          ws.close(1000);
+          return;
+        }
+
+        if (msg.type === "room_state") {
+          // Server acknowledged our join — we are now fully connected
+          setWsConnected(true);
+          const others = msg.users || [];
+          setCollabUsers(() => Object.fromEntries(others.map(u => [u.userId, u])));
+          // If others are in the room, broadcast our current state to sync them
+          if (others.length > 0 && ws.readyState === 1) {
+            const nodesJson = JSON.stringify(nodesRef.current);
+            const edgesJson = JSON.stringify(edgesRef.current);
+            ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
+            ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
+            // Mark as "sent from us" so broadcast effects don't double-send
+            lastRxNodesJSON.current = nodesJson;
+            lastRxEdgesJSON.current = edgesJson;
           }
-          if (msg.type === 'nodes_update') {
-            lastRemoteNodes.current = msg.nodes;
-            setNodes(msg.nodes);
+        }
+
+        else if (msg.type === "user_joined") {
+          setCollabUsers(prev => ({ ...prev, [msg.userId]: { userId: msg.userId, userName: msg.userName || "User" } }));
+          // A new user joined — send them our state (server will broadcast to them)
+          if (ws.readyState === 1) {
+            ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
+            ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
           }
-          else if (msg.type === 'edges_update') {
-            lastRemoteEdges.current = msg.edges;
-            setEdges(msg.edges);
-          }
-          else if (msg.type === 'cursor_move') {
-            setCollabUsers(prev => ({...prev, [msg.userId]: {
-              userId: msg.userId, userName: msg.userName || 'User', x: msg.x, y: msg.y
-            }}));
-          }
-          else if (msg.type === 'user_joined') {
-            setCollabUsers(prev => ({...prev, [msg.userId]: { userId: msg.userId, userName: msg.userName || 'User' }}));
-            // Send our current state to the new user (via server broadcast)
-            if (ws.readyState === 1) {
-              ws.send(JSON.stringify({ type: 'nodes_update', nodes: nodesRef.current }));
-              ws.send(JSON.stringify({ type: 'edges_update', edges: edgesRef.current }));
-            }
-          }
-          else if (msg.type === 'room_state') {
-            // We just joined — server tells us who's already here
-            (msg.users || []).forEach(u => {
-              setCollabUsers(prev => ({...prev, [u.userId]: u}));
-            });
-            // Mark as fully connected (triggers broadcast effects)
-            setWsConnected(true);
-            // If room is non-empty, share our state to sync others
-            if ((msg.users || []).length > 0) {
-              setTimeout(() => {
-                if (ws.readyState === 1) {
-                  ws.send(JSON.stringify({ type: 'nodes_update', nodes: nodesRef.current }));
-                  ws.send(JSON.stringify({ type: 'edges_update', edges: edgesRef.current }));
-                }
-              }, 200);
-            }
-          }
-          else if (msg.type === 'user_left') {
-            setCollabUsers(prev => { const n = {...prev}; delete n[msg.userId]; return n; });
-          }
-        } catch(err) { console.error('[collab] parse error', err); }
+        }
+
+        else if (msg.type === "user_left") {
+          setCollabUsers(prev => { const n = { ...prev }; delete n[msg.userId]; return n; });
+        }
+
+        else if (msg.type === "nodes_update") {
+          // Store the JSON BEFORE applying so identity check works
+          lastRxNodesJSON.current = JSON.stringify(msg.nodes);
+          setNodes(msg.nodes);
+        }
+
+        else if (msg.type === "edges_update") {
+          lastRxEdgesJSON.current = JSON.stringify(msg.edges);
+          setEdges(msg.edges);
+        }
+
+        else if (msg.type === "cursor_move") {
+          setCollabUsers(prev => ({
+            ...prev,
+            [msg.userId]: { ...(prev[msg.userId] || {}), userId: msg.userId, userName: msg.userName || "User", x: msg.x, y: msg.y }
+          }));
+        }
       };
 
-      ws.onerror = err => console.error('[collab] WS error', err);
-      ws.onclose = ev => {
+      ws.onerror = (err) => console.error("[collab] ws error", err);
+
+      ws.onclose = (ev) => {
         wsRef.current = null;
         setWsConnected(false);
-        setCollabUsers({});
-        console.warn('[collab] closed', ev.code, ev.reason || '');
-        // Auto-reconnect unless server rejected auth or user left intentionally
-        if (ev.code !== 1000 && ev.code !== 1008) {
-          setTimeout(() => { if (collab && mapId) connect(); }, 3000);
+        console.log("[collab] closed", ev.code, ev.reason || "");
+        if (active && ev.code !== 1000 && ev.code !== 1008) {
+          // Unexpected close — reconnect after 3s
+          console.log("[collab] reconnecting in 3s...");
+          reconnectTimer = setTimeout(connect, 3000);
         }
       };
     };
+
     connect();
+
     return () => {
-      if (ws && ws.readyState <= 1) ws.close(1000, 'leaving');
+      active = false;
+      clearTimeout(reconnectTimer);
+      if (ws && ws.readyState <= 1) ws.close(1000, "leaving");
       wsRef.current = null;
       setWsConnected(false);
       setCollabUsers({});
     };
-  }, [mapId, collab]);
+  }, [mapId, collab]); // eslint-disable-line
 
-  // ── Broadcast changes (server handles echo filtering) ─────────────
-  useEffect(()=>{
+  // ── Broadcast node changes when collab is on ────────────────────
+  // Only sends if this is a LOCAL change (not one we received from remote).
+  useEffect(() => {
     if (!collab || !wsConnected) return;
     const ws = wsRef.current;
     if (!ws || ws.readyState !== 1) return;
-    if (nodes === lastRemoteNodes.current) return; // this was a remote update
-    ws.send(JSON.stringify({ type: 'nodes_update', nodes }));
-  }, [nodes, collab, wsConnected]);
+    const currentJSON = JSON.stringify(nodes);
+    if (currentJSON === lastRxNodesJSON.current) return; // remote update — skip
+    ws.send(JSON.stringify({ type: "nodes_update", nodes }));
+  }, [nodes, collab, wsConnected]); // eslint-disable-line
 
-  useEffect(()=>{
+  useEffect(() => {
     if (!collab || !wsConnected) return;
     const ws = wsRef.current;
     if (!ws || ws.readyState !== 1) return;
-    if (edges === lastRemoteEdges.current) return;
-    ws.send(JSON.stringify({ type: 'edges_update', edges }));
-  }, [edges, collab, wsConnected]);
+    const currentJSON = JSON.stringify(edges);
+    if (currentJSON === lastRxEdgesJSON.current) return;
+    ws.send(JSON.stringify({ type: "edges_update", edges }));
+  }, [edges, collab, wsConnected]); // eslint-disable-line
 
-  // ── Send cursor position ────────────────────────────────────────
+  // ── Send cursor position (throttled to 20fps) ───────────────────
   const sendCursor = useCallback((x, y) => {
     const ws = wsRef.current;
     if (!collab || !ws || ws.readyState !== 1) return;
-    ws.send(JSON.stringify({ type: 'cursor_move', x, y }));
+    const now = Date.now();
+    if (now - cursorThrottle.current < 50) return; // max 20fps
+    cursorThrottle.current = now;
+    ws.send(JSON.stringify({ type: "cursor_move", x, y }));
   }, [collab]);
 
   // ── Auto-layout ────────────────────────────────────────────
@@ -2824,7 +2854,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.12 ✦
+              v5.13 ✦
             </button>
           </div>
         </div>
@@ -3729,6 +3759,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.13",date:"Apr 2026",items:[
+                  "Logout on refresh fixed: access token stored in sessionStorage (survives refresh)",
+                  "Drag select fixed: onUp handler restructured — box-select, group-box, GB drag all separate",
+                  "Collab rewritten: clean WS model, JSON echo prevention, 20fps cursor throttle",
+                  "Collab: wsConnected state (not ref) — effects fire after async connect completes",
+                  "Collab: auth_error message from server turns off collab gracefully",
+                  "Collab: auto-reconnect on unexpected close, disabled on intentional close",
+                  "Backend WS: simple broadcast function, no Redis, correct JWT_ACCESS_SECRET",
+                ]},
                 {v:"v5.12",date:"Apr 2026",items:[
                   "Collab: JWT_ACCESS_SECRET fix — WS auth now works (was using wrong env var)",
                   "Collab: Redis pub/sub backend — messages fan-out via Redis, works across instances",

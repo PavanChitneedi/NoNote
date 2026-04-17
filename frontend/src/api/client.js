@@ -1,11 +1,14 @@
 const BASE = import.meta.env.VITE_API_BASE_URL || "/api";
 
-let _accessToken = null;
+// Access token stored in sessionStorage survives page refresh (same tab)
+// but is cleared when the tab closes — safe and avoids needing refresh on every reload.
+let _accessToken = sessionStorage.getItem("nm_access") || null;
 let _refreshToken = localStorage.getItem("nm_refresh") || null;
 let _refreshPromise = null;
 
 export function setTokens(access, refresh) {
   _accessToken = access;
+  if (access) sessionStorage.setItem("nm_access", access);
   if (refresh) {
     _refreshToken = refresh;
     localStorage.setItem("nm_refresh", refresh);
@@ -19,6 +22,7 @@ export function getAccessToken() {
 export function clearTokens() {
   _accessToken = null;
   _refreshToken = null;
+  sessionStorage.removeItem("nm_access");
   localStorage.removeItem("nm_refresh");
 }
 
