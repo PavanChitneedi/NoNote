@@ -1505,15 +1505,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     },800);
   };
 
-  // ── WebSocket real-time collaboration ─────────────────────────────
+  // ── WebSocket real-time collaboration (Redis pub/sub backend) ──────
   //
-  // KEY DESIGN:
-  // 1. wsConnected (React state) triggers re-renders so broadcast effects
-  //    fire correctly after the async WS connect completes.
-  // 2. Echo prevention via object identity: setNodes(msg.nodes) stores
-  //    that exact reference. The broadcast effect checks nodes===lastRemoteNodes
-  //    to know "this change came from remote, don't echo it back".
-  // 3. On joining a room, we broadcast our full state so other users sync.
+  // Echo prevention: the server filters out messages from the sender
+  // (identified by userId). No client-side echo handling needed.
+  //
+  // wsConnected (React state) ensures broadcast effects fire after
+  // the async WS connect, not just when nodes/edges change.
   //
   const [wsConnected, setWsConnected] = useState(false);
   const lastRemoteNodes = useRef(null);
@@ -1523,27 +1521,33 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     if(!mapId || !collab){ setWsConnected(false); return; }
     let ws;
     const connect = async () => {
-      try{ await apiFetch('/auth/me'); }catch{}
+      // Refresh token then read in-memory token
+      try{ await apiFetch('/auth/me'); } catch{}
       const token = getAccessToken();
       if(!token){
-        console.error('[collab] No auth token');
+        console.error('[collab] No token available');
         setCollab(false); return;
       }
-      const proto = window.location.protocol==='https:' ? 'wss:' : 'ws:';
+      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${proto}//${window.location.host}/ws`);
       wsRef.current = ws;
 
       ws.onopen = () => {
-        ws.send(JSON.stringify({type:'join', mapId, token}));
-        console.log('[collab] WS open, joining', mapId);
-        setWsConnected(true); // ← triggers broadcast effects to fire with open WS
+        ws.send(JSON.stringify({ type: 'join', mapId, token }));
+        console.log('[collab] WS open, joining map', mapId);
       };
 
       ws.onmessage = e => {
         try {
           const msg = JSON.parse(e.data);
+
+          if (msg.type === 'error') {
+            console.error('[collab] server error:', msg.message);
+            if (msg.message === 'Unauthorized') { setCollab(false); ws.close(); }
+            return;
+          }
           if (msg.type === 'nodes_update') {
-            lastRemoteNodes.current = msg.nodes; // store ref BEFORE setNodes
+            lastRemoteNodes.current = msg.nodes;
             setNodes(msg.nodes);
           }
           else if (msg.type === 'edges_update') {
@@ -1551,79 +1555,85 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             setEdges(msg.edges);
           }
           else if (msg.type === 'cursor_move') {
-            setCollabUsers(prev=>({...prev, [msg.userId]:{
-              userId:msg.userId, userName:msg.userName||'User',
-              x:msg.x, y:msg.y
+            setCollabUsers(prev => ({...prev, [msg.userId]: {
+              userId: msg.userId, userName: msg.userName || 'User', x: msg.x, y: msg.y
             }}));
           }
           else if (msg.type === 'user_joined') {
-            setCollabUsers(prev=>({...prev, [msg.userId]:{userId:msg.userId,userName:msg.userName||'User'}}));
-            // New user joined — send them our current state
-            if(ws.readyState===1){
-              ws.send(JSON.stringify({type:'nodes_update', nodes:nodesRef.current}));
-              ws.send(JSON.stringify({type:'edges_update', edges:edgesRef.current}));
+            setCollabUsers(prev => ({...prev, [msg.userId]: { userId: msg.userId, userName: msg.userName || 'User' }}));
+            // Send our current state to the new user (via server broadcast)
+            if (ws.readyState === 1) {
+              ws.send(JSON.stringify({ type: 'nodes_update', nodes: nodesRef.current }));
+              ws.send(JSON.stringify({ type: 'edges_update', edges: edgesRef.current }));
             }
           }
           else if (msg.type === 'room_state') {
-            (msg.users||[]).forEach(u=>{
-              setCollabUsers(prev=>({...prev,[u.userId]:{...( prev[u.userId]||{}),...u}}));
+            // We just joined — server tells us who's already here
+            (msg.users || []).forEach(u => {
+              setCollabUsers(prev => ({...prev, [u.userId]: u}));
             });
-            // Room already has users — broadcast our state to sync with them
-            setTimeout(()=>{
-              if(ws.readyState===1){
-                ws.send(JSON.stringify({type:'nodes_update', nodes:nodesRef.current}));
-                ws.send(JSON.stringify({type:'edges_update', edges:edgesRef.current}));
-              }
-            }, 300);
+            // Mark as fully connected (triggers broadcast effects)
+            setWsConnected(true);
+            // If room is non-empty, share our state to sync others
+            if ((msg.users || []).length > 0) {
+              setTimeout(() => {
+                if (ws.readyState === 1) {
+                  ws.send(JSON.stringify({ type: 'nodes_update', nodes: nodesRef.current }));
+                  ws.send(JSON.stringify({ type: 'edges_update', edges: edgesRef.current }));
+                }
+              }, 200);
+            }
           }
           else if (msg.type === 'user_left') {
-            setCollabUsers(prev=>{const n={...prev};delete n[msg.userId];return n;});
+            setCollabUsers(prev => { const n = {...prev}; delete n[msg.userId]; return n; });
           }
-        } catch(err){ console.error('[collab] msg error', err); }
+        } catch(err) { console.error('[collab] parse error', err); }
       };
 
-      ws.onerror = err => console.error('[collab] ws error', err);
+      ws.onerror = err => console.error('[collab] WS error', err);
       ws.onclose = ev => {
         wsRef.current = null;
         setWsConnected(false);
-        console.warn('[collab] closed', ev.code, ev.reason||'');
-        if(ev.code !== 1000 && ev.code !== 1008){
-          setTimeout(()=>{ if(collab && mapId) connect(); }, 3000);
+        setCollabUsers({});
+        console.warn('[collab] closed', ev.code, ev.reason || '');
+        // Auto-reconnect unless server rejected auth or user left intentionally
+        if (ev.code !== 1000 && ev.code !== 1008) {
+          setTimeout(() => { if (collab && mapId) connect(); }, 3000);
         }
       };
     };
     connect();
-    return ()=>{
-      if(ws && ws.readyState <= 1) ws.close(1000, 'leaving');
+    return () => {
+      if (ws && ws.readyState <= 1) ws.close(1000, 'leaving');
       wsRef.current = null;
       setWsConnected(false);
+      setCollabUsers({});
     };
-  },[mapId, collab]);
+  }, [mapId, collab]);
 
-  // ── Broadcast node changes ────────────────────────────────────────
-  // Depends on wsConnected so it fires when WS opens, not just when nodes change.
+  // ── Broadcast changes (server handles echo filtering) ─────────────
   useEffect(()=>{
-    if(!collab || !wsConnected) return;
+    if (!collab || !wsConnected) return;
     const ws = wsRef.current;
-    if(!ws || ws.readyState !== 1) return;
-    if(nodes === lastRemoteNodes.current) return; // came from remote, don't echo
-    ws.send(JSON.stringify({type:'nodes_update', nodes}));
-  },[nodes, collab, wsConnected]);
+    if (!ws || ws.readyState !== 1) return;
+    if (nodes === lastRemoteNodes.current) return; // this was a remote update
+    ws.send(JSON.stringify({ type: 'nodes_update', nodes }));
+  }, [nodes, collab, wsConnected]);
 
   useEffect(()=>{
-    if(!collab || !wsConnected) return;
+    if (!collab || !wsConnected) return;
     const ws = wsRef.current;
-    if(!ws || ws.readyState !== 1) return;
-    if(edges === lastRemoteEdges.current) return;
-    ws.send(JSON.stringify({type:'edges_update', edges}));
-  },[edges, collab, wsConnected]);
+    if (!ws || ws.readyState !== 1) return;
+    if (edges === lastRemoteEdges.current) return;
+    ws.send(JSON.stringify({ type: 'edges_update', edges }));
+  }, [edges, collab, wsConnected]);
 
-  // ── Send cursor position ─────────────────────────────────────────
-  const sendCursor = useCallback((x, y)=>{
+  // ── Send cursor position ────────────────────────────────────────
+  const sendCursor = useCallback((x, y) => {
     const ws = wsRef.current;
-    if(!collab||!ws||ws.readyState!==1) return;
-    ws.send(JSON.stringify({type:'cursor_move', x, y}));
-  },[collab]);
+    if (!collab || !ws || ws.readyState !== 1) return;
+    ws.send(JSON.stringify({ type: 'cursor_move', x, y }));
+  }, [collab]);
 
   // ── Auto-layout ────────────────────────────────────────────
   const handleAutoLayout=useCallback((dir)=>{
@@ -2814,7 +2824,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
               title="What's new">
-              v5.11 ✦
+              v5.12 ✦
             </button>
           </div>
         </div>
@@ -3719,6 +3729,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.12",date:"Apr 2026",items:[
+                  "Collab: JWT_ACCESS_SECRET fix — WS auth now works (was using wrong env var)",
+                  "Collab: Redis pub/sub backend — messages fan-out via Redis, works across instances",
+                  "Collab: wsConnected state (not just ref) — broadcast effects fire after async connect",
+                  "Collab: server-side echo filter — subscriber skips sending back to the publisher",
+                  "Collab: 🟡 connecting → 🟢 live indicator driven by room_state acknowledgement",
+                  "Auto-migrations: backend runs migrate.sql on every startup (safe IF NOT EXISTS)",
+                  "migrate.sql: all manual ALTER TABLE / CREATE TABLE in one idempotent file",
+                ]},
                 {v:"v5.11",date:"Apr 2026",items:[
                   "Collab WS: echo prevention fixed using object identity (nodes===lastRemoteNodes.current)",
                   "Collab WS: backend now fetches display_name, broadcasts room_state + user_joined events",
