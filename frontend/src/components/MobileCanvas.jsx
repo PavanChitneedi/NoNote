@@ -296,12 +296,12 @@ export default function MobileCanvas({ mapId, onBack }) {
 
   const addNote=useCallback(()=>{
     if(!selected||!newNote.trim()) return;
-    applyNodes(ns=>ns.map(n=>n.id===selected?{...n,notes:[...(n.notes||[]),{id:mkId(),content:newNote.trim(),sensitive:false}]}:n));
+    applyNodes(ns=>ns.map(n=>n.id===selected?{...n,notes:[...(Array.isArray(n.notes)?n.notes:[]),{id:mkId(),content:newNote.trim(),sensitive:false}]}:n));
     setNewNote("");
   },[selected,newNote,applyNodes]);
 
   const deleteNote=useCallback((nodeId,idx)=>{
-    applyNodes(ns=>ns.map(n=>n.id===nodeId?{...n,notes:(n.notes||[]).filter((_,i)=>i!==idx)}:n));
+    applyNodes(ns=>ns.map(n=>n.id===nodeId?{...n,notes:(Array.isArray(n.notes)?n.notes:[]).filter((_,i)=>i!==idx)}:n));
   },[applyNodes]);
 
   const selNode=nodes.find(n=>n.id===selected);
@@ -427,7 +427,7 @@ export default function MobileCanvas({ mapId, onBack }) {
             const isConn=connecting===node.id;
             const rColor=remoteColor(node.id);
             const border=isConn?"#22c55e":rColor||(isSel?ACCENT:`${t.color}55`);
-            const noteCount=(node.notes||[]).filter(n=>!n.sensitive).length;
+            const noteCount=(Array.isArray(node.notes)?node.notes:[]).filter(n=>!n.sensitive).length;
             return(
               <div key={node.id} className="mob-node"
                 onPointerDown={e=>onNodeDown(e,node.id)}
@@ -550,7 +550,7 @@ export default function MobileCanvas({ mapId, onBack }) {
           foot={
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setSheet("notes")} style={mBtn(false)}>
-                📝 Notes {(selNode.notes||[]).length>0?`(${(selNode.notes||[]).length})`:""}
+                📝 Notes {(Array.isArray(selNode.notes)&&selNode.notes.length>0?`(${selNode.notes.length})`:""}
               </button>
               <button onClick={saveEdit} style={{...mBtn(true),flex:1}}>Save ✓</button>
               <button onClick={deleteSelected} style={{...mBtn(false),color:"var(--danger)"}}>🗑</button>
@@ -584,11 +584,11 @@ export default function MobileCanvas({ mapId, onBack }) {
               <button onClick={addNote} style={mBtn(true)}>→</button>
             </div>
           }>
-          {(!(selNode.notes)||selNode.notes.length===0)
+          {(!Array.isArray(selNode.notes)||selNode.notes.length===0)
             ?<div style={{color:"var(--text4)",fontSize:13,padding:"20px 0",textAlign:"center"}}>
                No notes yet — add one below
              </div>
-            :(selNode.notes||[]).map((note,i)=>{
+            :(Array.isArray(selNode.notes)?selNode.notes:[]).map((note,i)=>{
               const text=typeof note==="string"?note:(note.content||"");
               const sens=typeof note==="object"&&note.sensitive;
               return(
