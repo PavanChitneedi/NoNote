@@ -5,11 +5,17 @@ import { DesignProvider } from "./context/DesignContext.jsx";
 import LoginPage    from "./components/LoginPage.jsx";
 import Dashboard    from "./components/Dashboard.jsx";
 import NodeCanvas   from "./components/NodeCanvas.jsx";
+import MobileCanvas from "./components/MobileCanvas.jsx";
 import AdminPanel   from "./components/AdminPanel.jsx";
 import ThemePicker  from "./components/ThemePicker.jsx";
 import UserProfile  from "./components/UserProfile.jsx";
 import Tutorial     from "./components/Tutorial.jsx";
 import HelpGuide    from "./components/HelpGuide.jsx";
+
+// Detect phone/tablet (narrow screen or touch-primary device)
+function isMobileDevice() {
+  return window.innerWidth < 768 || (window.innerWidth < 1024 && "ontouchstart" in window);
+}
 
 function AppInner() {
   const { user, loading, logout } = useAuth();
@@ -93,7 +99,9 @@ function AppInner() {
       <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>
         {view.page==="dashboard" && <Dashboard onOpenMap={openMap} onOpenAdmin={openAdmin} />}
         {view.page==="canvas" && view.mapId && (
-          <NodeCanvas mapId={view.mapId} onBack={goHome} onHome={goHome} />
+          isMobileDevice()
+            ? <MobileCanvas mapId={view.mapId} onBack={goHome} />
+            : <NodeCanvas mapId={view.mapId} onBack={goHome} onHome={goHome} />
         )}
         {view.page==="admin" && <AdminPanel onBack={goHome} />}
       </div>

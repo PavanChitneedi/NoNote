@@ -185,4 +185,74 @@ router.get("/search", authenticate, async (req, res) => {
   }
 });
 
+
+// ── GET /api/users/logs — application logs (admin) ──────────────────
+router.get("/logs", authenticate, async (req, res) => {
+  if (!["admin","owner"].includes(req.user.role))
+    return res.status(403).json({ error: "Admin only" });
+  const limit  = Math.min(parseInt(req.query.limit  || "200"), 1000);
+  const offset = parseInt(req.query.offset || "0");
+  const level  = req.query.level || null; // error|warn|info|all
+  const since  = req.query.since || null; // ISO date string
+  try {
+    let where = "WHERE 1=1";
+    const params = [];
+    if (level && level !== "all") {
+      params.push(level); where += ` AND level = $${params.length}`;
+    }
+    if (since) {
+      params.push(since); where += ` AND created_at >= $${params.length}`;
+    }
+    params.push(limit);  const lp = params.length;
+    params.push(offset); const op = params.length;
+    const rows = await query(
+      `SELECT id, level, category, message, user_id, meta, created_at
+       FROM app_logs ${where}
+       ORDER BY created_at DESC LIMIT $${lp} OFFSET $${op}`,
+      params
+    );
+    const total = await query(`SELECT COUNT(*) FROM app_logs ${where}`, params.slice(0,-2));
+    res.json({ logs: rows.rows, total: parseInt(total.rows[0].count) });
+  } catch (err) {
+    res.status(500).json({ error: "Failed to fetch logs" });
+  }
+});
+
+// ── GET /api/users/logs/retention — get/set retention days ───────────
+router.get("/logs/retention", authenticate, async (req, res) => {
+  if (!["admin","owner"].includes(req.user.role))
+    return res.status(403).json({ error: "Admin only" });
+  try {
+    const r = await query("SELECT value FROM app_settings WHERE key='log_retention_days'");
+    res.json({ days: r.rows[0] ? parseInt(r.rows[0].value) : 7 });
+  } catch { res.json({ days: 7 }); }
+});
+
+router.patch("/logs/retention", authenticate, async (req, res) => {
+  if (!["admin","owner"].includes(req.user.role))
+    return res.status(403).json({ error: "Admin only" });
+  const days = Math.max(1, Math.min(365, parseInt(req.body.days || "7")));
+  try {
+    await query(
+      `INSERT INTO app_settings(key,value) VALUES('log_retention_days',$1)
+       ON CONFLICT(key) DO UPDATE SET value=$1`, [String(days)]
+    );
+    res.json({ days });
+  } catch { res.status(500).json({ error: "Failed to update retention" }); }
+});
+
+// ── DELETE /api/users/logs — clear old logs past retention ──────────
+router.delete("/logs", authenticate, async (req, res) => {
+  if (!["admin","owner"].includes(req.user.role))
+    return res.status(403).json({ error: "Admin only" });
+  try {
+    const r = await query("SELECT value FROM app_settings WHERE key='log_retention_days'");
+    const days = r.rows[0] ? parseInt(r.rows[0].value) : 7;
+    const del = await query(
+      "DELETE FROM app_logs WHERE created_at < NOW() - INTERVAL '1 day' * $1", [days]
+    );
+    res.json({ deleted: del.rowCount, retentionDays: days });
+  } catch { res.status(500).json({ error: "Failed to prune logs" }); }
+});
+
 export default router;

@@ -259,12 +259,40 @@ async function runMigrations() {
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
     "CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, created_at DESC)",
+    // Application logs (admin visible, 7-day default retention)
+    `CREATE TABLE IF NOT EXISTS app_logs (
+      id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      level TEXT NOT NULL DEFAULT 'info',
+      category TEXT NOT NULL DEFAULT 'system',
+      message TEXT NOT NULL,
+      user_id UUID REFERENCES users(id) ON DELETE SET NULL,
+      meta JSONB,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_app_logs_created ON app_logs(created_at DESC)",
+    "CREATE INDEX IF NOT EXISTS idx_app_logs_level ON app_logs(level)",
+    // App settings kv store
+    `CREATE TABLE IF NOT EXISTS app_settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
   ];
   let applied = 0;
   for (const sql of migrations) {
     try { await query(sql); applied++; } catch { /* already exists */ }
   }
   console.log(`[migrate] ${applied}/${migrations.length} migrations applied`);
+}
+
+// ── App logger — writes to app_logs table ────────────────────────
+export async function appLog(level, category, message, userId=null, meta=null) {
+  try {
+    await query(
+      "INSERT INTO app_logs(level,category,message,user_id,meta) VALUES($1,$2,$3,$4,$5)",
+      [level, category, message, userId||null, meta?JSON.stringify(meta):null]
+    );
+  } catch {} // never throw — logging must not break the app
 }
 
 // ── Start ─────────────────────────────────────────────────────

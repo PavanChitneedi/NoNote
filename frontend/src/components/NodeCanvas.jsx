@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+impo;rt { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab, getAccessToken } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
@@ -756,6 +756,17 @@ const tbtn=(active,color="var(--accent2)")=>({
   background:active?color:"var(--bg3)",
   color:active?"#fff":"var(--text3)",
   transition:"var(--transition-all)",
+});
+// Icon-only square button — tooltip via `title` attribute
+const iBtn=(active,ac="var(--accent2)")=>({
+  background:active?`${ac}22`:"transparent",
+  color:active?ac:"var(--text3)",
+  border:active?`1px solid ${ac}55`:"1px solid transparent",
+  borderRadius:"var(--radius-sm)",padding:"4px 6px",
+  cursor:"pointer",fontSize:14,fontFamily:"var(--font-ui)",
+  transition:"all .15s",display:"inline-flex",
+  alignItems:"center",justifyContent:"center",
+  minWidth:28,lineHeight:1,
 });
 const inp=()=>({
   width:"100%",background:"var(--bg)",border:`1px solid var(--border)`,
@@ -1544,7 +1555,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const resetSize    =(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,w:n.type==="group"?GRP_W:DEF_W,h:n.type==="group"?GRP_H:DEF_H}:n));
   const toggleCollapse=(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,collapsed:!n.collapsed}:n));
   const collapseAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:true}))); setGlobalCollapsed(true); };
-  const expandAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:false}))); setGlobalCollapsed(false); };
+  const expandAll=()=>{
+    applyNodes(ns=>ns.map(n=>({...n,collapsed:false})));
+    setGlobalCollapsed(false);
+    // Re-layout after 80ms so DOM heights reflow before calculating positions
+    setTimeout(()=>handleAutoLayout(layoutDir),80);
+  };
   const updateNotes  =(id,notes)=>{
     setNodes(ns=>ns.map(n=>n.id===id?{...n,notes}:n));
     clearTimeout(notesTimers.current[id]);
@@ -1783,7 +1799,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const commitCapture=()=>{
     const title=quickText.trim();
     if(!title){setQuickPos(null);setQuickText("");return;}
-    const node=mkNode("note",quickPos.x,quickPos.y);
+    // Find non-overlapping position
+    const cur=nodesRef.current;
+    let ox=0,oy=0;
+    for(let i=0;i<20;i++){
+      const clash=cur.some(n=>
+        Math.abs(n.x-(quickPos.x+ox))<(n.w||DEF_W)+20&&
+        Math.abs(n.y-(quickPos.y+oy))<(n.h||DEF_H)+20);
+      if(!clash) break;
+      ox+=(DEF_W+24); if(ox>600){ox=0;oy+=(DEF_H+24);}
+    }
+    const node=mkNode("note",quickPos.x+ox,quickPos.y+oy);
     node.title=title;
     applyNodes(ns=>[...ns,node]);
     setSelected(new Set([node.id])); setQuickPos(null); setQuickText("");
@@ -1818,20 +1844,37 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
     // Compute best sides — direction-aware
     const bestSides=(fx,fy,fw2,fh2,tx,ty,tw2,th2)=>{
-      const dx=(tx+tw2/2)-(fx+fw2/2), dy=(ty+th2/2)-(fy+fh2/2);
-      const ax=Math.abs(dx), ay=Math.abs(dy);
-      // If the separation is strongly horizontal, use horizontal sides
-      if(ax>ay*0.5){
-        return dx>0?{from:"right",to:"left"}:{from:"left",to:"right"};
+      const fcx=fx+fw2/2, fcy=fy+fh2/2;
+      const tcx=tx+tw2/2, tcy=ty+th2/2;
+      const dx=tcx-fcx, dy=tcy-fcy;
+      // Score each exit/entry face pair — lower is better
+      const score=(fromSide,toSide)=>{
+        let s=0;
+        // Penalise going "backwards" out the wrong face
+        if(fromSide==="right"  && dx<-fw2*0.3) s+=8;
+        if(fromSide==="left"   && dx>fw2*0.3)  s+=8;
+        if(fromSide==="bottom" && dy<-fh2*0.3) s+=8;
+        if(fromSide==="top"    && dy>fh2*0.3)  s+=8;
+        // Penalise entering on wrong face
+        if(toSide==="left"   && dx<0) s+=4;
+        if(toSide==="right"  && dx>0) s+=4;
+        if(toSide==="top"    && dy<0) s+=4;
+        if(toSide==="bottom" && dy>0) s+=4;
+        // Prefer straight through-routes (exit right→enter left for dx>0 etc.)
+        if(fromSide==="right"  && toSide==="left"   && dx>0) s-=6;
+        if(fromSide==="left"   && toSide==="right"  && dx<0) s-=6;
+        if(fromSide==="bottom" && toSide==="top"    && dy>0) s-=6;
+        if(fromSide==="top"    && toSide==="bottom" && dy<0) s-=6;
+        return s;
+      };
+      const sides=["right","left","bottom","top"];
+      let best={from:"right",to:"left",s:999};
+      for(const f of sides) for(const t of sides){
+        if(f===t) continue;
+        const s=score(f,t);
+        if(s<best.s) best={from:f,to:t,s};
       }
-      // If the separation is strongly vertical, use vertical sides
-      if(ay>ax*0.5){
-        return dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"};
-      }
-      // Roughly diagonal — pick dominant axis
-      return ax>=ay
-        ? (dx>0?{from:"right",to:"left"}:{from:"left",to:"right"})
-        : (dy>0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"});
+      return {from:best.from,to:best.to};
     };
 
     // Resolve from-point
@@ -1866,7 +1909,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const dx=tp.x-fp.x, dy=tp.y-fp.y;
     const dist=Math.sqrt(dx*dx+dy*dy);
     const alignF=dist>0?Math.abs(fn1.dx*(dx/dist)+fn1.dy*(dy/dist)):0;
-    const ctrl=Math.max(50, dist*(0.4+(1-alignF)*0.2));
+    // Longer handles for backtracking; shorter for clean direct routes
+    const ctrlMult = alignF>0.7 ? 0.35 : alignF>0.3 ? 0.45 : 0.6;
+    const ctrl=Math.max(60, dist*ctrlMult);
     let c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
     let c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
 
@@ -2672,36 +2717,40 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }}>
 
         {/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-            ROW 1 — CONTEXT BAR
-            Left:  Navigation (where you are)
-            Right: Document tools (whole-doc operations) + View controls
+            ROW 1 — APP BAR
+            LEFT:  ⬡ home | ← Maps | map title | save status | presence
+            RIGHT: icon-only buttons (tooltip = label) for all app actions
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div style={{height:40,display:"flex",alignItems:"center",gap:0,padding:"0 8px",borderBottom:"1px solid var(--border2)"}} data-tut="topbar-row1"
-          onKeyDown={e=>e.stopPropagation()}>
+        <div style={{height:40,display:"flex",alignItems:"center",gap:0,
+          padding:"0 8px",borderBottom:"1px solid var(--border2)"}}
+          data-tut="topbar-row1" onKeyDown={e=>e.stopPropagation()}>
 
-          {/* ── Navigation ── */}
-          <div style={{display:"flex",alignItems:"center",gap:4,flexShrink:0}}>
-            <span onClick={onHome} title="Home" style={{fontSize:17,cursor:"pointer",padding:"0 3px",userSelect:"none",lineHeight:1}}>⬡</span>
-            <button onClick={onBack} style={tbtn(false)}>← Maps</button>
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
-            {editingMapTitle?(
+          {/* ── LEFT: nav + title + presence ── */}
+          <div style={{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}}>
+            <span onClick={onHome} title="Home"
+              style={{fontSize:17,cursor:"pointer",padding:"0 3px",userSelect:"none",lineHeight:1}}>⬡</span>
+            <button onClick={onBack} style={{...tbtn(false),fontSize:10,padding:"2px 8px"}}
+              title="Back to dashboard">← Maps</button>
+            <div style={{width:1,height:18,background:"var(--border)",margin:"0 4px",flexShrink:0}}/>
+
+            {/* Map title — click to edit */}
+            {editingMapTitle ? (
               <input autoFocus value={editingMapTitle}
                 onChange={e=>setEditingMapTitle(e.target.value)}
                 onBlur={()=>{
                   if(editingMapTitle.trim()&&editingMapTitle!==mapMeta?.title){
-                    fetch(`/api/maps/${mapId}`,{method:"PATCH",
-                      headers:{"Content-Type":"application/json",Authorization:`Bearer ${localStorage.getItem('nn_token')}`},
+                    apiFetch(`/maps/${mapId}`,{method:"PATCH",
                       body:JSON.stringify({title:editingMapTitle.trim()})})
-                      .then(()=>setMapMeta(m=>({...m,title:editingMapTitle.trim()})));
+                      .then(()=>setMapMeta(m=>({...m,title:editingMapTitle.trim()})))
+                      .catch(()=>{});
                   }
                   setEditingMapTitle(null);
                 }}
                 onKeyDown={e=>{if(e.key==="Enter"||e.key==="Escape")e.target.blur();e.stopPropagation();}}
                 style={{fontSize:12,fontWeight:700,color:"var(--accent)",background:"var(--bg3)",
                   border:"1px solid var(--accent)",borderRadius:4,padding:"1px 6px",outline:"none",
-                  maxWidth:180,fontFamily:"var(--font-ui)"}}
-              />
-            ):(
+                  maxWidth:180,fontFamily:"var(--font-ui)"}}/>
+            ) : (
               <span onClick={()=>setEditingMapTitle(mapMeta?.title||"")}
                 title="Click to rename map"
                 style={{fontSize:12,fontWeight:700,color:"var(--accent)",maxWidth:160,overflow:"hidden",
@@ -2713,71 +2762,50 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </span>
             )}
             {saveMsg&&<span style={{fontSize:9,color:saveMsgColor,whiteSpace:"nowrap",marginLeft:4}}>{saveMsg}</span>}
-            {/* Live user presence — Excel-style avatar stack */}
+
+            {/* Live presence — stacked avatars */}
             {Object.entries(remoteSelections).length>0&&(
-              <div data-tut="collab-presence" style={{display:"flex",alignItems:"center",gap:3,marginLeft:6,flexShrink:0}}>
-                {/* Stacked avatars */}
-                <div style={{display:"flex",alignItems:"center"}}>
-                  {Object.entries(remoteSelections).map(([uid, rs], i)=>{
-                    const initials=(rs.userName||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
-                    const hasSelection = rs.selectedIds&&rs.selectedIds.size>0;
-                    return(
-                      <div key={uid} title={rs.userName+(hasSelection?" (selecting)":"")}
-                        style={{width:22,height:22,borderRadius:"50%",
-                          background:rs.color,color:"#fff",
-                          fontSize:9,fontWeight:700,
-                          display:"flex",alignItems:"center",justifyContent:"center",
-                          border:"2px solid var(--bg2)",
-                          marginLeft:i>0?-7:0,
-                          position:"relative",zIndex:Object.keys(remoteSelections).length-i,
-                          boxShadow:hasSelection?`0 0 0 2px ${rs.color}60`:"none",
-                          cursor:"default",
-                        }}>
-                        {initials}
-                        {/* Green dot = active/selecting */}
-                        {hasSelection&&(
-                          <div style={{position:"absolute",bottom:-1,right:-1,
-                            width:7,height:7,borderRadius:"50%",
-                            background:"#22c55e",border:"1.5px solid var(--bg2)"}}/>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-                <span style={{fontSize:9,color:"var(--text4)",paddingLeft:2}}>
-                  {Object.keys(remoteSelections).length} viewing
-                </span>
+              <div data-tut="collab-presence"
+                style={{display:"flex",alignItems:"center",gap:2,marginLeft:6,flexShrink:0}}>
+                {Object.entries(remoteSelections).map(([uid,rs],i)=>{
+                  const initials=(rs.userName||"?").split(" ").map(w=>w[0]).join("").slice(0,2).toUpperCase();
+                  const hasSel=rs.selectedIds&&rs.selectedIds.size>0;
+                  return(
+                    <div key={uid} title={`${rs.userName}${hasSel?" · selecting":""}`}
+                      style={{width:20,height:20,borderRadius:"50%",background:rs.color,color:"#fff",
+                        fontSize:8,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
+                        border:"2px solid var(--bg2)",marginLeft:i>0?-5:0,
+                        position:"relative",zIndex:Object.keys(remoteSelections).length-i,
+                        boxShadow:hasSel?`0 0 0 2px ${rs.color}55`:"none"}}>
+                      {initials}
+                      {hasSel&&<div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,
+                        borderRadius:"50%",background:"#22c55e",border:"1.5px solid var(--bg2)"}}/>}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
 
-          <div style={{flex:1}}/>
+          {/* ── RIGHT: icon-only app actions ── */}
+          <div style={{display:"flex",alignItems:"center",gap:1,flexShrink:0}}>
 
-          {/* ── Document-level tools — grouped by function ── */}
-          <div style={{display:"flex",alignItems:"center",gap:2,flexShrink:0}}>
+            {/* ── Group A: Map resources ── */}
+            <button onClick={()=>setShowTemplates(v=>!v)}
+              style={tbtn(showTemplates,"#FF9800")} title="Templates — start from a preset">📋</button>
+            <button onClick={()=>setShowVersions(true)}
+              style={tbtn(false)} data-tut="history" title="Version History (V)">🕐</button>
+            <button onClick={()=>{setShowCollabLog(v=>!v);
+                if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`)
+                  .then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}}
+              style={tbtn(showCollabLog,"#7B1FA2")} title="Change log — who changed what">📝</button>
 
-            {/* ── GROUP 1: Map resources ── */}
-            <button onClick={()=>setShowTemplates(v=>!v)} style={{...tbtn(showTemplates,"#FF9800"),display:"flex",alignItems:"center",gap:4}} title="Template library (start from a preset)">
-              📋 <span style={{fontSize:10}}>Templates</span>
-            </button>
-            <button onClick={()=>setShowVersions(true)} style={{...tbtn(false),display:"flex",alignItems:"center",gap:4}} data-tut="history" title="Version history (V)">
-              🕐 <span style={{fontSize:10}}>History</span>
-            </button>
-            <button onClick={()=>{
-                setShowCollabLog(v=>!v);
-                if(!showCollabLog) apiFetch(`/maps/${mapId}/changelog`)
-                  .then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});
-              }}
-              style={{...tbtn(showCollabLog,"#7B1FA2"),display:"flex",alignItems:"center",gap:4}}
-              title="Map change history — who changed what">
-              📋 <span style={{fontSize:10}}>Changes</span>
-            </button>
+            <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
-                        <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
-
-            {/* ── GROUP 2: Import / Export — data in and out ── */}
-            <label title="Import .nonote map file" style={{...tbtn(false),cursor:"pointer",display:"flex",alignItems:"center",gap:3,padding:"4px 8px",borderRadius:"var(--radius-sm)"}}>
-              ↙ <span style={{fontSize:10}}>Import</span>
+            {/* ── Group B: Import / Export ── */}
+            <label style={{...tbtn(false),cursor:"pointer",padding:"4px 7px"}}
+              title="Import .nonote or JSON file">
+              ↙
               <input type="file" accept=".nonote,.json" style={{display:"none"}}
                 onChange={e=>{
                   const f=e.target.files?.[0]; if(!f) return;
@@ -2791,21 +2819,27 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         alert(`Imported "${b.title}" — ${ns.length} nodes`);
                       } else { alert("Not a valid .nonote file"); }
                     } catch{ alert("Could not read file"); }
+                    e.target.value="";
                   };
                   r.readAsText(f);
-                  e.target.value="";
                 }}/>
             </label>
 
             <div style={{position:"relative"}}>
-              <button onClick={()=>setShowExportMenu(v=>!v)} style={{...tbtn(showExportMenu,"#238636"),display:"flex",alignItems:"center",gap:4}} data-tut="export" title="Export map">
-                ↗ <span style={{fontSize:10}}>Export</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
-              </button>
+              <button onClick={()=>setShowExportMenu(v=>!v)}
+                style={tbtn(showExportMenu,"#238636")}
+                data-tut="export" title="Export map">↗</button>
               {showExportMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
-                <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",minWidth:180,overflow:"hidden"}}>
+                <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
+                  background:"var(--bg2)",border:"1px solid var(--border)",
+                  borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",
+                  minWidth:180,overflow:"hidden"}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
-                  {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],["🖼","PNG Image","Visual snapshot"],["📦",".nonote","Re-importable bundle"],["🌐","HTML View","Interactive read-only page"],["📝","Markdown Doc","Documentation"],["🖨","PDF Print","Print / Save as PDF"]].map(([ic,lbl,desc],i)=>(
+                  {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],
+                    ["🖼","PNG Image","Visual snapshot"],["📦",".nonote","Re-importable bundle"],
+                    ["🌐","HTML View","Interactive read-only"],["📝","Markdown","Documentation"],
+                    ["🖨","PDF","Print / Save as PDF"]].map(([ic,lbl,desc],i)=>(
                     <div key={i} onClick={()=>{setShowExportMenu(false);
                       if(i===2) exportAsPNG(nodes,edges,mapMeta?.title);
                       else if(i===3) exportAsNoNote(nodes,edges,mapMeta);
@@ -2817,40 +2851,40 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
                       onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                       <span style={{fontSize:15,minWidth:20,textAlign:"center"}}>{ic}</span>
-                      <div><div style={{fontSize:11,fontWeight:600,color:"var(--text)"}}>{lbl}</div><div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div></div>
+                      <div>
+                        <div style={{fontSize:11,fontWeight:600,color:"var(--text)"}}>{lbl}</div>
+                        <div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div>
+                      </div>
                     </div>
                   ))}
                 </div>
               </>)}
             </div>
 
+            <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
-                        <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
+            {/* ── Group C: Collaboration ── */}
+            <button onClick={()=>{setShowShare(true);
+                if(mapId)apiFetch(`/maps/${mapId}/collaborators`)
+                  .then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});}}
+              style={tbtn(false,"#1565C0")} data-tut="share" title="Share & Collaborate">👥</button>
 
-            {/* ── GROUP 3: Collaboration ── */}
-            <button onClick={()=>{
-                setShowShare(true);
-                if(mapId) apiFetch(`/maps/${mapId}/collaborators`)
-                  .then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});
-              }}
-              style={{...tbtn(false,"#1565C0"),display:"flex",alignItems:"center",gap:4}}
-              data-tut="share" title="Share map with teammates">
-              👥 <span style={{fontSize:10}}>Share</span>
-            </button>
+            <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
-                        <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
-
-            {/* ── GROUP 4: Appearance ── */}
+            {/* ── Group D: Appearance ── */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>setShowAppMenu(v=>!v)} style={{...tbtn(showAppMenu,"#6C63FF"),display:"flex",alignItems:"center",gap:4}} title="Appearance — themes, canvas style">
-                🎨 <span style={{fontSize:10}}>Theme</span> <span style={{fontSize:8,opacity:.7}}>▾</span>
-              </button>
+              <button onClick={()=>setShowAppMenu(v=>!v)}
+                style={tbtn(showAppMenu,"#6C63FF")} title="Appearance — themes, canvas style">🎨</button>
               {showAppMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
-                <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",padding:6,minWidth:160}}>
+                <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
+                  background:"var(--bg2)",border:"1px solid var(--border)",
+                  borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",
+                  padding:6,minWidth:160}}>
                   {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
                     <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
-                      style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
+                      style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",
+                        cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
                       onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
                       {ic} {lbl}
@@ -2860,47 +2894,38 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </>)}
             </div>
 
+            <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
-
-            {/* ZOOM */}
-            <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
-              <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>−</button>
-              <span onClick={()=>setZoom(1)} style={{fontSize:10,color:"var(--text3)",cursor:"pointer",minWidth:36,textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
-              <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))} style={{...tbtn(false),padding:"2px 7px",borderRadius:0,fontSize:12}}>＋</button>
+            {/* ── Zoom control ── */}
+            <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",
+              borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
+              <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))}
+                style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>−</button>
+              <span onClick={()=>setZoom(1)}
+                style={{fontSize:9,color:"var(--text3)",cursor:"pointer",minWidth:32,
+                  textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
+              <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))}
+                style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>＋</button>
             </div>
 
-            <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 3px"}}/>
+            <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
-            {/* 🔍 FIND IN MAP — command-palette style */}
-            <button onClick={()=>{setShowSearch(v=>!v);if(!showSearch){setSearchQuery("");}}}
-              style={{...tbtn(showSearch,"var(--accent2)"),display:"flex",alignItems:"center",gap:5,padding:"4px 10px"}}
-              data-tut="find" title="Find nodes (Ctrl+F)">
-              🔍
-              <span style={{fontSize:10}}>Find</span>
-              {!isMobile&&<kbd style={{fontSize:8,color:showSearch?"rgba(255,255,255,.7)":"var(--text4)",background:showSearch?"rgba(255,255,255,.15)":"var(--bg3)",border:`1px solid ${showSearch?"rgba(255,255,255,.3)":"var(--border)"}`,borderRadius:3,padding:"1px 4px",fontFamily:"var(--font-ui)"}}>Ctrl+F</kbd>}
-            </button>
+            {/* ── Utilities ── */}
+            <button onClick={()=>{setShowSearch(v=>!v);if(!showSearch)setSearchQuery("");}}
+              style={tbtn(showSearch,"var(--accent2)")}
+              data-tut="find" title="Find in map (Ctrl+F)">🔍</button>
 
-            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find in map\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View mode (or open popup)\nF2  Rename selected node\nN  Add note to selected node\nV  Version history\nC  Connect mode\nG  Draw group box\nSpace  Quick capture"}
-              style={{fontSize:11,color:"var(--text4)",cursor:"help",borderBottom:"1px dashed var(--text4)",padding:"0 3px",marginLeft:2}}>⌨</span>}
-            <button onClick={()=>setShowHelp(true)}
-              style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,
-                border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
-                color:"var(--text3)",fontWeight:700}}
-              title="Help & documentation">
-              ? Help
-            </button>
-            <button onClick={()=>setShowTutorial(true)}
-              style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,
-                border:"1px solid var(--accent)",borderRadius:"var(--radius-sm)",
-                color:"var(--accent)",fontWeight:700}}
-              title="Interactive tutorial">
-              🎓
-            </button>
+            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View\nF2  Rename\nN  Note\nV  History\nC  Connect\nG  Group\nSpace  Quick capture"}
+              style={{fontSize:12,color:"var(--text4)",cursor:"help",padding:"0 4px",lineHeight:1}}
+              title="Keyboard shortcuts">⌨</span>}
+
+            <button onClick={()=>setShowHelp(true)} style={tbtn(false)} title="Help & Documentation">❓</button>
+            <button onClick={()=>setShowTutorial(true)} style={tbtn(false,"var(--accent)")} title="Interactive Tutorial">🎓</button>
+
             <button onClick={()=>setShowChangelog(true)}
-              style={{...tbtn(false),fontSize:9,padding:"2px 7px",marginLeft:2,border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",color:"var(--accent)",fontWeight:700}}
-              title="What's new">
-              v5.20 ✦
-            </button>
+              style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
+                border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
+              title="What's new">v5.21✦</button>
           </div>
         </div>
 
@@ -3824,6 +3849,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.21",date:"Apr 2026",items:[
+                  "Arrow routing: smarter bestSides scoring eliminates wrong-face exits",
+                  "Bezier curves: adaptive handle length reduces path crossings",
+                  "Expand All now runs auto-layout to prevent node overlaps",
+                  "Space bar quick capture: offsets each new node to avoid stacking",
+                  "Topbar Row 1: icon-only buttons with hover tooltips, cleaner grouping",
+                  "Topbar reorganized: Row 1 = app actions, Row 2 = canvas tools",
+                ]},
                 {v:"v5.20",date:"Apr 2026",items:[
                   "Tutorial mode: interactive step-by-step walkthrough with spotlight on UI elements",
                   "Help Guide: full searchable documentation with 10 sections and keyboard shortcut table",
@@ -3831,6 +3864,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   "Tutorial adapts to current page — shows dashboard or canvas steps accordingly",
                   "Focus mode now dims edges (v5.19 fix carried over)",
                   "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
+                ]},
+                {v:"v5.21",date:"Apr 2026",items:[
+                  "Arrow routing: smarter bestSides scoring eliminates wrong-face exits",
+                  "Bezier curves: adaptive handle length reduces path crossings",
+                  "Expand All now runs auto-layout to prevent node overlaps",
+                  "Space bar quick capture: offsets each new node to avoid stacking",
+                  "Topbar Row 1: icon-only buttons with hover tooltips, cleaner grouping",
+                  "Topbar reorganized: Row 1 = app actions, Row 2 = canvas tools",
                 ]},
                 {v:"v5.20",date:"Apr 2026",items:[
                   "Tutorial mode: 22-step interactive walkthrough with spotlight, progress bar, dot nav",
