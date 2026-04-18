@@ -379,12 +379,12 @@ export default function MobileCanvas({ mapId, onBack }) {
           transform:`translate(${pan.x}px,${pan.y}px) scale(${zoom})`,
           transformOrigin:"0 0",width:4000,height:3000,userSelect:"none"}}>
 
-          {/* SVG edges */}
-          <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",
-            pointerEvents:"all",overflow:"visible",zIndex:1}}>
+          {/* SVG edges — must be BEFORE nodes in DOM so nodes appear on top */}
+          <svg style={{position:"absolute",left:0,top:0,width:4000,height:3000,
+            pointerEvents:"none",overflow:"visible"}}>
             <defs>
-              <marker id="ma" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                <polygon points="0 0,8 3,0 6" fill={ACCENT}/>
+              <marker id="ma" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
+                <polygon points="0 0,10 4,0 8" fill={ACCENT}/>
               </marker>
             </defs>
             {edges.map(edge=>{
@@ -394,24 +394,28 @@ export default function MobileCanvas({ mapId, onBack }) {
               const tcx=t.x+(t.w||DEF_W)/2,tcy=t.y+(t.h||DEF_H)/2;
               const fp=edgePt(f,tcx,tcy),tp=edgePt(t,fcx,fcy);
               const dx=tp.x-fp.x,dy=tp.y-fp.y;
-              const dist=Math.hypot(dx,dy);
-              const ctrl=Math.max(50,dist*0.4);
-              // Determine which face fp/tp are on to set control point direction
-              const fNx=Math.abs(fp.x-f.x)<2?-1:Math.abs(fp.x-(f.x+(f.w||DEF_W)))<2?1:0;
-              const fNy=Math.abs(fp.y-f.y)<2?-1:Math.abs(fp.y-(f.y+(f.h||DEF_H)))<2?1:0;
-              const tNx=Math.abs(tp.x-t.x)<2?-1:Math.abs(tp.x-(t.x+(t.w||DEF_W)))<2?1:0;
-              const tNy=Math.abs(tp.y-t.y)<2?-1:Math.abs(tp.y-(t.y+(t.h||DEF_H)))<2?1:0;
-              const c1x=fp.x+(fNx||Math.sign(dx))*ctrl, c1y=fp.y+(fNy||Math.sign(dy))*ctrl*0.5;
-              const c2x=tp.x+(tNx||Math.sign(-dx))*ctrl, c2y=tp.y+(tNy||Math.sign(-dy))*ctrl*0.5;
+              const dist=Math.hypot(dx,dy)||1;
+              const ctrl=Math.max(60,dist*0.42);
+              // Exit normal from the face the point is on
+              const fNx=Math.abs(fp.x-f.x)<3?-1:Math.abs(fp.x-(f.x+(f.w||DEF_W)))<3?1:0;
+              const fNy=fNx!==0?0:(Math.abs(fp.y-f.y)<3?-1:1);
+              const tNx=Math.abs(tp.x-t.x)<3?-1:Math.abs(tp.x-(t.x+(t.w||DEF_W)))<3?1:0;
+              const tNy=tNx!==0?0:(Math.abs(tp.y-t.y)<3?-1:1);
+              const c1x=fp.x+(fNx!==0?fNx:Math.sign(dx)||1)*ctrl;
+              const c1y=fp.y+(fNx!==0?0:fNy)*ctrl;
+              const c2x=tp.x+(tNx!==0?tNx:Math.sign(-dx)||1)*ctrl;
+              const c2y=tp.y+(tNx!==0?0:tNy)*ctrl;
               const path=`M ${fp.x} ${fp.y} C ${c1x} ${c1y},${c2x} ${c2y},${tp.x} ${tp.y}`;
               const da=edge.style==="dashed"?"8,5":edge.style==="dotted"?"2,5":"none";
+              const ec=edge.color||ACCENT;
               return(
-                <g key={edge.id}>
-                  <path d={path} stroke="transparent" strokeWidth={22} fill="none"
-                    style={{cursor:"pointer"}}
-                    onClick={e=>{e.stopPropagation();if(window.confirm("Delete this connection?"))applyEdges(es=>es.filter(x=>x.id!==edge.id));}}/>
-                  <path d={path} stroke={edge.color||ACCENT} strokeWidth={2.5} fill="none"
-                    strokeDasharray={da} markerEnd="url(#ma)" opacity={0.85}/>
+                <g key={edge.id} style={{pointerEvents:"all"}}
+                  onClick={e=>{e.stopPropagation();if(window.confirm("Delete this connection?"))applyEdges(es=>es.filter(x=>x.id!==edge.id));}}>
+                  {/* Wide invisible hit area */}
+                  <path d={path} stroke="transparent" strokeWidth={20} fill="none" style={{cursor:"pointer"}}/>
+                  {/* Visible edge */}
+                  <path d={path} stroke={ec} strokeWidth={2.5} fill="none"
+                    strokeDasharray={da} markerEnd="url(#ma)" opacity={0.9}/>
                   {edge.label&&<text x={(fp.x+tp.x)/2} y={(fp.y+tp.y)/2-9}
                     fill="var(--text3)" fontSize={11} textAnchor="middle"
                     fontFamily="var(--font-ui)">{edge.label}</text>}
