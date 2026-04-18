@@ -51,9 +51,24 @@ function AppInner() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showHelp,     setShowHelp]     = useState(false);
 
-  const goHome    = () => setView({ page:"dashboard", mapId:null });
-  const openMap   = id => setView({ page:"canvas",    mapId:id });
-  const openAdmin = ()  => setView({ page:"admin",    mapId:null });
+  const goHome    = () => { setView({ page:"dashboard", mapId:null }); window.history.pushState({page:"dashboard"}, ""); };
+  const openMap   = id => { setView({ page:"canvas",    mapId:id   }); window.history.pushState({page:"canvas",mapId:id}, ""); };
+  const openAdmin = ()  => { setView({ page:"admin",    mapId:null }); window.history.pushState({page:"admin"}, ""); };
+
+  // Handle browser back/forward
+  useEffect(() => {
+    const onPop = (e) => {
+      const state = e.state;
+      if (!state || state.page === "dashboard") setView({ page:"dashboard", mapId:null });
+      else if (state.page === "canvas" && state.mapId) setView({ page:"canvas", mapId:state.mapId });
+      else if (state.page === "admin") setView({ page:"admin", mapId:null });
+      else setView({ page:"dashboard", mapId:null });
+    };
+    window.addEventListener("popstate", onPop);
+    // Set initial history state so back from dashboard goes nowhere inside the app
+    if (!window.history.state) window.history.replaceState({page:"dashboard"}, "");
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
 
   if (loading) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center" }}>

@@ -4,6 +4,8 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
 import Tutorial       from "./Tutorial.jsx";
+import DocExportModal from "./DocExportModal.jsx";
+import { CHANGELOG } from "../changelog.js";
 import HelpGuide      from "./HelpGuide.jsx";
 import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
@@ -833,6 +835,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [showChangelog,    setShowChangelog]    = useState(false);
+  const [showDocExport,    setShowDocExport]     = useState(false);
+  const [docExportMode,    setDocExportMode]     = useState("normal"); // "normal" | "ai"
+  const [docExporting,     setDocExporting]      = useState(false);
   const [showTutorial,    setShowTutorial]    = useState(false);
   const [showHelp,         setShowHelp]         = useState(false);
   const [showCollabLog,    setShowCollabLog]    = useState(false);
@@ -2839,13 +2844,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],
                     ["🖼","PNG Image","Visual snapshot"],["📦",".nonote","Re-importable bundle"],
                     ["🌐","HTML View","Interactive read-only"],["📝","Markdown","Documentation"],
-                    ["🖨","PDF","Print / Save as PDF"]].map(([ic,lbl,desc],i)=>(
+                    ["🖨","PDF","Print / Save as PDF"],
+                    ["📄","Word (.docx)","Traditional documentation"],
+                    ["🤖","AI Word Doc","LLM-interpreted documentation"]].map(([ic,lbl,desc],i)=>(
                     <div key={i} onClick={()=>{setShowExportMenu(false);
                       if(i===2) exportAsPNG(nodes,edges,mapMeta?.title);
                       else if(i===3) exportAsNoNote(nodes,edges,mapMeta);
                       else if(i===4) exportAsHTML(nodes,edges,mapMeta?.title);
                       else if(i===5) exportAsDoc(nodes,mapMeta?.title);
                       else if(i===6) exportAsPDF(nodes,edges,mapMeta?.title);
+                      else if(i===7){setDocExportMode("normal");setShowDocExport(true);}
+                      else if(i===8){setDocExportMode("ai");setShowDocExport(true);}
                       else setShowExport(true);}}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
@@ -3829,6 +3838,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {/* ── Changelog Modal ── */}
       {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
+      {showDocExport&&(
+        <DocExportModal
+          nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"}
+          mode={docExportMode}
+          onClose={()=>setShowDocExport(false)}/>
+      )}
       {showChangelog&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>setShowChangelog(false)}>
@@ -3849,6 +3864,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
+                {v:"v5.22",date:"Apr 2026",items:[
+                  "Browser back button no longer exits the app — History API pushState/popState",
+                  "Changelog shown on Dashboard homepage (What's new button)",
+                  "Changelog extracted to shared changelog.js for all views",
+                  "Word (.docx) export: Standard mode — headings, descriptions, notes, connections table",
+                  "Word (.docx) export: AI mode — LLM interprets map into professional prose documentation",
+                  "Mobile arrows fixed: SVG uses explicit px dimensions instead of inset:0",
+                ]},
                 {v:"v5.21",date:"Apr 2026",items:[
                   "Arrow routing: smarter bestSides scoring eliminates wrong-face exits",
                   "Bezier curves: adaptive handle length reduces path crossings",
@@ -3864,6 +3887,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   "Tutorial adapts to current page — shows dashboard or canvas steps accordingly",
                   "Focus mode now dims edges (v5.19 fix carried over)",
                   "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
+                ]},
+                {v:"v5.22",date:"Apr 2026",items:[
+                  "Browser back button no longer exits the app — History API pushState/popState",
+                  "Changelog shown on Dashboard homepage (What's new button)",
+                  "Changelog extracted to shared changelog.js for all views",
+                  "Word (.docx) export: Standard mode — headings, descriptions, notes, connections table",
+                  "Word (.docx) export: AI mode — LLM interprets map into professional prose documentation",
+                  "Mobile arrows fixed: SVG uses explicit px dimensions instead of inset:0",
                 ]},
                 {v:"v5.21",date:"Apr 2026",items:[
                   "Arrow routing: smarter bestSides scoring eliminates wrong-face exits",

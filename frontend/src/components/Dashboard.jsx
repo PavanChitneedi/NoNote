@@ -2,11 +2,12 @@ import React from 'react';
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch } from "../api/client.js";
+import { CHANGELOG } from "../changelog.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
 
 export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
-  const [showChangelog, setShowChangelog] = React.useState(false);
+  const [showChangelog, setShowChangelog] = useState(false);
   const [menuMap,   setMenuMap]   = useState(null);  // {id, title, x, y} for context menu
   const [renaming,  setRenaming]  = useState(null);  // {id, title}
   const { user } = useAuth();
@@ -84,6 +85,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   };
 
   return (
+    <>
     <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"28px 20px" }}>
       <div style={{ maxWidth:920, margin:"0 auto" }}>
 
@@ -100,7 +102,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
               padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
               cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
-            v5.5 ✦ What's new
+            v5.22 ✦ What's new
           </button>
         </div>
 
@@ -331,5 +333,42 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         )}
       </div>
     </div>
+  );
+  {/* ── Changelog Modal ── */}
+  {showChangelog&&(
+    <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",
+      display:"flex",alignItems:"center",justifyContent:"center"}}
+      onClick={()=>setShowChangelog(false)}>
+      <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",
+        borderRadius:"var(--radius-lg)",boxShadow:"0 24px 64px rgba(0,0,0,.7)",
+        width:560,maxWidth:"94vw",maxHeight:"80vh",display:"flex",flexDirection:"column",overflow:"hidden"}}
+        onClick={e=>e.stopPropagation()}>
+        <div style={{padding:"18px 22px 14px",borderBottom:"1px solid var(--border2)",
+          display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:15,fontWeight:700,color:"var(--accent)",flex:1}}>⬡ NoNote — What's New</span>
+          <button onClick={()=>setShowChangelog(false)}
+            style={{background:"none",border:"none",fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</button>
+        </div>
+        <div style={{overflowY:"auto",padding:"14px 22px 20px"}}>
+          {CHANGELOG.slice(0,6).map(entry=>(
+            <div key={entry.v} style={{marginBottom:20}}>
+              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                <span style={{fontWeight:700,color:"var(--accent)",fontSize:13}}>{entry.v}</span>
+                <span style={{fontSize:10,color:"var(--text4)"}}>{entry.date}</span>
+              </div>
+              <ul style={{listStyle:"none",padding:0,margin:0,display:"flex",flexDirection:"column",gap:4}}>
+                {entry.items.map((item,i)=>(
+                  <li key={i} style={{fontSize:12,color:"var(--text3)",display:"flex",gap:8,lineHeight:1.5}}>
+                    <span style={{color:"var(--accent)",flexShrink:0}}>✦</span>{item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  )}
+</>
   );
 }
