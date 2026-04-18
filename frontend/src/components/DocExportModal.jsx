@@ -347,18 +347,30 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
       if (isAI) {
         setProgress("Sending map to AI for interpretation…");
         const prompt = buildLLMPrompt(nodes, edges, mapTitle);
+        // Use backend LLM proxy (uses configured provider) — falls back to direct Anthropic API
+        let aiText = null;
         try {
-          sections = await callLLM(prompt);
-        } catch (e) {
-          // Try backend LLM proxy
-          setProgress("Trying configured LLM provider…");
-          const r = await apiFetch("/llm/chat-simple", {
+          const r = await apiFetch("/llm/export-interpret", {
             method:"POST",
             body:JSON.stringify({ message: prompt }),
           });
-          const raw = r.response || r.content || "";
-          sections = JSON.parse(raw.replace(/```json\n?|```/g,"").trim());
+          aiText = r.response || r.content || "";
+        } catch {
+          // Direct Anthropic fallback
+          setProgress("Using Claude API directly…");
+          const resp = await fetch("https://api.anthropic.com/v1/messages", {
+            method:"POST",
+            headers:{ "Content-Type":"application/json" },
+            body:JSON.stringify({ model:"claude-sonnet-4-20250514", max_tokens:4000,
+              messages:[{ role:"user", content:prompt }] }),
+          });
+          if (!resp.ok) throw new Error(`AI API error: ${resp.status} — ${await resp.text()}`);
+          const data = await resp.json();
+          aiText = data.content?.[0]?.text || "";
         }
+        if (!aiText) throw new Error("AI returned empty response");
+        const clean = aiText.replace(/```json\n?|```/g,"").trim();
+        sections = JSON.parse(clean);
         setProgress("AI response received, building document…");
       } else {
         setProgress("Building document…");

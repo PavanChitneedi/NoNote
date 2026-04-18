@@ -14,13 +14,38 @@ const validate = (req, res, next) => {
 
 // ── Supported provider presets ────────────────────────────────
 const PROVIDER_PRESETS = {
-  openai:    { base_url: "https://api.openai.com/v1",               chat_path: "/chat/completions",  auth: "bearer" },
-  anthropic: { base_url: "https://api.anthropic.com/v1",            chat_path: "/messages",          auth: "x-api-key" },
-  gemini:    { base_url: "https://generativelanguage.googleapis.com/v1beta", chat_path: "/models/{model}:generateContent", auth: "query" },
-  groq:      { base_url: "https://api.groq.com/openai/v1",          chat_path: "/chat/completions",  auth: "bearer" },
-  mistral:   { base_url: "https://api.mistral.ai/v1",               chat_path: "/chat/completions",  auth: "bearer" },
-  ollama:    { base_url: "http://localhost:11434/v1",                chat_path: "/chat/completions",  auth: "none" },
-  custom:    { base_url: "",                                         chat_path: "/chat/completions",  auth: "bearer" },
+  // OpenAI
+  openai:      { base_url: "https://api.openai.com/v1",                    chat_path: "/chat/completions",             auth: "bearer" },
+  // Anthropic Claude
+  anthropic:   { base_url: "https://api.anthropic.com/v1",                 chat_path: "/messages",                     auth: "x-api-key" },
+  // Google Gemini
+  gemini:      { base_url: "https://generativelanguage.googleapis.com/v1beta", chat_path: "/models/{model}:generateContent", auth: "query" },
+  // Groq (ultra-fast inference — OpenAI-compat)
+  groq:        { base_url: "https://api.groq.com/openai/v1",               chat_path: "/chat/completions",             auth: "bearer" },
+  // Mistral AI
+  mistral:     { base_url: "https://api.mistral.ai/v1",                    chat_path: "/chat/completions",             auth: "bearer" },
+  // Perplexity AI
+  perplexity:  { base_url: "https://api.perplexity.ai",                    chat_path: "/chat/completions",             auth: "bearer" },
+  // xAI Grok
+  xai:         { base_url: "https://api.x.ai/v1",                          chat_path: "/chat/completions",             auth: "bearer" },
+  // DeepSeek
+  deepseek:    { base_url: "https://api.deepseek.com/v1",                  chat_path: "/chat/completions",             auth: "bearer" },
+  // Cohere
+  cohere:      { base_url: "https://api.cohere.com/v2",                    chat_path: "/chat",                         auth: "bearer",  format: "cohere" },
+  // Together AI
+  together:    { base_url: "https://api.together.xyz/v1",                  chat_path: "/chat/completions",             auth: "bearer" },
+  // Azure OpenAI (Copilot backend)
+  azure:       { base_url: "https://{resource}.openai.azure.com/openai/deployments/{deployment}", chat_path: "/chat/completions?api-version=2024-10-21", auth: "azure" },
+  // Hugging Face Inference
+  huggingface: { base_url: "https://api-inference.huggingface.co/models",  chat_path: "/{model}",                      auth: "bearer",  format: "hf" },
+  // Ollama (local)
+  ollama:      { base_url: "http://localhost:11434/v1",                     chat_path: "/chat/completions",             auth: "none" },
+  // LM Studio (local OpenAI-compat)
+  lmstudio:    { base_url: "http://localhost:1234/v1",                      chat_path: "/chat/completions",             auth: "none" },
+  // OpenRouter (gateway to 300+ models)
+  openrouter:  { base_url: "https://openrouter.ai/api/v1",                 chat_path: "/chat/completions",             auth: "bearer" },
+  // Custom / any OpenAI-compatible API
+  custom:      { base_url: "",                                              chat_path: "/chat/completions",             auth: "bearer" },
 };
 
 // ── GET /api/llm/presets ──────────────────────────────────────
@@ -50,7 +75,7 @@ router.post(
   authenticate,
   [
     body("name").trim().isLength({ min: 1, max: 80 }),
-    body("provider").isIn(Object.keys(PROVIDER_PRESETS)),
+    body("provider").isIn(Object.keys(PROVIDER_PRESETS)).withMessage("Unknown provider"),
     body("model").trim().isLength({ min: 1, max: 120 }),
     body("base_url").optional().trim(),
     body("api_key").optional().trim(),
@@ -297,21 +322,16 @@ async function callLLM({ provider, base_url, model, api_key, system, history, me
     { role: "user", content: message },
   ];
 
-  // Anthropic uses a different message format
-  if (provider === "anthropic") {
-    return callAnthropic({ base_url, model, api_key, system, messages });
-  }
-
-  // Gemini has its own format
-  if (provider === "gemini") {
-    return callGemini({ base_url, model, api_key, system, messages });
-  }
-
-  // OpenAI-compatible (openai, groq, mistral, ollama, custom)
-  return callOpenAICompat({ base_url, model, api_key, system, messages });
+  if (provider === "anthropic") return callAnthropic({ base_url, model, api_key, system, messages });
+  if (provider === "gemini")    return callGemini({ base_url, model, api_key, system, messages });
+  if (provider === "cohere")    return callCohere({ base_url, model, api_key, system, messages });
+  if (provider === "azure")     return callAzure({ base_url, model, api_key, system, messages });
+  if (provider === "huggingface") return callHuggingFace({ base_url, model, api_key, system, messages });
+  // OpenAI-compatible: openai, groq, mistral, perplexity, xai, deepseek, together, openrouter, ollama, lmstudio, custom
+  return callOpenAICompat({ base_url, model, api_key, system, messages, provider });
 }
 
-async function callOpenAICompat({ base_url, model, api_key, system, messages }) {
+async function callOpenAICompat({ base_url, model, api_key, system, messages, provider="" }) {
   const url  = `${base_url.replace(/\/$/, "")}/chat/completions`;
   const body = {
     model,
@@ -325,6 +345,11 @@ async function callOpenAICompat({ base_url, model, api_key, system, messages }) 
 
   const headers = { "Content-Type": "application/json" };
   if (api_key) headers["Authorization"] = `Bearer ${api_key}`;
+  // OpenRouter requires site identification headers
+  if (provider === "openrouter") {
+    headers["HTTP-Referer"] = "https://nonote.app";
+    headers["X-Title"] = "NoNote";
+  }
 
   const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
   if (!res.ok) {
@@ -395,6 +420,64 @@ async function callGemini({ base_url, model, api_key, system, messages }) {
   };
 }
 
+// ── Cohere v2 format ──────────────────────────────────────────
+async function callCohere({ base_url, model, api_key, system, messages }) {
+  const url = `${base_url.replace(/\/$/, "")}/chat`;
+  const chatHistory = messages.slice(0, -1).map(m => ({
+    role: m.role === "assistant" ? "CHATBOT" : "USER",
+    message: m.content,
+  }));
+  const body = {
+    model,
+    message: messages[messages.length - 1]?.content || "",
+    chat_history: chatHistory,
+    preamble: system,
+    max_tokens: 2048,
+  };
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api_key}` },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Cohere ${res.status}: ${(await res.text()).slice(0,200)}`);
+  const data = await res.json();
+  return { content: data.message?.content?.[0]?.text || data.text || "", tokens: data.meta?.tokens?.output_tokens };
+}
+
+// ── Azure OpenAI (Copilot-compatible) ─────────────────────────
+async function callAzure({ base_url, model, api_key, system, messages }) {
+  const url = `${base_url.replace(/\/$/, "")}/chat/completions?api-version=2024-10-21`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "api-key": api_key },
+    body: JSON.stringify({ model, messages: [{ role:"system", content:system }, ...messages], max_tokens:2048 }),
+  });
+  if (!res.ok) throw new Error(`Azure ${res.status}: ${(await res.text()).slice(0,200)}`);
+  const data = await res.json();
+  return { content: data.choices?.[0]?.message?.content || "", tokens: data.usage?.total_tokens };
+}
+
+// ── Hugging Face Inference API ─────────────────────────────────
+async function callHuggingFace({ base_url, model, api_key, system, messages }) {
+  // HF Inference uses the full conversation as a single prompt
+  const conversation = messages.map(m => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`).join("\n");
+  const prompt = `${system}\n\n${conversation}\nAssistant:`;
+  const url = `https://api-inference.huggingface.co/models/${model}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api_key}` },
+    body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: 1024, return_full_text: false } }),
+  });
+  if (!res.ok) throw new Error(`HuggingFace ${res.status}: ${(await res.text()).slice(0,200)}`);
+  const data = await res.json();
+  const text = Array.isArray(data) ? (data[0]?.generated_text || "") : (data.generated_text || "");
+  return { content: text.trim(), tokens: null };
+}
+
+// ── OpenAI-compatible with provider-specific headers ──────────
+// (overrides the original simpler function — add OpenRouter/Perplexity specific headers)
+async function callOpenAICompatOld() {} // keep reference
+
 // ── System prompt builder ─────────────────────────────────────
 function buildSystemPrompt(ctx) {
   if (!ctx) {
@@ -458,5 +541,33 @@ Be concise and specific. Reference node names directly when relevant.`;
 
   return prompt;
 }
+
+// ── POST /api/llm/export-interpret — one-shot LLM call for export ─────
+// Uses the user's default provider or first available provider
+router.post("/export-interpret", authenticate, async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: "message required" });
+
+  try {
+    const { rows } = await query(
+      `SELECT provider, base_url, model, api_key_enc
+       FROM llm_providers WHERE user_id=$1
+       ORDER BY is_default DESC, created_at ASC LIMIT 1`,
+      [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "No LLM provider configured. Add one in Settings." });
+    const p = rows[0];
+    const api_key = p.api_key_enc ? decrypt(p.api_key_enc) : "";
+    const result = await callLLM({
+      provider: p.provider, base_url: p.base_url, model: p.model,
+      api_key, system: "You are a technical documentation writer. Respond only with valid JSON as instructed.",
+      history: [], message,
+    });
+    res.json({ response: result.content });
+  } catch (err) {
+    console.error("[llm] export-interpret error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 export default router;

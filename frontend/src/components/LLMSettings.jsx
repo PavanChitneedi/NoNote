@@ -2,18 +2,85 @@ import { useState, useEffect } from "react";
 import { getLLMProviders, createLLMProvider, updateLLMProvider, deleteLLMProvider } from "../api/client.js";
 
 const PRESETS = {
-  openai:    { label: "OpenAI",         icon: "🤖", placeholder_model: "gpt-4o",              placeholder_url: "https://api.openai.com/v1",               needsKey: true },
-  anthropic: { label: "Anthropic",      icon: "🟣", placeholder_model: "claude-sonnet-4-5", placeholder_url: "https://api.anthropic.com/v1",            needsKey: true },
-  gemini:    { label: "Google Gemini",  icon: "💎", placeholder_model: "gemini-1.5-pro",      placeholder_url: "https://generativelanguage.googleapis.com/v1beta", needsKey: true },
-  groq:      { label: "Groq",           icon: "⚡", placeholder_model: "llama-3.1-70b-versatile", placeholder_url: "https://api.groq.com/openai/v1",      needsKey: true },
-  mistral:   { label: "Mistral",        icon: "🌀", placeholder_model: "mistral-large-latest", placeholder_url: "https://api.mistral.ai/v1",             needsKey: true },
-  ollama:    { label: "Ollama (local)", icon: "🦙", placeholder_model: "llama3.2",             placeholder_url: "http://localhost:11434/v1",               needsKey: false },
-  custom:    { label: "Custom / OpenAI-compatible", icon: "🔧", placeholder_model: "your-model", placeholder_url: "https://your-api.com/v1",             needsKey: true },
+  // ── Frontier models ──────────────────────────────────────────
+  openai:      { label:"OpenAI (ChatGPT)",       icon:"🟢", group:"Frontier",
+    models:["gpt-4o","gpt-4o-mini","gpt-4-turbo","gpt-3.5-turbo","o1","o1-mini","o3-mini"],
+    placeholder_model:"gpt-4o", placeholder_url:"https://api.openai.com/v1", needsKey:true,
+    note:"Powers ChatGPT. Best all-round." },
+  anthropic:   { label:"Anthropic (Claude)",      icon:"🟣", group:"Frontier",
+    models:["claude-opus-4-5","claude-sonnet-4-5","claude-haiku-4-5","claude-3-5-sonnet-20241022","claude-3-opus-20240229"],
+    placeholder_model:"claude-sonnet-4-5", placeholder_url:"https://api.anthropic.com/v1", needsKey:true,
+    note:"Claude models. Excellent for writing and analysis." },
+  gemini:      { label:"Google Gemini",           icon:"💎", group:"Frontier",
+    models:["gemini-2.0-flash","gemini-1.5-pro","gemini-1.5-flash","gemini-1.0-pro"],
+    placeholder_model:"gemini-2.0-flash", placeholder_url:"https://generativelanguage.googleapis.com/v1beta", needsKey:true,
+    note:"Google's flagship models. Free tier available." },
+  xai:         { label:"xAI (Grok)",              icon:"✦",  group:"Frontier",
+    models:["grok-3","grok-3-mini","grok-2","grok-2-mini","grok-beta"],
+    placeholder_model:"grok-3", placeholder_url:"https://api.x.ai/v1", needsKey:true,
+    note:"Elon Musk's Grok. Has real-time X/Twitter access." },
+  // ── Fast / Efficient ─────────────────────────────────────────
+  groq:        { label:"Groq",                    icon:"⚡", group:"Fast",
+    models:["llama-3.3-70b-versatile","llama-3.1-8b-instant","mixtral-8x7b-32768","gemma2-9b-it"],
+    placeholder_model:"llama-3.3-70b-versatile", placeholder_url:"https://api.groq.com/openai/v1", needsKey:true,
+    note:"Blazing fast inference. Llama & Mixtral models." },
+  perplexity:  { label:"Perplexity AI",           icon:"🔵", group:"Fast",
+    models:["sonar-pro","sonar","sonar-reasoning","sonar-reasoning-pro"],
+    placeholder_model:"sonar-pro", placeholder_url:"https://api.perplexity.ai", needsKey:true,
+    note:"Includes web search grounding in responses." },
+  deepseek:    { label:"DeepSeek",                icon:"🔍", group:"Fast",
+    models:["deepseek-chat","deepseek-reasoner","deepseek-coder"],
+    placeholder_model:"deepseek-chat", placeholder_url:"https://api.deepseek.com/v1", needsKey:true,
+    note:"Strong reasoning model from China. Very affordable." },
+  mistral:     { label:"Mistral AI",              icon:"🌀", group:"Fast",
+    models:["mistral-large-latest","mistral-small-latest","open-mixtral-8x22b","codestral-latest"],
+    placeholder_model:"mistral-large-latest", placeholder_url:"https://api.mistral.ai/v1", needsKey:true,
+    note:"French AI. Strong European data residency option." },
+  // ── Specialist / Gateway ──────────────────────────────────────
+  cohere:      { label:"Cohere",                  icon:"🌊", group:"Specialist",
+    models:["command-r-plus","command-r","command","command-light"],
+    placeholder_model:"command-r-plus", placeholder_url:"https://api.cohere.com/v2", needsKey:true,
+    note:"Excellent for enterprise RAG and document tasks." },
+  together:    { label:"Together AI",             icon:"🤝", group:"Gateway",
+    models:["meta-llama/Llama-3-70b-chat-hf","mistralai/Mixtral-8x22B-Instruct-v0.1","Qwen/Qwen2.5-72B-Instruct"],
+    placeholder_model:"meta-llama/Llama-3-70b-chat-hf", placeholder_url:"https://api.together.xyz/v1", needsKey:true,
+    note:"100+ open-source models. Pay-per-token." },
+  openrouter:  { label:"OpenRouter",              icon:"🌐", group:"Gateway",
+    models:["openai/gpt-4o","anthropic/claude-3.5-sonnet","google/gemini-pro-1.5","meta-llama/llama-3.2-90b-vision-instruct"],
+    placeholder_model:"openai/gpt-4o", placeholder_url:"https://openrouter.ai/api/v1", needsKey:true,
+    note:"Gateway to 300+ models. One API key for everything." },
+  azure:       { label:"Azure OpenAI / Copilot",  icon:"☁",  group:"Enterprise",
+    models:["gpt-4o","gpt-4","gpt-35-turbo"],
+    placeholder_model:"gpt-4o", placeholder_url:"https://YOUR-RESOURCE.openai.azure.com/openai/deployments/YOUR-DEPLOYMENT", needsKey:true,
+    note:"Enterprise Azure OpenAI. Copilot uses this backend." },
+  huggingface: { label:"Hugging Face",            icon:"🤗", group:"Open Source",
+    models:["mistralai/Mistral-7B-Instruct-v0.3","meta-llama/Meta-Llama-3.1-8B-Instruct","google/gemma-2-9b-it"],
+    placeholder_model:"mistralai/Mistral-7B-Instruct-v0.3", placeholder_url:"https://api-inference.huggingface.co/models", needsKey:true,
+    note:"Free tier for many models. Access 500k+ HF models." },
+  // ── Local ─────────────────────────────────────────────────────
+  ollama:      { label:"Ollama (local)",          icon:"🦙", group:"Local",
+    models:["llama3.2","llama3.1","mistral","gemma2","phi3","qwen2.5","deepseek-r1"],
+    placeholder_model:"llama3.2", placeholder_url:"http://localhost:11434/v1", needsKey:false,
+    note:"Run models locally. No API key needed. 100% private." },
+  lmstudio:    { label:"LM Studio (local)",       icon:"🏠", group:"Local",
+    models:["local-model"],
+    placeholder_model:"local-model", placeholder_url:"http://localhost:1234/v1", needsKey:false,
+    note:"Easy local model runner with GUI. OpenAI-compatible." },
+  custom:      { label:"Custom (OpenAI-compatible)", icon:"🔧", group:"Other",
+    models:[],
+    placeholder_model:"your-model", placeholder_url:"https://your-api.com/v1", needsKey:true,
+    note:"Any OpenAI-compatible API endpoint." },
 };
 
+// Group order for display
+const GROUPS = ["Frontier","Fast","Specialist","Gateway","Enterprise","Open Source","Local","Other"];
+
 const PROVIDER_COLORS = {
-  openai: "#10a37f", anthropic: "#6C63FF", gemini: "#4285F4",
-  groq: "#f55036", mistral: "#FF7000", ollama: "#4CAF50", custom: "#9E9E9E",
+  openai:"#10a37f", anthropic:"#6C63FF", gemini:"#4285F4", xai:"#000000",
+  groq:"#f55036", perplexity:"#1FB8CD", deepseek:"#4D6BFE", mistral:"#FF7000",
+  cohere:"#39594D", together:"#2D5BE3", openrouter:"#6E42C1",
+  azure:"#0078D4", huggingface:"#FFD21E",
+  ollama:"#4CAF50", lmstudio:"#7B61FF", custom:"#9E9E9E",
 };
 
 export default function LLMSettings({ onClose }) {
@@ -103,35 +170,73 @@ export default function LLMSettings({ onClose }) {
             <form onSubmit={handleSubmit} style={{ background: "#0d1117", border: "1px solid #30363d", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={sectionLbl}>{editId ? "EDIT PROVIDER" : "ADD PROVIDER"}</div>
 
-              {/* Provider type grid */}
+              {/* Provider type — grouped */}
               {!editId && (
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 8 }}>
-                  {Object.entries(PRESETS).map(([key, p]) => (
-                    <div key={key}
-                      onClick={() => setForm(f => ({ ...f, provider: key, base_url: "", model: "" }))}
-                      style={{
-                        padding: "10px 12px", borderRadius: 10, cursor: "pointer",
-                        border: `2px solid ${form.provider === key ? PROVIDER_COLORS[key] : "#21262d"}`,
-                        background: form.provider === key ? `${PROVIDER_COLORS[key]}15` : "transparent",
-                        display: "flex", alignItems: "center", gap: 8, transition: "all 0.12s",
-                      }}>
-                      <span style={{ fontSize: 16 }}>{p.icon}</span>
-                      <span style={{ fontSize: 11, color: form.provider === key ? "#e6edf3" : "#7d8590", fontWeight: form.provider === key ? 700 : 400 }}>{p.label}</span>
+                <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
+                  {GROUPS.filter(g => Object.values(PRESETS).some(p => p.group===g)).map(group => (
+                    <div key={group}>
+                      <div style={{ fontSize:9, fontWeight:700, color:"#484f58", letterSpacing:1.5, marginBottom:5 }}>{group.toUpperCase()}</div>
+                      <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:6 }}>
+                        {Object.entries(PRESETS).filter(([,p]) => p.group===group).map(([key, p]) => (
+                          <div key={key}
+                            onClick={() => setForm(f => ({ ...f, provider: key, base_url:"", model:"" }))}
+                            title={p.note}
+                            style={{
+                              padding:"9px 12px", borderRadius:8, cursor:"pointer",
+                              border:`2px solid ${form.provider===key ? PROVIDER_COLORS[key] : "#21262d"}`,
+                              background: form.provider===key ? `${PROVIDER_COLORS[key]}18` : "transparent",
+                              display:"flex", alignItems:"center", gap:7, transition:"all .12s",
+                            }}>
+                            <span style={{ fontSize:15 }}>{p.icon}</span>
+                            <span style={{ fontSize:10, color: form.provider===key ? "#e6edf3" : "#7d8590",
+                              fontWeight: form.provider===key ? 700 : 400, lineHeight:1.2 }}>{p.label}</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   ))}
+                  {/* Provider note */}
+                  {preset.note && (
+                    <div style={{ fontSize:11, color:"#7d8590", background:"#0d1117", borderRadius:6,
+                      padding:"7px 12px", borderLeft:"3px solid #1f6feb", lineHeight:1.4 }}>
+                      {preset.icon} <strong style={{ color:"#e6edf3" }}>{preset.label}:</strong> {preset.note}
+                    </div>
+                  )}
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div style={{ gridColumn: "1/-1" }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
+                <div style={{ gridColumn:"1/-1" }}>
                   <Label>DISPLAY NAME</Label>
                   <input value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
                     placeholder={`e.g. My ${preset.label}`} required style={inp} />
                 </div>
                 <div>
-                  <Label>MODEL</Label>
-                  <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
-                    placeholder={preset.placeholder_model} style={inp} />
+                  <Label>MODEL {preset.models?.length > 0 ? `(${preset.models.length} suggestions)` : ""}</Label>
+                  {preset.models?.length > 0 ? (
+                    <div style={{ display:"flex", gap:6, flexDirection:"column" }}>
+                      <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
+                        placeholder={preset.placeholder_model} style={inp} list={`models-${form.provider}`}/>
+                      <datalist id={`models-${form.provider}`}>
+                        {preset.models.map(m => <option key={m} value={m}/>)}
+                      </datalist>
+                      {/* Quick model picker */}
+                      <div style={{ display:"flex", flexWrap:"wrap", gap:4 }}>
+                        {preset.models.map(m => (
+                          <button key={m} type="button"
+                            onClick={() => setForm(f => ({ ...f, model:m }))}
+                            style={{ padding:"2px 8px", fontSize:9, border:`1px solid ${form.model===m?"#1f6feb":"#30363d"}`,
+                              borderRadius:4, background: form.model===m?"#1f6feb22":"transparent",
+                              color: form.model===m?"#58a6ff":"#7d8590", cursor:"pointer", fontFamily:"inherit" }}>
+                            {m.split("/").pop()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <input value={form.model} onChange={e => setForm(f => ({ ...f, model: e.target.value }))}
+                      placeholder={preset.placeholder_model} style={inp} />
+                  )}
                 </div>
                 <div>
                   <Label>BASE URL</Label>
@@ -139,10 +244,17 @@ export default function LLMSettings({ onClose }) {
                     placeholder={preset.placeholder_url} style={inp} />
                 </div>
                 {preset.needsKey && (
-                  <div style={{ gridColumn: "1/-1" }}>
+                  <div style={{ gridColumn:"1/-1" }}>
                     <Label>{editId ? "API KEY (leave blank to keep existing)" : "API KEY"}</Label>
                     <input type="password" value={form.api_key} onChange={e => setForm(f => ({ ...f, api_key: e.target.value }))}
                       placeholder={editId ? "••••••••" : "sk-..."} required={!editId} style={inp} />
+                    {/* Link to get API key */}
+                    {!editId && PRESETS[form.provider]?.apiLink && (
+                      <a href={PRESETS[form.provider].apiLink} target="_blank" rel="noreferrer"
+                        style={{ fontSize:10, color:"#58a6ff", marginTop:4, display:"block" }}>
+                        Get API key →
+                      </a>
+                    )}
                   </div>
                 )}
               </div>
