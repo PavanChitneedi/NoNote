@@ -13,8 +13,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { getMap, saveMap, apiFetch, getAccessToken } from "../api/client.js";
-import { useAuth } from "../context/AuthContext.jsx";
+import { getMap, saveMap, getAccessToken } from "../api/client.js";
 
 // ── Node type map ─────────────────────────────────────────────────
 const NT = {
@@ -78,7 +77,6 @@ function edgePt(node, tx, ty) {
 }
 
 export default function MobileCanvas({ mapId, onBack }) {
-  const { user } = useAuth();
   const [nodes,   setNodes]   = useState([]);
   const [edges,   setEdges]   = useState([]);
   const [mapMeta, setMapMeta] = useState(null);
@@ -113,8 +111,12 @@ export default function MobileCanvas({ mapId, onBack }) {
     if(!mapId) return;
     setLoading(true);
     getMap(mapId)
-      .then(d=>{ setMapMeta(d.map); setNodes(d.nodes||[]); setEdges(d.edges||[]); })
-      .catch(e=>setError(e.message))
+      .then(d=>{
+        setMapMeta(d.map||null);
+        setNodes(Array.isArray(d.nodes)?d.nodes:[]);
+        setEdges(Array.isArray(d.edges)?d.edges:[]);
+      })
+      .catch(e=>setError(e?.message||"Failed to load map"))
       .finally(()=>setLoading(false));
   },[mapId]);
 

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, Component } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider, useTheme, THEMES } from "./context/ThemeContext.jsx";
 import { DesignProvider } from "./context/DesignContext.jsx";
@@ -12,15 +12,40 @@ import UserProfile  from "./components/UserProfile.jsx";
 import Tutorial     from "./components/Tutorial.jsx";
 import HelpGuide    from "./components/HelpGuide.jsx";
 
-// Detect phone/tablet (narrow screen or touch-primary device)
-function isMobileDevice() {
-  return window.innerWidth < 768 || (window.innerWidth < 1024 && "ontouchstart" in window);
+// Error boundary so a MobileCanvas crash shows an error instead of blank screen
+class MobileErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { crashed: false, err: "" }; }
+  static getDerivedStateFromError(e) { return { crashed: true, err: e?.message || "Unknown error" }; }
+  render() {
+    if (this.state.crashed) return (
+      <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",
+        alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:24}}>
+        <div style={{fontSize:36}}>⬡</div>
+        <div style={{fontSize:12,color:"var(--danger)",textAlign:"center",lineHeight:1.5}}>
+          {this.state.err}
+        </div>
+        <button onClick={this.props.onBack}
+          style={{padding:"12px 24px",background:"var(--accent2)",border:"none",
+            borderRadius:10,color:"#fff",fontSize:14,cursor:"pointer",fontWeight:700}}>
+          ← Back
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
 }
 
 function AppInner() {
   const { user, loading, logout } = useAuth();
   const { themeName }             = useTheme();
   const [view,         setView]         = useState({ page:"dashboard", mapId:null });
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const check = () => setIsMobile(window.innerWidth < 768 || (window.innerWidth < 1024 && "ontouchstart" in window));
+    check();
+    window.addEventListener("resize", check);
+    return () => window.removeEventListener("resize", check);
+  }, []);
   const [showAppearance, setShowAppearance] = useState(false);
   const [showProfile,  setShowProfile]  = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -99,8 +124,8 @@ function AppInner() {
       <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>
         {view.page==="dashboard" && <Dashboard onOpenMap={openMap} onOpenAdmin={openAdmin} />}
         {view.page==="canvas" && view.mapId && (
-          isMobileDevice()
-            ? <MobileCanvas mapId={view.mapId} onBack={goHome} />
+          isMobile
+            ? <MobileErrorBoundary onBack={goHome}><MobileCanvas mapId={view.mapId} onBack={goHome} /></MobileErrorBoundary>
             : <NodeCanvas mapId={view.mapId} onBack={goHome} onHome={goHome} />
         )}
         {view.page==="admin" && <AdminPanel onBack={goHome} />}
