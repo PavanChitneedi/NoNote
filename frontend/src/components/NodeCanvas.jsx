@@ -1,4 +1,4 @@
-impo;rt { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab, getAccessToken } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
