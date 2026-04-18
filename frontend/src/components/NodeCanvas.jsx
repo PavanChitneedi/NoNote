@@ -4,9 +4,9 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
 import Tutorial       from "./Tutorial.jsx";
-import DocExportModal from "./DocExportModal.jsx";
-import { CHANGELOG } from "../changelog.js";
 import HelpGuide      from "./HelpGuide.jsx";
+import DocExportModal  from "./DocExportModal.jsx";
+import { CHANGELOG } from "../changelog.js";
 import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
@@ -836,8 +836,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [showChangelog,    setShowChangelog]    = useState(false);
   const [showDocExport,    setShowDocExport]     = useState(false);
-  const [docExportMode,    setDocExportMode]     = useState("normal"); // "normal" | "ai"
-  const [docExporting,     setDocExporting]      = useState(false);
+  const [docExportMode,    setDocExportMode]     = useState("normal");
   const [showTutorial,    setShowTutorial]    = useState(false);
   const [showHelp,         setShowHelp]         = useState(false);
   const [showCollabLog,    setShowCollabLog]    = useState(false);
@@ -3837,13 +3836,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       {/* ── Changelog Modal ── */}
       {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
-      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
-      {showDocExport&&(
+      {showDocExport && (
         <DocExportModal
           nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"}
-          mode={docExportMode}
-          onClose={()=>setShowDocExport(false)}/>
+          mode={docExportMode} onClose={()=>setShowDocExport(false)}/>
       )}
+      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
       {showChangelog&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>setShowChangelog(false)}>
@@ -3865,12 +3863,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
                 {v:"v5.22",date:"Apr 2026",items:[
-                  "Browser back button no longer exits the app — History API pushState/popState",
-                  "Changelog shown on Dashboard homepage (What's new button)",
-                  "Changelog extracted to shared changelog.js for all views",
-                  "Word (.docx) export: Standard mode — headings, descriptions, notes, connections table",
+                  "Browser back button now navigates within app (pushState History API)",
+                  "Changelog now shared across Dashboard and canvas — always up to date",
+                  "Word (.docx) export: Normal mode — structured documentation from nodes/notes/edges",
                   "Word (.docx) export: AI mode — LLM interprets map into professional prose documentation",
-                  "Mobile arrows fixed: SVG uses explicit px dimensions instead of inset:0",
+                  "DocExport shows node count, connection count, note count before exporting",
+                  "Mobile: arrow/edge rendering fixed (explicit SVG dimensions, not inset:0)",
                 ]},
                 {v:"v5.21",date:"Apr 2026",items:[
                   "Arrow routing: smarter bestSides scoring eliminates wrong-face exits",
@@ -3889,12 +3887,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
                 ]},
                 {v:"v5.22",date:"Apr 2026",items:[
-                  "Browser back button no longer exits the app — History API pushState/popState",
-                  "Changelog shown on Dashboard homepage (What's new button)",
-                  "Changelog extracted to shared changelog.js for all views",
-                  "Word (.docx) export: Standard mode — headings, descriptions, notes, connections table",
+                  "Browser back button now navigates within app (pushState History API)",
+                  "Changelog now shared across Dashboard and canvas — always up to date",
+                  "Word (.docx) export: Normal mode — structured documentation from nodes/notes/edges",
                   "Word (.docx) export: AI mode — LLM interprets map into professional prose documentation",
-                  "Mobile arrows fixed: SVG uses explicit px dimensions instead of inset:0",
+                  "DocExport shows node count, connection count, note count before exporting",
+                  "Mobile: arrow/edge rendering fixed (explicit SVG dimensions, not inset:0)",
                 ]},
                 {v:"v5.21",date:"Apr 2026",items:[
                   "Arrow routing: smarter bestSides scoring eliminates wrong-face exits",
@@ -4158,6 +4156,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         .nn-mid-handle { transition: opacity .15s; }
       `}</style>
       {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
+      {showDocExport && (
+        <DocExportModal
+          nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"}
+          mode={docExportMode} onClose={()=>setShowDocExport(false)}/>
+      )}
       {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
     </div>
   );
