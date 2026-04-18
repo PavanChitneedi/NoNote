@@ -2845,15 +2845,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     ["🌐","HTML View","Interactive read-only"],["📝","Markdown","Documentation"],
                     ["🖨","PDF","Print / Save as PDF"],
                     ["📄","Word (.docx)","Traditional documentation"],
-                    ["🤖","AI Word Doc","LLM-interpreted documentation"]].map(([ic,lbl,desc],i)=>(
+                    ["🤖","AI Word (.docx)","LLM-interpreted documentation"],
+                    ["🖨","PDF Export","Print-ready documentation page"],
+                    ["🤖","AI PDF Export","LLM-interpreted PDF page"]].map(([ic,lbl,desc],i)=>(
                     <div key={i} onClick={()=>{setShowExportMenu(false);
                       if(i===2) exportAsPNG(nodes,edges,mapMeta?.title);
                       else if(i===3) exportAsNoNote(nodes,edges,mapMeta);
                       else if(i===4) exportAsHTML(nodes,edges,mapMeta?.title);
                       else if(i===5) exportAsDoc(nodes,mapMeta?.title);
                       else if(i===6) exportAsPDF(nodes,edges,mapMeta?.title);
-                      else if(i===7){setDocExportMode("normal");setShowDocExport(true);}
-                      else if(i===8){setDocExportMode("ai");setShowDocExport(true);}
+                      else if(i===7){setDocExportMode("normal-docx");setShowDocExport(true);}
+                      else if(i===8){setDocExportMode("ai-docx");setShowDocExport(true);}
+                      else if(i===9){setDocExportMode("normal-pdf");setShowDocExport(true);}
+                      else if(i===10){setDocExportMode("ai-pdf");setShowDocExport(true);}
                       else setShowExport(true);}}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
