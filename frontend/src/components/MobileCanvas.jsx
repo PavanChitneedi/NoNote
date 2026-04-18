@@ -550,7 +550,7 @@ export default function MobileCanvas({ mapId, onBack }) {
           foot={
             <div style={{display:"flex",gap:8}}>
               <button onClick={()=>setSheet("notes")} style={mBtn(false)}>
-                📝 Notes {(Array.isArray(selNode.notes)&&selNode.notes.length>0?`(${selNode.notes.length})`:""}
+                📝 Notes {Array.isArray(selNode.notes)&&selNode.notes.length>0?` (${selNode.notes.length})`:""}
               </button>
               <button onClick={saveEdit} style={{...mBtn(true),flex:1}}>Save ✓</button>
               <button onClick={deleteSelected} style={{...mBtn(false),color:"var(--danger)"}}>🗑</button>
