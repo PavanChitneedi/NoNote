@@ -454,6 +454,53 @@ function rectEdgePoint(node, nw, nh, targetX, targetY) {
   return { x: cx + dx*s, y: cy + dy*s };
 }
 
+// ── Best face picker — pure function, used by getEdgePath + port pre-compute ──
+// Picks the (from, to) face pair that gives the most direct, non-backtracking path
+function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
+  // Pure geometry: the exit face is the face that the center→center
+  // line hits FIRST on the source box, and the entry face is the face
+  // it hits FIRST on the target box (coming from source direction).
+  //
+  // We compute the "t" at which the ray from source center hits each wall,
+  // and pick the smallest t > 0.
+  const fcx=fx+fw/2, fcy=fy+fh/2;
+  const tcx=tx+tw/2, tcy=ty+th/2;
+  const dx=tcx-fcx||0.001, dy=tcy-fcy||0.001;
+
+  // Intersect ray from fcx,fcy in direction dx,dy with source box walls
+  // Exit face: whichever wall t is smallest positive
+  const tR=(fx+fw-fcx)/dx, tL=(fx-fcx)/dx;
+  const tB=(fy+fh-fcy)/dy, tT=(fy-fcy)/dy;
+  const tRight  = dx>0 ? tR : Infinity;
+  const tLeft   = dx<0 ? tL : Infinity;
+  const tBottom = dy>0 ? tB : Infinity;
+  const tTop    = dy<0 ? tT : Infinity;
+
+  const tMin = Math.min(tRight, tLeft, tBottom, tTop);
+  let from = "right";
+  if(tMin===tLeft)   from="left";
+  if(tMin===tBottom) from="bottom";
+  if(tMin===tTop)    from="top";
+
+  // Entry face on target: opposite of the incoming direction face
+  // Ray from tcx,tcy in direction -dx,-dy hits which face first
+  const tR2=(tx+tw-tcx)/(-dx), tL2=(tx-tcx)/(-dx);
+  const tB2=(ty+th-tcy)/(-dy), tT2=(ty-tcy)/(-dy);
+  const tRight2  = (-dx)>0 ? tR2 : Infinity;
+  const tLeft2   = (-dx)<0 ? tL2 : Infinity;
+  const tBottom2 = (-dy)>0 ? tB2 : Infinity;
+  const tTop2    = (-dy)<0 ? tT2 : Infinity;
+
+  const tMin2 = Math.min(tRight2, tLeft2, tBottom2, tTop2);
+  let to = "left";
+  if(tMin2===tLeft2)   to="left";
+  if(tMin2===tRight2)  to="right";
+  if(tMin2===tBottom2) to="bottom";
+  if(tMin2===tTop2)    to="top";
+
+  return {from, to};
+}
+
 // ── Anchor system ────────────────────────────────────────────
 // anchor: { side: "top"|"bottom"|"left"|"right"|"auto", t: 0-1 }
 // t=0.5 is midpoint of that side. "auto" means compute from direction.
@@ -1821,6 +1868,45 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
 
   // ── Smart edge router — prefers right→left for horizontal layouts ────
+  // ── Pre-compute staggered port t-values for all edges ────────────────────
+  // Groups edges by which face they share on a node and spreads their
+  // exit/entry points evenly to prevent arrows stacking on the same pixel.
+  const edgePortMap = useMemo(()=>{
+    // portGroups: `${nodeId}:${side}:from|to` → [edgeId, ...]  sorted for stability
+    const portGroups = {};
+    edges.forEach(edge => {
+      const f = nodes.find(n=>n.id===edge.from);
+      const t = nodes.find(n=>n.id===edge.to);
+      if (!f || !t) return;
+      const fw=collW(f),fh=collH(f),tw=collW(t),th=collH(t);
+      // Only auto-assign when no explicit anchor
+      if (!edge.fromAnchor || edge.fromAnchor.side==="auto") {
+        const {from:fSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
+        const k = `${edge.from}:${fSide}:from`;
+        (portGroups[k] = portGroups[k]||[]).push(edge.id);
+      }
+      if (!edge.toAnchor || edge.toAnchor.side==="auto") {
+        const {to:tSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
+        const k = `${edge.to}:${tSide}:to`;
+        (portGroups[k] = portGroups[k]||[]).push(edge.id);
+      }
+    });
+
+    // For each group, assign a t value spread evenly across [0.2, 0.8]
+    // Result: { "${edgeId}:from": t, "${edgeId}:to": t }
+    const tMap = {};
+    Object.entries(portGroups).forEach(([key, group]) => {
+      const [, , role] = key.split(":");
+      group.forEach((edgeId, i) => {
+        const n = group.length;
+        const t = n === 1 ? 0.5 : 0.2 + (i / (n-1)) * 0.6;
+        tMap[`${edgeId}:${role}`] = t;
+      });
+    });
+    return tMap;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edges, nodes]);
+
   const getEdgePath=(fromNode,toNode,edge={})=>{
     const fw=collW(fromNode), fh=collH(fromNode);
     const tw=collW(toNode),   th=collH(toNode);
@@ -1835,7 +1921,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
     };
 
-    // Returns the center point on a node side, with optional t offset (0-1)
     const sidePt=(nd,nw,nh,side,t=0.5)=>{
       switch(side){
         case "top":    return {x:nd.x+nw*t,   y:nd.y,       normal:faceNormal(side)};
@@ -1846,39 +1931,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
     };
 
-    // Compute best sides — direction-aware
-    const bestSides=(fx,fy,fw2,fh2,tx,ty,tw2,th2)=>{
-      const fcx=fx+fw2/2, fcy=fy+fh2/2;
-      const tcx=tx+tw2/2, tcy=ty+th2/2;
-      const dx=tcx-fcx, dy=tcy-fcy;
-      // Score each exit/entry face pair — lower is better
-      const score=(fromSide,toSide)=>{
-        let s=0;
-        // Penalise going "backwards" out the wrong face
-        if(fromSide==="right"  && dx<-fw2*0.3) s+=8;
-        if(fromSide==="left"   && dx>fw2*0.3)  s+=8;
-        if(fromSide==="bottom" && dy<-fh2*0.3) s+=8;
-        if(fromSide==="top"    && dy>fh2*0.3)  s+=8;
-        // Penalise entering on wrong face
-        if(toSide==="left"   && dx<0) s+=4;
-        if(toSide==="right"  && dx>0) s+=4;
-        if(toSide==="top"    && dy<0) s+=4;
-        if(toSide==="bottom" && dy>0) s+=4;
-        // Prefer straight through-routes (exit right→enter left for dx>0 etc.)
-        if(fromSide==="right"  && toSide==="left"   && dx>0) s-=6;
-        if(fromSide==="left"   && toSide==="right"  && dx<0) s-=6;
-        if(fromSide==="bottom" && toSide==="top"    && dy>0) s-=6;
-        if(fromSide==="top"    && toSide==="bottom" && dy<0) s-=6;
-        return s;
-      };
-      const sides=["right","left","bottom","top"];
-      let best={from:"right",to:"left",s:999};
-      for(const f of sides) for(const t of sides){
-        if(f===t) continue;
-        const s=score(f,t);
-        if(s<best.s) best={from:f,to:t,s};
-      }
-      return {from:best.from,to:best.to};
+    // Look up the pre-computed staggered t for this edge on a given port
+    const getPortT=(role)=>{
+      const key=`${edge.id}:${role}`;
+      return edgePortMap[key] ?? 0.5;
     };
 
     // Resolve from-point
@@ -1890,8 +1946,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       fp=a; fn1=a.normal;
     }
     if(!fp){
-      const {from:fSide}=bestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
-      const pt=sidePt(fromNode,fw,fh,fSide,0.5);
+      const {from:fSide}=pickBestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
+      const t=getPortT("from");
+      const pt=sidePt(fromNode,fw,fh,fSide,t);
       fp=pt; fn1=pt.normal;
     }
 
@@ -1904,17 +1961,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       tp=a; fn2=a.normal;
     }
     if(!tp){
-      const {to:tSide}=bestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
-      const pt=sidePt(toNode,tw,th,tSide,0.5);
+      const {to:tSide}=pickBestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
+      const t=getPortT("to");
+      const pt=sidePt(toNode,tw,th,tSide,t);
       tp=pt; fn2=pt.normal;
     }
 
-    // Bezier control points — longer for perpendicular routes
+    // Bezier control points — adaptive S-curve
     const dx=tp.x-fp.x, dy=tp.y-fp.y;
-    const dist=Math.sqrt(dx*dx+dy*dy);
-    const alignF=dist>0?Math.abs(fn1.dx*(dx/dist)+fn1.dy*(dy/dist)):0;
-    // Longer handles for backtracking; shorter for clean direct routes
-    const ctrlMult = alignF>0.7 ? 0.35 : alignF>0.3 ? 0.45 : 0.6;
+    const dist=Math.sqrt(dx*dx+dy*dy)||1;
+    const alignF=Math.abs(fn1.dx*(dx/dist)+fn1.dy*(dy/dist));
+    // Short handle for aligned routes (direct), long for backtracking
+    const ctrlMult = alignF>0.7 ? 0.35 : alignF>0.3 ? 0.48 : 0.65;
     const ctrl=Math.max(60, dist*ctrlMult);
     let c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
     let c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
@@ -1926,18 +1984,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       c2x=tp.x*0.25+mx*0.75; c2y=tp.y*0.25+my*0.75;
     }
 
-    // markerStart (auto-start-reverse, refX=0): tip extends BACKWARD from fp
-    // into the source node by markerWidth*sw. Move fp forward to compensate.
-    // markerEnd (refX=10): TIP is AT path endpoint. Path endpoint is AT node edge. Correct.
-    // BUT: markerEnd actual tip overshoots by ~2px due to strokeWidth. Nudge tp inward too.
-    // markerStart (auto-start-reverse): tip extends backward past fp into source node.
-    // Compensate by moving fp forward along path tangent by markerWidth*strokeWidth.
-    // markerEnd (refX=10): tip IS at path endpoint (node edge). No adjustment needed.
     const hasMStart=edge.style&&(EDGE_STYLES[edge.style]?.mStart);
     const sw=EDGE_STYLES[edge.style]?.strokeW||2;
     let fpx=fp.x, fpy=fp.y;
     if(hasMStart){
-      const PULL=sw*10; // markerWidth(10) × strokeWidth
+      const PULL=sw*10;
       const d1=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
       fpx=fp.x+(c1x-fp.x)/d1*PULL;
       fpy=fp.y+(c1y-fp.y)/d1*PULL;
