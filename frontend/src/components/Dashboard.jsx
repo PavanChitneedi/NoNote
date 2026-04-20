@@ -124,56 +124,15 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                   style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
               </div>
               <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
-                {[
-                  {v:"v5.5",date:"Apr 2026",items:[
-                    "Share map: invite team members with Viewer/Editor permissions",
-                    "Real-time collaboration: 🟢 Collab toggle — changes sync instantly across users",
-                    "Inline formatting toolbar: Bold, Italic, Underline, Strikethrough, HR on note edit",
-                    "Changelog now shown on home page (this modal)",
-                    "Arrow fix: markerEnd arrowhead always flush with destination node edge",
-                  ]},
-                  {v:"v5.3–5.4",date:"Apr 2026",items:[
-                    "Compact sidebar redesigned: 136px, categories preserved, search works in all modes",
-                    "Icon grid uses CSS auto-fill — no trailing gaps in last row",
-                    "Arrow endpoint pull corrected for both forward and bidirectional arrows",
-                    "Description shown only once (removed duplicate from node body)",
-                  ]},
-                  {v:"v5.1–5.2",date:"Apr 2026",items:[
-                    "Note content inline editable on canvas (✎ pencil, textarea inline)",
-                    "Bidirectional arrow endpoints pull BOTH ends (PULL=14px) to clear node borders",
-                    "Node header redesign: title + description in header, type label at right-bottom",
-                    "Comment 💬 and Collapse ⊟ in one row, no overlap",
-                    "Compact sidebar cycling fixed (onCycleMode prop pattern)",
-                  ]},
-                  {v:"v5.0",date:"Apr 2026",items:[
-                    "Bidirectional arrows correctly show both arrowheads (auto-start-reverse)",
-                    "Inline text editing: pencil icon on title and description (F2 to rename)",
-                    "Keyboard shortcuts: E opens node popup, N adds note, F2 renames",
-                    "Export/Import .nonote bundle format",
-                    "Focus mode activates on node click",
-                    "Changelog maintained automatically in every version",
-                  ]},
-                  {v:"v4.46–4.47",date:"Apr 2026",items:[
-                    "Recursive subtree auto-layout (no overlapping nodes)",
-                    "5 layout directions: L→R, T→B, R→L, B→T, Radial",
-                    "Popup closes on canvas click",
-                  ]},
-                  {v:"v4.0–4.45",date:"2025–2026",items:[
-                    "Full-stack: Node.js + PostgreSQL + Redis + Docker",
-                    "60+ node types, 15 connection styles, AABB collision prevention",
-                    "Version history, LLM export, AI Chat, custom themes, PNG export",
-                    "Multi-note per node, rich text editor, sensitive data toggle",
-                    "Smart edge router, anchor system, endpoint drag handles",
-                  ]},
-                ].map(({v,date,items})=>(
-                  <div key={v} style={{marginBottom:18}}>
+                {CHANGELOG.map(entry=>(
+                  <div key={entry.v} style={{marginBottom:18}}>
                     <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:6}}>
-                      <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>{v}</span>
-                      <span style={{fontSize:10,color:"var(--text4)"}}>{date}</span>
+                      <span style={{fontSize:13,fontWeight:700,color:"var(--accent)"}}>{entry.v}</span>
+                      <span style={{fontSize:10,color:"var(--text4)"}}>{entry.date}</span>
                     </div>
-                    {items.map((item,i)=>(
+                    {entry.items.map((item,i)=>(
                       <div key={i} style={{display:"flex",gap:6,marginBottom:4,fontSize:11,color:"var(--text2)"}}>
-                        <span style={{color:"var(--accent)",flexShrink:0}}>•</span>
+                        <span style={{color:"var(--accent)",flexShrink:0}}>✦</span>
                         <span>{item}</span>
                       </div>
                     ))}

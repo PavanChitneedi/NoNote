@@ -457,48 +457,26 @@ function rectEdgePoint(node, nw, nh, targetX, targetY) {
 // ── Best face picker — pure function, used by getEdgePath + port pre-compute ──
 // Picks the (from, to) face pair that gives the most direct, non-backtracking path
 function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
-  // Pure geometry: the exit face is the face that the center→center
-  // line hits FIRST on the source box, and the entry face is the face
-  // it hits FIRST on the target box (coming from source direction).
+  // CRITICAL RULE: Always return OPPOSITE faces.
+  // right→left, left→right, bottom→top, top→bottom.
+  // Non-opposite pairs (right→right, bottom→left, etc.) create U-curves and loops.
   //
-  // We compute the "t" at which the ray from source center hits each wall,
-  // and pick the smallest t > 0.
+  // Uses STORED node dimensions (fw,fh,tw,th) not DOM-measured heights,
+  // so the face decision is stable and independent of ref timing.
+  //
+  // Decision: whichever axis has larger center-to-center separation wins.
+  // Tie goes to horizontal (cleaner for most diagram layouts).
   const fcx=fx+fw/2, fcy=fy+fh/2;
   const tcx=tx+tw/2, tcy=ty+th/2;
-  const dx=tcx-fcx||0.001, dy=tcy-fcy||0.001;
+  const dx=tcx-fcx, dy=tcy-fcy;
 
-  // Intersect ray from fcx,fcy in direction dx,dy with source box walls
-  // Exit face: whichever wall t is smallest positive
-  const tR=(fx+fw-fcx)/dx, tL=(fx-fcx)/dx;
-  const tB=(fy+fh-fcy)/dy, tT=(fy-fcy)/dy;
-  const tRight  = dx>0 ? tR : Infinity;
-  const tLeft   = dx<0 ? tL : Infinity;
-  const tBottom = dy>0 ? tB : Infinity;
-  const tTop    = dy<0 ? tT : Infinity;
-
-  const tMin = Math.min(tRight, tLeft, tBottom, tTop);
-  let from = "right";
-  if(tMin===tLeft)   from="left";
-  if(tMin===tBottom) from="bottom";
-  if(tMin===tTop)    from="top";
-
-  // Entry face on target: opposite of the incoming direction face
-  // Ray from tcx,tcy in direction -dx,-dy hits which face first
-  const tR2=(tx+tw-tcx)/(-dx), tL2=(tx-tcx)/(-dx);
-  const tB2=(ty+th-tcy)/(-dy), tT2=(ty-tcy)/(-dy);
-  const tRight2  = (-dx)>0 ? tR2 : Infinity;
-  const tLeft2   = (-dx)<0 ? tL2 : Infinity;
-  const tBottom2 = (-dy)>0 ? tB2 : Infinity;
-  const tTop2    = (-dy)<0 ? tT2 : Infinity;
-
-  const tMin2 = Math.min(tRight2, tLeft2, tBottom2, tTop2);
-  let to = "left";
-  if(tMin2===tLeft2)   to="left";
-  if(tMin2===tRight2)  to="right";
-  if(tMin2===tBottom2) to="bottom";
-  if(tMin2===tTop2)    to="top";
-
-  return {from, to};
+  if(Math.abs(dx)>=Math.abs(dy)){
+    // Horizontal dominant (or tie)
+    return dx>=0?{from:"right",to:"left"}:{from:"left",to:"right"};
+  } else {
+    // Vertical dominant
+    return dy>=0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"};
+  }
 }
 
 // ── Anchor system ────────────────────────────────────────────
@@ -1872,39 +1850,44 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // Groups edges by which face they share on a node and spreads their
   // exit/entry points evenly to prevent arrows stacking on the same pixel.
   const edgePortMap = useMemo(()=>{
-    // portGroups: `${nodeId}:${side}:from|to` → [edgeId, ...]  sorted for stability
+    // Groups edges by (nodeId, side, from|to) and assigns evenly-spread t-values
+    // so multiple arrows on the same face don't stack on the same pixel.
+    //
+    // IMPORTANT: uses node.w/node.h (stored) NOT collW/collH (DOM ref) —
+    // refs don't trigger memo updates so face decisions would be stale.
     const portGroups = {};
     edges.forEach(edge => {
       const f = nodes.find(n=>n.id===edge.from);
       const t = nodes.find(n=>n.id===edge.to);
       if (!f || !t) return;
-      const fw=collW(f),fh=collH(f),tw=collW(t),th=collH(t);
-      // Only auto-assign when no explicit anchor
+      // Use stored dimensions for consistent, stable face selection
+      const fw=f.w||220, fh=f.h||96, tw=t.w||220, th=t.h||96;
+
       if (!edge.fromAnchor || edge.fromAnchor.side==="auto") {
         const {from:fSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
-        const k = `${edge.from}:${fSide}:from`;
-        (portGroups[k] = portGroups[k]||[]).push(edge.id);
+        const k=`${edge.from}:${fSide}:from`;
+        (portGroups[k]=portGroups[k]||[]).push(edge.id);
       }
       if (!edge.toAnchor || edge.toAnchor.side==="auto") {
         const {to:tSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
-        const k = `${edge.to}:${tSide}:to`;
-        (portGroups[k] = portGroups[k]||[]).push(edge.id);
+        const k=`${edge.to}:${tSide}:to`;
+        (portGroups[k]=portGroups[k]||[]).push(edge.id);
       }
     });
 
-    // For each group, assign a t value spread evenly across [0.2, 0.8]
-    // Result: { "${edgeId}:from": t, "${edgeId}:to": t }
+    // Spread t-values evenly across [0.2, 0.8]:
+    //   1 edge  → 0.5
+    //   2 edges → 0.27, 0.73
+    //   3 edges → 0.2, 0.5, 0.8
     const tMap = {};
     Object.entries(portGroups).forEach(([key, group]) => {
-      const [, , role] = key.split(":");
+      const role = key.split(":")[2];
+      const n = group.length;
       group.forEach((edgeId, i) => {
-        const n = group.length;
-        const t = n === 1 ? 0.5 : 0.2 + (i / (n-1)) * 0.6;
-        tMap[`${edgeId}:${role}`] = t;
+        tMap[`${edgeId}:${role}`] = n===1 ? 0.5 : 0.2+(i/(n-1))*0.6;
       });
     });
     return tMap;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [edges, nodes]);
 
   const getEdgePath=(fromNode,toNode,edge={})=>{
@@ -1946,8 +1929,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       fp=a; fn1=a.normal;
     }
     if(!fp){
-      const {from:fSide}=pickBestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
+      // Use STORED dims for face selection (consistent with edgePortMap)
+      const sw=fromNode.w||220, sh=fromNode.h||96;
+      const dw=toNode.w||220,   dh=toNode.h||96;
+      const {from:fSide}=pickBestSides(fromNode.x,fromNode.y,sw,sh,toNode.x,toNode.y,dw,dh);
       const t=getPortT("from");
+      // But use collW/collH for actual exit POINT so arrow lands on visible edge
       const pt=sidePt(fromNode,fw,fh,fSide,t);
       fp=pt; fn1=pt.normal;
     }
@@ -1961,7 +1948,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       tp=a; fn2=a.normal;
     }
     if(!tp){
-      const {to:tSide}=pickBestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
+      const sw=fromNode.w||220, sh=fromNode.h||96;
+      const dw=toNode.w||220,   dh=toNode.h||96;
+      const {to:tSide}=pickBestSides(fromNode.x,fromNode.y,sw,sh,toNode.x,toNode.y,dw,dh);
       const t=getPortT("to");
       const pt=sidePt(toNode,tw,th,tSide,t);
       tp=pt; fn2=pt.normal;
@@ -2988,7 +2977,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.21✦</button>
+              title="What's new">v5.22✦</button>
           </div>
         </div>
 
