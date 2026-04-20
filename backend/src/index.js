@@ -277,6 +277,47 @@ async function runMigrations() {
       value TEXT NOT NULL,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
     )`,
+    // ── RBAC: User groups ──────────────────────────────────────
+    `CREATE TABLE IF NOT EXISTS user_groups (
+      id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+      name        TEXT NOT NULL,
+      description TEXT,
+      color       TEXT NOT NULL DEFAULT '#6C63FF',
+      permissions JSONB NOT NULL DEFAULT '{}',
+      created_by  UUID REFERENCES users(id) ON DELETE SET NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )`,
+    `CREATE TABLE IF NOT EXISTS user_group_members (
+      user_id   UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      group_id  UUID NOT NULL REFERENCES user_groups(id) ON DELETE CASCADE,
+      added_by  UUID REFERENCES users(id) ON DELETE SET NULL,
+      added_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, group_id)
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_ugm_user ON user_group_members(user_id)",
+    "CREATE INDEX IF NOT EXISTS idx_ugm_group ON user_group_members(group_id)",
+    // ── RBAC: Custom role permissions per user ─────────────────
+    `CREATE TABLE IF NOT EXISTS user_permissions (
+      user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      permission TEXT NOT NULL,
+      granted    BOOLEAN NOT NULL DEFAULT true,
+      granted_by UUID REFERENCES users(id) ON DELETE SET NULL,
+      granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (user_id, permission)
+    )`,
+    // ── Seed default global settings ──────────────────────────
+    `INSERT INTO app_settings(key,value) VALUES
+      ('allow_username_change','true'),
+      ('allow_email_change','false'),
+      ('allow_password_change','true'),
+      ('allow_avatar_change','true'),
+      ('registration_enabled','true'),
+      ('allow_llm_for_viewers','false'),
+      ('allow_export_for_viewers','true'),
+      ('max_maps_per_user','0'),
+      ('session_timeout_hours','720')
+    ON CONFLICT(key) DO NOTHING`,
   ];
   let applied = 0;
   for (const sql of migrations) {
