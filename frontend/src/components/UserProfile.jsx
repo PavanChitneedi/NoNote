@@ -127,7 +127,7 @@ export default function UserProfile({ onClose }) {
     <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
-      <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:14,
+      <div data-dev="UserProfile.jsx | profile modal" style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:14,
         width:"100%", maxWidth:520, maxHeight:"88vh", display:"flex", flexDirection:"column",
         overflow:"hidden", boxShadow:"0 24px 72px rgba(0,0,0,.7)" }}
         onClick={e=>e.stopPropagation()}>

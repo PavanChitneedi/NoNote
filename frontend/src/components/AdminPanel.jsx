@@ -321,7 +321,7 @@ export default function AdminPanel({ onBack }) {
   const settingsCats = [...new Set(GLOBAL_SETTINGS.map(s=>s.cat))];
 
   return (
-    <div style={{padding:"24px",maxWidth:920,margin:"0 auto"}}>
+    <div data-dev="AdminPanel.jsx" style={{padding:"24px",maxWidth:920,margin:"0 auto"}}>
 
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
@@ -347,7 +347,7 @@ export default function AdminPanel({ onBack }) {
 
       {/* ── USERS ────────────────────────────────────────────── */}
       {tab==="users"&&(
-        <div>
+        <div data-dev="AdminPanel.jsx | Users tab">
           <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search by name or email…" style={{...inp,flex:1,minWidth:200}}/>
@@ -451,7 +451,7 @@ export default function AdminPanel({ onBack }) {
 
       {/* ── GROUPS ───────────────────────────────────────────── */}
       {tab==="groups"&&(
-        <div>
+        <div data-dev="AdminPanel.jsx | Groups tab">
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
             <div style={{fontSize:12,color:"var(--text4)"}}>Groups apply permission sets to multiple users at once. Assign users to groups in the Users tab.</div>
             <button onClick={()=>setShowCG(v=>!v)} style={btn(true)} >{showCG?"✕ Cancel":"+ Create Group"}</button>
@@ -549,7 +549,7 @@ export default function AdminPanel({ onBack }) {
 
       {/* ── PERMISSIONS REFERENCE ────────────────────────────── */}
       {tab==="perms"&&(
-        <div>
+        <div data-dev="AdminPanel.jsx | Permissions tab">
           <div style={{fontSize:12,color:"var(--text4)",marginBottom:16,lineHeight:1.7}}>
             Permissions are inherited from role → groups → individual overrides. Use the <strong>Users tab</strong> to assign groups. Individual per-user permission grants/revokes can be set via API.
           </div>
@@ -594,7 +594,7 @@ export default function AdminPanel({ onBack }) {
 
       {/* ── GLOBAL SETTINGS ──────────────────────────────────── */}
       {tab==="settings"&&(
-        <div>
+        <div data-dev="AdminPanel.jsx | Global Settings tab">
           {loading?<div style={{color:"var(--text4)",padding:20}}>Loading…</div>:(
             <>
               {settingsCats.map(cat=>(
@@ -644,7 +644,7 @@ export default function AdminPanel({ onBack }) {
 
       {/* ── LOGS ─────────────────────────────────────────────── */}
       {tab==="logs"&&(
-        <div>
+        <div data-dev="AdminPanel.jsx | Logs tab">
           <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:14,flexWrap:"wrap"}}>
             <div style={{flex:1}}>
               <div style={{fontSize:12,fontWeight:700,color:"var(--text2)"}}>Application Logs</div>

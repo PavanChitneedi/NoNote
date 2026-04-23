@@ -86,11 +86,11 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   return (
     <>
-    <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"28px 20px" }}>
+    <div data-dev="Dashboard.jsx" style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"28px 20px" }}>
       <div style={{ maxWidth:920, margin:"0 auto" }}>
 
         {/* Welcome */}
-        <div style={{ marginBottom:26, display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
+        <div data-dev="Dashboard.jsx | page header" style={{ marginBottom:26, display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
           <div>
             <div style={{ fontSize:22, fontWeight:700, color:"var(--text)", marginBottom:5 }}>Your Maps</div>
             <div style={{ fontSize:12, color:"var(--text4)" }}>
@@ -150,7 +150,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         )}
 
         {/* ── Action bar ── */}
-        <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
+        <div data-dev="Dashboard.jsx | action bar" style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
           {["owner","admin","editor"].includes(user?.role) && (
             showNew ? (
               <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
@@ -245,9 +245,10 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                 </div>
               </>
             )}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
+            <div data-dev="Dashboard.jsx | map grid" style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
               {maps.map(map=>(
                 <div key={map.id}
+                  data-dev="Dashboard.jsx | map card"
                   data-tut={maps.indexOf(map)===0?"map-card":undefined}
                   onClick={()=>onOpenMap(map.id)}
                   onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
