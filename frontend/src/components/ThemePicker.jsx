@@ -231,6 +231,6 @@ export default function ThemePicker({
         </div>
       </div>
     </div>,
-    document.body
+    document.getElementById("root")
   );
 }
