@@ -250,6 +250,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     setMaps(m=>m.filter(x=>x.id!==id));
   };
 
+  const handleRename = async (id, title) => {
+    try {
+      await apiFetch(`/maps/${id}`, {
         method: "PATCH",
         body: JSON.stringify({ title })
       });
