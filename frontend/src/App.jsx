@@ -12,6 +12,45 @@ import UserProfile  from "./components/UserProfile.jsx";
 import Tutorial     from "./components/Tutorial.jsx";
 import HelpGuide    from "./components/HelpGuide.jsx";
 
+// Floating dev overlay — visible on all pages when dev mode is on
+function DevOverlay({ view, user }) {
+  const [on, setOn] = useState(() => localStorage.getItem("nodemap_dev_mode") === "true");
+
+  useEffect(() => {
+    const sync = () => setOn(localStorage.getItem("nodemap_dev_mode") === "true");
+    window.addEventListener("storage", sync);
+    window.addEventListener("nodemap_devmode_change", sync);
+    return () => {
+      window.removeEventListener("storage", sync);
+      window.removeEventListener("nodemap_devmode_change", sync);
+    };
+  }, []);
+
+  if (!on || !user) return null;
+
+  const comp =
+    view.page === "canvas" ? (window.innerWidth < 768 ? "MobileCanvas.jsx" : "NodeCanvas.jsx")
+    : view.page === "admin" ? "AdminPanel.jsx"
+    : "Dashboard.jsx";
+
+  return (
+    <div style={{
+      position:"fixed", bottom:16, right:16, zIndex:9999,
+      background:"rgba(10,10,18,0.94)", border:"1px solid rgba(108,99,255,0.35)",
+      borderRadius:10, padding:"10px 14px", fontFamily:"monospace",
+      fontSize:11, color:"#888", lineHeight:1.8, backdropFilter:"blur(6px)",
+      maxWidth:280, userSelect:"text", pointerEvents:"none",
+    }}>
+      <div style={{color:"#6C63FF", fontWeight:700, marginBottom:2, fontSize:12, letterSpacing:1}}>🛠 DEV</div>
+      <div><span style={{color:"#444"}}>page   </span>{view.page}</div>
+      <div><span style={{color:"#444"}}>comp   </span>{comp}</div>
+      {view.mapId && <div><span style={{color:"#444"}}>mapId  </span>{view.mapId.slice(0,8)}…</div>}
+      <div><span style={{color:"#444"}}>user   </span>{user?.display_name} <span style={{color:"#6C63FF"}}>({user?.role})</span></div>
+      <div><span style={{color:"#444"}}>uid    </span>{user?.id?.slice(0,8)}…</div>
+    </div>
+  );
+}
+
 // Error boundary so a MobileCanvas crash shows an error instead of blank screen
 class MobileErrorBoundary extends Component {
   constructor(props) { super(props); this.state = { crashed: false, err: "" }; }
@@ -151,6 +190,7 @@ function AppInner() {
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
+      <DevOverlay view={view} user={user} />
     </div>
   );
 }

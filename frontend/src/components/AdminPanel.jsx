@@ -231,6 +231,15 @@ export default function AdminPanel({ onBack }) {
   const [logLevel, setLogLevel] = useState("all");
   const [logRetInput, setLogRetInput] = useState("7");
 
+  // Dev mode
+  const [devMode, setDevMode] = useState(() => localStorage.getItem("nodemap_dev_mode") === "true");
+  const toggleDevMode = () => {
+    const next = !devMode;
+    setDevMode(next);
+    localStorage.setItem("nodemap_dev_mode", String(next));
+    window.dispatchEvent(new Event("nodemap_devmode_change"));
+  };
+
   const clrMsg = () => { setError(""); setSuccess(""); };
 
   // Fetch data per tab
@@ -330,6 +339,7 @@ export default function AdminPanel({ onBack }) {
         <Tab label="🔐 Permissions" active={tab==="perms"}    onClick={()=>setTab("perms")}/>
         <Tab label="⚙ Global Settings" active={tab==="settings"} onClick={()=>setTab("settings")}/>
         <Tab label="📋 Logs"        active={tab==="logs"}     onClick={()=>setTab("logs")}/>
+        <Tab label="🛠 Dev"         active={tab==="dev"}      onClick={()=>setTab("dev")}/>
       </div>
 
       {error   && <Alert color="var(--danger)">{error}</Alert>}
@@ -679,6 +689,103 @@ export default function AdminPanel({ onBack }) {
               ))}
             </div>
           }
+        </div>
+      )}
+
+      {/* ── DEV MODE ─────────────────────────────────────────── */}
+      {tab==="dev"&&(
+        <div>
+          {/* Toggle */}
+          <div style={{display:"flex",alignItems:"center",gap:14,padding:"14px 16px",
+            background:"var(--bg2)",borderRadius:10,border:"1px solid var(--border)",marginBottom:20}}>
+            <div style={{flex:1}}>
+              <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>Developer Mode</div>
+              <div style={{fontSize:11,color:"var(--text4)",marginTop:2}}>
+                Shows a floating overlay (bottom-right, all pages) with current page, component, and user context.
+                Share it with Claude when asking for help or changes.
+              </div>
+            </div>
+            <div onClick={toggleDevMode} style={{width:46,height:26,borderRadius:13,cursor:"pointer",
+              flexShrink:0,background:devMode?"var(--accent2)":"var(--border)",
+              position:"relative",transition:"background .2s"}}>
+              <div style={{width:20,height:20,borderRadius:"50%",background:"#fff",
+                position:"absolute",top:3,transition:"left .2s",
+                left:devMode?22:3,boxShadow:"0 1px 4px rgba(0,0,0,.3)"}}/>
+            </div>
+          </div>
+
+          {/* Reference card */}
+          <div style={{fontFamily:"monospace",fontSize:11,lineHeight:1.85,
+            background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:10,padding:"16px 18px",
+            color:"var(--text3)",overflowX:"auto"}}>
+
+            {[
+              ["FRONTEND — frontend/src/",[
+                ["App.jsx","root router · header · auth gate · page switching · isMobile"],
+                ["components/Dashboard.jsx","map grid · create/delete maps · search"],
+                ["components/NodeCanvas.jsx","main canvas (desktop) · nodes · edges · toolbar · LLM chat · panels"],
+                ["components/MobileCanvas.jsx","touch canvas (<768 px)"],
+                ["components/LLMChat.jsx","AI chat sidebar panel (inside NodeCanvas)"],
+                ["components/LLMSettings.jsx","LLM provider CRUD (in canvas toolbar)"],
+                ["components/AdminPanel.jsx","this panel — users · groups · perms · settings · logs · dev"],
+                ["components/LoginPage.jsx","auth form"],
+                ["components/ThemePicker.jsx","theme + design system settings"],
+                ["components/UserProfile.jsx","profile editor (name · email · password · avatar)"],
+                ["components/VersionHistory.jsx","map snapshot browser"],
+                ["components/DocExportModal.jsx","export to docx / plain text"],
+                ["components/HelpGuide.jsx","in-app docs"],
+                ["components/Tutorial.jsx","interactive walkthrough"],
+                ["context/AuthContext.jsx","user · token · login · logout · auto-refresh on 401"],
+                ["context/ThemeContext.jsx","active theme name + CSS variable injection"],
+                ["context/DesignContext.jsx","font size · border radius · density"],
+                ["api/client.js","apiFetch() — wraps fetch, injects Authorization, refreshes token on 401"],
+              ]],
+              ["BACKEND — backend/src/",[
+                ["index.js","Express entry · middleware (helmet/cors/rate-limit) · WebSocket server"],
+                ["routes/auth.js","POST /auth/login|register|refresh|logout"],
+                ["routes/maps.js","/maps CRUD · /maps/:id/nodes · edges · collaborators · changelog"],
+                ["routes/users.js","/users CRUD · /users/groups · permissions · settings · logs"],
+                ["routes/llm.js","/llm/providers · conversations · /conversations/:id/chat (proxy)"],
+                ["routes/versions.js","/maps/:id/versions — snapshot save/restore"],
+                ["middleware/auth.js","authenticate(JWT) · requireRole(role)"],
+                ["db/pool.js","pg Pool — query(sql,params) · withTransaction(fn)"],
+                ["db/redis.js","ioredis client — token blocklist · session cache"],
+                ["utils/crypto.js","AES-256-GCM encrypt/decrypt for LLM API keys"],
+              ]],
+              ["DATABASE — postgres/init.sql",[
+                ["users","id · email · display_name · password_hash · role · is_active · avatar_color"],
+                ["maps","id · title · owner_id · is_public · thumbnail"],
+                ["map_nodes","id · map_id · node_type · title · x · y · w · h · properties JSONB · notes"],
+                ["map_edges","id · map_id · from_node · to_node · label · style · color · anchors JSONB"],
+                ["map_collaborators","map_id · user_id · permission (per-map RBAC override)"],
+                ["refresh_tokens","user_id · token_hash · expires_at · revoked_at"],
+                ["llm_providers","user_id · provider · model · api_key_enc (AES-256-GCM) · is_default"],
+                ["llm_conversations","map_id · user_id · provider_id · title"],
+                ["llm_messages","conversation_id · role · content · tokens_used"],
+                ["map_versions","map_id · nodes_json JSONB · edges_json JSONB (snapshots)"],
+                ["map_changelog","map_id · action · target_id · target_label · meta JSONB"],
+                ["audit_log","user_id · action · resource · resource_id · metadata JSONB"],
+              ]],
+              ["KEY STATE",[
+                ["AuthContext","user = { id, email, display_name, role, avatar_color }"],
+                ["view (App.jsx)","{ page: 'dashboard'|'canvas'|'admin', mapId }"],
+                ["isMobile (App.jsx)","window.innerWidth < 768 || (< 1024 && touch)"],
+                ["NodeCanvas.jsx","nodes[] · edges[] · selected · tool · zoom · pan (all local state)"],
+                ["RBAC order","role perms → group perms → individual overrides"],
+              ]],
+            ].map(([section, rows])=>(
+              <div key={section} style={{marginBottom:18}}>
+                <div style={{color:"var(--accent)",fontWeight:700,letterSpacing:1,
+                  marginBottom:6,fontSize:10}}>{section}</div>
+                {rows.map(([file, desc])=>(
+                  <div key={file} style={{display:"flex",gap:10,marginBottom:2,flexWrap:"wrap"}}>
+                    <span style={{color:"var(--text2)",minWidth:300,flexShrink:0}}>{file}</span>
+                    <span style={{color:"var(--text4)"}}>{desc}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
