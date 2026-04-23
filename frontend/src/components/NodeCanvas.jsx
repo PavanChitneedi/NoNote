@@ -3364,10 +3364,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             flex:1,overflow:"auto",position:"relative",
             cursor:mode==="connect"?"crosshair":dragging?"grabbing":"default",
             background: canvasTheme==="grid"
-              ? "radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--canvas-bg)"
+              ? `radial-gradient(circle,${canvasDot} 1px,transparent 1px) center/28px 28px ${canvasBg}`
               : canvasTheme==="lines"
-              ? "repeating-linear-gradient(var(--canvas-bg) 0px,var(--canvas-bg) 27px,var(--canvas-line) 28px) var(--canvas-bg)"
-              : "var(--canvas-bg)",
+              ? `repeating-linear-gradient(${canvasBg} 0px,${canvasBg} 27px,${canvasDot} 28px) ${canvasBg}`
+              : canvasBg,
           }}>
           <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
             <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
