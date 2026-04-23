@@ -131,7 +131,7 @@ function AppInner() {
             <button onClick={openAdmin} style={hBtn}>⚙ ADMIN</button>
           )}
 
-          <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }}>→ OUT</button>
+          <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }}>Logout</button>
         </div>
       )}
 

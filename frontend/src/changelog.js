@@ -1,6 +1,13 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.24.0",date:"Apr 2026",items:[
+    "Dashboard: Import .nonote — fixed auth, saves before navigating, no longer opens empty canvas",
+    "Dashboard: Share map opens inline modal — no longer navigates away to map view",
+    "Map title uniqueness: conflict dialog with Rename or Overwrite options on create and import",
+    "Dashboard: Export .nonote and Duplicate fixed (apiFetch double-parse bug)",
+    "Logout button added to canvas topbar and renamed from \u2192 OUT in dashboard header",
+  ]},
   {v:"v5.23.2",date:"Apr 2026",items:[
     "Canvas theme now actually applies: inline background overrides CSS vars when canvas theme differs from global",
     "ThemePicker: backdrop click-to-close fixed (target check); theme cards get stopPropagation",
@@ -41,6 +48,13 @@ export const CHANGELOG = [
     "Tutorial adapts to current page — shows dashboard or canvas steps accordingly",
     "Focus mode now dims edges (v5.19 fix carried over)",
     "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
+  ]},
+  {v:"v5.24.0",date:"Apr 2026",items:[
+    "Dashboard: Import .nonote — fixed auth, saves before navigating, no longer opens empty canvas",
+    "Dashboard: Share map opens inline modal — no longer navigates away to map view",
+    "Map title uniqueness: conflict dialog with Rename or Overwrite options on create and import",
+    "Dashboard: Export .nonote and Duplicate fixed (apiFetch double-parse bug)",
+    "Logout button added to canvas topbar and renamed from \u2192 OUT in dashboard header",
   ]},
   {v:"v5.23.2",date:"Apr 2026",items:[
     "Canvas theme now actually applies: inline background overrides CSS vars when canvas theme differs from global",

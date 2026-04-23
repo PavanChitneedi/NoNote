@@ -818,7 +818,7 @@ const inp=()=>({
 // Main Component
 // ─────────────────────────────────────────────────────────────
 export default function NodeCanvas({ mapId, onBack, onHome }) {
-  const { user }             = useAuth();
+  const { user, logout }      = useAuth();
   const { themeName, theme } = useTheme();
   const canEdit              = ["owner","admin","editor"].includes(user?.role);
 
@@ -3002,7 +3002,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.23.2✦</button>
+              title="What's new">v5.24.0✦</button>
+            <button onClick={logout}
+              style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
+                border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}
+              title="Log out">Logout</button>
           </div>
         </div>
 

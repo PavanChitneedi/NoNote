@@ -1,43 +1,255 @@
 import React from 'react';
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getMaps, createMap, deleteMap, apiFetch } from "../api/client.js";
+import { getMaps, createMap, deleteMap, apiFetch, saveMap, getAccessToken } from "../api/client.js";
 import { CHANGELOG } from "../changelog.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
 
+// ── Inline Share Modal (shown from dashboard without navigating away) ────
+function ShareModal({ map, onClose }) {
+  const [email, setEmail]         = useState("");
+  const [perm,  setPerm]          = useState("editor");
+  const [users, setUsers]         = useState([]);
+  const [search, setSearch]       = useState([]);
+  const [saving, setSaving]       = useState(false);
+  const [msg,   setMsg]           = useState("");
+
+  useEffect(() => {
+    apiFetch(`/maps/${map.id}/collaborators`).then(d=>setUsers(Array.isArray(d)?d:[])).catch(()=>{});
+  }, [map.id]);
+
+  const doSearch = async (q) => {
+    setEmail(q);
+    if (q.length < 2) { setSearch([]); return; }
+    const r = await apiFetch(`/users/search?q=${encodeURIComponent(q)}`).catch(()=>[]);
+    setSearch(Array.isArray(r) ? r : []);
+  };
+
+  const addUser = async (uid) => {
+    setSaving(true); setMsg("");
+    try {
+      await apiFetch(`/maps/${map.id}/collaborators`, { method:"POST", body:JSON.stringify({ user_id:uid, permission:perm }) });
+      const d = await apiFetch(`/maps/${map.id}/collaborators`);
+      setUsers(Array.isArray(d)?d:[]); setEmail(""); setSearch([]);
+      setMsg("Added!");
+    } catch(e) { setMsg(e.message); }
+    setSaving(false);
+  };
+
+  const removeUser = async (uid) => {
+    await apiFetch(`/maps/${map.id}/collaborators/${uid}`, { method:"DELETE" }).catch(()=>{});
+    setUsers(u=>u.filter(x=>x.id!==uid));
+  };
+
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
+      onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
+      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,
+        width:"min(460px,94vw)",boxShadow:"0 24px 64px rgba(0,0,0,.7)",padding:26,
+        display:"flex",flexDirection:"column",gap:16}} onClick={e=>e.stopPropagation()}>
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <span style={{fontSize:18}}>👥</span>
+          <div style={{flex:1}}>
+            <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Share — {map.title}</div>
+            <div style={{fontSize:11,color:"var(--text4)",marginTop:2}}>Invite people to collaborate</div>
+          </div>
+          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</button>
+        </div>
+        {msg&&<div style={{fontSize:12,color:"var(--accent)"}}>{msg}</div>}
+        {/* Add user */}
+        <div style={{display:"flex",gap:8,position:"relative"}}>
+          <input value={email} onChange={e=>doSearch(e.target.value)} placeholder="Search by name or email…"
+            style={{flex:1,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,
+              padding:"9px 12px",color:"var(--text)",fontSize:13,fontFamily:"inherit",outline:"none"}}/>
+          <select value={perm} onChange={e=>setPerm(e.target.value)}
+            style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,
+              padding:"9px 10px",color:"var(--text)",fontSize:12,fontFamily:"inherit",outline:"none"}}>
+            <option value="viewer">Viewer</option>
+            <option value="editor">Editor</option>
+          </select>
+          {search.length>0&&(
+            <div style={{position:"absolute",top:"100%",left:0,right:80,zIndex:10,marginTop:4,
+              background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,
+              boxShadow:"0 8px 24px rgba(0,0,0,.5)"}}>
+              {search.map(u=>(
+                <div key={u.id} onClick={()=>addUser(u.id)} style={{padding:"9px 12px",cursor:"pointer",
+                  fontSize:12,color:"var(--text2)"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  {u.display_name} <span style={{color:"var(--text4)"}}>{u.email}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {/* Current collaborators */}
+        {users.length>0&&(
+          <div>
+            <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1.5,marginBottom:8}}>COLLABORATORS</div>
+            {users.map(u=>(
+              <div key={u.id} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",
+                borderBottom:"1px solid var(--border2)"}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:u.avatar_color||"#6C63FF",
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>
+                  {u.display_name?.[0]?.toUpperCase()}
+                </div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{fontSize:12,fontWeight:600,color:"var(--text)"}}>{u.display_name}</div>
+                  <div style={{fontSize:10,color:"var(--text4)"}}>{u.permission}</div>
+                </div>
+                <button onClick={()=>removeUser(u.id)} style={{background:"none",border:"none",
+                  color:"var(--danger)",cursor:"pointer",fontSize:14}}>×</button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [showChangelog, setShowChangelog] = useState(false);
-  const [menuMap,   setMenuMap]   = useState(null);  // {id, title, x, y} for context menu
-  const [renaming,  setRenaming]  = useState(null);  // {id, title}
-  const { user } = useAuth();
+  const [menuMap,   setMenuMap]   = useState(null);
+  const [renaming,  setRenaming]  = useState(null);
+  const [shareMap,  setShareMap]  = useState(null); // map object for inline share modal
+  const { user, logout } = useAuth();
   const [maps, setMaps]       = useState([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle]= useState("");
   const [showNew, setShowNew] = useState(false);
   const [creating, setCreating]= useState(false);
   const [error, setError]     = useState("");
+  // Title conflict dialog
+  const [conflict, setConflict] = useState(null); // {title, resolve}
 
   useEffect(() => {
     getMaps().then(d=>setMaps(d.maps)).catch(e=>setError(e.message)).finally(()=>setLoading(false));
   }, []);
 
+  // Unique title helper — shows conflict UI if name taken
+  const createWithUnique = (title, nodes, edges) => new Promise((resolve, reject) => {
+    const existing = maps.find(m => m.title.toLowerCase() === title.toLowerCase());
+    if (existing) {
+      setConflict({ title, existing, resolve: (action) => {
+        setConflict(null);
+        resolve(action); // "overwrite" | "rename:{newTitle}" | "cancel"
+      }});
+    } else {
+      resolve("create");
+    }
+  });
+
   const handleCreate = async (e) => {
     e.preventDefault();
-    if (!newTitle.trim()) return;
-    setCreating(true);
+    const title = newTitle.trim(); if (!title) return;
+    setCreating(true); setError("");
     try {
-      const d = await createMap({ title:newTitle.trim() });
-      setMaps(m=>[d.map,...m]);
+      const action = await createWithUnique(title, [], []);
+      if (action === "cancel") { setCreating(false); return; }
+      const finalTitle = action.startsWith("rename:") ? action.slice(7) : title;
+      if (action === "overwrite") {
+        const ex = maps.find(m=>m.title.toLowerCase()===title.toLowerCase());
+        if (ex) { await apiFetch(`/maps/${ex.id}`,{method:"PATCH",body:JSON.stringify({title:finalTitle})}); }
+      }
+      const d = await createMap({ title:finalTitle });
+      setMaps(m=>[d.map,...m.filter(x=>x.id!==d.map.id)]);
       setNewTitle(""); setShowNew(false);
       onOpenMap(d.map.id);
-    } catch (err) { setError(err.message); }
+    } catch(err) { setError(err.message); }
     finally { setCreating(false); }
   };
 
   const handleRename = async (id, title) => {
     try {
-      await apiFetch(`/maps/${id}`, {
+      await apiFetch(`/maps/${id}`, { method:"PATCH", body:JSON.stringify({ title }) });
+      setMaps(m=>m.map(x=>x.id===id?{...x,title}:x));
+    } catch {}
+    setRenaming(null);
+  };
+
+  const handleDuplicate = async (map) => {
+    try {
+      const d = await apiFetch(`/maps/${map.id}/duplicate`, { method:"POST" });
+      if (d.map) setMaps(m=>[d.map,...m]);
+    } catch(e) { alert("Duplicate failed: "+e.message); }
+  };
+
+  const handleExportNoNote = async (map) => {
+    try {
+      const d = await apiFetch(`/maps/${map.id}`);
+      // apiFetch already returns parsed JSON
+      const data = d.map || d;
+      const bundle = {
+        version:1, app:"NoNote",
+        title: data.title || map.title,
+        exported: new Date().toISOString(),
+        nodes: d.nodes || [],
+        edges: d.edges || [],
+      };
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"}));
+      a.download = `${(map.title||"map").replace(/[^a-z0-9]/gi,"-")}.nonote`;
+      a.click(); URL.revokeObjectURL(a.href);
+    } catch(e) { alert("Export failed: "+e.message); }
+  };
+
+  const handleImportFile = (e) => {
+    const f = e.target.files?.[0]; if(!f) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const b = JSON.parse(ev.target.result);
+        if (!(b.app==="NoNote" && Array.isArray(b.nodes)))
+          return alert("Not a valid .nonote file");
+
+        const title = b.title || f.name.replace(/\.nonote$/,"") || "Imported Map";
+        const nodes = b.nodes.map(n=>({...n, notes:Array.isArray(n.notes)?n.notes:[]}));
+        const edges = b.edges || [];
+
+        // Check for title conflict
+        const existing = maps.find(m=>m.title.toLowerCase()===title.toLowerCase());
+        if (existing) {
+          setConflict({ title, existing, resolve: async (action) => {
+            setConflict(null);
+            if (action==="cancel") return;
+            if (action==="overwrite") {
+              // Overwrite existing map's data
+              await saveMap(existing.id, { nodes, edges, groupBoxes:[] });
+              alert(`Map "${title}" overwritten with imported data.`);
+              setMaps(m=>m.map(x=>x.id===existing.id?{...x,title}:x));
+            } else {
+              // Rename: action = "rename:NewTitle"
+              const finalTitle = action.startsWith("rename:") ? action.slice(7) : title+" (imported)";
+              const d = await createMap({ title:finalTitle });
+              await saveMap(d.map.id, { nodes, edges, groupBoxes:[] });
+              setMaps(m=>[{...d.map,title:finalTitle},...m]);
+              alert(`Imported as "${finalTitle}". Map is saved to your dashboard.`);
+            }
+          }});
+          return;
+        }
+
+        // No conflict — create and save
+        const d = await createMap({ title });
+        if (!d.map?.id) throw new Error("Failed to create map");
+        await saveMap(d.map.id, { nodes, edges, groupBoxes:[] });
+        setMaps(m=>[{...d.map,title},...m]);
+        alert(`"${title}" imported successfully (${nodes.length} nodes). Click to open.`);
+      } catch(err) { alert("Import failed: "+err.message); }
+    };
+    reader.readAsText(f);
+    e.target.value="";
+  };
+
+  const handleDelete = async (id, e) => {
+    e?.stopPropagation?.();
+    if (!confirm("Delete this map? This cannot be undone.")) return;
+    await deleteMap(id).catch(()=>{});
+    setMaps(m=>m.filter(x=>x.id!==id));
+  };
+
         method: "PATCH",
         body: JSON.stringify({ title })
       });
@@ -102,7 +314,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
               padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
               cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
-            v5.23.2 ✦ What's new
+            v5.24.0 ✦ What's new
           </button>
         </div>
 
@@ -215,23 +427,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                     {icon:"↗",label:"Open",action:()=>{onOpenMap(menuMap.id);setMenuMap(null);}},
                     {icon:"✎",label:"Rename",action:()=>{setRenaming({id:menuMap.id,title:menuMap.title});setMenuMap(null);}},
                     {icon:"⧉",label:"Duplicate",action:()=>{handleDuplicate(menuMap);setMenuMap(null);}},
-                    {icon:"↙",label:"Export .nonote",action:()=>{
-                      apiFetch(`/maps/${menuMap.id}`)
-                        .then(r=>r.json()).then(d=>{
-                          const b={version:1,app:"NoNote",title:d.map?.title||menuMap.title,exported:new Date().toISOString(),nodes:d.map?.nodes||[],edges:d.map?.edges||[]};
-                          const a=document.createElement("a");
-                          a.href=URL.createObjectURL(new Blob([JSON.stringify(b,null,2)],{type:"application/json"}));
-                          a.download=`${(menuMap.title||"map").replace(/[^a-z0-9]/gi,"-")}.nonote`;
-                          a.click();
-                        });
-                      setMenuMap(null);
-                    }},
-                    {icon:"👥",label:"Share / Collaborate",action:()=>{
-                      window._shareMapId=menuMap.id;
-                      // Open the map then trigger share dialog
-                      onOpenMap(menuMap.id);
-                      setMenuMap(null);
-                    }},
+                    {icon:"↙",label:"Export .nonote",action:()=>{handleExportNoNote(menuMap);setMenuMap(null);}},
+                    {icon:"👥",label:"Share / Collaborate",action:()=>{setShareMap(menuMap);setMenuMap(null);}},
                     {icon:"✕",label:"Delete",color:"var(--danger)",action:()=>{handleDelete(menuMap.id,{stopPropagation:()=>{}});setMenuMap(null);}},
                   ].map(({icon,label,action,color})=>(
                     <div key={label} onClick={action}
@@ -328,6 +525,51 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       </div>
     </div>
   )}
+
+  {/* Inline Share Modal */}
+  {shareMap && <ShareModal map={shareMap} onClose={()=>setShareMap(null)}/>}
+  {/* Conflict Dialog */}
+  {conflict && <ConflictDialog conflict={conflict}/>}
 </>
+  );
+}
+{/* ── Inline Share Modal ── */}
+  {shareMap && <ShareModal map={shareMap} onClose={()=>setShareMap(null)}/>}
+
+  {/* ── Title Conflict Dialog ── */}
+  {conflict && <ConflictDialog conflict={conflict}/>}
+
+function ConflictDialog({ conflict }) {
+  const [newName, setNewName] = React.useState(conflict.title + " (copy)");
+  return (
+    <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.72)",
+      display:"flex",alignItems:"center",justifyContent:"center"}}>
+      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,
+        width:"min(420px,94vw)",padding:26,boxShadow:"0 24px 64px rgba(0,0,0,.7)",
+        display:"flex",flexDirection:"column",gap:16}}>
+        <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>Name Conflict</div>
+        <div style={{fontSize:13,color:"var(--text3)",lineHeight:1.6}}>
+          A map named <strong style={{color:"var(--text)"}}>{conflict.title}</strong> already exists.
+        </div>
+        <div>
+          <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1.5,marginBottom:6}}>RENAME</div>
+          <input value={newName} onChange={e=>setNewName(e.target.value)}
+            style={{width:"100%",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,
+              padding:"9px 12px",color:"var(--text)",fontSize:13,fontFamily:"inherit",
+              outline:"none",boxSizing:"border-box"}}/>
+        </div>
+        <div style={{display:"flex",gap:8}}>
+          <button onClick={()=>conflict.resolve("cancel")}
+            style={{padding:"9px 14px",background:"var(--bg3)",border:"none",borderRadius:8,
+              color:"var(--text3)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>Cancel</button>
+          <button onClick={()=>conflict.resolve("rename:"+(newName.trim()||conflict.title+" (copy)"))}
+            style={{flex:1,padding:"9px 14px",background:"var(--accent2)",border:"none",borderRadius:8,
+              color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>Save as new name</button>
+          <button onClick={()=>conflict.resolve("overwrite")}
+            style={{padding:"9px 14px",background:"var(--danger)22",border:"1px solid var(--danger)50",
+              borderRadius:8,color:"var(--danger)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>Overwrite</button>
+        </div>
+      </div>
+    </div>
   );
 }
