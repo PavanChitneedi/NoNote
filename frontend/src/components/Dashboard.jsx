@@ -189,55 +189,51 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     } catch(e) { alert("Export failed: "+e.message); }
   };
 
-  const handleImportFile = (e) => {
-    const f = e.target.files?.[0]; if(!f) return;
-    const reader = new FileReader();
-    reader.onload = async ev => {
-      try {
-        const b = JSON.parse(ev.target.result);
-        if (!(b.app==="NoNote" && Array.isArray(b.nodes)))
-          return alert("Not a valid .nonote file");
+  const handleImportFile = async (e) => {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    e.target.value = "";
+    let raw;
+    try { raw = JSON.parse(await f.text()); } catch { alert("Invalid file"); return; }
+    if (raw.app !== "NoNote" || !Array.isArray(raw.nodes)) { alert("Not a valid .nonote file"); return; }
 
-        const title = b.title || f.name.replace(/\.nonote$/,"") || "Imported Map";
-        const nodes = b.nodes.map(n=>({...n, notes:Array.isArray(n.notes)?n.notes:[]}));
-        const edges = b.edges || [];
+    const nodes = raw.nodes.map(n => ({ ...n, notes: Array.isArray(n.notes) ? n.notes : [] }));
+    const edges = raw.edges || [];
+    let title = raw.title || f.name.replace(/\.nonote$/i, "") || "Imported Map";
 
-        const doImport = async (finalTitle, overwriteId) => {
-          if (overwriteId) {
-            await saveMap(overwriteId, { nodes, edges, groupBoxes:[] });
-            setMaps(m=>m.map(x=>x.id===overwriteId?{...x,title:finalTitle}:x));
-            alert(`"${finalTitle}" updated with imported data.`);
-          } else {
-            const d = await createMap({ title: finalTitle });
-            await saveMap(d.map.id, { nodes, edges, groupBoxes:[] });
-            setMaps(m=>[{...d.map, title:finalTitle},...m]);
-            alert(`"${finalTitle}" imported (${nodes.length} nodes). Click to open.`);
-          }
-        };
+    // If title exists, append timestamp to make it unique
+    if (maps.find(m => m.title.toLowerCase() === title.toLowerCase())) {
+      const existing = maps.find(m => m.title.toLowerCase() === title.toLowerCase());
+      const choice = window.confirm(
+        `A map named "${title}" already exists.\n\nOK = Overwrite it\nCancel = Save as copy`
+      );
+      if (choice) {
+        // Overwrite
+        try {
+          await saveMap(existing.id, { nodes, edges, groupBoxes: [] });
+          alert(`"${title}" updated with ${nodes.length} nodes.`);
+          getMaps().then(d => setMaps(d.maps)).catch(() => {});
+        } catch(err) { alert("Overwrite failed: " + err.message); }
+        return;
+      } else {
+        title = title + " (imported " + new Date().toLocaleTimeString() + ")";
+      }
+    }
 
-        const existing = maps.find(m=>m.title.toLowerCase()===title.toLowerCase());
-        if (existing) {
-          setConflict({ title, existing, resolve: async (action) => {
-            setConflict(null);
-            if (action==="cancel") return;
-            if (action==="overwrite") await doImport(title, existing.id);
-            else await doImport(action.startsWith("rename:") ? action.slice(7) : title+" (copy)", null);
-          }});
-          return;
-        }
-        await doImport(title, null);
-      } catch(err) { alert("Import failed: "+err.message); }
-    };
-    reader.readAsText(f);
-    e.target.value="";
+    try {
+      const d = await createMap({ title });
+      await saveMap(d.map.id, { nodes, edges, groupBoxes: [] });
+      setMaps(m => [{ ...d.map, title }, ...m]);
+      alert(`"${title}" imported — ${nodes.length} nodes. Click the card to open.`);
+    } catch(err) { alert("Import failed: " + err.message); }
   };
-
-    const handleDelete = async (id, e) => {
-    e?.stopPropagation?.();
+  const handleDelete = async (id, e) => {
+    e.stopPropagation();
     if (!confirm("Delete this map? This cannot be undone.")) return;
     await deleteMap(id).catch(()=>{});
     setMaps(m=>m.filter(x=>x.id!==id));
   };
+
   return (
     <>
     <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"28px 20px" }}>
@@ -467,6 +463,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       </div>
     </div>
   )}
+  {shareMap && <ShareModal map={shareMap} onClose={()=>setShareMap(null)}/>}
 </>
   );
 }
