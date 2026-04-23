@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.23.2",date:"Apr 2026",items:[
+    "Canvas theme now actually applies: inline background overrides CSS vars when canvas theme differs from global",
+    "ThemePicker: backdrop click-to-close fixed (target check); theme cards get stopPropagation",
+  ]},
+  {v:"v5.23.1",date:"Apr 2026",items:[
+    "ThemePicker: ThemeGrid moved to module scope — was redefined each render causing click events to break",
+    "ThemePicker: backdrop onClick fixed to only close on direct click, not bubbled child events",
+  ]},
   {v:"v5.23.0",date:"Apr 2026",items:[
     "Node IP/Domain/Subnet/MAC fields on all network/server/device nodes",
     "Router & Switch port tables: configurable per-interface name, type, connected device, IP/VLAN",
@@ -33,6 +41,14 @@ export const CHANGELOG = [
     "Tutorial adapts to current page — shows dashboard or canvas steps accordingly",
     "Focus mode now dims edges (v5.19 fix carried over)",
     "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
+  ]},
+  {v:"v5.23.2",date:"Apr 2026",items:[
+    "Canvas theme now actually applies: inline background overrides CSS vars when canvas theme differs from global",
+    "ThemePicker: backdrop click-to-close fixed (target check); theme cards get stopPropagation",
+  ]},
+  {v:"v5.23.1",date:"Apr 2026",items:[
+    "ThemePicker: ThemeGrid moved to module scope — was redefined each render causing click events to break",
+    "ThemePicker: backdrop onClick fixed to only close on direct click, not bubbled child events",
   ]},
   {v:"v5.23.0",date:"Apr 2026",items:[
     "Node IP/Domain/Subnet/MAC fields on all network/server/device nodes",

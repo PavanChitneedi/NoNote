@@ -102,7 +102,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
               padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
               cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
-            v5.23.0 ✦ What's new
+            v5.23.2 ✦ What's new
           </button>
         </div>
 

@@ -2159,10 +2159,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   };
   const canvasBg = canvasTheme!=="global"&&THEMES[canvasTheme]
     ? THEMES[canvasTheme].vars["--bg"]
-    : "var(--bg)";
+    : undefined; // undefined = use CSS var
   const canvasDot = canvasTheme!=="global"&&THEMES[canvasTheme]
     ? THEMES[canvasTheme].vars["--canvas-dot"]
-    : "var(--canvas-dot)";
+    : undefined;
+
+  // Build inline canvas background style (overrides CSS vars when a canvas theme is set)
+  const canvasBgStyle = canvasBg
+    ? `radial-gradient(circle,${canvasDot} 1px,transparent 1px) center/28px 28px ${canvasBg}`
+    : "radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--canvas-bg)";
 
   // ── Search hit IDs for canvas highlight ──────────────────────
   const searchHitIds = useMemo(()=>new Set(searchResults.map(r=>r.node.id)),[searchResults]);
@@ -2997,7 +3002,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.23.0✦</button>
+              title="What's new">v5.23.2✦</button>
           </div>
         </div>
 
@@ -3383,11 +3388,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           style={{
             flex:1,overflow:"auto",position:"relative",
             cursor:mode==="connect"?"crosshair":dragging?"grabbing":"default",
-            background: canvasTheme==="grid"
-              ? "radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--canvas-bg)"
-              : canvasTheme==="lines"
-              ? "repeating-linear-gradient(var(--canvas-bg) 0px,var(--canvas-bg) 27px,var(--canvas-line) 28px) var(--canvas-bg)"
-              : "var(--canvas-bg)",
+            background: canvasBgStyle,
           }}>
           <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
             <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
