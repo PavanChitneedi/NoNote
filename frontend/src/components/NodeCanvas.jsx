@@ -840,6 +840,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showExport,   setShowExport]   = useState(false);
   const [showChat,     setShowChat]     = useState(false);
   const [showAppearance,setShowAppearance]=useState(false);
+  const [appearanceTab, setAppearanceTab] =useState("canvas");
   const [showVersions, setShowVersions] = useState(false);
   const [showExportMenu,  setShowExportMenu]  = useState(false);
   const [showAppMenu,     setShowAppMenu]     = useState(false);
@@ -2933,8 +2934,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   background:"var(--bg2)",border:"1px solid var(--border)",
                   borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",
                   padding:6,minWidth:160}}>
-                  {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
-                    <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
+                  {[["🎨","Theme & Colors","global"],["🖌","Canvas Style","canvas"]].map(([ic,lbl,tab])=>(
+                    <div key={lbl} onClick={()=>{setAppearanceTab(tab);setShowAppearance(true);setShowAppMenu(false);}}
                       style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",
                         cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
@@ -4178,7 +4179,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
-      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="canvas"/>}
+      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab={appearanceTab}/>}
 
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
