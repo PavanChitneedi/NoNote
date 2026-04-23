@@ -263,9 +263,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   const handleDuplicate = async (map) => {
     try {
-      const r = await apiFetch(`/maps/${map.id}/duplicate`, { method: "POST" });
-      if (r.ok) { const d = await r.json(); setMaps(m=>[d.map,...m]); }
-    } catch {}
+      const d = await apiFetch(`/maps/${map.id}/duplicate`, { method:"POST" });
+      if (d.map) setMaps(m=>[d.map,...m]);
+    } catch(e) { alert("Duplicate failed: "+e.message); }
   };
 
   const handleImportFile = (e) => {
