@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import { useDesign, DESIGNS } from "../context/DesignContext.jsx";
 
@@ -65,7 +66,7 @@ export default function ThemePicker({
     </div>
   );
 
-  return (
+  return createPortal(
     <div onClick={onClose}
       style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000, padding:16 }}>
       <div data-dev="ThemePicker.jsx | appearance & design settings modal" onClick={e => e.stopPropagation()}
@@ -229,6 +230,7 @@ export default function ThemePicker({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
