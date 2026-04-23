@@ -113,7 +113,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [showChangelog, setShowChangelog] = useState(false);
   const [menuMap,   setMenuMap]   = useState(null);
   const [renaming,  setRenaming]  = useState(null);
-  const [shareMap,  setShareMap]  = useState(null); // map object for inline share modal
+  const [shareMap,  setShareMap]  = useState(null);
   const { user, logout } = useAuth();
   const [maps, setMaps]       = useState([]);
   const [loading, setLoading] = useState(true);
@@ -121,25 +121,11 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [showNew, setShowNew] = useState(false);
   const [creating, setCreating]= useState(false);
   const [error, setError]     = useState("");
-  // Title conflict dialog
-  const [conflict, setConflict] = useState(null); // {title, resolve}
+  const [conflict, setConflict] = useState(null);
 
   useEffect(() => {
     getMaps().then(d=>setMaps(d.maps)).catch(e=>setError(e.message)).finally(()=>setLoading(false));
   }, []);
-
-  // Unique title helper — shows conflict UI if name taken
-  const createWithUnique = (title, nodes, edges) => new Promise((resolve, reject) => {
-    const existing = maps.find(m => m.title.toLowerCase() === title.toLowerCase());
-    if (existing) {
-      setConflict({ title, existing, resolve: (action) => {
-        setConflict(null);
-        resolve(action); // "overwrite" | "rename:{newTitle}" | "cancel"
-      }});
-    } else {
-      resolve("create");
-    }
-  });
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -267,7 +253,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
               padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
               cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
-            v5.24.0 ✦ What's new
+            v5.23.2 ✦ What's new
           </button>
         </div>
 
@@ -478,51 +464,6 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       </div>
     </div>
   )}
-
-  {/* Inline Share Modal */}
-  {shareMap && <ShareModal map={shareMap} onClose={()=>setShareMap(null)}/>}
-  {/* Conflict Dialog */}
-  {conflict && <ConflictDialog conflict={conflict}/>}
 </>
-  );
-}
-{/* ── Inline Share Modal ── */}
-  {shareMap && <ShareModal map={shareMap} onClose={()=>setShareMap(null)}/>}
-
-  {/* ── Title Conflict Dialog ── */}
-  {conflict && <ConflictDialog conflict={conflict}/>}
-
-function ConflictDialog({ conflict }) {
-  const [newName, setNewName] = React.useState(conflict.title + " (copy)");
-  return (
-    <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.72)",
-      display:"flex",alignItems:"center",justifyContent:"center"}}>
-      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,
-        width:"min(420px,94vw)",padding:26,boxShadow:"0 24px 64px rgba(0,0,0,.7)",
-        display:"flex",flexDirection:"column",gap:16}}>
-        <div style={{fontSize:15,fontWeight:700,color:"var(--text)"}}>Name Conflict</div>
-        <div style={{fontSize:13,color:"var(--text3)",lineHeight:1.6}}>
-          A map named <strong style={{color:"var(--text)"}}>{conflict.title}</strong> already exists.
-        </div>
-        <div>
-          <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1.5,marginBottom:6}}>RENAME</div>
-          <input value={newName} onChange={e=>setNewName(e.target.value)}
-            style={{width:"100%",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,
-              padding:"9px 12px",color:"var(--text)",fontSize:13,fontFamily:"inherit",
-              outline:"none",boxSizing:"border-box"}}/>
-        </div>
-        <div style={{display:"flex",gap:8}}>
-          <button onClick={()=>conflict.resolve("cancel")}
-            style={{padding:"9px 14px",background:"var(--bg3)",border:"none",borderRadius:8,
-              color:"var(--text3)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>Cancel</button>
-          <button onClick={()=>conflict.resolve("rename:"+(newName.trim()||conflict.title+" (copy)"))}
-            style={{flex:1,padding:"9px 14px",background:"var(--accent2)",border:"none",borderRadius:8,
-              color:"#fff",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>Save as new name</button>
-          <button onClick={()=>conflict.resolve("overwrite")}
-            style={{padding:"9px 14px",background:"var(--danger)22",border:"1px solid var(--danger)50",
-              borderRadius:8,color:"var(--danger)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"inherit"}}>Overwrite</button>
-        </div>
-      </div>
-    </div>
   );
 }
