@@ -145,18 +145,29 @@ export default function Tutorial({ page, onClose }) {
 
   return (
     <>
-      <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:9990,background:"rgba(0,0,0,0.75)"}}/>
-
-      {spotRect && (
-        <div style={{
-          position:"fixed", top:spotRect.top-5, left:spotRect.left-5,
-          width:spotRect.width+10, height:spotRect.height+10,
-          zIndex:9995, borderRadius:8,
-          border:`2px solid ${ACCENT}`,
-          boxShadow:`0 0 0 4px ${ACCENT}40,0 0 0 9999px rgba(0,0,0,0.75)`,
-          pointerEvents:"none", animation:"tut-pulse 2s ease-in-out infinite",
-        }}/>
+      {/* Full-screen dim — rendered only when NO spotlight so centered steps have a backdrop */}
+      {!spotRect && (
+        <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:9990,background:"rgba(0,0,0,0.72)"}}/>
       )}
+
+      {/* Spotlight: box-shadow creates the dark surround WITHOUT a separate overlay div.
+          This guarantees the highlighted element stays fully visible at 100% opacity. */}
+      {spotRect ? (
+        <div style={{
+          position:"fixed",
+          top: spotRect.top - 6,
+          left: spotRect.left - 6,
+          width: spotRect.width + 12,
+          height: spotRect.height + 12,
+          zIndex: 9995,
+          borderRadius: 10,
+          border: `2.5px solid ${ACCENT}`,
+          /* This single box-shadow dims the ENTIRE page except the spotlight area */
+          boxShadow: `0 0 0 3px ${ACCENT}55, 0 0 0 4000px rgba(0,0,0,0.76)`,
+          pointerEvents: "none",
+          animation: "tut-pulse 2s ease-in-out infinite",
+        }}/>
+      ) : null}
 
       <div ref={tipRef} style={ts} onClick={e => e.stopPropagation()}>
         {/* Progress */}
@@ -203,8 +214,8 @@ export default function Tutorial({ page, onClose }) {
 
       <style>{`
         @keyframes tut-pulse {
-          0%,100%{box-shadow:0 0 0 4px #58a6ff40,0 0 0 9999px rgba(0,0,0,0.75);}
-          50%{box-shadow:0 0 0 9px #58a6ff20,0 0 0 9999px rgba(0,0,0,0.75);}
+          0%,100%{box-shadow:0 0 0 3px #58a6ff55, 0 0 0 4000px rgba(0,0,0,0.76);}
+          50%   {box-shadow:0 0 0 8px #58a6ff22, 0 0 0 4000px rgba(0,0,0,0.76);}
         }
       `}</style>
     </>

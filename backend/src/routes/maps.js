@@ -1,5 +1,6 @@
 import { randomUUID as _uuid } from 'crypto';
 import { Router } from "express";
+import { appLog } from "../utils/logger.js";
 import { body, param, validationResult } from "express-validator";
 import { query, withTransaction } from "../db/pool.js";
 import { authenticate, mapPermission } from "../middleware/auth.js";

@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { appLog } from "../utils/logger.js";
 import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
 import { query, withTransaction } from "../db/pool.js";
@@ -255,7 +256,9 @@ router.patch("/:id", authenticate, async (req, res) => {
 router.delete("/:id", authenticate, requireRole("owner"), async (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
   try {
+    const ud = await query("SELECT email FROM users WHERE id=$1", [req.params.id]);
     await query("DELETE FROM users WHERE id=$1", [req.params.id]);
+    await appLog("warn","users",`User deleted: ${ud.rows[0]?.email||req.params.id}`, req.user.id);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Delete failed" });

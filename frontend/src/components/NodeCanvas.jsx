@@ -98,9 +98,21 @@ const DP = {
   decision:{Condition:"",Yes:"",No:""},
   annotation:{Reference:""},
   // Network
-  router:{Make:"",Model:"",Gateway:"",Protocol:"BGP",Firmware:""},
-  switch:{Make:"",Model:"",Ports:"24",VLAN:"",Layer:"L2"},
-  firewall:{Make:"",Model:"",Rules:"",Zone:"",OS:""},
+  router:{IP:"",Domain:"",Subnet:"",Gateway:"",Make:"",Model:"",Protocol:"BGP",Firmware:"",
+    Ports:[
+      {id:"eth0",label:"eth0",type:"LAN",connected:"",ip:""},
+      {id:"eth1",label:"eth1",type:"WAN",connected:"",ip:""},
+      {id:"eth2",label:"eth2",type:"LAN",connected:"",ip:""},
+      {id:"eth3",label:"eth3",type:"LAN",connected:"",ip:""},
+    ]},
+  switch:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",PortCount:"24",VLAN:"",Layer:"L2",
+    Ports:[
+      {id:"p1",label:"Port 1",type:"access",connected:"",vlan:""},
+      {id:"p2",label:"Port 2",type:"access",connected:"",vlan:""},
+      {id:"p3",label:"Port 3",type:"trunk",connected:"",vlan:""},
+      {id:"p4",label:"Port 4",type:"trunk",connected:"",vlan:""},
+    ]},
+  firewall:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",Rules:"",Zone:"",OS:""},
   loadbal:{Make:"",Model:"",Algorithm:"Round Robin",VIP:""},
   vpn:{Protocol:"IPSec",Endpoint:"",Peer:"",Tunnel:""},
   ap:{Make:"",Model:"",SSID:"",Band:"2.4GHz/5GHz",Channel:""},
@@ -109,14 +121,14 @@ const DP = {
   vlan:{ID:"",Name:"",Subnet:"",Tagged:""},
   proxy:{Type:"Forward",IP:"",Port:"3128",Auth:""},
   // Computers
-  desktop:{Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",IP:""},
+  desktop:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",User:""},
   laptop:{Make:"",Model:"",OS:"",CPU:"",RAM:"",User:""},
   workstation:{Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:""},
   thinclnt:{Make:"",Model:"",OS:"",Server:""},
   kiosk:{Make:"",OS:"",Location:"",App:""},
   // Servers
-  server:{Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",IP:""},
-  webserver:{Software:"Nginx",Version:"",Port:"443",SSL:"Yes"},
+  server:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",Port:""},
+  webserver:{IP:"",Domain:"",Subnet:"",Software:"Nginx",Version:"",Port:"443",SSL:"Yes",CertExpiry:""},
   appserver:{Runtime:"",Version:"",Port:"",Instances:""},
   dbserver:{Engine:"PostgreSQL",Version:"",Port:"5432",RAM:""},
   fileserver:{OS:"",Shares:"",Storage:"",Protocol:"SMB"},
@@ -140,18 +152,18 @@ const DP = {
   gateway:{Make:"",Model:"",Protocol:"",Upstream:""},
   hvac:{Make:"",Model:"",Zone:"",Protocol:"BACnet"},
   // Cloud
-  cloud:{Provider:"AWS",Region:"",Service:"",Account:""},
+  cloud:{IP:"",Domain:"",Provider:"AWS",Region:"",Service:"",Account:""},
   lambda:{Runtime:"Node.js 20",Trigger:"",Memory:"256MB",Timeout:"30s"},
   queue:{Type:"SQS",MaxSize:"",DLQ:"",Delay:""},
   cdn:{Provider:"CloudFront",Origin:"",TTL:"3600",Geo:""},
   s3:{Provider:"AWS",Bucket:"",Region:"",Access:"Private"},
   k8s:{Cluster:"",Namespace:"",Replicas:"",Version:""},
-  container:{Image:"",Tag:"latest",Port:"",Registry:""},
+  container:{IP:"",Domain:"",Port:"",Image:"",Tag:"latest",Registry:""},
   apigateway:{Provider:"AWS",Stage:"",Auth:"",Throttle:""},
   // Software
   software:{Version:"",License:"",Port:"",Platform:""},
   api:{Endpoint:"",Method:"REST",Auth:"Bearer",Version:"v1"},
-  database:{Engine:"PostgreSQL",Port:"5432",Schema:"",HA:""},
+  database:{IP:"",Domain:"",Port:"5432",Engine:"PostgreSQL",Schema:"",HA:"",Backup:""},
   service:{URL:"",Status:"Running",Port:"",SLA:""},
   microservice:{Language:"",Port:"",Version:"",Replicas:""},
   cache:{Type:"Redis",Port:"6379",MaxMem:"",Eviction:"LRU"},
@@ -2525,9 +2537,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           )}
 
           {/* ── Row 3: node type — right-aligned, very subtle ── */}
-          <div style={{display:"flex",justifyContent:"flex-end",marginTop:2,paddingRight:2}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2,paddingRight:2}}>
+            {/* IP / Domain quick badge */}
+            {(node.properties?.IP||node.properties?.Domain)&&(
+              <span style={{fontSize:8,color:`${t.color}99`,letterSpacing:.3,fontFamily:"monospace",
+                background:`${t.color}14`,borderRadius:3,padding:"0 4px",userSelect:"none",
+                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>
+                {node.properties.IP||node.properties.Domain}
+              </span>
+            )}
             <span style={{fontSize:8,color:`${t.color}80`,letterSpacing:.5,fontWeight:400,
-              fontFamily:"var(--font-ui)",userSelect:"none"}}>
+              fontFamily:"var(--font-ui)",userSelect:"none",marginLeft:"auto"}}>
               {t.label}
             </span>
           </div>
@@ -2554,11 +2574,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <button onMouseDown={e=>e.stopPropagation()}
                   onClick={e=>{
                     e.stopPropagation();
-                    const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false};
+                    const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false,editing:true};
                     const arr=[...(Array.isArray(node.notes)?node.notes:[]),newNote];
                     updateNotes(node.id,arr);
-                    // Open popup to edit immediately
-                    setNodePopup({nodeId:node.id,tab:"notes"});
+                    // Show notes inline and open for editing
+                    updateNode(node.id,{showNotes:true});
                   }}
                   title="Add note (opens editor)"
                   style={{display:"flex",alignItems:"center",gap:2,background:"none",border:`1px solid ${t.color}40`,
@@ -2977,7 +2997,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.22✦</button>
+              title="What's new">v5.23.0✦</button>
           </div>
         </div>
 
@@ -3906,7 +3926,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
               {[
-                {v:"v5.22",date:"Apr 2026",items:[
+                {v:"v5.23.0",date:"Apr 2026",items:[
+    "Node properties: IP, Domain, Subnet, MAC added to all network/server/device nodes",
+    "Router & Switch: configurable port tables (interface name, type, connected device, IP/VLAN)",
+    "New note: creates inline directly on node, no popup required",
+    "ThemePicker z-index fixed — theme selection now works from canvas view",
+    "Tutorial spotlight fixed: darkened overlay using box-shadow only, target stays 100% bright",
+    "Admin logs: appLog wired to login, user create/delete, map create events",
+    "Versioning: semantic versioning (major.minor.patch) going forward",
+  ]},
+  {v:"v5.22",date:"Apr 2026",items:[
                   "Browser back button now navigates within app (pushState History API)",
                   "Changelog now shared across Dashboard and canvas — always up to date",
                   "Word (.docx) export: Normal mode — structured documentation from nodes/notes/edges",
@@ -3930,7 +3959,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   "Focus mode now dims edges (v5.19 fix carried over)",
                   "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
                 ]},
-                {v:"v5.22",date:"Apr 2026",items:[
+                {v:"v5.23.0",date:"Apr 2026",items:[
+    "Node properties: IP, Domain, Subnet, MAC added to all network/server/device nodes",
+    "Router & Switch: configurable port tables (interface name, type, connected device, IP/VLAN)",
+    "New note: creates inline directly on node, no popup required",
+    "ThemePicker z-index fixed — theme selection now works from canvas view",
+    "Tutorial spotlight fixed: darkened overlay using box-shadow only, target stays 100% bright",
+    "Admin logs: appLog wired to login, user create/delete, map create events",
+    "Versioning: semantic versioning (major.minor.patch) going forward",
+  ]},
+  {v:"v5.22",date:"Apr 2026",items:[
                   "Browser back button now navigates within app (pushState History API)",
                   "Changelog now shared across Dashboard and canvas — always up to date",
                   "Word (.docx) export: Normal mode — structured documentation from nodes/notes/edges",
@@ -4176,7 +4214,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
-      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="canvas"/>}
+      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="global"/>}
 
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -4517,9 +4555,65 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
             ))}
           </div>
         </div>
-        {Object.keys(node.properties||{}).length>0&&<>
+        {/* ── PORTS / INTERFACES section (router, switch only) ── */}
+        {Array.isArray(node.properties?.Ports)&&(
+          <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>PORTS / INTERFACES</span>
+              {canEdit&&<button onClick={()=>{
+                const ports=[...(node.properties.Ports||[]),
+                  {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:"access",connected:"",ip:"",vlan:""}];
+                onUpdateProp(node.id,"Ports",ports);
+              }} style={{fontSize:10,background:"none",border:"1px solid var(--border)",
+                borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",
+                padding:"2px 8px",fontFamily:"inherit"}}>+ Port</button>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr",gap:4}}>
+              {(node.properties.Ports||[]).map((port,pi)=>(
+                <div key={port.id||pi} style={{display:"grid",
+                  gridTemplateColumns:"60px 70px 1fr 1fr auto",
+                  gap:4,alignItems:"center",
+                  background:"var(--bg3)",borderRadius:6,padding:"5px 8px",
+                  border:"1px solid var(--border2)"}}>
+                  {/* Label */}
+                  <input value={port.label||""} placeholder="eth0"
+                    disabled={!canEdit}
+                    onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],label:e.target.value};onUpdateProp(node.id,"Ports",p);}}
+                    style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0,fontFamily:"monospace"}}/>
+                  {/* Type */}
+                  <select value={port.type||"access"} disabled={!canEdit}
+                    onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],type:e.target.value};onUpdateProp(node.id,"Ports",p);}}
+                    style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0}}>
+                    <option value="access">Access</option>
+                    <option value="trunk">Trunk</option>
+                    <option value="WAN">WAN</option>
+                    <option value="LAN">LAN</option>
+                    <option value="mgmt">Mgmt</option>
+                    <option value="uplink">Uplink</option>
+                  </select>
+                  {/* Connected device */}
+                  <input value={port.connected||""} placeholder="Connected to…"
+                    disabled={!canEdit}
+                    onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],connected:e.target.value};onUpdateProp(node.id,"Ports",p);}}
+                    style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0}}/>
+                  {/* IP or VLAN */}
+                  <input value={port.ip||port.vlan||""} placeholder="IP / VLAN"
+                    disabled={!canEdit}
+                    onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],ip:e.target.value,vlan:e.target.value};onUpdateProp(node.id,"Ports",p);}}
+                    style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0}}/>
+                  {canEdit&&<button onClick={()=>{const p=(node.properties.Ports||[]).filter((_,i)=>i!==pi);onUpdateProp(node.id,"Ports",p);}}
+                    style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:14,flexShrink:0,lineHeight:1}}>×</button>}
+                </div>
+              ))}
+              {!(node.properties?.Ports?.length)&&(
+                <div style={{fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>No ports configured</div>
+              )}
+            </div>
+          </div>
+        )}
+        {Object.keys(node.properties||{}).filter(k=>k!=="Ports").length>0&&<>
           <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>TEMPLATE PROPERTIES</div>
-          {Object.entries(node.properties||{}).map(([k,v])=>(
+          {Object.entries(node.properties||{}).filter(([k,v])=>k!=="Ports"&&!Array.isArray(v)).map(([k,v])=>(
             <div key={k}>
               <label style={{fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:3,display:"block",color:`${t.color}cc`}}>{k.toUpperCase()}</label>
               <input value={v} onChange={e=>onUpdateProp(node.id,k,e.target.value)} disabled={!canEdit} style={inp()}/>

@@ -312,7 +312,7 @@ export default function AdminPanel({ onBack }) {
   const settingsCats = [...new Set(GLOBAL_SETTINGS.map(s=>s.cat))];
 
   return (
-    <div style={{padding:"24px",maxWidth:920,margin:"0 auto"}}>
+    <div style={{padding:"24px",maxWidth:920,margin:"0 auto",minHeight:"100vh"}}>
 
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>

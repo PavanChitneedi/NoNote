@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { appLog } from "../utils/logger.js";
 import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
@@ -66,10 +67,8 @@ router.post(
       });
 
       // Audit
-      await query(
-        "INSERT INTO audit_log (user_id, action, ip_address) VALUES ($1, 'login', $2)",
-        [user.id, req.ip]
-      );
+      try { await query("INSERT INTO audit_log (user_id, action, ip_address) VALUES ($1, 'login', $2)", [user.id, req.ip]); } catch {}
+      await appLog('info', 'auth', `User login: ${user.email}`, user.id, { ip: req.ip });
 
       res.json({
         access_token: access,

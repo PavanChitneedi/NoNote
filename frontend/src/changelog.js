@@ -1,6 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.23.0",date:"Apr 2026",items:[
+    "Node IP/Domain/Subnet/MAC fields on all network/server/device nodes",
+    "Router & Switch port tables: configurable per-interface name, type, connected device, IP/VLAN",
+    "Inline new note creation on nodes — no popup required",
+    "ThemePicker: fixed z-index so theme selection works from canvas",
+    "Tutorial spotlight: proper darkening — target element stays fully visible",
+    "Admin logs now populated: login, user create/delete, map create events",
+    "Versioning: semantic versioning (major.minor.patch) from this version onwards",
+  ]},
   {v:"v5.22",date:"Apr 2026",items:[
     "Browser back button now navigates within app (History API pushState)",
     "Changelog shared across Dashboard and canvas — single source of truth",
@@ -24,6 +33,15 @@ export const CHANGELOG = [
     "Tutorial adapts to current page — shows dashboard or canvas steps accordingly",
     "Focus mode now dims edges (v5.19 fix carried over)",
     "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
+  ]},
+  {v:"v5.23.0",date:"Apr 2026",items:[
+    "Node IP/Domain/Subnet/MAC fields on all network/server/device nodes",
+    "Router & Switch port tables: configurable per-interface name, type, connected device, IP/VLAN",
+    "Inline new note creation on nodes — no popup required",
+    "ThemePicker: fixed z-index so theme selection works from canvas",
+    "Tutorial spotlight: proper darkening — target element stays fully visible",
+    "Admin logs now populated: login, user create/delete, map create events",
+    "Versioning: semantic versioning (major.minor.patch) from this version onwards",
   ]},
   {v:"v5.22",date:"Apr 2026",items:[
     "Browser back button now navigates within app (History API pushState)",
