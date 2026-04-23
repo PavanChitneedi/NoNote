@@ -46,13 +46,6 @@ router.post(
   async (req, res) => {
     try {
       const { title, description = "" } = req.body;
-      // Check uniqueness for this user
-      const exist = await query(
-        "SELECT id FROM maps WHERE owner_id=$1 AND LOWER(title)=LOWER($2)",
-        [req.user.id, title]
-      );
-      if (exist.rows.length)
-        return res.status(409).json({ error: "A map with that name already exists", conflictId: exist.rows[0].id });
       const { rows } = await query(
         `INSERT INTO maps (title, description, owner_id) VALUES ($1, $2, $3) RETURNING *`,
         [title, description, req.user.id]

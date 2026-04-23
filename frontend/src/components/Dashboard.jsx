@@ -159,17 +159,25 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     try {
       const d = await apiFetch(`/maps/${map.id}/duplicate`, { method:"POST" });
       if (d.map) setMaps(m=>[d.map,...m]);
-    } catch(e) { alert("Duplicate failed: "+e.message); }
+    } catch(e) {
+      if (e.message?.includes("already exists")) {
+        try {
+          const src = await apiFetch(`/maps/${map.id}`);
+          const newTitle = (src.map?.title || map.title) + " (copy)";
+          const nd = await createMap({ title: newTitle });
+          await saveMap(nd.map.id, { nodes: src.nodes||[], edges: src.edges||[], groupBoxes:[] });
+          setMaps(m=>[{...nd.map, title:newTitle},...m]);
+        } catch(e2) { alert("Duplicate failed: "+e2.message); }
+      } else { alert("Duplicate failed: "+e.message); }
+    }
   };
 
   const handleExportNoNote = async (map) => {
     try {
       const d = await apiFetch(`/maps/${map.id}`);
-      // apiFetch already returns parsed JSON
-      const data = d.map || d;
       const bundle = {
         version:1, app:"NoNote",
-        title: data.title || map.title,
+        title: d.map?.title || map.title,
         exported: new Date().toISOString(),
         nodes: d.nodes || [],
         edges: d.edges || [],
@@ -194,42 +202,37 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         const nodes = b.nodes.map(n=>({...n, notes:Array.isArray(n.notes)?n.notes:[]}));
         const edges = b.edges || [];
 
-        // Check for title conflict
+        const doImport = async (finalTitle, overwriteId) => {
+          if (overwriteId) {
+            await saveMap(overwriteId, { nodes, edges, groupBoxes:[] });
+            setMaps(m=>m.map(x=>x.id===overwriteId?{...x,title:finalTitle}:x));
+            alert(`"${finalTitle}" updated with imported data.`);
+          } else {
+            const d = await createMap({ title: finalTitle });
+            await saveMap(d.map.id, { nodes, edges, groupBoxes:[] });
+            setMaps(m=>[{...d.map, title:finalTitle},...m]);
+            alert(`"${finalTitle}" imported (${nodes.length} nodes). Click to open.`);
+          }
+        };
+
         const existing = maps.find(m=>m.title.toLowerCase()===title.toLowerCase());
         if (existing) {
           setConflict({ title, existing, resolve: async (action) => {
             setConflict(null);
             if (action==="cancel") return;
-            if (action==="overwrite") {
-              // Overwrite existing map's data
-              await saveMap(existing.id, { nodes, edges, groupBoxes:[] });
-              alert(`Map "${title}" overwritten with imported data.`);
-              setMaps(m=>m.map(x=>x.id===existing.id?{...x,title}:x));
-            } else {
-              // Rename: action = "rename:NewTitle"
-              const finalTitle = action.startsWith("rename:") ? action.slice(7) : title+" (imported)";
-              const d = await createMap({ title:finalTitle });
-              await saveMap(d.map.id, { nodes, edges, groupBoxes:[] });
-              setMaps(m=>[{...d.map,title:finalTitle},...m]);
-              alert(`Imported as "${finalTitle}". Map is saved to your dashboard.`);
-            }
+            if (action==="overwrite") await doImport(title, existing.id);
+            else await doImport(action.startsWith("rename:") ? action.slice(7) : title+" (copy)", null);
           }});
           return;
         }
-
-        // No conflict — create and save
-        const d = await createMap({ title });
-        if (!d.map?.id) throw new Error("Failed to create map");
-        await saveMap(d.map.id, { nodes, edges, groupBoxes:[] });
-        setMaps(m=>[{...d.map,title},...m]);
-        alert(`"${title}" imported successfully (${nodes.length} nodes). Click to open.`);
+        await doImport(title, null);
       } catch(err) { alert("Import failed: "+err.message); }
     };
     reader.readAsText(f);
     e.target.value="";
   };
 
-  const handleDelete = async (id, e) => {
+    const handleDelete = async (id, e) => {
     e?.stopPropagation?.();
     if (!confirm("Delete this map? This cannot be undone.")) return;
     await deleteMap(id).catch(()=>{});
