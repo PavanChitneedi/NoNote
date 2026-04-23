@@ -159,10 +159,25 @@ router.post(
       const orig = await query("SELECT * FROM maps WHERE id=$1",[req.params.mapId]);
       if (!orig.rows.length) return res.status(404).json({error:"Not found"});
       const m = orig.rows[0];
+      // Create new map
       const newMap = await query(
-        `INSERT INTO maps (owner_id,title,description,node_data,edge_data,is_public)
-         VALUES ($1,$2,$3,$4,$5,$6) RETURNING *`,
-        [req.user.id, m.title+" (copy)", m.description, m.node_data, m.edge_data, false]
+        `INSERT INTO maps (owner_id, title, description, is_public) VALUES ($1,$2,$3,false) RETURNING *`,
+        [req.user.id, m.title + " (copy)", m.description]
+      );
+      const newId = newMap.rows[0].id;
+      // Copy nodes from map_nodes table (NOT the legacy node_data column)
+      await query(
+        `INSERT INTO map_nodes (id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,z_index)
+         SELECT id,$1,node_type,title,x,y,w,h,properties,custom_props,notes,z_index
+         FROM map_nodes WHERE map_id=$2`,
+        [newId, req.params.mapId]
+      );
+      // Copy edges
+      await query(
+        `INSERT INTO map_edges (id,map_id,from_node,to_node,style,color,label,from_anchor,to_anchor,mid_off)
+         SELECT id,$1,from_node,to_node,style,color,label,from_anchor,to_anchor,mid_off
+         FROM map_edges WHERE map_id=$2`,
+        [newId, req.params.mapId]
       );
       res.json({ map: newMap.rows[0] });
     } catch (err) {
