@@ -249,56 +249,6 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     await deleteMap(id).catch(()=>{});
     setMaps(m=>m.filter(x=>x.id!==id));
   };
-
-  const handleRename = async (id, title) => {
-    try {
-      await apiFetch(`/maps/${id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ title })
-      });
-      setMaps(m => m.map(x => x.id===id ? {...x,title} : x));
-    } catch {}
-    setRenaming(null);
-  };
-
-  const handleDuplicate = async (map) => {
-    try {
-      const d = await apiFetch(`/maps/${map.id}/duplicate`, { method:"POST" });
-      if (d.map) setMaps(m=>[d.map,...m]);
-    } catch(e) { alert("Duplicate failed: "+e.message); }
-  };
-
-  const handleImportFile = (e) => {
-    const f = e.target.files?.[0]; if(!f) return;
-    const r = new FileReader();
-    r.onload = async ev => {
-      try {
-        const b = JSON.parse(ev.target.result);
-        if (b.app === "NoNote" && b.nodes) {
-          // Create map then populate it
-          const d = await createMap({ title: b.title||f.name.replace(/\.nonote$/,"") });
-          if (d.map?.id) {
-            await fetch(`/api/maps/${d.map.id}/save`, {
-              method: "POST",
-              headers: { "Content-Type":"application/json", Authorization:`Bearer ${localStorage.getItem('nn_token')}` },
-              body: JSON.stringify({ nodes: b.nodes, edges: b.edges||[] })
-            });
-            onOpenMap(d.map.id);
-          }
-        } else { alert("Not a valid .nonote file"); }
-      } catch(err) { alert("Could not read file: "+err.message); }
-    };
-    r.readAsText(f);
-    e.target.value = "";
-  };
-
-  const handleDelete = async (id, e) => {
-    e.stopPropagation();
-    if (!confirm("Delete this map? This cannot be undone.")) return;
-    await deleteMap(id).catch(()=>{});
-    setMaps(m=>m.filter(x=>x.id!==id));
-  };
-
   return (
     <>
     <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"28px 20px" }}>
