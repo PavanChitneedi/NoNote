@@ -469,7 +469,7 @@ router.get("/logs", authenticate, async (req, res) => {
     );
     const total = await query(`SELECT COUNT(*) FROM app_logs ${where}`, params.slice(0,-2));
     res.json({ logs: rows.rows, total: parseInt(total.rows[0].count) });
-  } catch { res.status(500).json({ error: "Failed to fetch logs" }); }
+  } catch(err) { console.error("[logs] fetch error:", err); res.status(500).json({ error: "Failed to fetch logs: " + err.message }); }
 });
 
 router.get("/logs/retention", authenticate, async (req, res) => {

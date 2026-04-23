@@ -84,7 +84,7 @@ function AppInner() {
   const showHeader = view.page !== "canvas";
 
   return (
-    <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column" }}>
+    <div style={{ height:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
       {/* ── Global header (dashboard + admin) ── */}
       {showHeader && (

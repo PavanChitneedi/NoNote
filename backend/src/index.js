@@ -333,4 +333,9 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
   console.log(`[server] NodeMap API + WS running on :${PORT}`);
   await runMigrations().catch(console.error);
   await seedAdmin().catch(console.error);
+  // Seed a startup log entry so the Logs tab is never empty
+  try {
+    const { appLog } = await import("./utils/logger.js");
+    await appLog("info", "system", `Server started on port ${PORT} — NoNote v5.23.0`);
+  } catch {}
 });

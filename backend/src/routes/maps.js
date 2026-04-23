@@ -52,6 +52,7 @@ router.post(
         [title, description, req.user.id]
       );
       res.status(201).json({ map: rows[0] });
+      appLog("info", "maps", `Map created: "${rows[0].title}"`, req.user.id).catch(()=>{});
     } catch (err) {
       console.error("[maps] create error:", err);
       res.status(500).json({ error: "Failed to create map" });
