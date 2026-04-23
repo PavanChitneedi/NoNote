@@ -3,7 +3,6 @@ import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
 import { query, withTransaction } from "../db/pool.js";
 import { authenticate, requireRole } from "../middleware/auth.js";
-import { appLog } from "../utils/logger.js";
 
 const router = Router();
 const ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12");
@@ -194,7 +193,6 @@ router.post("/",
          RETURNING id, email, display_name, role, is_active, avatar_color`,
         [email, display_name, hash, role, is_active]
       );
-      appLog("info", "users", `Admin created user: ${email} (${role})`, req.user.id, { target_email: email, role });
       res.status(201).json({ user: { ...rows[0], groups: [] } });
     } catch (err) {
       if (err.code === "23505") return res.status(409).json({ error: "Email already exists" });
@@ -245,7 +243,6 @@ router.patch("/:id", authenticate, async (req, res) => {
       vals
     );
     if (!rows.length) return res.status(404).json({ error: "User not found" });
-    if (!isSelf) appLog("info", "users", `Admin updated user ${req.params.id}`, req.user.id, { fields: Object.keys(req.body) });
     res.json({ user: rows[0] });
   } catch (err) {
     if (err.code === "23505") return res.status(409).json({ error: "Email already in use" });
@@ -259,7 +256,6 @@ router.delete("/:id", authenticate, requireRole("owner"), async (req, res) => {
   if (req.params.id === req.user.id) return res.status(400).json({ error: "Cannot delete yourself" });
   try {
     await query("DELETE FROM users WHERE id=$1", [req.params.id]);
-    appLog("warn", "users", `Admin deleted user ${req.params.id}`, req.user.id);
     res.json({ ok: true });
   } catch (err) {
     res.status(500).json({ error: "Delete failed" });

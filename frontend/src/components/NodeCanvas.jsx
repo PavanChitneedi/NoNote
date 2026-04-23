@@ -7,6 +7,7 @@ import Tutorial       from "./Tutorial.jsx";
 import HelpGuide      from "./HelpGuide.jsx";
 import DocExportModal  from "./DocExportModal.jsx";
 import { CHANGELOG } from "../changelog.js";
+import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
 // ── Node types ────────────────────────────────────────────────
@@ -804,7 +805,7 @@ const inp=()=>({
 // ─────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────
-export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) {
+export default function NodeCanvas({ mapId, onBack, onHome }) {
   const { user }             = useAuth();
   const { themeName, theme } = useTheme();
   const canEdit              = ["owner","admin","editor"].includes(user?.role);
@@ -838,6 +839,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
   const [propsMode,    setPropsMode]    = useState(()=>localStorage.getItem('nn_props_mode')||'popup'); // 'popup'|'panel'
   const [showExport,   setShowExport]   = useState(false);
   const [showChat,     setShowChat]     = useState(false);
+  const [showAppearance,setShowAppearance]=useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [showExportMenu,  setShowExportMenu]  = useState(false);
   const [showAppMenu,     setShowAppMenu]     = useState(false);
@@ -2750,10 +2752,10 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
   });
 
   return (
-    <div data-dev="NodeCanvas.jsx" style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
+    <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
 
       {/* ── Topbar ── */}
-      <div data-dev="NodeCanvas.jsx | topbar" style={{
+      <div style={{
         background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
         flexShrink:0,overflow:"visible",position:"relative",zIndex:10,
       }}>
@@ -2763,12 +2765,12 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
             LEFT:  ⬡ home | ← Maps | map title | save status | presence
             RIGHT: icon-only buttons (tooltip = label) for all app actions
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div data-dev="NodeCanvas.jsx | topbar | row 1 (app bar)" style={{height:40,display:"flex",alignItems:"center",gap:0,
+        <div style={{height:40,display:"flex",alignItems:"center",gap:0,
           padding:"0 8px",borderBottom:"1px solid var(--border2)"}}
           data-tut="topbar-row1" onKeyDown={e=>e.stopPropagation()}>
 
           {/* ── LEFT: nav + title + presence ── */}
-          <div data-dev="NodeCanvas.jsx | topbar | row 1 | nav & title" style={{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}}>
             <span onClick={onHome} title="Home"
               style={{fontSize:17,cursor:"pointer",padding:"0 3px",userSelect:"none",lineHeight:1}}>⬡</span>
             <button onClick={onBack} style={{...tbtn(false),fontSize:10,padding:"2px 8px"}}
@@ -2830,7 +2832,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
           </div>
 
           {/* ── RIGHT: icon-only app actions ── */}
-          <div data-dev="NodeCanvas.jsx | topbar | row 1 | action buttons (right)" style={{display:"flex",alignItems:"center",gap:1,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:1,flexShrink:0}}>
 
             {/* ── Group A: Map resources ── */}
             <button onClick={()=>setShowTemplates(v=>!v)}
@@ -2931,8 +2933,8 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
                   background:"var(--bg2)",border:"1px solid var(--border)",
                   borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",
                   padding:6,minWidth:160}}>
-                  {[["🎨","Theme & Colors","global"],["🖌","Canvas Style","canvas"]].map(([ic,lbl,tab])=>(
-                    <div key={lbl} onClick={()=>{onOpenAppearance(tab,canvasTheme,t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);});setShowAppMenu(false);}}
+                  {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
+                    <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
                       style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",
                         cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
@@ -2947,7 +2949,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
             {/* ── Zoom control ── */}
-            <div data-dev="NodeCanvas.jsx | topbar | row 1 | zoom control" style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",
+            <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",
               borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
               <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))}
                 style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>−</button>
@@ -2986,11 +2988,11 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
             Right: Selection tools (what happens to selected items)
                    + Side panels (AI chat, comments)
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
-        <div data-dev="NodeCanvas.jsx | topbar | row 2 (editing toolbar)" style={{height:36,display:"flex",alignItems:"center",gap:0,padding:"0 8px"}}
+        <div style={{height:36,display:"flex",alignItems:"center",gap:0,padding:"0 8px"}}
           onKeyDown={e=>e.stopPropagation()}>
 
           {/* ── MODE GROUP ── edit/view + props mode ── */}
-          <div data-dev="NodeCanvas.jsx | topbar | row 2 | mode controls (Edit/View + Popup/Panel)" style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+          <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
             {canEdit&&(
               <button onClick={()=>setEditMode(v=>!v)}
                 style={{...tbtn(!editMode,"var(--success)"),minWidth:58}}
@@ -3034,7 +3036,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
             <div style={{width:1,height:20,background:"var(--border)",flexShrink:0,margin:"0 6px"}}/>
 
             {/* ── DRAWING TOOLS GROUP ── what you're creating/arranging ── */}
-            <div data-dev="NodeCanvas.jsx | topbar | row 2 | drawing tools (Select/Connect/Group)" style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+            <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
               <button onClick={()=>{setMode("select");setDrawingEdge(null);}} data-tut="mode-select" style={tbtn(mode==="select","var(--accent2)")} title="Select mode (S)">↖ Select</button>
               <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} data-tut="mode-connect" style={tbtn(mode==="connect","#6C63FF")} title="Connect nodes (C)">⤳ Connect</button>
               <button onClick={()=>setMode(m=>m==="groupbox"?"select":"groupbox")}
@@ -3177,7 +3179,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
             onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
 
           {/* Command palette panel */}
-          <div data-dev="NodeCanvas.jsx | search / command palette (Ctrl+F)" style={{
+          <div style={{
             position:"fixed",top:"12%",left:"50%",transform:"translateX(-50%)",
             width:620,maxWidth:"92vw",zIndex:601,
             background:"var(--bg2)",
@@ -3315,7 +3317,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
         </>
       )}
       {/* ── Main area: sidebar + canvas + right panels ── */}
-      <div data-dev="NodeCanvas.jsx | main area" style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
+      <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
 
         {/* Left: Node Library Sidebar */}
         {!isMobile&&(
@@ -3333,7 +3335,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
         )}
 
         {/* Canvas */}
-        <div data-dev="NodeCanvas.jsx | canvas (scroll container)" ref={canvasRef}
+        <div ref={canvasRef}
           onMouseDown={handleCanvasMouseDown}
           onClick={e=>{
             if(e.target.closest(".nn-node")) return;
@@ -3362,10 +3364,10 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
             flex:1,overflow:"auto",position:"relative",
             cursor:mode==="connect"?"crosshair":dragging?"grabbing":"default",
             background: canvasTheme==="grid"
-              ? `radial-gradient(circle,${canvasDot} 1px,transparent 1px) center/28px 28px ${canvasBg}`
+              ? "radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--canvas-bg)"
               : canvasTheme==="lines"
-              ? `repeating-linear-gradient(${canvasBg} 0px,${canvasBg} 27px,${canvasDot} 28px) ${canvasBg}`
-              : canvasBg,
+              ? "repeating-linear-gradient(var(--canvas-bg) 0px,var(--canvas-bg) 27px,var(--canvas-line) 28px) var(--canvas-bg)"
+              : "var(--canvas-bg)",
           }}>
           <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
             <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
@@ -3589,7 +3591,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
 
         {/* Right panels */}
         {showTemplates&&(
-          <div data-dev="NodeCanvas.jsx | right panel | Template Library" style={{width:300,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
+          <div style={{width:300,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
               <span style={{fontSize:13}}>📋</span>
               <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",flex:1}}>TEMPLATE LIBRARY</span>
@@ -3612,7 +3614,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
         )}
 
         {showComments&&(
-          <div data-dev="NodeCanvas.jsx | right panel | Comments" style={{width:290,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
+          <div style={{width:290,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
               <span style={{fontSize:13}}>🗨</span>
               <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",flex:1}}>
@@ -3632,7 +3634,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
         )}
 
         {showChat&&(
-          <div data-dev="NodeCanvas.jsx | right panel | AI Chat (→ LLMChat.jsx)" style={{width:320,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
+          <div style={{width:320,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
               <span style={{fontSize:13}}>💬</span>
               <span style={{fontSize:11,fontWeight:700,color:"#6C63FF",flex:1}}>AI CHAT</span>
@@ -3644,21 +3646,19 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
 
         {/* Props Panel — panel mode */}
         {selectedNode&&propsMode==='panel'&&(showProps||!isMobile)&&(
-          <div data-dev="NodeCanvas.jsx | right panel | Node Properties (PropsPanel)">
-            <PropsPanel node={selectedNode} edges={edges} nodes={nodes}
-              isMobile={isMobile} canEdit={canEdit&&editMode}
-              onClose={()=>setShowProps(false)}
-              onUpdate={updateNode} onUpdateProp={updateProp}
-              onUpdateCustom={updateCustom} onDeleteCustom={deleteCustom}
-              onAddCustom={()=>{const k=`field_${Object.keys(selectedNode.customProps||{}).length+1}`;updateCustom(selectedNode.id,k,"");}}
-              onUpdateEdge={(eid,u)=>applyEdges(es=>es.map(e=>e.id===eid?{...e,...u}:e))}
-              onDeleteEdge={eid=>applyEdges(es=>es.filter(e=>e.id!==eid))}
-              onResetSize={()=>resetSize(selectedNode.id)}
-              onUpdateNotes={updateNotes}
-              onStartEditTitle={()=>canEdit&&editMode&&setEditingTitle(selectedNode.id)}
-              onToggleCollapse={()=>toggleCollapse(selectedNode.id)}
-            />
-          </div>
+          <PropsPanel node={selectedNode} edges={edges} nodes={nodes}
+            isMobile={isMobile} canEdit={canEdit&&editMode}
+            onClose={()=>setShowProps(false)}
+            onUpdate={updateNode} onUpdateProp={updateProp}
+            onUpdateCustom={updateCustom} onDeleteCustom={deleteCustom}
+            onAddCustom={()=>{const k=`field_${Object.keys(selectedNode.customProps||{}).length+1}`;updateCustom(selectedNode.id,k,"");}}
+            onUpdateEdge={(eid,u)=>applyEdges(es=>es.map(e=>e.id===eid?{...e,...u}:e))}
+            onDeleteEdge={eid=>applyEdges(es=>es.filter(e=>e.id!==eid))}
+            onResetSize={()=>resetSize(selectedNode.id)}
+            onUpdateNotes={updateNotes}
+            onStartEditTitle={()=>canEdit&&editMode&&setEditingTitle(selectedNode.id)}
+            onToggleCollapse={()=>toggleCollapse(selectedNode.id)}
+          />
         )}
 
         {/* Context Menu */}
@@ -3699,7 +3699,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
 
       {/* ── Collab Change Log Panel ── */}
       {showCollabLog&&(
-        <div data-dev="NodeCanvas.jsx | collab change log panel" style={{position:"fixed",top:76,right:8,zIndex:800,width:320,maxHeight:"70vh",
+        <div style={{position:"fixed",top:76,right:8,zIndex:800,width:320,maxHeight:"70vh",
           background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
           boxShadow:"0 12px 40px rgba(0,0,0,.6)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",padding:"10px 14px",
@@ -3750,7 +3750,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
       {showShare&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>{setShowShare(false);setShareStatus(null);setShareEmail("");}}>
-          <div data-dev="NodeCanvas.jsx | Share modal" style={{background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
+          <div style={{background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
             boxShadow:"0 24px 64px rgba(0,0,0,.7)",width:440,maxWidth:"94vw",
             display:"flex",flexDirection:"column",overflow:"hidden"}}
             onClick={e=>e.stopPropagation()}>
@@ -4176,6 +4176,7 @@ export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) 
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
+      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="canvas"/>}
 
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -4308,7 +4309,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
   // ── Collapsed bar ────────────────────────────────────────────
   if(collapsed){
     return(
-      <div data-dev="NodeCanvas.jsx | node library sidebar (collapsed)" style={{width:28,flexShrink:0,background:"var(--bg2)",borderRight:"1px solid var(--border2)",
+      <div style={{width:28,flexShrink:0,background:"var(--bg2)",borderRight:"1px solid var(--border2)",
         display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,gap:6,overflow:"hidden"}}>
         <button onClick={onToggleCollapse}
           style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
@@ -4321,7 +4322,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
   }
 
   return(
-    <div data-dev="NodeCanvas.jsx | node library sidebar (NodeSidebar)" style={{width:sideW,flexShrink:0,background:"var(--bg2)",
+    <div style={{width:sideW,flexShrink:0,background:"var(--bg2)",
       borderRight:"1px solid var(--border2)",display:"flex",flexDirection:"column",
       overflow:"hidden",transition:"width .18s",position:"relative"}}>
 

@@ -67,8 +67,8 @@ export default function ThemePicker({
 
   return (
     <div onClick={onClose}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:2000, padding:16 }}>
-      <div data-dev="ThemePicker.jsx | appearance & design settings modal" onClick={e => e.stopPropagation()}
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:500, padding:16 }}>
+      <div onClick={e => e.stopPropagation()}
         style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:"var(--radius-lg)", width:"100%", maxWidth:560, maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
         {/* Header */}

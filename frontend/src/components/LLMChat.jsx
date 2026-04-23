@@ -133,7 +133,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
 
   return (
     <>
-      <div data-dev="LLMChat.jsx" style={{
+      <div style={{
         width: 360, height: "100%",
         display: "flex", background: "#0d1117",
         borderLeft: "1px solid #21262d",

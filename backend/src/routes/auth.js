@@ -6,7 +6,6 @@ import { v4 as uuidv4 } from "uuid";
 import { query, withTransaction } from "../db/pool.js";
 import redis, { PREFIXES } from "../db/redis.js";
 import { authenticate } from "../middleware/auth.js";
-import { appLog } from "../utils/logger.js";
 
 const router = Router();
 const ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12");
@@ -49,7 +48,6 @@ router.post(
       const valid = await bcrypt.compare(password, hash);
 
       if (!user || !valid || !user.is_active) {
-        appLog("warn", "auth", `Failed login attempt for ${email}`, null, { ip: req.ip });
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
@@ -73,7 +71,6 @@ router.post(
         [user.id, req.ip]
       );
 
-      appLog("info", "auth", `${user.display_name} logged in`, user.id, { ip: req.ip });
       res.json({
         access_token: access,
         refresh_token: refresh,
@@ -130,7 +127,6 @@ router.post(
         [user.id, tokenHash, req.headers["user-agent"]?.slice(0, 255), req.ip]
       );
 
-      appLog("info", "auth", `New user registered: ${user.email}`, user.id, { role: user.role });
       res.status(201).json({ access_token: access, refresh_token: refresh, user });
     } catch (err) {
       if (err.code === "23505") return res.status(409).json({ error: "Email already in use" });
@@ -204,7 +200,6 @@ router.post("/logout", authenticate, async (req, res) => {
       "UPDATE refresh_tokens SET revoked_at=NOW() WHERE user_id=$1 AND revoked_at IS NULL",
       [req.user.id]
     );
-    appLog("info", "auth", `${req.user.display_name} logged out`, req.user.id);
     res.json({ ok: true });
   } catch (err) {
     console.error("[auth] logout error:", err);

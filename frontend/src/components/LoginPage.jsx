@@ -19,12 +19,12 @@ export default function LoginPage() {
   };
 
   return (
-    <div data-dev="LoginPage.jsx" style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center",
+    <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center",
       backgroundImage:"radial-gradient(circle at 30% 40%, var(--accent2)10 0%, transparent 60%), radial-gradient(circle at 80% 70%, #2196F310 0%, transparent 50%)",
       padding:20 }}>
       <div style={{ width:"100%", maxWidth:380 }}>
         {/* Card */}
-        <div data-dev="LoginPage.jsx | login card" style={{ background:"var(--bg2)", border:`1px solid var(--border)`, borderRadius:16, padding:"36px 30px", boxShadow:"0 24px 80px var(--shadow)" }}>
+        <div style={{ background:"var(--bg2)", border:`1px solid var(--border)`, borderRadius:16, padding:"36px 30px", boxShadow:"0 24px 80px var(--shadow)" }}>
           <div style={{ textAlign:"center", marginBottom:30 }}>
             <div style={{ fontSize:38 }}>⬡</div>
             <div style={{ fontSize:24, fontWeight:700, color:"var(--accent)", letterSpacing:2, marginTop:8 }}>NoNote</div>
