@@ -7,7 +7,6 @@ import Tutorial       from "./Tutorial.jsx";
 import HelpGuide      from "./HelpGuide.jsx";
 import DocExportModal  from "./DocExportModal.jsx";
 import { CHANGELOG } from "../changelog.js";
-import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
 // ── Node types ────────────────────────────────────────────────
@@ -805,7 +804,7 @@ const inp=()=>({
 // ─────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────
-export default function NodeCanvas({ mapId, onBack, onHome }) {
+export default function NodeCanvas({ mapId, onBack, onHome, onOpenAppearance }) {
   const { user }             = useAuth();
   const { themeName, theme } = useTheme();
   const canEdit              = ["owner","admin","editor"].includes(user?.role);
@@ -839,8 +838,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [propsMode,    setPropsMode]    = useState(()=>localStorage.getItem('nn_props_mode')||'popup'); // 'popup'|'panel'
   const [showExport,   setShowExport]   = useState(false);
   const [showChat,     setShowChat]     = useState(false);
-  const [showAppearance,setShowAppearance]=useState(false);
-  const [appearanceTab, setAppearanceTab] =useState("canvas");
   const [showVersions, setShowVersions] = useState(false);
   const [showExportMenu,  setShowExportMenu]  = useState(false);
   const [showAppMenu,     setShowAppMenu]     = useState(false);
@@ -2935,7 +2932,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",
                   padding:6,minWidth:160}}>
                   {[["🎨","Theme & Colors","global"],["🖌","Canvas Style","canvas"]].map(([ic,lbl,tab])=>(
-                    <div key={lbl} onClick={()=>{setAppearanceTab(tab);setShowAppearance(true);setShowAppMenu(false);}}
+                    <div key={lbl} onClick={()=>{onOpenAppearance(tab,canvasTheme,t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);});setShowAppMenu(false);}}
                       style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",
                         cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
                       onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
@@ -4179,7 +4176,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
-      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab={appearanceTab}/>}
 
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}

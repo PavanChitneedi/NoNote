@@ -160,6 +160,7 @@ function AppInner() {
     return () => window.removeEventListener("resize", check);
   }, []);
   const [showAppearance, setShowAppearance] = useState(false);
+  const [canvasAppearance, setCanvasAppearance] = useState(null); // {tab,canvasTheme,setter}
   const [showProfile,  setShowProfile]  = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [showHelp,     setShowHelp]     = useState(false);
@@ -254,13 +255,26 @@ function AppInner() {
         {view.page==="canvas" && view.mapId && (
           isMobile
             ? <MobileErrorBoundary onBack={goHome}><MobileCanvas mapId={view.mapId} onBack={goHome} /></MobileErrorBoundary>
-            : <NodeCanvas mapId={view.mapId} onBack={goHome} onHome={goHome} />
+            : <NodeCanvas mapId={view.mapId} onBack={goHome} onHome={goHome}
+                onOpenAppearance={(tab, canvasTheme, setter) => setCanvasAppearance({tab, canvasTheme, setter})} />
         )}
         {view.page==="admin" && <AdminPanel onBack={goHome} />}
       </div>
 
-      {/* Appearance modal */}
+      {/* Appearance modal — dashboard/admin */}
       {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
+      {/* Appearance modal — canvas (rendered here so it's outside NodeCanvas DOM) */}
+      {canvasAppearance && (
+        <ThemePicker
+          onClose={() => setCanvasAppearance(null)}
+          defaultTab={canvasAppearance.tab}
+          canvasTheme={canvasAppearance.canvasTheme}
+          setCanvasTheme={(t) => {
+            canvasAppearance.setter(t);
+            setCanvasAppearance(prev => prev ? { ...prev, canvasTheme: t } : null);
+          }}
+        />
+      )}
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
