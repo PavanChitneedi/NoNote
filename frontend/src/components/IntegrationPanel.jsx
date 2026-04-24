@@ -61,29 +61,54 @@ function Stat({ label, value, sub }) {
 // ── Metric renderers per integration type ─────────────────────
 function uptime(s){if(!s)return'—';const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m`;}
 
-function GuestRow({g,type}){
+function MiniBar({v,warn=70,crit=90,h=4}){
+  const col=v>=crit?'#f44336':v>=warn?'#ff9800':'#4caf50';
+  return <div style={{height:h,background:'var(--bg)',borderRadius:h,overflow:'hidden'}}>
+    <div style={{height:'100%',width:`${Math.min(v,100)}%`,background:col,borderRadius:h,transition:'width .4s'}}/>
+  </div>;
+}
+
+function GuestCard({g}){
   const cpuPct=Math.round((g.cpu||0)*100);
   const memPct=pct(g.mem,g.maxmem);
   const running=g.status==='running';
+  const isVM=g._type==='VM';
   return(
-    <div style={{display:'grid',gridTemplateColumns:'16px 1fr 40px 90px 90px 60px',gap:6,alignItems:'center',
-      padding:'5px 8px',borderRadius:5,background:'var(--bg)',marginBottom:3,
-      border:`1px solid ${running?'var(--success)22':'var(--border2)'}`}}>
-      <span style={{fontSize:9,color:running?'var(--success)':'var(--text4)',fontWeight:700}}>{running?'▶':'■'}</span>
-      <div style={{minWidth:0}}>
-        <div style={{fontSize:11,fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name||`${type}${g.vmid}`}</div>
-        <div style={{fontSize:9,color:'var(--text4)'}}>ID {g.vmid} · {uptime(g.uptime)}</div>
+    <div style={{background:'var(--bg)',borderRadius:7,padding:'8px 10px',
+      border:`1px solid ${running?'var(--success)33':'var(--border2)'}`,
+      opacity:running?1:0.6}}>
+      <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
+        <span style={{fontSize:9,padding:'1px 5px',borderRadius:3,fontWeight:700,
+          background:isVM?'#8E24AA22':'#00897B22',
+          color:isVM?'#CE93D8':'#80CBC4'}}>{isVM?'VM':'CT'}</span>
+        <span style={{fontSize:11,fontWeight:700,color:'var(--text)',flex:1,
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name||`${g._type}${g.vmid}`}</span>
+        <span style={{fontSize:9,padding:'1px 6px',borderRadius:10,
+          background:running?'var(--success)22':'var(--bg3)',
+          color:running?'var(--success)':'var(--text4)',
+          border:`1px solid ${running?'var(--success)44':'var(--border)'}`}}>
+          {running?'● running':'■ stopped'}</span>
       </div>
-      <span style={{fontSize:9,color:'var(--text4)',textAlign:'right'}}>{g.cpus||'—'}c</span>
-      <div>
-        <div style={{fontSize:9,color:'var(--text4)',marginBottom:1}}>CPU {cpuPct}%</div>
-        <Bar pct={cpuPct}/>
+      <div style={{fontSize:9,color:'var(--text4)',marginBottom:6}}>
+        ID {g.vmid} · {g.cpus||'?'} vCPU · up {uptime(g.uptime)}
       </div>
-      <div>
-        <div style={{fontSize:9,color:'var(--text4)',marginBottom:1}}>RAM {memPct}% <span style={{color:'var(--text4)'}}>{gb(g.mem)}</span></div>
-        <Bar pct={memPct}/>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+            <span style={{fontSize:9,color:'var(--text4)'}}>CPU</span>
+            <span style={{fontSize:9,fontWeight:700,color:cpuPct>80?'#f44336':cpuPct>60?'#ff9800':'var(--success)'}}>{cpuPct}%</span>
+          </div>
+          <MiniBar v={cpuPct}/>
+        </div>
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+            <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
+            <span style={{fontSize:9,fontWeight:700,color:memPct>80?'#f44336':memPct>60?'#ff9800':'var(--success)'}}>{memPct}% <span style={{fontWeight:400,color:'var(--text4)'}}>{gb(g.mem)}</span></span>
+          </div>
+          <MiniBar v={memPct}/>
+        </div>
       </div>
-      <div style={{fontSize:9,color:'var(--text4)',textAlign:'right'}}>{fmt(g.disk)}</div>
+      {g.maxdisk>0&&<div style={{fontSize:9,color:'var(--text4)',marginTop:4,textAlign:'right'}}>💾 {fmt(g.disk)} / {fmt(g.maxdisk)}</div>}
     </div>
   );
 }
@@ -91,77 +116,105 @@ function GuestRow({g,type}){
 function ProxmoxMetrics({ data }) {
   const [expanded,setExpanded]=React.useState({});
   const toggle=id=>setExpanded(e=>({...e,[id]:!e[id]}));
+  const [filter,setFilter]=React.useState('all'); // all|vm|ct|stopped
   return (
     <div>
-      <div style={{fontSize:9,color:'var(--text4)',marginBottom:10,display:'flex',alignItems:'center',gap:8}}>
-        <span>Proxmox VE {data.version}</span>
-        <span style={{marginLeft:'auto'}}>{data.nodes?.length} node(s)</span>
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <span style={{fontSize:11,fontWeight:700,color:'var(--text)'}}>Proxmox VE {data.version}</span>
+        <span style={{fontSize:9,color:'var(--text4)',marginLeft:'auto'}}>{data.nodes?.length} node(s)</span>
       </div>
-      {(data.nodes || []).map(n => {
-        const s = n.status || {};
-        const cpuPct  = Math.round((s.cpu || 0) * 100);
-        const memPct  = pct(s.memory?.used, s.memory?.total);
-        const diskPct = pct(s.rootfs?.used, s.rootfs?.total);
-        const runVMs  = (n.vms||[]).filter(v=>v.status==='running').length;
-        const runLXC  = (n.lxc||[]).filter(v=>v.status==='running').length;
+      {(data.nodes||[]).map(n=>{
+        const s=n.status||{};
+        const cpuPct=Math.round((s.cpu||0)*100);
+        const memPct=pct(s.memory?.used,s.memory?.total);
+        const diskPct=pct(s.rootfs?.used,s.rootfs?.total);
         const allGuests=[...(n.vms||[]).map(v=>({...v,_type:'VM'})),...(n.lxc||[]).map(v=>({...v,_type:'CT'}))];
-        const isExp=expanded[n.node];
-        return (
-          <div key={n.node} style={{background:'var(--bg3)',borderRadius:8,marginBottom:10,
-            border:`1px solid ${n.online?'var(--success)44':'var(--danger)44'}`}}>
-            {/* Node header */}
-            <div style={{padding:'10px 12px',cursor:'pointer'}} onClick={()=>toggle(n.node)}>
-              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}>
-                <span style={{width:8,height:8,borderRadius:'50%',background:n.online?'var(--success)':'var(--danger)',flexShrink:0}}/>
-                <span style={{fontWeight:700,fontSize:12}}>{n.node}</span>
-                <span style={{fontSize:9,color:'var(--text4)'}}>· up {uptime(s.uptime)}</span>
-                <span style={{marginLeft:'auto',fontSize:9,color:'var(--text4)'}}>{n.vms.length}VM · {n.lxc.length}CT · {isExp?'▲':'▼'}</span>
+        const runVMs=(n.vms||[]).filter(v=>v.status==='running').length;
+        const runLXC=(n.lxc||[]).filter(v=>v.status==='running').length;
+        const isExp=expanded[n.node]!==false; // default expanded
+        const filtered=allGuests.filter(g=>filter==='all'||(filter==='vm'&&g._type==='VM')||(filter==='ct'&&g._type==='CT')||(filter==='stopped'&&g.status!=='running'));
+        const activeStorage=(n.storage||[]).filter(st=>st.active&&st.total>0);
+        return(
+          <div key={n.node} style={{marginBottom:12}}>
+            {/* ── Node header card ── */}
+            <div style={{background:'var(--bg3)',borderRadius:'10px 10px 0 0',padding:'12px 14px',
+              border:`1px solid ${n.online?'var(--success)55':'var(--danger)55'}`,
+              borderBottom:'none',cursor:'pointer'}} onClick={()=>toggle(n.node)}>
+              <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+                <span style={{width:9,height:9,borderRadius:'50%',
+                  background:n.online?'var(--success)':'var(--danger)',
+                  boxShadow:n.online?'0 0 6px var(--success)':'none',flexShrink:0}}/>
+                <span style={{fontWeight:800,fontSize:13,color:'var(--text)'}}>{n.node}</span>
+                <span style={{fontSize:9,color:'var(--text4)'}}>up {uptime(s.uptime)}</span>
+                <span style={{marginLeft:'auto',fontSize:9,background:'var(--bg)',
+                  padding:'2px 8px',borderRadius:10,border:'1px solid var(--border)',
+                  color:'var(--text4)'}}>
+                  {runVMs}/{n.vms.length} VM · {runLXC}/{n.lxc.length} CT · {isExp?'▲':'▼'}
+                </span>
               </div>
-              {/* Host metrics */}
-              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:8}}>
-                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>CPU ({s.cpuinfo?.cores||'?'}c)</div>
-                  <div style={{fontSize:14,fontWeight:700}}>{cpuPct}%</div><Bar pct={cpuPct}/></div>
-                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>RAM</div>
-                  <div style={{fontSize:14,fontWeight:700}}>{memPct}%</div>
-                  <div style={{fontSize:9,color:'var(--text4)'}}>{gb(s.memory?.used)}/{gb(s.memory?.total)}</div>
-                  <Bar pct={memPct}/></div>
-                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>ROOT DISK</div>
-                  <div style={{fontSize:14,fontWeight:700}}>{diskPct}%</div>
-                  <div style={{fontSize:9,color:'var(--text4)'}}>{fmt(s.rootfs?.used)}/{fmt(s.rootfs?.total)}</div>
-                  <Bar pct={diskPct}/></div>
-                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>RUNNING</div>
-                  <div style={{fontSize:13,fontWeight:700}}>{runVMs}VM</div>
-                  <div style={{fontSize:13,fontWeight:700,color:'var(--accent1)'}}>{runLXC}CT</div></div>
+              {/* Metric bars */}
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+                {[
+                  {label:`CPU · ${s.cpuinfo?.cores||'?'}c`,v:cpuPct,sub:`${cpuPct}%`},
+                  {label:'RAM',v:memPct,sub:`${gb(s.memory?.used)} / ${gb(s.memory?.total)}`},
+                  {label:'Root Disk',v:diskPct,sub:`${fmt(s.rootfs?.used)} / ${fmt(s.rootfs?.total)}`},
+                ].map(({label,v,sub})=>(
+                  <div key={label}>
+                    <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                      <span style={{fontSize:9,color:'var(--text4)'}}>{label}</span>
+                      <span style={{fontSize:10,fontWeight:700,
+                        color:v>=90?'#f44336':v>=75?'#ff9800':'var(--text)'}}>{v}%</span>
+                    </div>
+                    <MiniBar v={v} h={5}/>
+                    <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{sub}</div>
+                  </div>
+                ))}
               </div>
-              {/* Storage pools */}
-              {(n.storage||[]).filter(st=>st.active).length>0&&(
-                <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:4}}>
-                  {(n.storage||[]).filter(st=>st.active).map(st=>{
+            </div>
+            {/* Storage pools */}
+            {activeStorage.length>0&&(
+              <div style={{background:'var(--bg3)',padding:'8px 14px',borderLeft:`1px solid ${n.online?'var(--success)55':'var(--danger)55'}`,borderRight:`1px solid ${n.online?'var(--success)55':'var(--danger)55'}`}}>
+                <div style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginBottom:6}}>STORAGE</div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:6}}>
+                  {activeStorage.map(st=>{
                     const sp=pct(st.disk_used,st.total);
                     return(
-                      <div key={st.storage} style={{background:'var(--bg)',borderRadius:4,padding:'3px 7px',border:'1px solid var(--border2)',minWidth:80}}>
-                        <div style={{fontSize:9,fontWeight:700,color:'var(--text3)'}}>{st.storage}</div>
-                        <div style={{fontSize:9,color:'var(--text4)'}}>{fmt(st.disk_used)}/{fmt(st.total)} · {sp}%</div>
-                        <Bar pct={sp}/>
+                      <div key={st.storage} style={{background:'var(--bg)',borderRadius:6,padding:'6px 8px',border:'1px solid var(--border2)'}}>
+                        <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+                          <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{st.storage}</span>
+                          <span style={{fontSize:9,fontWeight:700,color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
+                        </div>
+                        <MiniBar v={sp} h={4}/>
+                        <div style={{fontSize:8,color:'var(--text4)',marginTop:3}}>{fmt(st.disk_used)} / {fmt(st.total)}</div>
                       </div>
                     );
                   })}
                 </div>
-              )}
-            </div>
-            {/* Expanded guests */}
-            {isExp&&allGuests.length>0&&(
-              <div style={{borderTop:'1px solid var(--border2)',padding:'8px 10px'}}>
-                <div style={{fontSize:9,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginBottom:6}}>
-                  VMs & CONTAINERS
+              </div>
+            )}
+            {/* Guests */}
+            {isExp&&(
+              <div style={{background:'var(--bg3)',borderRadius:'0 0 10px 10px',padding:'10px 14px',
+                border:`1px solid ${n.online?'var(--success)55':'var(--danger)55'}`,borderTop:'1px solid var(--border2)'}}>
+                {/* Filter pills */}
+                {allGuests.length>0&&(
+                  <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
+                    <span style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginRight:4}}>SHOW</span>
+                    {[['all','All'],['vm','VMs'],['ct','CTs'],['stopped','Stopped']].map(([v,l])=>(
+                      <button key={v} onClick={e=>{e.stopPropagation();setFilter(v)}}
+                        style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
+                          fontFamily:'var(--font-ui)',fontWeight:600,
+                          background:filter===v?'var(--accent2)':'var(--bg)',
+                          color:filter===v?'#fff':'var(--text4)'}}>
+                        {l} {v==='all'?`(${allGuests.length})`:v==='vm'?`(${n.vms.length})`:v==='ct'?`(${n.lxc.length})`:``}
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {filtered.length===0&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic',textAlign:'center',padding:'10px 0'}}>No guests</div>}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+                  {filtered.map(g=><GuestCard key={`${g._type}${g.vmid}`} g={g}/>)}
                 </div>
-                <div style={{display:'grid',gridTemplateColumns:'16px 1fr 40px 90px 90px 60px',gap:6,
-                  padding:'3px 8px',marginBottom:3}}>
-                  {['','NAME','CPU','CPU %','RAM','DISK'].map((h,i)=>(
-                    <span key={i} style={{fontSize:8,color:'var(--text4)',fontWeight:700}}>{h}</span>
-                  ))}
-                </div>
-                {allGuests.map(g=><GuestRow key={`${g._type}${g.vmid}`} g={g} type={g._type}/>)}
               </div>
             )}
           </div>

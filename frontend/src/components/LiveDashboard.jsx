@@ -1,239 +1,296 @@
-// LiveDashboard.jsx — shows live metrics for all nodes with integrations configured
+// LiveDashboard.jsx — aggregated live metrics across all maps
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { NODE_INT_MAP, Bar, fmt, gb, pct } from './IntegrationPanel.jsx';
 import { apiFetch } from '../api/client.js';
-import { NODE_INT_MAP, Bar, Stat, fmt, gb, pct } from './IntegrationPanel.jsx';
 
-const REFRESH_INTERVAL = 30000;
+const REFRESH_MS = 30000;
 
-async function fetchIntegration(node) {
-  const cfg = node.properties?._integration;
-  if (!cfg?.url) return null;
-  const type = cfg.type || NODE_INT_MAP[node.type] || 'probe';
-  try {
-    const json = await apiFetch(`/integrations/${type}`, {
-      method: 'POST',
-      body: JSON.stringify(cfg),
-    });
-    return { nodeId: node.id, type, data: json, ok: json.ok, ts: Date.now() };
-  } catch(e) {
-    return { nodeId: node.id, type, ok: false, error: e.message, ts: Date.now() };
-  }
+function uptime(s){if(!s)return'—';const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m`;}
+function MiniBar({v,h=4}){const col=v>=90?'#f44336':v>=75?'#ff9800':'#4caf50';return<div style={{height:h,background:'rgba(255,255,255,.08)',borderRadius:h,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(v,100)}%`,background:col,borderRadius:h,transition:'width .5s'}}/></div>;}
+function Tag({children,color='var(--text4)',bg='var(--bg)'}){return<span style={{fontSize:9,padding:'1px 6px',borderRadius:10,background:bg,color,border:`1px solid ${color}44`,fontWeight:600}}>{children}</span>;}
+
+async function fetchInt(node){
+  const cfg=node.properties?._integration;
+  if(!cfg?.url) return null;
+  const type=cfg.type||NODE_INT_MAP[node.type]||'probe';
+  try{
+    const json=await apiFetch(`/integrations/${type}`,{method:'POST',body:JSON.stringify(cfg)});
+    return{nodeId:node.id,type,data:json,ok:json.ok,ts:Date.now()};
+  }catch(e){return{nodeId:node.id,type,ok:false,error:e.message,ts:Date.now()};}
 }
 
-// ── Mini card renderers ────────────────────────────────────────
-function ProxmoxCard({ data, title }) {
-  const first = data.nodes?.[0];
-  if (!first) return <div style={{ color: 'var(--text4)', fontSize: 11 }}>No nodes</div>;
-  const s = first.status || {};
-  const cpuPct = Math.round((s.cpu || 0) * 100);
-  const memPct = pct(s.memory?.used, s.memory?.total);
-  const totalVMs  = data.nodes.reduce((a, n) => a + n.vms.length, 0);
-  const runVMs    = data.nodes.reduce((a, n) => a + n.vms.filter(v => v.status === 'running').length, 0);
-  const totalLXC  = data.nodes.reduce((a, n) => a + n.lxc.length, 0);
-  const runLXC    = data.nodes.reduce((a, n) => a + n.lxc.filter(v => v.status === 'running').length, 0);
-  return (
+// ── Card renderers ─────────────────────────────────────────────
+function ProxmoxDashCard({node,result}){
+  const d=result?.data||{};
+  const totalVMs=d.nodes?.reduce((a,n)=>a+n.vms.length,0)||0;
+  const runVMs=d.nodes?.reduce((a,n)=>a+n.vms.filter(v=>v.status==='running').length,0)||0;
+  const totalCT=d.nodes?.reduce((a,n)=>a+n.lxc.length,0)||0;
+  const runCT=d.nodes?.reduce((a,n)=>a+n.lxc.filter(v=>v.status==='running').length,0)||0;
+  const s=d.nodes?.[0]?.status||{};
+  const cpuPct=Math.round((s.cpu||0)*100);
+  const memPct=pct(s.memory?.used,s.memory?.total);
+  const diskPct=pct(s.rootfs?.used,s.rootfs?.total);
+  const allGuests=d.nodes?.flatMap(n=>[...(n.vms||[]).map(v=>({...v,_type:'VM'})),...(n.lxc||[]).map(v=>({...v,_type:'CT'}))])||[];
+  return(
     <div>
-      <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 6 }}>v{data.version} · {data.nodes.length} node(s)</div>
-      <div style={{ display: 'flex', gap: 14, marginBottom: 8, flexWrap: 'wrap' }}>
-        <Stat label="CPU" value={`${cpuPct}%`} />
-        <Stat label="RAM" value={`${memPct}%`} />
-        <Stat label="VMs" value={`${runVMs}/${totalVMs}`} />
-        <Stat label="LXC" value={`${runLXC}/${totalLXC}`} />
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+        <Tag color='#CE93D8' bg='#8E24AA22'>{runVMs}/{totalVMs} VMs</Tag>
+        <Tag color='#80CBC4' bg='#00897B22'>{runCT}/{totalCT} CTs</Tag>
+        <Tag color='var(--text4)'>v{d.version}</Tag>
       </div>
-      <Bar pct={cpuPct} /><Bar pct={memPct} />
-    </div>
-  );
-}
-
-function TrueNASCard({ data }) {
-  const pools = data.pools || [];
-  const totalCap = pools.reduce((a, p) => a + (p.size?.total || 0), 0);
-  const usedCap  = pools.reduce((a, p) => a + (p.size?.allocated || 0), 0);
-  const healthy  = pools.every(p => p.healthy);
-  const alertCount = (data.alerts || []).length;
-  return (
-    <div>
-      <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 6 }}>{data.info?.hostname} · {(data.info?.version||'').split('-')[0]}</div>
-      <div style={{ display: 'flex', gap: 14, marginBottom: 8 }}>
-        <Stat label="STORAGE" value={`${pct(usedCap, totalCap)}%`} sub={`${fmt(usedCap)} / ${fmt(totalCap)}`} />
-        <Stat label="POOLS" value={pools.length} sub={healthy ? '✓ healthy' : '⚠ degraded'} />
-        <Stat label="ALERTS" value={alertCount} sub={alertCount > 0 ? '⚠' : '✓'} />
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
+        {[{l:'CPU',v:cpuPct,sub:`${s.cpuinfo?.cores||'?'}c`},{l:'RAM',v:memPct,sub:`${gb(s.memory?.used)}`},{l:'Disk',v:diskPct,sub:`${fmt(s.rootfs?.used)}`}].map(({l,v,sub})=>(
+          <div key={l}>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+              <span style={{fontSize:9,color:'rgba(255,255,255,.5)'}}>{l}</span>
+              <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'#fff'}}>{v}%</span>
+            </div>
+            <MiniBar v={v}/><div style={{fontSize:8,color:'rgba(255,255,255,.4)',marginTop:1}}>{sub}</div>
+          </div>
+        ))}
       </div>
-      <Bar pct={pct(usedCap, totalCap)} />
-    </div>
-  );
-}
-
-function UnraidCard({ data }) {
-  const sys = data.data?.system || {};
-  const mem = sys.memory || {};
-  const containers = data.data?.docker?.containers || [];
-  const running = containers.filter(c => c.state === 'running').length;
-  return (
-    <div>
-      <div style={{ display: 'flex', gap: 14, marginBottom: 8 }}>
-        <Stat label="CPU" value={`${Math.round(sys.cpu?.usage || 0)}%`} />
-        <Stat label="RAM" value={`${pct(mem.total - mem.free, mem.total)}%`} />
-        <Stat label="CONTAINERS" value={`${running}/${containers.length}`} />
-      </div>
-      <Bar pct={Math.round(sys.cpu?.usage || 0)} />
-      <Bar pct={pct(mem.total - mem.free, mem.total)} />
-    </div>
-  );
-}
-
-function ProbeCard({ data }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-      <span style={{ fontSize: 28 }}>{data.ok ? '✅' : '❌'}</span>
-      <div>
-        <div style={{ fontWeight: 700, color: data.ok ? 'var(--success)' : 'var(--danger)' }}>
-          {data.ok ? 'Online' : 'Unreachable'}
+      {allGuests.length>0&&(
+        <div style={{display:'flex',flexWrap:'wrap',gap:3}}>
+          {allGuests.slice(0,12).map(g=>(
+            <span key={`${g._type}${g.vmid}`} style={{fontSize:9,padding:'2px 6px',borderRadius:4,
+              background:g.status==='running'?'rgba(76,175,80,.2)':'rgba(255,255,255,.06)',
+              color:g.status==='running'?'#81c784':'rgba(255,255,255,.35)',
+              border:`1px solid ${g.status==='running'?'rgba(76,175,80,.3)':'rgba(255,255,255,.1)'}`,
+              fontWeight:g.status==='running'?600:400}}>
+              {g._type==='VM'?'⬜':'◻'} {g.name||g.vmid}
+            </span>
+          ))}
+          {allGuests.length>12&&<span style={{fontSize:9,color:'rgba(255,255,255,.3)'}}>+{allGuests.length-12} more</span>}
         </div>
-        <div style={{ fontSize: 10, color: 'var(--text4)' }}>HTTP {data.status} · {data.ms}ms</div>
+      )}
+    </div>
+  );
+}
+
+function TrueNASDashCard({node,result}){
+  const d=result?.data||{};
+  const info=d.info||{};
+  const pools=d.pools||[];
+  const usedCap=pools.reduce((a,p)=>a+(p.size?.allocated||0),0);
+  const totalCap=pools.reduce((a,p)=>a+(p.size?.total||0),0);
+  const diskPct=pct(usedCap,totalCap);
+  const running=(d.services||[]).filter(s=>s.state==='RUNNING');
+  return(
+    <div>
+      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+        <Tag color='#80CBC4' bg='#00897B22'>{running.length} services</Tag>
+        {(d.alerts||[]).length>0&&<Tag color='#f44336' bg='#f4433622'>⚠ {d.alerts.length} alerts</Tag>}
+        <Tag color='var(--text4)'>{(info.version||'').split('-')[0]}</Tag>
+      </div>
+      <div style={{marginBottom:8}}>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+          <span style={{fontSize:9,color:'rgba(255,255,255,.5)'}}>Total Storage</span>
+          <span style={{fontSize:10,fontWeight:700,color:diskPct>=90?'#f44336':diskPct>=75?'#ff9800':'#fff'}}>{diskPct}%</span>
+        </div>
+        <MiniBar v={diskPct} h={6}/>
+        <div style={{fontSize:9,color:'rgba(255,255,255,.4)',marginTop:2}}>{fmt(usedCap)} / {fmt(totalCap)}</div>
+      </div>
+      {pools.map(p=>{const sp=pct(p.size?.allocated,p.size?.total);return(
+        <div key={p.name} style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+          <span style={{fontSize:9,color:p.healthy?'#81c784':'#f44336',flexShrink:0}}>●</span>
+          <span style={{fontSize:10,color:'rgba(255,255,255,.8)',flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.name}</span>
+          <span style={{fontSize:9,color:'rgba(255,255,255,.4)'}}>{fmt(p.size?.total)}</span>
+          <span style={{fontSize:9,fontWeight:700,color:sp>=90?'#f44336':sp>=75?'#ff9800':'rgba(255,255,255,.6)',width:30,textAlign:'right'}}>{sp}%</span>
+        </div>
+      );})}
+    </div>
+  );
+}
+
+function UnraidDashCard({node,result}){
+  const d=result?.data?.data||{};
+  const sys=d.system||{};
+  const mem=sys.memory||{};
+  const cpuPct=Math.round(sys.cpu?.usage||0);
+  const memPct=pct(mem.total-mem.free,mem.total);
+  const containers=d.docker?.containers||[];
+  const running=containers.filter(c=>c.state==='running');
+  return(
+    <div>
+      <div style={{display:'flex',gap:8,marginBottom:10}}>
+        <Tag color='#80CBC4' bg='#00897B22'>{running.length}/{containers.length} containers</Tag>
+      </div>
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8,marginBottom:8}}>
+        {[{l:'CPU',v:cpuPct},{l:'RAM',v:memPct,sub:`${gb(mem.total-mem.free)} / ${gb(mem.total)}`}].map(({l,v,sub})=>(
+          <div key={l}><div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+            <span style={{fontSize:9,color:'rgba(255,255,255,.5)'}}>{l}</span>
+            <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'#fff'}}>{v}%</span>
+          </div><MiniBar v={v}/>{sub&&<div style={{fontSize:8,color:'rgba(255,255,255,.4)',marginTop:1}}>{sub}</div>}</div>
+        ))}
+      </div>
+      <div style={{display:'flex',flexWrap:'wrap',gap:3}}>
+        {containers.slice(0,10).map((ct,i)=>(
+          <span key={i} style={{fontSize:9,padding:'2px 6px',borderRadius:4,
+            background:ct.state==='running'?'rgba(76,175,80,.2)':'rgba(255,255,255,.06)',
+            color:ct.state==='running'?'#81c784':'rgba(255,255,255,.35)',
+            border:`1px solid ${ct.state==='running'?'rgba(76,175,80,.3)':'rgba(255,255,255,.1)'}`}}>
+            {(ct.names||['?'])[0].replace(/^\//,'')}
+          </span>
+        ))}
       </div>
     </div>
   );
 }
 
-const CARD_RENDERERS = { proxmox: ProxmoxCard, truenas: TrueNASCard, freenas: TrueNASCard, unraid: UnraidCard, probe: ProbeCard };
+function ProbeDashCard({node,result}){
+  const d=result?.data||{};
+  return(
+    <div style={{display:'flex',alignItems:'center',gap:16,padding:'8px 0'}}>
+      <div style={{fontSize:40,lineHeight:1}}>{d.ok?'✅':'❌'}</div>
+      <div>
+        <div style={{fontWeight:800,fontSize:16,color:d.ok?'#81c784':'#f44336'}}>{d.ok?'Online':'Unreachable'}</div>
+        <div style={{fontSize:11,color:'rgba(255,255,255,.4)',marginTop:2}}>HTTP {d.status||'—'} · {d.ms||'?'}ms response</div>
+      </div>
+    </div>
+  );
+}
+
+const CARD_RENDERERS={proxmox:ProxmoxDashCard,truenas:TrueNASDashCard,freenas:TrueNASDashCard,unraid:UnraidDashCard,probe:ProbeDashCard};
+const TYPE_COLORS={proxmox:'#FF6C2F',truenas:'#0095D5',unraid:'#E67C1C',esxi:'#717CBD',probe:'#9E9E9E'};
+const TYPE_LABEL={proxmox:'Proxmox VE',truenas:'TrueNAS',unraid:'Unraid',esxi:'ESXi',probe:'HTTP Probe',freenas:'FreeNAS'};
 
 // ── Main LiveDashboard ─────────────────────────────────────────
 export default function LiveDashboard({ maps }) {
-  const [nodes, setNodes]     = useState([]);
-  const [results, setResults] = useState({}); // nodeId → result
-  const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(null);
-  const intervalRef = useRef(null);
+  const [nodes,setNodes]=useState([]);
+  const [results,setResults]=useState({});
+  const [loading,setLoading]=useState(true);
+  const [refreshing,setRefreshing]=useState(false);
+  const [lastRefresh,setLastRefresh]=useState(null);
+  const [countdown,setCountdown]=useState(0);
+  const timerRef=useRef(null);
+  const cdRef=useRef(null);
 
-  // Load all nodes from all maps that have _integration configured
-  const loadNodes = useCallback(async () => {
+  const loadNodes=useCallback(async()=>{
     setLoading(true);
-    try {
-      const all = await Promise.all(
-        maps.map(m => apiFetch(`/maps/${m.id}`).catch(() => null))
-      );
-      const integNodes = all.flatMap(d => {
-        if (!d?.nodes) return [];
-        return d.nodes
-          .filter(n => n.properties?._integration?.url)
-          .map(n => ({ ...n, mapTitle: maps.find(m => m.id === d.map?.id)?.title || 'Map', mapId: d.map?.id }));
+    try{
+      const all=await Promise.all(maps.map(m=>apiFetch(`/maps/${m.id}`).catch(()=>null)));
+      const intNodes=all.flatMap(d=>{
+        if(!d?.nodes) return [];
+        return d.nodes.filter(n=>n.properties?._integration?.url)
+          .map(n=>({...n,mapTitle:maps.find(m=>m.id===d.map?.id)?.title||'Map',mapId:d.map?.id}));
       });
-      setNodes(integNodes);
-    } finally { setLoading(false); }
-  }, [maps]);
+      setNodes(intNodes);
+    }finally{setLoading(false);}
+  },[maps]);
 
-  const refresh = useCallback(async (silent = false) => {
-    if (!silent) setRefreshing(true);
-    const fetches = nodes.map(n => fetchIntegration(n));
-    const all = await Promise.allSettled(fetches);
-    const map = {};
-    all.forEach((r, i) => { if (r.status === 'fulfilled' && r.value) map[nodes[i].id] = r.value; });
+  const refresh=useCallback(async(silent=false)=>{
+    if(!silent) setRefreshing(true);
+    const all=await Promise.allSettled(nodes.map(n=>fetchInt(n)));
+    const map={};
+    all.forEach((r,i)=>{if(r.status==='fulfilled'&&r.value) map[nodes[i].id]=r.value;});
     setResults(map);
     setLastRefresh(new Date());
-    if (!silent) setRefreshing(false);
-  }, [nodes]);
+    setCountdown(REFRESH_MS/1000);
+    if(!silent) setRefreshing(false);
+  },[nodes]);
 
-  useEffect(() => { loadNodes(); }, [maps]);
-  useEffect(() => {
-    if (nodes.length > 0) refresh();
-  }, [nodes]);
-  useEffect(() => {
-    intervalRef.current = setInterval(() => refresh(true), REFRESH_INTERVAL);
-    return () => clearInterval(intervalRef.current);
-  }, [refresh]);
+  useEffect(()=>{loadNodes();},[maps]);
+  useEffect(()=>{if(nodes.length>0) refresh();},[nodes]);
+  useEffect(()=>{
+    clearInterval(timerRef.current);
+    if(nodes.length>0) timerRef.current=setInterval(()=>refresh(true),REFRESH_MS);
+    return()=>clearInterval(timerRef.current);
+  },[refresh]);
+  useEffect(()=>{
+    clearInterval(cdRef.current);
+    if(lastRefresh) cdRef.current=setInterval(()=>setCountdown(c=>Math.max(0,c-1)),1000);
+    return()=>clearInterval(cdRef.current);
+  },[lastRefresh]);
 
-  if (loading) return (
-    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text4)' }}>
-      <div style={{ fontSize: 28, marginBottom: 8 }}>⏳</div>
-      Loading integrations…
+  if(loading) return(
+    <div style={{padding:'60px 20px',textAlign:'center',color:'var(--text4)'}}>
+      <div style={{fontSize:32,marginBottom:12}}>⏳</div>Loading integrations…
     </div>
   );
 
-  if (nodes.length === 0) return (
-    <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text4)' }}>
-      <div style={{ fontSize: 36, marginBottom: 12 }}>🔌</div>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 8 }}>No integrations configured</div>
-      <div style={{ fontSize: 12, maxWidth: 320, margin: '0 auto', lineHeight: 1.6 }}>
-        Open any node in a map, go to the <strong>🔌 Live</strong> tab, configure your Proxmox / TrueNAS / Unraid credentials, and click Save. It will appear here automatically.
+  if(nodes.length===0) return(
+    <div style={{padding:'60px 20px',textAlign:'center',color:'var(--text4)'}}>
+      <div style={{fontSize:48,marginBottom:16}}>🔌</div>
+      <div style={{fontSize:15,fontWeight:700,color:'var(--text)',marginBottom:8}}>No live integrations yet</div>
+      <div style={{fontSize:12,maxWidth:360,margin:'0 auto',lineHeight:1.7}}>
+        Open any node on a map → <strong>📡 Live</strong> tab → configure Proxmox / TrueNAS / Unraid credentials → Save.<br/>It will appear here automatically.
       </div>
     </div>
   );
 
-  const online  = Object.values(results).filter(r => r.ok).length;
-  const offline = Object.values(results).filter(r => r && !r.ok).length;
-  const pending = nodes.length - Object.keys(results).length;
+  const online=Object.values(results).filter(r=>r?.ok).length;
+  const offline=Object.values(results).filter(r=>r&&!r.ok).length;
 
-  return (
+  return(
     <div>
       {/* Summary bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '10px 16px',
-        background: 'var(--bg3)', borderRadius: 8, marginBottom: 16, flexWrap: 'wrap' }}>
-        <div style={{ display: 'flex', gap: 16, flex: 1 }}>
-          <div style={{ fontSize: 11 }}><span style={{ color: 'var(--success)', fontWeight: 700 }}>● {online}</span> online</div>
-          {offline > 0 && <div style={{ fontSize: 11 }}><span style={{ color: 'var(--danger)', fontWeight: 700 }}>● {offline}</span> offline</div>}
-          {pending > 0 && <div style={{ fontSize: 11 }}><span style={{ color: 'var(--text4)', fontWeight: 700 }}>○ {pending}</span> pending</div>}
+      <div style={{display:'flex',alignItems:'center',gap:12,padding:'10px 14px',
+        background:'var(--bg3)',borderRadius:10,marginBottom:20,flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:16,flex:1,flexWrap:'wrap'}}>
+          <span style={{fontSize:12}}><span style={{color:'var(--success)',fontWeight:700}}>● {online}</span> <span style={{color:'var(--text4)'}}>online</span></span>
+          {offline>0&&<span style={{fontSize:12}}><span style={{color:'var(--danger)',fontWeight:700}}>● {offline}</span> <span style={{color:'var(--text4)'}}>offline</span></span>}
+          <span style={{fontSize:12}}><span style={{color:'var(--text4)'}}>📡 {nodes.length} integration{nodes.length!==1?'s':''}</span></span>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {lastRefresh && <span style={{ fontSize: 9, color: 'var(--text4)' }}>Updated {lastRefresh.toLocaleTimeString()}</span>}
-          <button onClick={() => refresh()} disabled={refreshing}
-            style={{ fontSize: 10, background: 'none', border: '1px solid var(--border)', borderRadius: 4,
-              color: refreshing ? 'var(--text4)' : 'var(--text3)', cursor: refreshing ? 'default' : 'pointer',
-              padding: '3px 10px', fontFamily: 'var(--font-ui)' }}>
-            {refreshing ? '⏳' : '🔄 Refresh'}
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          {lastRefresh&&<span style={{fontSize:9,color:'var(--text4)'}}>↻ in {countdown}s · {lastRefresh.toLocaleTimeString()}</span>}
+          <button onClick={()=>refresh()} disabled={refreshing}
+            style={{fontSize:10,background:refreshing?'var(--bg3)':'var(--accent2)',border:'none',
+              borderRadius:6,color:refreshing?'var(--text4)':'#fff',cursor:refreshing?'default':'pointer',
+              padding:'5px 14px',fontFamily:'var(--font-ui)',fontWeight:700}}>
+            {refreshing?'⏳ Refreshing…':'🔄 Refresh'}
           </button>
         </div>
       </div>
 
-      {/* Cards grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 12 }}>
-        {nodes.map(node => {
-          const cfg    = node.properties._integration;
-          const result = results[node.id];
-          const intType = cfg.type || NODE_INT_MAP[node.type] || 'probe';
-          const Renderer = CARD_RENDERERS[intType];
-          const isOnline = result?.ok;
-          const hasResult = !!result;
-
-          return (
-            <div key={node.id} style={{ background: 'var(--bg2)', border: `1px solid ${isOnline ? 'var(--success)44' : hasResult ? 'var(--danger)44' : 'var(--border)'}`,
-              borderRadius: 10, padding: '14px 16px', boxShadow: '0 2px 8px rgba(0,0,0,.15)' }}>
+      {/* Cards */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
+        {nodes.map(node=>{
+          const cfg=node.properties._integration;
+          const result=results[node.id];
+          const type=cfg.type||NODE_INT_MAP[node.type]||'probe';
+          const Renderer=CARD_RENDERERS[type];
+          const color=TYPE_COLORS[type]||'var(--accent2)';
+          const isOnline=result?.ok;
+          return(
+            <div key={node.id} style={{
+              background:`linear-gradient(145deg, ${color}18 0%, var(--bg2) 60%)`,
+              border:`1px solid ${isOnline?color+'55':result?'var(--danger)44':'var(--border)'}`,
+              borderRadius:12,overflow:'hidden',
+              boxShadow:`0 4px 20px ${color}11`}}>
               {/* Card header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
-                <span style={{ width: 9, height: 9, borderRadius: '50%', flexShrink: 0,
-                  background: isOnline ? 'var(--success)' : hasResult ? 'var(--danger)' : 'var(--text4)' }} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {node.title}
-                  </div>
-                  <div style={{ fontSize: 9, color: 'var(--text4)' }}>
-                    {intType.toUpperCase()} · {node.mapTitle} · {cfg.url?.replace(/^https?:\/\//, '').split('/')[0]}
-                  </div>
+              <div style={{padding:'14px 16px 10px',borderBottom:'1px solid rgba(255,255,255,.06)',
+                background:`linear-gradient(90deg, ${color}22 0%, transparent 100%)`}}>
+                <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+                  <span style={{width:10,height:10,borderRadius:'50%',flexShrink:0,
+                    background:isOnline?'#4caf50':result?'#f44336':'rgba(255,255,255,.2)',
+                    boxShadow:isOnline?'0 0 8px #4caf5088':'none'}}/>
+                  <span style={{fontSize:14,fontWeight:800,color:'var(--text)',flex:1,
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{node.title}</span>
+                  <span style={{fontSize:9,padding:'2px 8px',borderRadius:10,
+                    background:`${color}33`,color,fontWeight:700,border:`1px solid ${color}44`}}>
+                    {TYPE_LABEL[type]||type}
+                  </span>
                 </div>
-                <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10,
-                  background: isOnline ? 'var(--success)22' : hasResult ? 'var(--danger)22' : 'var(--bg3)',
-                  color: isOnline ? 'var(--success)' : hasResult ? 'var(--danger)' : 'var(--text4)',
-                  border: `1px solid ${isOnline ? 'var(--success)' : hasResult ? 'var(--danger)' : 'var(--border)'}` }}>
-                  {isOnline ? 'online' : hasResult ? 'offline' : '…'}
-                </span>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{fontSize:9,color:'rgba(255,255,255,.35)'}}>
+                    {cfg.url?.replace(/^https?:\/\//,'').split('/')[0]}
+                  </span>
+                  <span style={{fontSize:9,color:'rgba(255,255,255,.25)'}}>· {node.mapTitle}</span>
+                  <span style={{marginLeft:'auto',fontSize:9,fontWeight:700,
+                    color:isOnline?'#81c784':result?'#f44336':'rgba(255,255,255,.3)'}}>
+                    {isOnline?'● online':result?'● offline':'○ pending'}
+                  </span>
+                </div>
               </div>
-
-              {/* Metrics */}
-              {!hasResult && (
-                <div style={{ fontSize: 11, color: 'var(--text4)', fontStyle: 'italic' }}>Connecting…</div>
-              )}
-              {result?.error && (
-                <div style={{ fontSize: 10, color: 'var(--danger)' }}>⚠ {result.error}</div>
-              )}
-              {result?.ok && Renderer && <Renderer data={result.data} title={node.title} />}
-
-              {/* Timestamp */}
-              {result?.ts && (
-                <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 8, textAlign: 'right' }}>
+              {/* Card body */}
+              <div style={{padding:'12px 16px'}}>
+                {!result&&<div style={{fontSize:11,color:'rgba(255,255,255,.3)',fontStyle:'italic'}}>Connecting…</div>}
+                {result?.error&&<div style={{fontSize:10,color:'#f44336',padding:'6px 8px',background:'rgba(244,67,54,.1)',borderRadius:5}}>⚠ {result.error}</div>}
+                {result?.ok&&Renderer&&<Renderer node={node} result={result}/>}
+                {result?.ts&&<div style={{fontSize:8,color:'rgba(255,255,255,.2)',marginTop:10,textAlign:'right'}}>
                   {new Date(result.ts).toLocaleTimeString()}
-                </div>
-              )}
+                </div>}
+              </div>
             </div>
           );
         })}
