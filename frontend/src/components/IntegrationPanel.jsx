@@ -263,6 +263,8 @@ function ProbeMetrics({ data }) {
 
 const METRIC_RENDERERS = { proxmox: ProxmoxMetrics, truenas: TrueNASMetrics, unraid: UnraidMetrics, probe: ProbeMetrics };
 
+const POLL_MS = 15000; // 15s real-time polling
+
 // ── Main component ─────────────────────────────────────────────
 export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
   const intType = NODE_INT_MAP[node.type] || 'probe';
@@ -273,12 +275,13 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
   const [data, setData]   = useState(null);
   const [err,  setErr]    = useState('');
   const [busy, setBusy]   = useState(false);
-  const [show, setShow]   = useState(false); // show credentials
-  const intervalRef       = useRef(null);
+  const [show, setShow]   = useState(false);
+  const [lastTs, setLastTs] = useState(null);
+  const [countdown, setCountdown] = useState(0);
+  const intervalRef  = useRef(null);
+  const countdownRef = useRef(null);
 
-  const save = () => onUpdateProp('_integration', form);
-
-  const fetch_ = async (silent = false) => {
+  const doFetch = async (silent = false) => {
     if (!silent) setBusy(true);
     setErr('');
     try {
@@ -288,17 +291,40 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
       });
       if (!json.ok) throw new Error(json.error || 'Request failed');
       setData(json);
+      setLastTs(Date.now());
+      setCountdown(POLL_MS / 1000);
     } catch(e) { setErr(e.message); }
     finally { if (!silent) setBusy(false); }
   };
 
-  // Auto-refresh every 30s if connected
+  // Auto-connect if credentials already saved
   useEffect(() => {
+    const savedCfg = node.properties?._integration;
+    if (savedCfg?.url && fields.every(f => savedCfg[f.key])) {
+      setForm({ type: intType, ...savedCfg });
+      doFetch(true);
+    }
+  }, [node.id]);
+
+  // Polling interval
+  useEffect(() => {
+    clearInterval(intervalRef.current);
     if (data && !err) {
-      intervalRef.current = setInterval(() => fetch_(true), 30000);
+      intervalRef.current = setInterval(() => doFetch(true), POLL_MS);
     }
     return () => clearInterval(intervalRef.current);
-  }, [data, err]);
+  }, [data, err, form]);
+
+  // Countdown timer
+  useEffect(() => {
+    clearInterval(countdownRef.current);
+    if (data && !err) {
+      countdownRef.current = setInterval(() => setCountdown(c => Math.max(0, c - 1)), 1000);
+    }
+    return () => clearInterval(countdownRef.current);
+  }, [data, err, lastTs]);
+
+  const save = () => { onUpdateProp('_integration', form); };
 
   const Renderer = METRIC_RENDERERS[form.type] || ProbeMetrics;
   const isConfigured = fields.every(f => form[f.key]);
@@ -314,7 +340,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
           {isConfigured && (
             <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: data ? 'var(--success)22' : 'var(--bg3)',
               color: data ? 'var(--success)' : 'var(--text4)', border: `1px solid ${data ? 'var(--success)' : 'var(--border)'}` }}>
-              {data ? '● live' : '○ not connected'}
+              {data ? `● live · ↻${countdown}s` : '○ not connected'}
             </span>
           )}
           <button onClick={() => setShow(s => !s)}
@@ -368,13 +394,13 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
       {/* Connect / Refresh */}
       {isConfigured && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button onClick={() => fetch_()} disabled={busy}
+          <button onClick={() => doFetch()} disabled={busy}
             style={{ flex: 1, padding: '7px', background: busy ? 'var(--bg3)' : 'var(--accent2)', border: 'none',
               borderRadius: 6, color: busy ? 'var(--text4)' : '#fff', cursor: busy ? 'default' : 'pointer',
               fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)' }}>
             {busy ? '⏳ Connecting…' : data ? '🔄 Refresh' : '⚡ Connect'}
           </button>
-          {data && <button onClick={() => { setData(null); clearInterval(intervalRef.current); }}
+          {data && <button onClick={() => { setData(null); clearInterval(intervalRef.current); clearInterval(countdownRef.current); }}
             style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 6,
               color: 'var(--text4)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
             Disconnect
