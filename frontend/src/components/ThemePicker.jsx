@@ -107,7 +107,7 @@ export default function ThemePicker({
         <div style={{ flex:1, overflow:"auto", padding:"16px 20px" }}>
 
           {/* ── Skins ── */}
-          {tab==="skins" && (
+          {tab==="skins" && (() => { try { return (
             <div>
               <div style={{ fontSize:11, color:"var(--text4)", marginBottom:14, lineHeight:1.6 }}>
                 Each skin is a complete visual overhaul — fonts, shapes, shadows, colors, and special effects.
@@ -197,7 +197,7 @@ export default function ThemePicker({
                 </div>
               </div>
             </div>
-          )}
+          ); } catch(err) { return <div style={{color:"var(--danger)",padding:16,fontSize:11}}>Error: {err?.message}</div>; } })()}
 
           {/* ── Global Theme ── */}
           {tab==="global" && (
