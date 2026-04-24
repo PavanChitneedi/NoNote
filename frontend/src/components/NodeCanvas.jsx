@@ -232,14 +232,34 @@ const makeId = () => typeof crypto !== 'undefined' && crypto.randomUUID
   : `${Date.now()}-${Math.random().toString(36).slice(2)}-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);});
 
 // ── Notes helpers ─────────────────────────────────────────────
+function isNotesArray(v) {
+  // Returns true if v is a JSON string of [{id,title,content,...}]
+  if (typeof v !== 'string' || !v.trim().startsWith('[')) return false;
+  try {
+    const p = JSON.parse(v);
+    return Array.isArray(p) && (p.length === 0 || (p[0] && typeof p[0] === 'object' && ('content' in p[0] || 'title' in p[0])));
+  } catch { return false; }
+}
 function parseNotes(raw) {
   if (!raw) return [];
-  try {
-    const p = JSON.parse(raw);
-    if (Array.isArray(p)) return p;
-  } catch {}
-  if (typeof raw === 'string' && raw.trim())
-    return [{ id: Math.random().toString(36).slice(2), title: '', content: raw, sensitive: false }];
+  if (Array.isArray(raw)) {
+    // Already an array — but each note's content might itself be a corrupted notes array
+    return raw.flatMap(n => {
+      if (n && typeof n.content === 'string' && isNotesArray(n.content)) {
+        // The content field contains a serialized notes array — unwrap into real notes
+        try { return JSON.parse(n.content); } catch {}
+      }
+      return [n];
+    });
+  }
+  if (typeof raw === 'string') {
+    try {
+      const p = JSON.parse(raw);
+      if (Array.isArray(p)) return parseNotes(p); // recurse with array form
+    } catch {}
+    // Plain string — wrap as single note
+    if (raw.trim()) return [{ id: Math.random().toString(36).slice(2), title: '', content: raw, sensitive: false }];
+  }
   return [];
 }
 function stripHtml(html) {
