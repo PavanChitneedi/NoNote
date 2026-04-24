@@ -1,6 +1,67 @@
 import { randomUUID as _uuid } from 'crypto';
 import { Router } from "express";
 import { appLog } from "../utils/logger.js";
+
+// ── Normalize corrupted notes from DB ────────────────────────────────────
+// Old save code stored the serialized notes array as the content of a single
+// wrapper note. This unwraps it back into real individual notes.
+function normalizeNotes(raw) {
+  if (!raw) return '[]';
+  
+  // Parse the outer JSON
+  let arr;
+  try { arr = JSON.parse(raw); } catch { return '[]'; }
+  if (!Array.isArray(arr)) return '[]';
+  
+  // Check if this is the corruption pattern:
+  // [{id, title:"", content:"[{id,title,content}...]", sensitive:false}]
+  const fixed = [];
+  for (const note of arr) {
+    if (!note || typeof note !== 'object') continue;
+    const content = note.content || '';
+    
+    // Try to detect content that IS a serialized notes array
+    let inner = null;
+    
+    // Pattern 1: content is valid JSON array of notes → [{"id":...}]
+    if (typeof content === 'string' && content.trim().startsWith('[')) {
+      try {
+        const p = JSON.parse(content);
+        if (Array.isArray(p) && p.length > 0 && p[0] && typeof p[0].content !== 'undefined') {
+          inner = p;
+        }
+      } catch {}
+    }
+    
+    // Pattern 2: content is JSON objects without brackets → {"id":...},{"id":...}
+    if (!inner && typeof content === 'string' && content.trim().startsWith('{')) {
+      try {
+        const p = JSON.parse('[' + content + ']');
+        if (Array.isArray(p) && p.length > 0 && p[0] && typeof p[0].content !== 'undefined') {
+          inner = p;
+        }
+      } catch {}
+    }
+    
+    if (inner) {
+      // Unwrap — push real notes
+      for (const n of inner) {
+        fixed.push({
+          id: n.id || Math.random().toString(36).slice(2),
+          title: n.title || '',
+          content: n.content || '',
+          sensitive: !!n.sensitive,
+        });
+      }
+    } else {
+      fixed.push(note);
+    }
+  }
+  
+  return JSON.stringify(fixed);
+}
+
+
 import { body, param, validationResult } from "express-validator";
 import { query, withTransaction } from "../db/pool.js";
 import { authenticate, mapPermission } from "../middleware/auth.js";
@@ -92,9 +153,15 @@ router.get(
 
       if (!mapRes.rows[0]) return res.status(404).json({ error: "Map not found" });
 
+      // Normalize corrupted notes (fix old double-serialization bug)
+      const nodes = nodesRes.rows.map(n => ({
+        ...n,
+        notes: normalizeNotes(n.notes),
+      }));
+
       res.json({
         map:           mapRes.rows[0],
-        nodes:         nodesRes.rows,
+        nodes,
         edges:         edgesRes.rows,
         collaborators: collabRes.rows,
         groupBoxes: mapRes.rows[0].group_boxes || [],

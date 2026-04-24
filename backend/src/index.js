@@ -329,10 +329,47 @@ async function runMigrations() {
 // appLog moved to utils/logger.js
 
 // ── Start ─────────────────────────────────────────────────────
+// ── One-time migration: fix corrupted notes in map_nodes ─────────────────
+async function fixCorruptedNotes() {
+  try {
+    const { rows } = await query(
+      "SELECT id, notes FROM map_nodes WHERE notes IS NOT NULL AND notes != '[]' AND notes != ''"
+    );
+    let fixed = 0;
+    for (const row of rows) {
+      try {
+        const arr = JSON.parse(row.notes);
+        if (!Array.isArray(arr)) continue;
+        let changed = false;
+        const result = [];
+        for (const note of arr) {
+          if (!note || !note.content) { result.push(note); continue; }
+          const c = note.content.trim();
+          let inner = null;
+          if (c.startsWith('[')) {
+            try { const p = JSON.parse(c); if (Array.isArray(p) && p[0]?.content !== undefined) inner = p; } catch {}
+          }
+          if (!inner && c.startsWith('{')) {
+            try { const p = JSON.parse('[' + c + ']'); if (Array.isArray(p) && p[0]?.content !== undefined) inner = p; } catch {}
+          }
+          if (inner) { result.push(...inner); changed = true; }
+          else result.push(note);
+        }
+        if (changed) {
+          await query("UPDATE map_nodes SET notes=$1 WHERE id=$2", [JSON.stringify(result), row.id]);
+          fixed++;
+        }
+      } catch {}
+    }
+    if (fixed > 0) console.log(`[migrate] Fixed corrupted notes in ${fixed} node(s)`);
+  } catch (err) { console.error('[migrate] fixCorruptedNotes error:', err.message); }
+}
+
 httpServer.listen(PORT, "0.0.0.0", async () => {
   console.log(`[server] NodeMap API + WS running on :${PORT}`);
   await runMigrations().catch(console.error);
   await seedAdmin().catch(console.error);
+  await fixCorruptedNotes();
   // Seed a startup log entry so the Logs tab is never empty
   try {
     const { appLog } = await import("./utils/logger.js");

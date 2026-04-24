@@ -3068,7 +3068,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.24.7✦</button>
+              title="What's new">v5.24.8✦</button>
             <button onClick={logout}
               style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
                 border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}

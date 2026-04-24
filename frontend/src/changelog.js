@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.24.8",date:"Apr 2026",items:[
+    "Notes corruption: fixed at DB level — backend migration repairs all corrupted notes on startup",
+    "GET /maps/:id now normalizes notes before sending, so corruption can never reach the frontend",
+  ]},
   {v:"v5.24.7",date:"Apr 2026",items:["Notes corruption fix: handles all patterns including missing-bracket JSON fragments like {id:...},{id:...}",
     "Changelog deduplication: version entries no longer stack on each update",]},
   {v:"v5.24.6",date:"Apr 2026",items:["Notes: corrupted notes (notes-JSON stored as note content) unwrapped into individual notes",]},
