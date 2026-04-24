@@ -207,24 +207,32 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   // Sanitize imported nodes/edges to ensure correct field names regardless of export source
   const sanitizeImport = (rawNodes, rawEdges) => {
-    const nodes = (rawNodes || []).map(n => ({
-      id:          n.id,
-      type:        n.type || n.node_type || "note",
-      x:           n.x || 0,
-      y:           n.y || 0,
-      w:           n.w || 180,
-      h:           n.h || 80,
-      title:       n.title || "Untitled",
-      notes:       Array.isArray(n.notes) ? n.notes : [],
-      properties:  n.properties || {},
-      customProps: n.customProps || n.custom_props || {},
-      collapsed:   n.collapsed || false,
-      z_index:     n.z_index || 0,
-    }));
+    // Always generate fresh IDs — imported nodes/edges have IDs from the source map
+    // which already exist in the DB. Reusing them causes ON CONFLICT to silently
+    // update the original map's nodes instead of inserting into the new map.
+    const idMap = {};
+    const nodes = (rawNodes || []).map(n => {
+      const newId = crypto.randomUUID();
+      idMap[n.id] = newId;
+      return {
+        id:          newId,
+        type:        n.type || n.node_type || "note",
+        x:           n.x || 0,
+        y:           n.y || 0,
+        w:           n.w || 180,
+        h:           n.h || 80,
+        title:       n.title || "Untitled",
+        notes:       Array.isArray(n.notes) ? n.notes : [],
+        properties:  n.properties || {},
+        customProps: n.customProps || n.custom_props || {},
+        collapsed:   n.collapsed || false,
+        z_index:     n.z_index || 0,
+      };
+    });
     const edges = (rawEdges || []).map(e => ({
-      id:         e.id,
-      from:       e.from || e.from_node,
-      to:         e.to   || e.to_node,
+      id:         crypto.randomUUID(),
+      from:       idMap[e.from || e.from_node] || e.from || e.from_node,
+      to:         idMap[e.to   || e.to_node]   || e.to   || e.to_node,
       label:      e.label || "",
       style:      e.style || "arrow",
       color:      e.color || "#58a6ff",
