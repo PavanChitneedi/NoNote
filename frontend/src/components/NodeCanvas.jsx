@@ -1059,7 +1059,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const ns=data.nodes.map(n=>({
         id:n.id,type:n.node_type,x:n.x,y:n.y,w:n.w,h:n.h,
         title:n.title,description:n.description||"",showNotes:false,notes:parseNotes(n.notes),collapsed:false,
-        properties:n.properties||{},customProps:n.custom_props||{},
+        properties:{...(DP[n.node_type||n.type]||{}),...(n.properties||{})},customProps:n.custom_props||{},
       }));
       const es=data.edges.map(e=>({
         id:e.id,from:e.from_node,to:e.to_node,
@@ -1847,7 +1847,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── Restore version ────────────────────────────────────────
   const handleRestore=(ns,es)=>{
-    const mappedN=ns.map(n=>({id:n.id,type:n.node_type||n.type,x:n.x,y:n.y,w:n.w,h:n.h,title:n.title,notes:parseNotes(n.notes),collapsed:false,properties:n.properties||{},customProps:n.custom_props||n.customProps||{}}));
+    const mappedN=ns.map(n=>({id:n.id,type:n.node_type||n.type,x:n.x,y:n.y,w:n.w,h:n.h,title:n.title,notes:parseNotes(n.notes),collapsed:false,properties:{...(DP[n.node_type||n.type]||{}),...(n.properties||{})},customProps:n.custom_props||n.customProps||{}}));
     const mappedE=es.map(e=>({id:e.id,from:e.from_node||e.from,to:e.to_node||e.to,label:e.label||"",style:e.style||"arrow",color:e.color||"var(--accent)",fromAnchor:e.from_anchor||e.fromAnchor||null,toAnchor:e.to_anchor||e.toAnchor||null}));
     setNodes(mappedN);setEdges(mappedE);pushHistory(mappedN,mappedE);scheduleSave(mappedN,mappedE);
   };
@@ -3031,7 +3031,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.24.2✦</button>
+              title="What's new">v5.24.3✦</button>
             <button onClick={logout}
               style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
                 border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}
@@ -3620,6 +3620,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onChangeType={(newType)=>updateNode(pn.id,{type:newType,properties:{...(DP[newType]||{}),...pn.properties}})}
                     onUpdateCustom={(k,v)=>updateCustom(pn.id,k,v)}
                     onDeleteCustom={(k)=>deleteCustom(pn.id,k)}
+                    onRenameCustom={(ok,nk)=>renameCustom(pn.id,ok,nk)}
                     onAddCustom={()=>{const k=`field_${Object.keys(pn.customProps||{}).length+1}`;updateCustom(pn.id,k,"");}}
                   />
                 );
@@ -5284,7 +5285,7 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
 // ── Inline Node Editor — tabbed popup at node ────────────────────
 function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
   onTabChange, onClose, onUpdate, onUpdateNotes, onChangeType,
-  onUpdateCustom, onDeleteCustom, onAddCustom }) {
+  onUpdateCustom, onDeleteCustom, onAddCustom, onRenameCustom }) {
 
   const t = NT[node.type] || NT.note;
   const nodeEdges = edges.filter(e => e.from === node.id || e.to === node.id);
@@ -5433,8 +5434,18 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
               </div>
               {Object.entries(node.customProps || {}).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
-                  <input value={k} readOnly style={{ ...inp(), width: '38%', opacity: 0.6 }} />
-                  <input value={v} onChange={e => onUpdateCustom(k, e.target.value)} disabled={!canEdit} style={{ ...inp(), flex: 1 }} />
+                  <input value={k}
+                    readOnly={!canEdit}
+                    style={{ ...inp(), width: '38%', fontWeight: 600, opacity: canEdit ? 1 : 0.6 }}
+                    placeholder="name"
+                    onBlur={e => { const nk=e.target.value.trim(); if(nk&&nk!==k&&onRenameCustom) onRenameCustom(k,nk); }}
+                    onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); e.stopPropagation(); }}
+                  />
+                  <input value={v} onChange={e => onUpdateCustom(k, e.target.value)} disabled={!canEdit}
+                    style={{ ...inp(), flex: 1 }}
+                    placeholder="value"
+                    onKeyDown={e=>e.stopPropagation()}
+                  />
                   {canEdit && <button onClick={() => onDeleteCustom(k)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>}
                 </div>
               ))}
