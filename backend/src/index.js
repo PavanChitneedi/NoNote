@@ -350,7 +350,12 @@ async function fixCorruptedNotes() {
             try { const p = JSON.parse(c); if (Array.isArray(p) && p[0]?.content !== undefined) inner = p; } catch {}
           }
           if (!inner && c.startsWith('{')) {
-            try { const p = JSON.parse('[' + c + ']'); if (Array.isArray(p) && p[0]?.content !== undefined) inner = p; } catch {}
+            try {
+              const esc = c.replace(/[\x00-\x1f]/g, ch => ({'
+':'\\n','':'\\r','	':'\\t'}[ch] || '\\u'+ch.charCodeAt(0).toString(16).padStart(4,'0')));
+              const p = JSON.parse('[' + esc + ']');
+              if (Array.isArray(p) && p[0]?.content !== undefined) inner = p;
+            } catch {}
           }
           if (inner) { result.push(...inner); changed = true; }
           else result.push(note);

@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.24.9",date:"Apr 2026",items:[
+    "Notes corruption root cause: literal newline character in content caused JSON.parse to throw Bad control character — fixed by escaping control chars before re-parsing",
+    "Fix applied in three places: backend normalizeNotes (GET response), backend fixCorruptedNotes (DB migration), frontend tryExtractNotes",
+  ]},
   {v:"v5.24.8",date:"Apr 2026",items:[
     "Notes corruption: fixed at DB level — backend migration repairs all corrupted notes on startup",
     "GET /maps/:id now normalizes notes before sending, so corruption can never reach the frontend",

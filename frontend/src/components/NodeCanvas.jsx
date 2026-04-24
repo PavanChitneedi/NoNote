@@ -235,25 +235,29 @@ const makeId = () => typeof crypto !== 'undefined' && crypto.randomUUID
 function looksLikeNote(obj) {
   return obj && typeof obj === 'object' && ('id' in obj || 'title' in obj || 'content' in obj);
 }
+function escCtrl(s) {
+  return s.replace(/[\x00-\x1f]/g, c => {
+    const m = {'\n':'\\n','\r':'\\r','\t':'\\t'};
+    return m[c] || ('\\u' + c.charCodeAt(0).toString(16).padStart(4,'0'));
+  });
+}
 function tryExtractNotes(str) {
   if (typeof str !== 'string' || !str.trim()) return null;
   const s = str.trim();
-  // Pattern 1: valid JSON array of note objects → [{"id":...},...]
   if (s.startsWith('[')) {
     try {
       const p = JSON.parse(s);
       if (Array.isArray(p) && p.every(looksLikeNote)) return p;
     } catch {}
   }
-  // Pattern 2: JSON objects without array brackets → {"id":...},{"id":...}
   if (s.startsWith('{')) {
+    // Escape literal control chars (e.g. \n newline) before re-parsing as JSON array
     try {
-      const p = JSON.parse('[' + s + ']');
+      const p = JSON.parse('[' + escCtrl(s) + ']');
       if (Array.isArray(p) && p.every(looksLikeNote)) return p;
     } catch {}
-    // Pattern 3: single JSON object that is a note → {"id":...,"content":...}
     try {
-      const p = JSON.parse(s);
+      const p = JSON.parse(escCtrl(s));
       if (looksLikeNote(p)) return [p];
     } catch {}
   }
@@ -3068,7 +3072,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.24.8✦</button>
+              title="What's new">v5.24.9✦</button>
             <button onClick={logout}
               style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
                 border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}

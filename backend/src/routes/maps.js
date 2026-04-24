@@ -5,75 +5,36 @@ import { appLog } from "../utils/logger.js";
 // ── Normalize corrupted notes from DB ────────────────────────────────────
 // Old save code stored the serialized notes array as the content of a single
 // wrapper note. This unwraps it back into real individual notes.
+function escCtrl(s) {
+  return s.replace(/[\x00-\x1f]/g, c => {
+    const m = {'\n':'\\n','\r':'\\r','\t':'\\t'};
+    return m[c] || ('\\u' + c.charCodeAt(0).toString(16).padStart(4,'0'));
+  });
+}
 function normalizeNotes(raw) {
-  if (!raw) return '[]';
-  
-  // Parse the outer JSON
+  if (!raw || raw === '[]') return '[]';
   let arr;
   try { arr = JSON.parse(raw); } catch { return '[]'; }
   if (!Array.isArray(arr)) return '[]';
-  
-  // Check if this is the corruption pattern:
-  // [{id, title:"", content:"[{id,title,content}...]", sensitive:false}]
   const fixed = [];
   for (const note of arr) {
     if (!note || typeof note !== 'object') continue;
-    const content = note.content || '';
-    
-    // Try to detect content that IS a serialized notes array
+    const c = (typeof note.content === 'string' ? note.content : '').trim();
     let inner = null;
-    
-    // Pattern 1: content is valid JSON array of notes → [{"id":...}]
-    if (typeof content === 'string' && content.trim().startsWith('[')) {
-      try {
-        const p = JSON.parse(content);
-        if (Array.isArray(p) && p.length > 0 && p[0] && typeof p[0].content !== 'undefined') {
-          inner = p;
-        }
-      } catch {}
+    if (c.startsWith('[')) {
+      try { const p = JSON.parse(c); if (Array.isArray(p) && p[0] && 'content' in p[0]) inner = p; } catch {}
     }
-    
-    // Pattern 2: content is JSON objects without brackets → {"id":...},{"id":...}
-    if (!inner && typeof content === 'string' && content.trim().startsWith('{')) {
-      try {
-        const p = JSON.parse('[' + content + ']');
-        if (Array.isArray(p) && p.length > 0 && p[0] && typeof p[0].content !== 'undefined') {
-          inner = p;
-        }
-      } catch {}
+    if (!inner && c.startsWith('{')) {
+      try { const p = JSON.parse('[' + escCtrl(c) + ']'); if (Array.isArray(p) && p[0] && 'content' in p[0]) inner = p; } catch {}
     }
-    
     if (inner) {
-      // Unwrap — push real notes
-      for (const n of inner) {
-        fixed.push({
-          id: n.id || Math.random().toString(36).slice(2),
-          title: n.title || '',
-          content: n.content || '',
-          sensitive: !!n.sensitive,
-        });
-      }
-    } else {
-      fixed.push(note);
-    }
+      for (const n of inner)
+        fixed.push({ id: n.id || Math.random().toString(36).slice(2), title: n.title||'', content: n.content||'', sensitive: !!n.sensitive });
+    } else { fixed.push(note); }
   }
-  
   return JSON.stringify(fixed);
 }
 
-
-import { body, param, validationResult } from "express-validator";
-import { query, withTransaction } from "../db/pool.js";
-import { authenticate, mapPermission } from "../middleware/auth.js";
-
-const router = Router();
-const validate = (req, res, next) => {
-  const e = validationResult(req);
-  if (!e.isEmpty()) return res.status(400).json({ errors: e.array() });
-  next();
-};
-
-// ── GET /api/maps ─────────────────────────────────────────────
 router.get("/", authenticate, async (req, res) => {
   try {
     const { rows } = await query(
