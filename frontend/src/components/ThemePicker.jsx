@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import { useDesign, DESIGNS } from "../context/DesignContext.jsx";
+import { useSkin } from "../context/SkinContext.jsx";
+import { SKINS, SKIN_KEYS } from "../skins.js";
 
 const THEME_GROUPS = ["Dark", "Light"];
 
@@ -60,11 +62,13 @@ export default function ThemePicker({
 }) {
   const { themeName, setThemeName, fontScale, setFontScale } = useTheme();
   const { designName, setDesignName } = useDesign();
+  const { skinName, setSkinName } = useSkin();
   const [tab, setTab]         = useState(defaultTab);
   const [fontInput, setFontInput] = useState(String(fontScale));
 
   const hasCanvas = canvasTheme !== undefined && setCanvasTheme !== undefined;
   const tabs = [
+    { id:"skins",   label:"✨ Skins" },
     { id:"global",  label:"🌍 Theme" },
     ...(hasCanvas ? [{ id:"canvas", label:"🎨 Canvas" }] : []),
     { id:"design",  label:"🖌 Design" },
