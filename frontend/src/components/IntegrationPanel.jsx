@@ -1,5 +1,5 @@
 // IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../api/client.js';
 
 // Which integration type to use per node type
@@ -59,42 +59,109 @@ function Stat({ label, value, sub }) {
 }
 
 // ── Metric renderers per integration type ─────────────────────
+function uptime(s){if(!s)return'—';const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m`;}
+
+function GuestRow({g,type}){
+  const cpuPct=Math.round((g.cpu||0)*100);
+  const memPct=pct(g.mem,g.maxmem);
+  const running=g.status==='running';
+  return(
+    <div style={{display:'grid',gridTemplateColumns:'16px 1fr 40px 90px 90px 60px',gap:6,alignItems:'center',
+      padding:'5px 8px',borderRadius:5,background:'var(--bg)',marginBottom:3,
+      border:`1px solid ${running?'var(--success)22':'var(--border2)'}`}}>
+      <span style={{fontSize:9,color:running?'var(--success)':'var(--text4)',fontWeight:700}}>{running?'▶':'■'}</span>
+      <div style={{minWidth:0}}>
+        <div style={{fontSize:11,fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name||`${type}${g.vmid}`}</div>
+        <div style={{fontSize:9,color:'var(--text4)'}}>ID {g.vmid} · {uptime(g.uptime)}</div>
+      </div>
+      <span style={{fontSize:9,color:'var(--text4)',textAlign:'right'}}>{g.cpus||'—'}c</span>
+      <div>
+        <div style={{fontSize:9,color:'var(--text4)',marginBottom:1}}>CPU {cpuPct}%</div>
+        <Bar pct={cpuPct}/>
+      </div>
+      <div>
+        <div style={{fontSize:9,color:'var(--text4)',marginBottom:1}}>RAM {memPct}% <span style={{color:'var(--text4)'}}>{gb(g.mem)}</span></div>
+        <Bar pct={memPct}/>
+      </div>
+      <div style={{fontSize:9,color:'var(--text4)',textAlign:'right'}}>{fmt(g.disk)}</div>
+    </div>
+  );
+}
+
 function ProxmoxMetrics({ data }) {
+  const [expanded,setExpanded]=React.useState({});
+  const toggle=id=>setExpanded(e=>({...e,[id]:!e[id]}));
   return (
     <div>
-      <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 8 }}>Proxmox VE {data.version}</div>
+      <div style={{fontSize:9,color:'var(--text4)',marginBottom:10,display:'flex',alignItems:'center',gap:8}}>
+        <span>Proxmox VE {data.version}</span>
+        <span style={{marginLeft:'auto'}}>{data.nodes?.length} node(s)</span>
+      </div>
       {(data.nodes || []).map(n => {
         const s = n.status || {};
-        const cpuPct = Math.round((s.cpu || 0) * 100);
-        const memPct = pct(s.memory?.used, s.memory?.total);
+        const cpuPct  = Math.round((s.cpu || 0) * 100);
+        const memPct  = pct(s.memory?.used, s.memory?.total);
         const diskPct = pct(s.rootfs?.used, s.rootfs?.total);
-        const runVMs  = (n.vms || []).filter(v => v.status === 'running').length;
-        const runLXC  = (n.lxc || []).filter(v => v.status === 'running').length;
+        const runVMs  = (n.vms||[]).filter(v=>v.status==='running').length;
+        const runLXC  = (n.lxc||[]).filter(v=>v.status==='running').length;
+        const allGuests=[...(n.vms||[]).map(v=>({...v,_type:'VM'})),...(n.lxc||[]).map(v=>({...v,_type:'CT'}))];
+        const isExp=expanded[n.node];
         return (
-          <div key={n.node} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 12px', marginBottom: 8,
-            border: `1px solid ${n.online ? 'var(--success)44' : 'var(--danger)44'}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
-              <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.online ? 'var(--success)' : 'var(--danger)', flexShrink: 0 }} />
-              <span style={{ fontWeight: 700, fontSize: 12 }}>{n.node}</span>
-              <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{n.vms.length} VMs · {n.lxc.length} LXC</span>
+          <div key={n.node} style={{background:'var(--bg3)',borderRadius:8,marginBottom:10,
+            border:`1px solid ${n.online?'var(--success)44':'var(--danger)44'}`}}>
+            {/* Node header */}
+            <div style={{padding:'10px 12px',cursor:'pointer'}} onClick={()=>toggle(n.node)}>
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}>
+                <span style={{width:8,height:8,borderRadius:'50%',background:n.online?'var(--success)':'var(--danger)',flexShrink:0}}/>
+                <span style={{fontWeight:700,fontSize:12}}>{n.node}</span>
+                <span style={{fontSize:9,color:'var(--text4)'}}>· up {uptime(s.uptime)}</span>
+                <span style={{marginLeft:'auto',fontSize:9,color:'var(--text4)'}}>{n.vms.length}VM · {n.lxc.length}CT · {isExp?'▲':'▼'}</span>
+              </div>
+              {/* Host metrics */}
+              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:8,marginBottom:8}}>
+                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>CPU ({s.cpuinfo?.cores||'?'}c)</div>
+                  <div style={{fontSize:14,fontWeight:700}}>{cpuPct}%</div><Bar pct={cpuPct}/></div>
+                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>RAM</div>
+                  <div style={{fontSize:14,fontWeight:700}}>{memPct}%</div>
+                  <div style={{fontSize:9,color:'var(--text4)'}}>{gb(s.memory?.used)}/{gb(s.memory?.total)}</div>
+                  <Bar pct={memPct}/></div>
+                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>ROOT DISK</div>
+                  <div style={{fontSize:14,fontWeight:700}}>{diskPct}%</div>
+                  <div style={{fontSize:9,color:'var(--text4)'}}>{fmt(s.rootfs?.used)}/{fmt(s.rootfs?.total)}</div>
+                  <Bar pct={diskPct}/></div>
+                <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>RUNNING</div>
+                  <div style={{fontSize:13,fontWeight:700}}>{runVMs}VM</div>
+                  <div style={{fontSize:13,fontWeight:700,color:'var(--accent1)'}}>{runLXC}CT</div></div>
+              </div>
+              {/* Storage pools */}
+              {(n.storage||[]).filter(st=>st.active).length>0&&(
+                <div style={{display:'flex',flexWrap:'wrap',gap:4,marginTop:4}}>
+                  {(n.storage||[]).filter(st=>st.active).map(st=>{
+                    const sp=pct(st.disk_used,st.total);
+                    return(
+                      <div key={st.storage} style={{background:'var(--bg)',borderRadius:4,padding:'3px 7px',border:'1px solid var(--border2)',minWidth:80}}>
+                        <div style={{fontSize:9,fontWeight:700,color:'var(--text3)'}}>{st.storage}</div>
+                        <div style={{fontSize:9,color:'var(--text4)'}}>{fmt(st.disk_used)}/{fmt(st.total)} · {sp}%</div>
+                        <Bar pct={sp}/>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
-            <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
-              <Stat label="CPU" value={`${cpuPct}%`} />
-              <Stat label="RAM" value={`${memPct}%`} sub={`${gb(s.memory?.used)} / ${gb(s.memory?.total)}`} />
-              <Stat label="Disk" value={`${diskPct}%`} sub={`${fmt(s.rootfs?.used)} / ${fmt(s.rootfs?.total)}`} />
-              <Stat label="Running" value={`${runVMs}VM ${runLXC}CT`} />
-            </div>
-            <Bar pct={cpuPct} /><Bar pct={memPct} /><Bar pct={diskPct} />
-            {n.vms.length > 0 && (
-              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-                {n.vms.slice(0, 8).map(v => (
-                  <span key={v.vmid} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3,
-                    background: v.status === 'running' ? 'var(--success)22' : 'var(--bg)',
-                    color: v.status === 'running' ? 'var(--success)' : 'var(--text4)',
-                    border: '1px solid var(--border)' }}>
-                    {v.name || `VM${v.vmid}`}
-                  </span>
-                ))}
+            {/* Expanded guests */}
+            {isExp&&allGuests.length>0&&(
+              <div style={{borderTop:'1px solid var(--border2)',padding:'8px 10px'}}>
+                <div style={{fontSize:9,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginBottom:6}}>
+                  VMs & CONTAINERS
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'16px 1fr 40px 90px 90px 60px',gap:6,
+                  padding:'3px 8px',marginBottom:3}}>
+                  {['','NAME','CPU','CPU %','RAM','DISK'].map((h,i)=>(
+                    <span key={i} style={{fontSize:8,color:'var(--text4)',fontWeight:700}}>{h}</span>
+                  ))}
+                </div>
+                {allGuests.map(g=><GuestRow key={`${g._type}${g.vmid}`} g={g} type={g._type}/>)}
               </div>
             )}
           </div>

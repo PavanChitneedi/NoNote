@@ -30,13 +30,14 @@ router.post('/proxmox', async (req, res) => {
     ]);
     const [nJ, vJ] = await Promise.all([nR.json(), vR.json()]);
     const details = await Promise.all((nJ.data || []).slice(0, 6).map(async n => {
-      const [sR, vmR, lxR] = await Promise.all([
-        go(`${base}/api2/json/nodes/${n.node}/status`, { headers: h }),
-        go(`${base}/api2/json/nodes/${n.node}/qemu`,   { headers: h }),
-        go(`${base}/api2/json/nodes/${n.node}/lxc`,    { headers: h }),
+      const [sR, vmR, lxR, stR] = await Promise.all([
+        go(`${base}/api2/json/nodes/${n.node}/status`,  { headers: h }),
+        go(`${base}/api2/json/nodes/${n.node}/qemu`,    { headers: h }),
+        go(`${base}/api2/json/nodes/${n.node}/lxc`,     { headers: h }),
+        go(`${base}/api2/json/nodes/${n.node}/storage`, { headers: h }),
       ]);
-      const [s, vms, lxc] = await Promise.all([sR.json(), vmR.json(), lxR.json()]);
-      return { node: n.node, online: n.status === 'online', status: s.data, vms: vms.data || [], lxc: lxc.data || [] };
+      const [s, vms, lxc, storage] = await Promise.all([sR.json(), vmR.json(), lxR.json(), stR.json()]);
+      return { node: n.node, online: n.status === 'online', status: s.data, vms: vms.data || [], lxc: lxc.data || [], storage: storage.data || [] };
     }));
     res.json({ ok: true, version: vJ.data?.version, nodes: details });
   } catch(e) { res.status(502).json({ error: e.message }); }
