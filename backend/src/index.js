@@ -94,37 +94,20 @@ app.use((err, req, res, _next) => {
 
 // ── Bootstrap: create initial admin user ─────────────────────
 async function seedAdmin() {
+  const { rows } = await query("SELECT id FROM users WHERE role = 'owner' LIMIT 1");
+  if (rows.length > 0) return;
+
   const email    = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
-  const forceReset = process.env.FORCE_RESET_ADMIN === 'true';
-
   if (!email || !password) {
-    console.warn("[seed] ADMIN_EMAIL / ADMIN_PASSWORD not set, skipping admin seed");
+    console.warn("[seed] ADMIN_EMAIL / ADMIN_PASSWORD not set, skipping admin creation");
     return;
   }
 
   const hash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS || "12"));
-
-  if (forceReset) {
-    // FORCE_RESET_ADMIN=true: always update the password for this email
-    const r = await query(
-      `INSERT INTO users (email, display_name, password_hash, role, is_active, avatar_color)
-       VALUES ($1, 'Admin', $2, 'owner', true, '#6C63FF')
-       ON CONFLICT (email) DO UPDATE SET password_hash=$2, is_active=true
-       RETURNING email`,
-      [email, hash]
-    );
-    console.log(`[seed] Admin password reset for: ${r.rows[0]?.email}`);
-    return;
-  }
-
-  // Normal: only create if no owner exists yet
-  const { rows } = await query("SELECT id FROM users WHERE role='owner' LIMIT 1");
-  if (rows.length > 0) return;
-
   await query(
-    `INSERT INTO users (email, display_name, password_hash, role, is_active, avatar_color)
-     VALUES ($1, 'Admin', $2, 'owner', true, '#6C63FF')
+    `INSERT INTO users (email, display_name, password_hash, role, avatar_color)
+     VALUES ($1, 'Admin', $2, 'owner', '#6C63FF')
      ON CONFLICT (email) DO NOTHING`,
     [email, hash]
   );
@@ -347,56 +330,10 @@ async function runMigrations() {
 // appLog moved to utils/logger.js
 
 // ── Start ─────────────────────────────────────────────────────
-// ── One-time migration: fix corrupted notes in map_nodes ─────────────────
-async function fixCorruptedNotes() {
-  try {
-    const { rows } = await query(
-      "SELECT id, notes FROM map_nodes WHERE notes IS NOT NULL AND notes != '[]' AND notes != ''"
-    );
-    let fixed = 0;
-    for (const row of rows) {
-      try {
-        const arr = JSON.parse(row.notes);
-        if (!Array.isArray(arr)) continue;
-        let changed = false;
-        const result = [];
-        for (const note of arr) {
-          if (!note || !note.content) { result.push(note); continue; }
-          const c = note.content.trim();
-          let inner = null;
-          if (c.startsWith('[')) {
-            try { const p = JSON.parse(c); if (Array.isArray(p) && p[0]?.content !== undefined) inner = p; } catch {}
-          }
-          if (!inner && c.startsWith('{')) {
-            try {
-              const esc = c.replace(/[\x00-\x1f]/g, function(ch) {
-                if (ch === '\n') return '\\n';
-                if (ch === '\r') return '\\r';
-                if (ch === '\t') return '\\t';
-                return '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0');
-              });
-              const p = JSON.parse('[' + esc + ']');
-              if (Array.isArray(p) && p[0]?.content !== undefined) inner = p;
-            } catch {}
-          }
-          if (inner) { result.push(...inner); changed = true; }
-          else result.push(note);
-        }
-        if (changed) {
-          await query("UPDATE map_nodes SET notes=$1 WHERE id=$2", [JSON.stringify(result), row.id]);
-          fixed++;
-        }
-      } catch {}
-    }
-    if (fixed > 0) console.log(`[migrate] Fixed corrupted notes in ${fixed} node(s)`);
-  } catch (err) { console.error('[migrate] fixCorruptedNotes error:', err.message); }
-}
-
 httpServer.listen(PORT, "0.0.0.0", async () => {
   console.log(`[server] NodeMap API + WS running on :${PORT}`);
   await runMigrations().catch(console.error);
   await seedAdmin().catch(console.error);
-  await fixCorruptedNotes();
   // Seed a startup log entry so the Logs tab is never empty
   try {
     const { appLog } = await import("./utils/logger.js");
