@@ -1,8 +1,17 @@
 import { randomUUID as _uuid } from 'crypto';
 import { Router } from "express";
+import { body, validationResult } from "express-validator";
+import { query, withTransaction } from "../db/pool.js";
+import { authenticate, mapPermission } from "../middleware/auth.js";
 import { appLog } from "../utils/logger.js";
 
 const router = Router();
+
+const validate = (req, res, next) => {
+  const e = validationResult(req);
+  if (!e.isEmpty()) return res.status(400).json({ errors: e.array() });
+  next();
+};
 
 // ── Normalize corrupted notes from DB ────────────────────────────────────
 // Old save code stored the serialized notes array as the content of a single
