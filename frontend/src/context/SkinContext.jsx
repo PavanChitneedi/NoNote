@@ -4,28 +4,25 @@ import { SKINS, SKIN_KEYS } from "../skins.js";
 const SkinContext = createContext(null);
 
 export function SkinProvider({ children }) {
-  const [skinName, setSkinNameRaw] = useState(
-    () => localStorage.getItem("nn_skin") || "default"
+  const [skinName, setSkinRaw] = useState(
+    () => localStorage.getItem("nn_skin") || "obsidian"
   );
-
   const styleRef = useRef(null);
 
-  const setSkinName = (name) => {
-    if (SKINS[name]) setSkinNameRaw(name);
-  };
+  const setSkinName = (name) => { if (SKINS[name]) setSkinRaw(name); };
 
   useEffect(() => {
-    const skin = SKINS[skinName] || SKINS.default;
+    const skin = SKINS[skinName] || SKINS.obsidian;
     const root = document.documentElement;
 
-    // 1. Apply CSS variables
+    // Apply ALL vars — fully overrides ThemeContext and DesignContext
     Object.entries(skin.vars).forEach(([k, v]) => root.style.setProperty(k, v));
 
-    // 2. Apply body class
+    // Swap body class
     SKIN_KEYS.forEach(k => document.body.classList.remove(SKINS[k].bodyClass));
     document.body.classList.add(skin.bodyClass);
 
-    // 3. Inject skin-specific CSS
+    // Inject skin CSS
     if (!styleRef.current) {
       styleRef.current = document.createElement("style");
       styleRef.current.id = "nn-skin-css";
@@ -33,20 +30,14 @@ export function SkinProvider({ children }) {
     }
     styleRef.current.textContent = skin.css || "";
 
-    // 4. Persist
-    localStorage.setItem("nn_skin", skinName);
+    // Body font-family
+    document.body.style.fontFamily = skin.vars["--font-ui"] || "";
 
-    // 5. If skin forces a theme, apply it (soft override — user can still change)
-    if (skin.forceTheme && !localStorage.getItem("nn_skin_theme_overridden_" + skinName)) {
-      const event = new CustomEvent("nn-skin-force-theme", { detail: skin.forceTheme });
-      window.dispatchEvent(event);
-    }
+    localStorage.setItem("nn_skin", skinName);
   }, [skinName]);
 
-  const skin = SKINS[skinName] || SKINS.default;
-
   return (
-    <SkinContext.Provider value={{ skinName, setSkinName, skin }}>
+    <SkinContext.Provider value={{ skinName, setSkinName, skin: SKINS[skinName] || SKINS.obsidian }}>
       {children}
     </SkinContext.Provider>
   );

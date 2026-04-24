@@ -110,52 +110,80 @@ export default function ThemePicker({
           {tab==="skins" && (
             <div>
               <div style={{ fontSize:11, color:"var(--text4)", marginBottom:14, lineHeight:1.6 }}>
-                Skins change the entire visual identity — typography, layout, shadows, and effects. Not just colors.
+                Each skin is a complete visual overhaul — fonts, shapes, shadows, colors, and special effects.
+                Not just a color change.
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
                 {SKIN_KEYS.map(key => {
                   const s = SKINS[key];
                   const active = skinName === key;
+                  const bg0 = s.palette[0], bg1 = s.palette[1], acc = s.palette[2];
                   return (
                     <div key={key}
                       onClick={() => setSkinName(key)}
                       style={{
-                        borderRadius:"var(--radius-md)", cursor:"pointer", overflow:"hidden",
-                        border:`2px solid ${active ? "var(--accent)" : "var(--border)"}`,
-                        background: active ? "var(--accent2)14" : "var(--bg3)",
-                        transition:"var(--transition-all)", userSelect:"none",
+                        borderRadius:8, cursor:"pointer", overflow:"hidden",
+                        border:`2px solid ${active ? acc : "rgba(128,128,128,0.25)"}`,
+                        background: bg1,
+                        transition:"transform 0.14s, border-color 0.14s, box-shadow 0.14s",
+                        userSelect:"none",
+                        boxShadow: active ? `0 4px 20px ${acc}55` : "0 2px 8px rgba(0,0,0,0.3)",
                       }}
-                      onMouseEnter={e => { if(!active) e.currentTarget.style.borderColor="var(--text4)"; }}
-                      onMouseLeave={e => { if(!active) e.currentTarget.style.borderColor="var(--border)"; }}
+                      onMouseEnter={e => { if(!active){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=acc+"88";}}}
+                      onMouseLeave={e => { if(!active){e.currentTarget.style.transform="";e.currentTarget.style.borderColor="rgba(128,128,128,0.25)";}}}
                     >
-                      <div style={{ height:48, display:"flex", position:"relative", overflow:"hidden" }}>
-                        {s.palette.map((col, i) => <div key={i} style={{ flex:1, background:col }} />)}
-                        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{s.icon}</div>
-                        {active && <div style={{ position:"absolute", top:6, right:8, fontSize:14, color:"#fff", textShadow:"0 1px 4px rgba(0,0,0,.8)" }}>✓</div>}
-                      </div>
-                      <div style={{ padding:"9px 12px" }}>
-                        <div style={{ fontSize:12, fontWeight:700, color:"var(--text)", marginBottom:3 }}>{s.name}</div>
-                        <div style={{ fontSize:10, color:"var(--text4)", marginBottom:5, lineHeight:1.45 }}>{s.desc}</div>
-                        <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
-                          {s.tags.map(t => (
-                            <span key={t} style={{ fontSize:9, padding:"1px 6px", borderRadius:10,
-                              background:"var(--bg)", border:"1px solid var(--border)", color:"var(--text4)" }}>
-                              {t}
-                            </span>
+                      {/* Mini UI preview */}
+                      <div style={{ height:70, background:bg0, position:"relative", overflow:"hidden", padding:"8px 8px 0" }}>
+                        {/* Fake topbar */}
+                        <div style={{ height:8, background:bg1, borderRadius:"2px 2px 0 0", marginBottom:4,
+                          border:`1px solid ${acc}44`, display:"flex", alignItems:"center", gap:2, padding:"0 4px" }}>
+                          <div style={{ width:4, height:4, borderRadius:"50%", background:acc, opacity:.8 }}/>
+                          <div style={{ flex:1, height:2, background:acc, opacity:.3, borderRadius:1 }}/>
+                        </div>
+                        {/* Fake content cards */}
+                        <div style={{ display:"flex", gap:3 }}>
+                          {[0.9,0.6,0.75].map((op,i)=>(
+                            <div key={i} style={{ flex:1, height:28, background:bg1, borderRadius:2,
+                              border:`1px solid ${acc}${Math.floor(op*50).toString(16).padStart(2,'0')}`,
+                              opacity:op }}/>
                           ))}
+                        </div>
+                        {active && (
+                          <div style={{ position:"absolute", top:4, right:6, background:acc,
+                            borderRadius:"50%", width:16, height:16, display:"flex", alignItems:"center",
+                            justifyContent:"center", fontSize:10, color:bg0, fontWeight:800 }}>✓</div>
+                        )}
+                      </div>
+                      {/* Info */}
+                      <div style={{ padding:"8px 10px", background:bg1 }}>
+                        <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
+                          <span style={{ fontSize:14 }}>{s.icon}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:s.palette[3]||"#fff" }}>{s.name}</span>
+                        </div>
+                        <div style={{ display:"flex", gap:3, marginBottom:6 }}>
+                          {s.palette.map((col,i) => (
+                            <div key={i} style={{ width:14, height:14, borderRadius:"50%", background:col,
+                              border:"1px solid rgba(255,255,255,0.2)", flexShrink:0 }}/>
+                          ))}
+                        </div>
+                        <div style={{ fontSize:9, color:s.palette[3]||"#ccc", opacity:.7, lineHeight:1.4 }}>
+                          {s.tags.join(" · ")}
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
-              {SKINS[skinName]?.forceTheme && (
-                <div style={{ marginTop:12, padding:"8px 12px", background:"var(--accent2)18",
-                  border:"1px solid var(--accent2)44", borderRadius:"var(--radius-sm)",
-                  fontSize:10, color:"var(--accent)" }}>
-                  💡 <strong>{SKINS[skinName].name}</strong> skin works best with the <em>{SKINS[skinName].forceTheme}</em> color theme (auto-applied on first select).
+              {/* Description of active */}
+              <div style={{ marginTop:12, padding:"10px 14px", background:"var(--bg3)",
+                border:"1px solid var(--border)", borderRadius:8 }}>
+                <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:4 }}>
+                  {SKINS[skinName]?.icon} {SKINS[skinName]?.name}
                 </div>
-              )}
+                <div style={{ fontSize:11, color:"var(--text4)", lineHeight:1.6 }}>
+                  {SKINS[skinName]?.desc}
+                </div>
+              </div>
             </div>
           )}
 
