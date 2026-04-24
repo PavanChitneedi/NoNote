@@ -232,32 +232,49 @@ const makeId = () => typeof crypto !== 'undefined' && crypto.randomUUID
   : `${Date.now()}-${Math.random().toString(36).slice(2)}-4xxx-yxxx-xxxxxxxxxxxx`.replace(/[xy]/g,c=>{const r=Math.random()*16|0;return(c==='x'?r:r&0x3|0x8).toString(16);});
 
 // ── Notes helpers ─────────────────────────────────────────────
-function isNotesArray(v) {
-  // Returns true if v is a JSON string of [{id,title,content,...}]
-  if (typeof v !== 'string' || !v.trim().startsWith('[')) return false;
-  try {
-    const p = JSON.parse(v);
-    return Array.isArray(p) && (p.length === 0 || (p[0] && typeof p[0] === 'object' && ('content' in p[0] || 'title' in p[0])));
-  } catch { return false; }
+function looksLikeNote(obj) {
+  return obj && typeof obj === 'object' && ('id' in obj || 'title' in obj || 'content' in obj);
+}
+function tryExtractNotes(str) {
+  if (typeof str !== 'string' || !str.trim()) return null;
+  const s = str.trim();
+  // Pattern 1: valid JSON array of note objects → [{"id":...},...]
+  if (s.startsWith('[')) {
+    try {
+      const p = JSON.parse(s);
+      if (Array.isArray(p) && p.every(looksLikeNote)) return p;
+    } catch {}
+  }
+  // Pattern 2: JSON objects without array brackets → {"id":...},{"id":...}
+  if (s.startsWith('{')) {
+    try {
+      const p = JSON.parse('[' + s + ']');
+      if (Array.isArray(p) && p.every(looksLikeNote)) return p;
+    } catch {}
+    // Pattern 3: single JSON object that is a note → {"id":...,"content":...}
+    try {
+      const p = JSON.parse(s);
+      if (looksLikeNote(p)) return [p];
+    } catch {}
+  }
+  return null;
 }
 function parseNotes(raw) {
   if (!raw) return [];
+  // Already a proper array
   if (Array.isArray(raw)) {
-    // Already an array — but each note's content might itself be a corrupted notes array
     return raw.flatMap(n => {
-      if (n && typeof n.content === 'string' && isNotesArray(n.content)) {
-        // The content field contains a serialized notes array — unwrap into real notes
-        try { return JSON.parse(n.content); } catch {}
-      }
-      return [n];
+      if (!n || typeof n !== 'object') return [];
+      // Check if this note's content is itself a serialized notes array (corruption)
+      const inner = tryExtractNotes(n.content);
+      if (inner && inner.length > 0) return inner;
+      return [{ id: n.id || Math.random().toString(36).slice(2), title: n.title || '', content: n.content || '', sensitive: !!n.sensitive }];
     });
   }
+  // String from DB
   if (typeof raw === 'string') {
-    try {
-      const p = JSON.parse(raw);
-      if (Array.isArray(p)) return parseNotes(p); // recurse with array form
-    } catch {}
-    // Plain string — wrap as single note
+    const extracted = tryExtractNotes(raw);
+    if (extracted) return parseNotes(extracted); // recurse to handle nested corruption
     if (raw.trim()) return [{ id: Math.random().toString(36).slice(2), title: '', content: raw, sensitive: false }];
   }
   return [];
@@ -3051,7 +3068,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.24.3✦</button>
+              title="What's new">v5.24.7✦</button>
             <button onClick={logout}
               style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
                 border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}
