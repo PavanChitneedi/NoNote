@@ -20,47 +20,127 @@ async function fetchInt(node){
 }
 
 // ── Card renderers ─────────────────────────────────────────────
+function GuestDashRow({g}){
+  const cpuPct=Math.round((g.cpu||0)*100);
+  const memPct=pct(g.mem,g.maxmem);
+  const running=g.status==='running';
+  const isVM=g._type==='VM';
+  return(
+    <div style={{display:'grid',gridTemplateColumns:'42px 1fr 1fr 1fr',gap:6,alignItems:'center',
+      padding:'6px 8px',borderRadius:6,marginBottom:4,
+      background:running?'rgba(76,175,80,.06)':'rgba(255,255,255,.03)',
+      border:`1px solid ${running?'rgba(76,175,80,.2)':'rgba(255,255,255,.06)'}`}}>
+      <div>
+        <span style={{fontSize:8,padding:'1px 4px',borderRadius:3,fontWeight:700,
+          background:isVM?'#8E24AA33':'#00897B33',
+          color:isVM?'#CE93D8':'#80CBC4',display:'block',textAlign:'center',marginBottom:2}}>{isVM?'VM':'CT'}</span>
+        <span style={{fontSize:8,color:running?'#81c784':'rgba(255,255,255,.3)',display:'block',textAlign:'center'}}>{running?'●':'■'}</span>
+      </div>
+      <div style={{minWidth:0}}>
+        <div style={{fontSize:11,fontWeight:700,color:'rgba(255,255,255,.9)',
+          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name||`${g._type}${g.vmid}`}</div>
+        <div style={{fontSize:8,color:'rgba(255,255,255,.3)'}}>ID {g.vmid} · {g.cpus||'?'}c · {uptime(g.uptime)}</div>
+      </div>
+      <div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+          <span style={{fontSize:8,color:'rgba(255,255,255,.4)'}}>CPU</span>
+          <span style={{fontSize:9,fontWeight:700,color:cpuPct>=90?'#f44336':cpuPct>=75?'#ff9800':'rgba(255,255,255,.7)'}}>{cpuPct}%</span>
+        </div>
+        <MiniBar v={cpuPct} h={3}/>
+      </div>
+      <div>
+        <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+          <span style={{fontSize:8,color:'rgba(255,255,255,.4)'}}>RAM</span>
+          <span style={{fontSize:9,fontWeight:700,color:memPct>=90?'#f44336':memPct>=75?'#ff9800':'rgba(255,255,255,.7)'}}>{memPct}%</span>
+        </div>
+        <MiniBar v={memPct} h={3}/>
+        <div style={{fontSize:8,color:'rgba(255,255,255,.25)',marginTop:1}}>{gb(g.mem)}/{gb(g.maxmem)}</div>
+      </div>
+    </div>
+  );
+}
+
 function ProxmoxDashCard({node,result}){
   const d=result?.data||{};
+  const [filter,setFilter]=useState('all');
   const totalVMs=d.nodes?.reduce((a,n)=>a+n.vms.length,0)||0;
   const runVMs=d.nodes?.reduce((a,n)=>a+n.vms.filter(v=>v.status==='running').length,0)||0;
   const totalCT=d.nodes?.reduce((a,n)=>a+n.lxc.length,0)||0;
   const runCT=d.nodes?.reduce((a,n)=>a+n.lxc.filter(v=>v.status==='running').length,0)||0;
-  const s=d.nodes?.[0]?.status||{};
-  const cpuPct=Math.round((s.cpu||0)*100);
-  const memPct=pct(s.memory?.used,s.memory?.total);
-  const diskPct=pct(s.rootfs?.used,s.rootfs?.total);
   const allGuests=d.nodes?.flatMap(n=>[...(n.vms||[]).map(v=>({...v,_type:'VM'})),...(n.lxc||[]).map(v=>({...v,_type:'CT'}))])||[];
+  const filtered=allGuests.filter(g=>filter==='all'||(filter==='vm'&&g._type==='VM')||(filter==='ct'&&g._type==='CT')||(filter==='stopped'&&g.status!=='running'));
+  const activeStorage=d.nodes?.flatMap(n=>(n.storage||[]).filter(s=>s.active&&s.total>0))||[];
   return(
     <div>
-      <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:10}}>
+      {/* Summary tags */}
+      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:10}}>
         <Tag color='#CE93D8' bg='#8E24AA22'>{runVMs}/{totalVMs} VMs</Tag>
         <Tag color='#80CBC4' bg='#00897B22'>{runCT}/{totalCT} CTs</Tag>
-        <Tag color='var(--text4)'>v{d.version}</Tag>
+        <Tag color='rgba(255,255,255,.3)'>v{d.version}</Tag>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:8,marginBottom:8}}>
-        {[{l:'CPU',v:cpuPct,sub:`${s.cpuinfo?.cores||'?'}c`},{l:'RAM',v:memPct,sub:`${gb(s.memory?.used)}`},{l:'Disk',v:diskPct,sub:`${fmt(s.rootfs?.used)}`}].map(({l,v,sub})=>(
-          <div key={l}>
-            <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
-              <span style={{fontSize:9,color:'rgba(255,255,255,.5)'}}>{l}</span>
-              <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'#fff'}}>{v}%</span>
+      {/* Host metrics */}
+      {d.nodes?.map(n=>{
+        const s=n.status||{};
+        const cpuPct=Math.round((s.cpu||0)*100);
+        const memPct=pct(s.memory?.used,s.memory?.total);
+        const diskPct=pct(s.rootfs?.used,s.rootfs?.total);
+        return(
+          <div key={n.node} style={{marginBottom:10}}>
+            <div style={{fontSize:10,fontWeight:700,color:'rgba(255,255,255,.6)',marginBottom:6}}>
+              {n.node} · up {uptime(n.status?.uptime)}
             </div>
-            <MiniBar v={v}/><div style={{fontSize:8,color:'rgba(255,255,255,.4)',marginTop:1}}>{sub}</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:6,marginBottom:8}}>
+              {[{l:`CPU·${s.cpuinfo?.cores||'?'}c`,v:cpuPct,sub:`${cpuPct}%`},
+                {l:'RAM',v:memPct,sub:`${gb(s.memory?.used)}/${gb(s.memory?.total)}`},
+                {l:'Disk',v:diskPct,sub:`${fmt(s.rootfs?.used)}/${fmt(s.rootfs?.total)}`}
+              ].map(({l,v,sub})=>(
+                <div key={l} style={{background:'rgba(255,255,255,.04)',borderRadius:6,padding:'6px 8px'}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                    <span style={{fontSize:8,color:'rgba(255,255,255,.4)'}}>{l}</span>
+                    <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'#fff'}}>{v}%</span>
+                  </div>
+                  <MiniBar v={v} h={5}/>
+                  <div style={{fontSize:8,color:'rgba(255,255,255,.3)',marginTop:2}}>{sub}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        );
+      })}
+      {/* Storage */}
+      {activeStorage.length>0&&(
+        <div style={{marginBottom:10}}>
+          <div style={{fontSize:8,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.5,marginBottom:6}}>STORAGE</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(100px,1fr))',gap:4}}>
+            {activeStorage.map(st=>{const sp=pct(st.disk_used,st.total);return(
+              <div key={st.storage} style={{background:'rgba(255,255,255,.04)',borderRadius:5,padding:'5px 7px'}}>
+                <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+                  <span style={{fontSize:9,fontWeight:700,color:'rgba(255,255,255,.6)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:60}}>{st.storage}</span>
+                  <span style={{fontSize:9,fontWeight:700,color:sp>=85?'#f44336':sp>=70?'#ff9800':'#81c784'}}>{sp}%</span>
+                </div>
+                <MiniBar v={sp} h={3}/>
+                <div style={{fontSize:8,color:'rgba(255,255,255,.25)',marginTop:2}}>{fmt(st.disk_used)}/{fmt(st.total)}</div>
+              </div>
+            );})}
+          </div>
+        </div>
+      )}
+      {/* Guests */}
       {allGuests.length>0&&(
-        <div style={{display:'flex',flexWrap:'wrap',gap:3}}>
-          {allGuests.slice(0,12).map(g=>(
-            <span key={`${g._type}${g.vmid}`} style={{fontSize:9,padding:'2px 6px',borderRadius:4,
-              background:g.status==='running'?'rgba(76,175,80,.2)':'rgba(255,255,255,.06)',
-              color:g.status==='running'?'#81c784':'rgba(255,255,255,.35)',
-              border:`1px solid ${g.status==='running'?'rgba(76,175,80,.3)':'rgba(255,255,255,.1)'}`,
-              fontWeight:g.status==='running'?600:400}}>
-              {g._type==='VM'?'⬜':'◻'} {g.name||g.vmid}
-            </span>
-          ))}
-          {allGuests.length>12&&<span style={{fontSize:9,color:'rgba(255,255,255,.3)'}}>+{allGuests.length-12} more</span>}
+        <div>
+          <div style={{display:'flex',gap:4,marginBottom:6,flexWrap:'wrap',alignItems:'center'}}>
+            <span style={{fontSize:8,fontWeight:700,color:'rgba(255,255,255,.3)',letterSpacing:1.5,marginRight:2}}>GUESTS</span>
+            {[['all',`All (${allGuests.length})`],['vm',`VM (${totalVMs})`],['ct',`CT (${totalCT})`],['stopped','Stopped']].map(([v,l])=>(
+              <button key={v} onClick={()=>setFilter(v)}
+                style={{fontSize:8,padding:'2px 7px',border:'none',borderRadius:8,cursor:'pointer',
+                  fontFamily:'var(--font-ui)',fontWeight:600,
+                  background:filter===v?'rgba(255,255,255,.2)':'rgba(255,255,255,.06)',
+                  color:filter===v?'#fff':'rgba(255,255,255,.4)'}}>
+                {l}
+              </button>
+            ))}
+          </div>
+          {filtered.map(g=><GuestDashRow key={`${g._type}${g.vmid}`} g={g}/>)}
         </div>
       )}
     </div>
@@ -243,7 +323,7 @@ export default function LiveDashboard({ maps }) {
       </div>
 
       {/* Cards */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:16}}>
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:16,alignItems:'start'}}>
         {nodes.map(node=>{
           const cfg=node.properties._integration;
           const result=results[node.id];

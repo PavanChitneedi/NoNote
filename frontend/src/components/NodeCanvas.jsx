@@ -3862,7 +3862,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 const pn=nodes.find(n=>n.id===nodePopup.nodeId);
                 if(!pn) return null;
                 const nw=collW(pn), nh=collH(pn);
-                const popW=440;
+                const popW=520;
                 let px=pn.x, py=pn.y+nh+10;
                 if(px+popW>4000) px=Math.max(0,pn.x+nw-popW);
                 return(
@@ -5477,10 +5477,10 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
       onClick={e => e.stopPropagation()}
       onKeyDown={e => e.stopPropagation()}
       style={{
-        position: 'absolute', left: x, top: y, width: 440, zIndex: 200,
+        position: 'absolute', left: x, top: y, width: 520, zIndex: 200,
         background: 'var(--bg2)', border: `2px solid ${t.color}`,
         borderRadius: 'var(--radius-lg)', boxShadow: '0 16px 48px rgba(0,0,0,.65)',
-        display: 'flex', flexDirection: 'column', maxHeight: 480,
+        display: 'flex', flexDirection: 'column', maxHeight: '80vh',
         userSelect: 'none',
       }}>
       {/* Header */}
