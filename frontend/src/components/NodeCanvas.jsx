@@ -86,6 +86,53 @@ const NT = {
   vault:      { label:"Vault/HSM",     color:"#B00020", icon:"🔒", cat:"Security" },
   siem:       { label:"SIEM",          color:"#C62828", icon:"🔍", cat:"Security" },
   dlp:        { label:"DLP",           color:"#D50000", icon:"🚫", cat:"Security" },
+  // Network — extended
+  vpnclient:  { label:"VPN Client",    color:"#1565C0", icon:"🔐", cat:"Network" },
+  vpnserver:  { label:"VPN Server",    color:"#0D47A1", icon:"🛡️", cat:"Network" },
+  vpnconc:    { label:"VPN Concentrator",color:"#1976D2",icon:"🔀", cat:"Network" },
+  sdwan:      { label:"SD-WAN",        color:"#0277BD", icon:"🌐", cat:"Network" },
+  corerouter: { label:"Core Router",   color:"#006064", icon:"📡", cat:"Network" },
+  edgerouter: { label:"Edge Router",   color:"#00838F", icon:"📡", cat:"Network" },
+  l3switch:   { label:"L3 Switch",     color:"#007B83", icon:"🔀", cat:"Network" },
+  poeswitch:  { label:"PoE Switch",    color:"#00ACC1", icon:"⚡", cat:"Network" },
+  wlcont:     { label:"Wireless Controller",color:"#0097A7",icon:"📶",cat:"Network" },
+  dhcpsrv:    { label:"DHCP Server",   color:"#00796B", icon:"🏷️", cat:"Network" },
+  dnssrv:     { label:"DNS Server",    color:"#00695C", icon:"🔎", cat:"Network" },
+  ntpsrv:     { label:"NTP Server",    color:"#004D40", icon:"🕐", cat:"Network" },
+  radiussrv:  { label:"RADIUS Server", color:"#37474F", icon:"🔑", cat:"Network" },
+  patchpanel: { label:"Patch Panel",   color:"#546E7A", icon:"🔌", cat:"Network" },
+  nettap:     { label:"Network TAP",   color:"#607D8B", icon:"🔍", cat:"Network" },
+  netmon:     { label:"Network Monitor",color:"#78909C",icon:"📊", cat:"Network" },
+  honeypot:   { label:"Honeypot",      color:"#BF360C", icon:"🍯", cat:"Network" },
+  // Notes — primary note-taking nodes
+  idea:       { label:"Idea",          color:"#FFCA28", icon:"💡", cat:"Notes" },
+  topic:      { label:"Topic",         color:"#AB47BC", icon:"📌", cat:"Notes" },
+  concept:    { label:"Concept",       color:"#7E57C2", icon:"🧠", cat:"Notes" },
+  definition: { label:"Definition",    color:"#5C6BC0", icon:"📖", cat:"Notes" },
+  quote:      { label:"Quote",         color:"#42A5F5", icon:"💬", cat:"Notes" },
+  summary:    { label:"Summary",       color:"#26C6DA", icon:"📋", cat:"Notes" },
+  question:   { label:"Question",      color:"#FFA726", icon:"❓", cat:"Notes" },
+  answer:     { label:"Answer",        color:"#66BB6A", icon:"✅", cat:"Notes" },
+  warning:    { label:"Warning",       color:"#EF5350", icon:"⚠️", cat:"Notes" },
+  tip:        { label:"Tip",           color:"#26A69A", icon:"✨", cat:"Notes" },
+  codeblock:  { label:"Code Block",    color:"#78909C", icon:"⌨️", cat:"Notes" },
+  // Planning
+  task:       { label:"Task",          color:"#29B6F6", icon:"☐",  cat:"Planning" },
+  checklist:  { label:"Checklist",     color:"#26C6DA", icon:"✓",  cat:"Planning" },
+  goal:       { label:"Goal",          color:"#66BB6A", icon:"🎯", cat:"Planning" },
+  milestone:  { label:"Milestone",     color:"#FFA726", icon:"🏁", cat:"Planning" },
+  deadline:   { label:"Deadline",      color:"#EF5350", icon:"⏰", cat:"Planning" },
+  blocker:    { label:"Blocker",       color:"#EF5350", icon:"🚫", cat:"Planning" },
+  step:       { label:"Step",          color:"#8BC34A", icon:"▶",  cat:"Planning" },
+  problem:    { label:"Problem",       color:"#F44336", icon:"🔴", cat:"Planning" },
+  solution:   { label:"Solution",      color:"#4CAF50", icon:"🟢", cat:"Planning" },
+  // Knowledge
+  reference:  { label:"Reference",     color:"#78909C", icon:"🔗", cat:"Knowledge" },
+  resource:   { label:"Resource",      color:"#26A69A", icon:"📚", cat:"Knowledge" },
+  evidence:   { label:"Evidence",      color:"#5C6BC0", icon:"📎", cat:"Knowledge" },
+  flashcard:  { label:"Flashcard",     color:"#EC407A", icon:"🃏", cat:"Knowledge" },
+  bookmark:   { label:"Bookmark",      color:"#FF7043", icon:"🔖", cat:"Knowledge" },
+  formula:    { label:"Formula",       color:"#42A5F5", icon:"∑",  cat:"Knowledge" },
 };
 
 // ── Default properties per node type ──────────────────────────
@@ -174,10 +221,57 @@ const DP = {
   vault:{Type:"HashiCorp Vault",Auth:"",Secrets:"",HA:""},
   siem:{Software:"",Sources:"",Retention:"90d",Alerts:""},
   dlp:{Provider:"",Mode:"",Channels:"",Policy:""},
+  // Network extended
+  vpnclient:{IP:"",Protocol:"WireGuard",Server:"",Port:"51820",Auth:""},
+  vpnserver:{IP:"",Protocol:"WireGuard",Port:"51820",Clients:"",Subnet:""},
+  vpnconc:{IP:"",Protocol:"IPSec",Tunnels:"",HA:"",Make:"",Model:""},
+  sdwan:{IP:"",Make:"",Model:"",Uplinks:"",Policy:"",Orchestrator:""},
+  corerouter:{IP:"",Make:"",Model:"",BGP_AS:"",Protocols:"OSPF/BGP",Interfaces:""},
+  edgerouter:{IP:"",Make:"",Model:"",ISP:"",NAT:"Yes",Protocols:""},
+  l3switch:{IP:"",Make:"",Model:"",VLANs:"",RoutingProtocol:"",PortCount:""},
+  poeswitch:{IP:"",Make:"",Model:"",PortCount:"24",PoEBudget:"",VLANs:""},
+  wlcont:{IP:"",Make:"",Model:"",APs_Managed:"",SSID:"",Auth:"WPA3"},
+  dhcpsrv:{IP:"",Scope:"",RangeStart:"",RangeEnd:"",Lease:"24h",DNS:""},
+  dnssrv:{IP:"",Software:"BIND",Zones:"",Forwarders:"",DNSSEC:""},
+  ntpsrv:{IP:"",Stratum:"",Upstream:"",Clients:""},
+  radiussrv:{IP:"",Software:"FreeRADIUS",Port:"1812",Clients:"",Auth:"EAP-TLS"},
+  patchpanel:{Location:"",Ports:"24",RackUnit:"",Label:""},
+  nettap:{IP:"",Mode:"Passive",Make:"",Model:"",Speed:"",Mirror:""},
+  netmon:{IP:"",Software:"",Protocol:"SNMP",Hosts:"",Dashboard:""},
+  honeypot:{IP:"",Type:"Low-interaction",OS:"Decoy",Ports:"",Alert:""},
+  // Notes
+  idea:{Content:"",Tags:"",Status:"New"},
+  topic:{Content:"",Parent:"",Tags:""},
+  concept:{Content:"",RelatedTo:"",Tags:""},
+  definition:{Term:"",Definition:"",Source:""},
+  quote:{Text:"",Author:"",Source:"",Page:""},
+  summary:{Content:"",Source:"",KeyPoints:""},
+  question:{Question:"",Context:"",Priority:"Medium"},
+  answer:{Answer:"",Confidence:"High",References:""},
+  warning:{Message:"",Severity:"Medium",Action:""},
+  tip:{Content:"",Category:""},
+  codeblock:{Language:"",Code:"",Description:""},
+  // Planning
+  task:{Title:"",Status:"Todo",Priority:"Medium",Assignee:"",Due:""},
+  checklist:{Items:"",Done:"0",Total:"0"},
+  goal:{Objective:"",KPI:"",Target:"",Due:""},
+  milestone:{Name:"",Date:"",Status:"Upcoming",Owner:""},
+  deadline:{Date:"",Item:"",Owner:"",Hard:"Yes"},
+  blocker:{Issue:"",Impact:"High",Owner:"",Resolution:""},
+  step:{Number:"",Action:"",Input:"",Output:""},
+  problem:{Statement:"",Impact:"High",Cause:""},
+  solution:{Approach:"",Effort:"Medium",Risk:"",Owner:""},
+  // Knowledge
+  reference:{URL:"",Title:"",Author:"",Date:""},
+  resource:{Type:"Article",URL:"",Title:"",Tags:""},
+  evidence:{Content:"",Source:"",Strength:"Strong"},
+  flashcard:{Front:"",Back:"",Tags:"",Difficulty:"Medium"},
+  bookmark:{URL:"",Title:"",Tags:"",Note:""},
+  formula:{Expression:"",Variables:"",Unit:"",Notes:""},
 };
 
 // sidebar category order
-const SIDEBAR_CATS = ["General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
+const SIDEBAR_CATS = ["Notes","Planning","Knowledge","General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
 
 // ── Highlight matched text (returns JSX spans) ────────────────
 function highlightText(text, query) {
@@ -218,10 +312,18 @@ const EDGE_STYLES = {
   // Wavy / special
   wave:          { label:"Wave →",       section:"Special", strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"Wavy / animated", wave:true },
   "wave-bi":     { label:"Wave ↔",      section:"Special", strokeW:2,   dash:"none", mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Wavy bidirectional", wave:true },
+  // Semantic — note-taking relationships
+  causes:        { label:"Causes →",     section:"Semantic",strokeW:2,   dash:"4,3",  mEnd:"nn-arr",  mStart:null,       desc:"Causal relationship", color:"#FF7043" },
+  supports:      { label:"Supports →",   section:"Semantic",strokeW:2,   dash:"6,3",  mEnd:"nn-arr",  mStart:null,       desc:"Supporting evidence", color:"#66BB6A" },
+  contradicts:   { label:"Contradicts",  section:"Semantic",strokeW:2,   dash:"4,3",  mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Opposing idea",       color:"#EF5350" },
+  partof:        { label:"Part of",      section:"Semantic",strokeW:1.5, dash:"none", mEnd:"nn-arr",  mStart:null,       desc:"Containment / belongs to" },
+  seealso:       { label:"See also",     section:"Semantic",strokeW:1.5, dash:"5,4",  mEnd:"nn-arr",  mStart:"nn-arr",   desc:"Related concept" },
+  leads:         { label:"Leads to →",   section:"Semantic",strokeW:2.5, dash:"none", mEnd:"nn-tk",   mStart:null,       desc:"Sequential / next step" },
+  depends:       { label:"Depends on",   section:"Semantic",strokeW:2,   dash:"8,4",  mEnd:"nn-arr",  mStart:null,       desc:"Dependency" },
 };
 
 // Sections order for the panel
-const EDGE_SECTIONS = ["Basic","Dashed","Dotted","Bold","Double","Special"];
+const EDGE_SECTIONS = ["Basic","Dashed","Dotted","Bold","Double","Special","Semantic"];
 
 const DEF_W=220, DEF_H=96, GRP_W=340, GRP_H=240;
 const COL_W=72,  COL_H=72; // collapsed node size
@@ -2308,7 +2410,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <path d={path} stroke="transparent" strokeWidth="14" fill="none"/>
             {(()=>{
               const def=EDGE_STYLES[edge.style]||EDGE_STYLES.arrow;
-              const ec=isSel?"var(--danger)":(edge.color||"var(--accent)");
+              const ec=isSel?"var(--danger)":(edge.color||(def.color||"var(--accent)"));
               const sw=isSel?3:def.strokeW;
               const da=def.dash==="none"?"none":def.dash;
               const mEnd=def.mEnd?`url(#${def.mEnd})`:undefined;

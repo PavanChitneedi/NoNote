@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.26.0",date:"Apr 2026",items:[
+    "Network nodes: 18 new types — VPN Client/Server/Concentrator, SD-WAN, Core/Edge Router, L3/PoE Switch, Wireless Controller, DHCP/DNS/NTP/RADIUS servers, Patch Panel, Network TAP, Monitor, Honeypot",
+    "Notes category: 11 new note-taking nodes — Idea, Topic, Concept, Definition, Quote, Summary, Question, Answer, Warning, Tip, Code Block",
+    "Planning category: 9 new nodes — Task, Checklist, Goal, Milestone, Deadline, Blocker, Step, Problem, Solution",
+    "Knowledge category: 6 new nodes — Reference, Resource, Evidence, Flashcard, Bookmark, Formula",
+    "New edge types (Semantic section): Causes, Supports, Contradicts, Part of, See also, Leads to, Depends on — with semantic default colors",
+    "Sidebar: Notes, Planning, Knowledge categories now appear first for note-taking workflow",
+  ]},
   {v:"v5.24.16",date:"Apr 2026",items:[
     "Import fix: sanitizeImport now generates fresh crypto.randomUUID() for every node and edge — prevents ON CONFLICT silent update of source map nodes",
     "Edge from/to references remapped correctly to new node IDs after ID reassignment",
