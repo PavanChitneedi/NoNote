@@ -120,7 +120,7 @@ function ShareModal({ map, onClose }) {
   );
 }
 
-export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
+export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNav="top" }) {
   const [showChangelog, setShowChangelog] = useState(false);
   const [menuMap,   setMenuMap]   = useState(null);
   const [renaming,  setRenaming]  = useState(null);
@@ -345,7 +345,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     <div style={{ display:"flex", minHeight:"calc(100vh - var(--topbar-h))", background:"var(--bg)" }}>
 
       {/* ── Left Sidebar ── */}
-      <div className="nn-sidebar" style={{ width:"var(--sidebar-w,220px)", flexShrink:0,
+      {skinNav==="top" && <div className="nn-sidebar" style={{ width:"var(--sidebar-w,220px)", flexShrink:0,
         background:"var(--sidebar-bg,var(--bg2))",
         borderRight:"var(--sidebar-border,1px solid var(--border2))",
         backdropFilter:"var(--sidebar-blur,none)",
@@ -402,7 +402,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             {CURRENT_VERSION} ✦ What's new
           </button>
         </div>
-      </div>
+      </div>}
 
       {/* ── Main content ── */}
       <div style={{ flex:1, overflowY:"auto", padding:"24px 28px", minWidth:0 }}>

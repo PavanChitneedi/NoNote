@@ -1,7 +1,7 @@
 import { useState, useEffect, Component } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider, useTheme, THEMES } from "./context/ThemeContext.jsx";
-import { SkinProvider } from "./context/SkinContext.jsx";
+import { SkinProvider, useSkin } from "./context/SkinContext.jsx";
 import { DesignProvider } from "./context/DesignContext.jsx";
 import LoginPage    from "./components/LoginPage.jsx";
 import Dashboard    from "./components/Dashboard.jsx";
@@ -39,6 +39,7 @@ class MobileErrorBoundary extends Component {
 function AppInner() {
   const { user, loading, logout } = useAuth();
   const { setThemeName } = useTheme();
+  const { skin } = useSkin();
   const { themeName }             = useTheme();
   const [view,         setView]         = useState({ page:"dashboard", mapId:null });
   const [isMobile, setIsMobile] = useState(false);
@@ -93,76 +94,152 @@ function AppInner() {
   if (!user) return <LoginPage />;
 
   const showHeader = view.page !== "canvas";
+  const navType = skin?.nav || "top";
 
-  return (
-    <div style={{ height:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", overflow:"hidden" }}>
-
-      {/* ── Global header (dashboard + admin) ── */}
-      {showHeader && (
-        <div className="nn-topbar" style={{
-          height:"var(--topbar-h)", background:"var(--topbar-bg,var(--bg2))",
-          borderBottom:"var(--topbar-border,1px solid var(--border2))",
-          backdropFilter:"var(--topbar-blur,none)",
-          WebkitBackdropFilter:"var(--topbar-blur,none)",
-          display:"flex", alignItems:"center",
-          padding:"0 20px", flexShrink:0,
-          position:"sticky", top:0, zIndex:20
-        }}>
-          {/* Logo */}
-          <div onClick={goHome} style={{ display:"flex", alignItems:"center", gap:8,
-            cursor:"pointer", userSelect:"none", marginRight:20 }}>
-            <span style={{ fontSize:20 }}>⬡</span>
-            <span style={{ fontSize:14, fontWeight:800, color:"var(--accent)", letterSpacing:1 }}>NoNote</span>
-          </div>
-
-          {view.page==="admin" && <button onClick={goHome} style={hBtn}>← Back</button>}
-
-          <div style={{ flex:1 }}/>
-
-          <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-            <button onClick={() => setShowTutorial(true)} style={hBtn} title="Tutorial">🎓 Tutorial</button>
-            <button onClick={() => setShowHelp(true)} style={hBtn} title="Help">? Help</button>
-            <button onClick={() => setShowAppearance(true)} style={hBtn} title="Appearance">
-              {THEMES[themeName]?.icon} Appearance
-            </button>
-            {["owner","admin"].includes(user.role) && (
-              <button onClick={openAdmin} style={hBtn}>⚙ ADMIN</button>
-            )}
-            <div onClick={() => setShowProfile(true)} title={user.display_name}
-              style={{ display:"flex", alignItems:"center", gap:7, padding:"3px 10px 3px 4px",
-                borderRadius:20, background:"var(--bg3)", border:"1px solid var(--border)",
-                cursor:"pointer", marginLeft:6 }}>
-              <div style={{ width:26, height:26, borderRadius:"50%",
-                background:user.avatar_color||"var(--accent2)",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:12, fontWeight:700, color:"#fff" }}>
-                {user.display_name?.[0]?.toUpperCase()}
-              </div>
-              <span style={{ fontSize:11, fontWeight:600, color:"var(--text3)" }}>{user.display_name}</span>
-            </div>
-            <button onClick={logout} style={{ ...hBtn, color:"var(--danger)", marginLeft:4 }}>Logout</button>
-          </div>
-        </div>
-      )}
-
-      {/* ── Page ── */}
-      <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>
-        {view.page==="dashboard" && <Dashboard onOpenMap={openMap} onOpenAdmin={openAdmin} />}
-        {view.page==="canvas" && view.mapId && (
-          isMobile
-            ? <MobileErrorBoundary onBack={goHome}><MobileCanvas mapId={view.mapId} onBack={goHome} /></MobileErrorBoundary>
-            : <NodeCanvas mapId={view.mapId} onBack={goHome} onHome={goHome} />
-        )}
-        {view.page==="admin" && <AdminPanel onBack={goHome} />}
+  // ── Shared nav actions ──────────────────────────────────────
+  const NavLogo = () => (
+    <div onClick={goHome} style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
+      <span style={{ fontSize:20 }}>⬡</span>
+      <span style={{ fontSize:14, fontWeight:800, color:"var(--accent)", letterSpacing:1 }}>NoNote</span>
+    </div>
+  );
+  const NavActions = ({ direction="row" }) => (
+    <div style={{ display:"flex", flexDirection:direction, alignItems:direction==="row"?"center":"stretch", gap:direction==="row"?4:2 }}>
+      {view.page==="admin" && <button onClick={goHome} style={hBtn}>← Back</button>}
+      <button onClick={() => setShowTutorial(true)} style={hBtn} title="Tutorial">🎓</button>
+      <button onClick={() => setShowHelp(true)} style={hBtn} title="Help">?</button>
+      <button onClick={() => setShowAppearance(true)} style={hBtn} title="Appearance">{THEMES[themeName]?.icon}</button>
+      {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={hBtn}>⚙</button>}
+      <div onClick={() => setShowProfile(true)}
+        style={{ width:28, height:28, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
+          display:"flex", alignItems:"center", justifyContent:"center",
+          fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer",
+          flexShrink:0, title:user.display_name }}>
+        {user.display_name?.[0]?.toUpperCase()}
       </div>
+      <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }}>✕</button>
+    </div>
+  );
 
-      {/* Appearance modal */}
-      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
+  const pageContent = (
+    <>
+      {view.page==="dashboard" && <Dashboard onOpenMap={openMap} onOpenAdmin={openAdmin} skinNav={navType} />}
+      {view.page==="canvas" && view.mapId && (
+        isMobile
+          ? <MobileErrorBoundary onBack={goHome}><MobileCanvas mapId={view.mapId} onBack={goHome} /></MobileErrorBoundary>
+          : <NodeCanvas mapId={view.mapId} onBack={goHome} onHome={goHome} />
+      )}
+      {view.page==="admin" && <AdminPanel onBack={goHome} />}
+    </>
+  );
+
+  const modals = (
+    <>
+      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="skins"/>}
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
+    </>
+  );
+
+  // ── TOP NAV layout (standard) ─────────────────────────────
+  if (navType === "top") return (
+    <div style={{ height:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      {showHeader && (
+        <div className="nn-topbar" style={{
+          height:"var(--topbar-h,48px)", background:"var(--topbar-bg,var(--bg2))",
+          borderBottom:"var(--topbar-border,1px solid var(--border2))",
+          backdropFilter:"var(--topbar-blur,none)", WebkitBackdropFilter:"var(--topbar-blur,none)",
+          display:"flex", alignItems:"center", padding:"0 20px", flexShrink:0,
+          position:"sticky", top:0, zIndex:20
+        }}>
+          <NavLogo />
+          <div style={{ flex:1 }}/>
+          <NavActions direction="row"/>
+        </div>
+      )}
+      <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>{pageContent}</div>
+      {modals}
     </div>
   );
+
+  // ── BOTTOM NAV layout (brutalist, neon tokyo, coral, pastel) ─
+  if (navType === "bottom") return (
+    <div style={{ height:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto", paddingBottom:view.page!=="canvas"?60:0 }}>{pageContent}</div>
+      {view.page !== "canvas" && (
+        <div className="nn-topbar" style={{
+          position:"fixed", bottom:0, left:0, right:0, zIndex:30,
+          height:60, background:"var(--topbar-bg,var(--bg2))",
+          borderTop:"var(--topbar-border,1px solid var(--border2))",
+          backdropFilter:"var(--topbar-blur,none)", WebkitBackdropFilter:"var(--topbar-blur,none)",
+          display:"flex", alignItems:"center", padding:"0 20px", gap:0,
+        }}>
+          <NavLogo />
+          <div style={{ flex:1 }}/>
+          <NavActions direction="row"/>
+        </div>
+      )}
+      {modals}
+    </div>
+  );
+
+  // ── ICON DOCK layout (neumorphic, sakura, carbon) ────────────
+  if (navType === "icon-dock") return (
+    <div style={{ height:"100vh", background:"var(--bg)", display:"flex", overflow:"hidden" }}>
+      {view.page !== "canvas" && (
+        <div className="nn-topbar" style={{
+          width:56, flexShrink:0, background:"var(--topbar-bg,var(--bg2))",
+          borderRight:"var(--topbar-border,1px solid var(--border2))",
+          display:"flex", flexDirection:"column", alignItems:"center",
+          padding:"12px 0", gap:4, zIndex:20, overflowY:"auto",
+        }}>
+          <div onClick={goHome} style={{ fontSize:22, cursor:"pointer", userSelect:"none", marginBottom:12 }}>⬡</div>
+          {view.page==="admin" && <button onClick={goHome} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Back">←</button>}
+          <button onClick={() => setShowTutorial(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Tutorial">🎓</button>
+          <button onClick={() => setShowHelp(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Help">?</button>
+          <button onClick={() => setShowAppearance(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Appearance">{THEMES[themeName]?.icon}</button>
+          {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Admin">⚙</button>}
+          <div style={{ flex:1 }}/>
+          <div onClick={() => setShowProfile(true)}
+            style={{ width:32, height:32, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", marginBottom:4 }}>
+            {user.display_name?.[0]?.toUpperCase()}
+          </div>
+          <button onClick={logout} style={{...hBtn,padding:"6px",fontSize:11,width:40,color:"var(--danger)"}} title="Logout">✕</button>
+        </div>
+      )}
+      <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>{pageContent}</div>
+      {modals}
+    </div>
+  );
+
+  // ── EDITORIAL layout (vapor, newspaper) — full width, minimal nav ─
+  if (navType === "editorial") return (
+    <div style={{ height:"100vh", background:"var(--bg)", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+      {showHeader && (
+        <div className="nn-topbar" style={{
+          height:"var(--topbar-h,56px)", background:"var(--topbar-bg,var(--bg2))",
+          borderBottom:"var(--topbar-border,1px solid var(--border2))",
+          backdropFilter:"var(--topbar-blur,none)", WebkitBackdropFilter:"var(--topbar-blur,none)",
+          display:"flex", alignItems:"center", padding:"0 32px", flexShrink:0,
+          position:"sticky", top:0, zIndex:20, gap:24,
+        }}>
+          <NavLogo />
+          <div style={{ flex:1, textAlign:"center", fontSize:11, color:"var(--text4)", letterSpacing:"0.2em", textTransform:"uppercase" }}>
+            {view.page === "admin" ? "ADMINISTRATION" : "NONOTE DIAGRAMMING"}
+          </div>
+          <NavActions direction="row"/>
+        </div>
+      )}
+      <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>{pageContent}</div>
+      {modals}
+    </div>
+  );
+
+  // fallback
+  return null;
 }
 
 const hBtn = {

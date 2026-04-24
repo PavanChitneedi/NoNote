@@ -166,8 +166,15 @@ export default function ThemePicker({
                               border:"1px solid rgba(255,255,255,0.2)", flexShrink:0 }}/>
                           ))}
                         </div>
-                        <div style={{ fontSize:9, color:s.palette[3]||"#ccc", opacity:.7, lineHeight:1.4 }}>
-                          {s.tags.join(" · ")}
+                        <div style={{ display:"flex", gap:4, flexWrap:"wrap", alignItems:"center" }}>
+                          <span style={{ fontSize:8, padding:"1px 6px", borderRadius:8,
+                            background:s.palette[2]+"33", color:s.palette[2],
+                            border:`1px solid ${s.palette[2]}55`, fontWeight:700 }}>
+                            {s.nav==="top"?"⬆ Top Nav":s.nav==="bottom"?"⬇ Dock":s.nav==="icon-dock"?"◀ Icon":s.nav==="editorial"?"⬛ Full":"?"}
+                          </span>
+                          {s.tags.slice(0,2).map(t=>(
+                            <span key={t} style={{ fontSize:8, color:s.palette[3]||"#aaa", opacity:.6 }}>{t}</span>
+                          ))}
                         </div>
                       </div>
                     </div>
@@ -177,11 +184,16 @@ export default function ThemePicker({
               {/* Description of active */}
               <div style={{ marginTop:12, padding:"10px 14px", background:"var(--bg3)",
                 border:"1px solid var(--border)", borderRadius:8 }}>
-                <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:4 }}>
-                  {SKINS[skinName]?.icon} {SKINS[skinName]?.name}
+                <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+                  <span style={{ fontSize:18 }}>{SKINS[skinName]?.icon}</span>
+                  <span style={{ fontSize:13, fontWeight:700, color:"var(--text)" }}>{SKINS[skinName]?.name}</span>
+                  <span style={{ fontSize:9, padding:"2px 8px", borderRadius:10,
+                    background:"var(--accent2)22", color:"var(--accent2)", border:"1px solid var(--accent2)44" }}>
+                    {SKINS[skinName]?.nav==="top"?"⬆ Top Nav":SKINS[skinName]?.nav==="bottom"?"⬇ Bottom Dock":SKINS[skinName]?.nav==="icon-dock"?"◀ Icon Dock":SKINS[skinName]?.nav==="editorial"?"⬛ Editorial":"?"}
+                  </span>
                 </div>
-                <div style={{ fontSize:11, color:"var(--text4)", lineHeight:1.6 }}>
-                  {SKINS[skinName]?.desc}
+                <div style={{ fontSize:11, color:"var(--text3)", lineHeight:1.6, fontStyle:"italic" }}>
+                  "{SKINS[skinName]?.concept}"
                 </div>
               </div>
             </div>
