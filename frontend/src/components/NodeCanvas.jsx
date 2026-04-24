@@ -4663,10 +4663,11 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
           </div>
           {Object.entries(node.customProps||{}).map(([k,v])=>(
             <div key={k} style={{display:"flex",gap:4,marginBottom:5}}>
-              <input value={k}
-                readOnly={!canEdit}
-                style={{...inp(),width:"42%",marginTop:0,opacity:canEdit?1:.7,fontWeight:600}}
-                onBlur={e=>onRenameCustom&&onRenameCustom(node.id,k,e.target.value)}
+              <input defaultValue={k}
+                key={k}
+                disabled={!canEdit}
+                style={{...inp(),width:"42%",marginTop:0,fontWeight:600}}
+                onBlur={e=>{const nk=e.target.value.trim();if(nk&&nk!==k&&onRenameCustom)onRenameCustom(node.id,k,nk);else e.target.value=k;}}
                 onKeyDown={e=>{if(e.key==="Enter")e.target.blur();e.stopPropagation();}}
                 placeholder="property name"
               />
@@ -5434,11 +5435,12 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
               </div>
               {Object.entries(node.customProps || {}).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
-                  <input value={k}
-                    readOnly={!canEdit}
-                    style={{ ...inp(), width: '38%', fontWeight: 600, opacity: canEdit ? 1 : 0.6 }}
+                  <input defaultValue={k}
+                    key={k}
+                    disabled={!canEdit}
+                    style={{ ...inp(), width: '38%', fontWeight: 600 }}
                     placeholder="name"
-                    onBlur={e => { const nk=e.target.value.trim(); if(nk&&nk!==k&&onRenameCustom) onRenameCustom(k,nk); }}
+                    onBlur={e => { const nk=e.target.value.trim(); if(nk&&nk!==k&&onRenameCustom) onRenameCustom(k,nk); else e.target.value=k; }}
                     onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); e.stopPropagation(); }}
                   />
                   <input value={v} onChange={e => onUpdateCustom(k, e.target.value)} disabled={!canEdit}
