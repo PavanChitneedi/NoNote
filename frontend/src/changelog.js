@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.30.4",date:"Apr 2026",items:[
+    "Live Dashboard: replaced show/hide toggle with tabs per card — Proxmox (Overview/Guests/Storage), TrueNAS (Overview/Pools/Services), Unraid (Overview/Docker/VMs)",
+    "All colors now use CSS variables matching the app theme palette",
+    "Fixed guest row alignment — CPU and RAM bars in equal 2-column grid",
+    "Popup width increased to 520px, maxHeight set to 80vh to prevent overflow",
+  ]},
   {v:"v5.30.0",date:"Apr 2026",items:[
     "Live integrations: Proxmox VE, TrueNAS/FreeNAS, Unraid, VMware ESXi/vCenter, Generic HTTP probe — server-side proxy avoids CORS, self-signed TLS allowed",
     "📡 Live tab on nodes: configure credentials per node, connect and see live CPU/RAM/disk/VMs/containers/pool metrics with auto-refresh every 30s",
