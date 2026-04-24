@@ -123,6 +123,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [error, setError]     = useState("");
   const [conflict, setConflict] = useState(null);
   const [toast, setToast] = useState(null); // {msg, type:"ok"|"err"}
+  const [importConflict, setImportConflict] = useState(null); // {title, existing, nodes, edges}
   const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
 
   useEffect(() => {
@@ -137,9 +138,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       const duplicate = maps.find(m=>m.title.toLowerCase()===title.toLowerCase());
       let finalTitle = title;
       if (duplicate) {
-        const choice = window.confirm(`A map named "${title}" already exists.\n\nOK = create with a unique name\nCancel = cancel`);
-        if (!choice) { setCreating(false); return; }
         finalTitle = `${title} (${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short"})})`;
+        setError(`Name taken — creating as "${finalTitle}"`);
+        setTimeout(()=>setError(""),3000);
       }
       const d = await createMap({ title:finalTitle });
       setMaps(m=>[d.map,...m.filter(x=>x.id!==d.map.id)]);
@@ -204,44 +205,107 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     } catch(e) { showToast("Export failed: "+e.message, "err"); }
   };
 
+  // Sanitize imported nodes/edges to ensure correct field names regardless of export source
+  const sanitizeImport = (rawNodes, rawEdges) => {
+    const nodes = (rawNodes || []).map(n => ({
+      id:          n.id,
+      type:        n.type || n.node_type || "note",
+      x:           n.x || 0,
+      y:           n.y || 0,
+      w:           n.w || 180,
+      h:           n.h || 80,
+      title:       n.title || "Untitled",
+      notes:       Array.isArray(n.notes) ? n.notes : [],
+      properties:  n.properties || {},
+      customProps: n.customProps || n.custom_props || {},
+      collapsed:   n.collapsed || false,
+      z_index:     n.z_index || 0,
+    }));
+    const edges = (rawEdges || []).map(e => ({
+      id:         e.id,
+      from:       e.from || e.from_node,
+      to:         e.to   || e.to_node,
+      label:      e.label || "",
+      style:      e.style || "arrow",
+      color:      e.color || "#58a6ff",
+      fromAnchor: e.fromAnchor || e.from_anchor || null,
+      toAnchor:   e.toAnchor   || e.to_anchor   || null,
+      midOff:     e.midOff     || e.mid_off      || null,
+    }));
+    return { nodes, edges };
+  };
+
+  const doImportSave = async (mapId, nodes, edges, title, isOverwrite = false) => {
+    await saveMap(mapId, { nodes, edges, groupBoxes: [] });
+    if (isOverwrite) {
+      getMaps().then(d => setMaps(d.maps)).catch(() => {});
+      showToast(`"${title}" overwritten — ${nodes.length} nodes`);
+    } else {
+      getMaps().then(d => setMaps(d.maps)).catch(() => {});
+      showToast(`"${title}" imported — ${nodes.length} nodes`);
+    }
+    onOpenMap(mapId);
+  };
+
   const handleImportFile = async (e) => {
     const f = e.target.files?.[0];
     if (!f) return;
     e.target.value = "";
     let raw;
-    try { raw = JSON.parse(await f.text()); } catch { showToast("Invalid file", "err"); return; }
+    try { raw = JSON.parse(await f.text()); } catch { showToast("Invalid file — not valid JSON", "err"); return; }
     if (raw.app !== "NoNote" || !Array.isArray(raw.nodes)) { showToast("Not a valid .nonote file", "err"); return; }
 
-    const nodes = raw.nodes.map(n => ({ ...n, notes: Array.isArray(n.notes) ? n.notes : [] }));
-    const edges = raw.edges || [];
-    let title = raw.title || f.name.replace(/\.nonote$/i, "") || "Imported Map";
+    const { nodes, edges } = sanitizeImport(raw.nodes, raw.edges);
+    const title = raw.title || f.name.replace(/\.nonote$/i, "") || "Imported Map";
+    const existing = maps.find(m => m.title.toLowerCase() === title.toLowerCase());
 
-    // If title exists, append timestamp to make it unique
-    if (maps.find(m => m.title.toLowerCase() === title.toLowerCase())) {
-      const existing = maps.find(m => m.title.toLowerCase() === title.toLowerCase());
-      const choice = window.confirm(
-        `A map named "${title}" already exists.\n\nOK = Overwrite it\nCancel = Save as copy`
-      );
-      if (choice) {
-        // Overwrite
-        try {
-          await saveMap(existing.id, { nodes, edges, groupBoxes: [] });
-          getMaps().then(d => setMaps(d.maps)).catch(() => {});
-          showToast(`"${title}" updated — ${nodes.length} nodes`);
-          onOpenMap(existing.id);
-        } catch(err) { showToast("Overwrite failed: " + err.message, "err"); }
-        return;
-      } else {
-        title = title + " (imported " + new Date().toLocaleTimeString() + ")";
-      }
+    if (existing) {
+      // Show inline conflict modal instead of window.confirm
+      setImportConflict({ title, existing, nodes, edges });
+      return;
     }
 
+    // No conflict — create new map and save
+    let newMapId = null;
     try {
       const d = await createMap({ title });
-      await saveMap(d.map.id, { nodes, edges, groupBoxes: [] });
-      setMaps(m => [{ ...d.map, title }, ...m]);
-      onOpenMap(d.map.id);
-    } catch(err) { showToast("Import failed: " + err.message, "err"); }
+      newMapId = d.map.id;
+      await doImportSave(newMapId, nodes, edges, title);
+    } catch(err) {
+      // Clean up the orphaned empty map if save failed
+      if (newMapId) {
+        try { await deleteMap(newMapId); } catch {}
+        setMaps(m => m.filter(x => x.id !== newMapId));
+      }
+      showToast("Import failed: " + err.message, "err");
+    }
+  };
+
+  const handleImportConflictResolve = async (choice) => {
+    if (!importConflict) return;
+    const { title, existing, nodes, edges } = importConflict;
+    setImportConflict(null);
+
+    if (choice === "overwrite") {
+      try {
+        await doImportSave(existing.id, nodes, edges, title, true);
+      } catch(err) { showToast("Overwrite failed: " + err.message, "err"); }
+    } else if (choice === "copy") {
+      const copyTitle = title + " (imported " + new Date().toLocaleTimeString() + ")";
+      let newMapId = null;
+      try {
+        const d = await createMap({ title: copyTitle });
+        newMapId = d.map.id;
+        await doImportSave(newMapId, nodes, edges, copyTitle);
+      } catch(err) {
+        if (newMapId) {
+          try { await deleteMap(newMapId); } catch {}
+          setMaps(m => m.filter(x => x.id !== newMapId));
+        }
+        showToast("Import failed: " + err.message, "err");
+      }
+    }
+    // "cancel" — do nothing
   };
   const handleDelete = async (id, e) => {
     e.stopPropagation();
@@ -324,6 +388,32 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             borderRadius:10, padding:"11px 22px", fontSize:13, fontWeight:600,
             boxShadow:"0 4px 24px #0008", pointerEvents:"none", whiteSpace:"nowrap" }}>
             {toast.type==="err" ? "✕ " : "✓ "}{toast.msg}
+          </div>
+        )}
+
+        {/* Import conflict modal */}
+        {importConflict && (
+          <div style={{ position:"fixed", inset:0, background:"#000a", zIndex:10000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ background:"var(--bg2)", border:"1px solid var(--border2)", borderRadius:14, padding:"28px 32px", maxWidth:420, width:"90%", boxShadow:"0 8px 40px #000a" }}>
+              <div style={{ fontSize:15, fontWeight:700, color:"var(--text1)", marginBottom:10 }}>Map already exists</div>
+              <div style={{ fontSize:13, color:"var(--text3)", marginBottom:24 }}>
+                A map named <strong style={{color:"var(--text1)"}}>"{importConflict.title}"</strong> already exists.<br/>What would you like to do?
+              </div>
+              <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
+                <button onClick={()=>handleImportConflictResolve("overwrite")}
+                  style={{ flex:1, padding:"9px 16px", background:"var(--danger)22", border:"1px solid var(--danger)60", borderRadius:8, color:"var(--danger)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                  ↺ Overwrite existing
+                </button>
+                <button onClick={()=>handleImportConflictResolve("copy")}
+                  style={{ flex:1, padding:"9px 16px", background:"var(--accent)22", border:"1px solid var(--accent)60", borderRadius:8, color:"var(--accent)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                  ⊕ Save as copy
+                </button>
+                <button onClick={()=>handleImportConflictResolve("cancel")}
+                  style={{ padding:"9px 16px", background:"var(--bg3)", border:"1px solid var(--border2)", borderRadius:8, color:"var(--text3)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
