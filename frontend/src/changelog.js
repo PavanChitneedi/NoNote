@@ -1,6 +1,7 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.27.1",date:"Apr 2026",items:["Build fix: removed bad />} regex replacement that broke JSX expression blocks in edge renderer"]},
   {v:"v5.27.0",date:"Apr 2026",items:[
     "All 107 node icons replaced with clean Lucide SVG icons — crisp at any size, theme-aware, no emoji rendering inconsistencies",
     "Added lucide-react library — consistent stroke-based icon design across all nodes",
