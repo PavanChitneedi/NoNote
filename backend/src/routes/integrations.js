@@ -1,39 +1,22 @@
 import { Router } from 'express';
-import https from 'https';
+import { fetch, Agent } from 'undici';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticate);
 
-const tlsAgent = new https.Agent({ rejectUnauthorized: false }); // allow self-signed (homelab)
+// Allow self-signed TLS — homelab reality
+const agent = new Agent({ connect: { rejectUnauthorized: false } });
 
-async function pfetch(url, opts = {}) {
+async function go(url, opts = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
-    // node-native fetch doesn't support agent; use undici dispatcher for https self-signed
-    const r = await fetch(url, { ...opts, signal: ctrl.signal });
+    const r = await fetch(url, { ...opts, signal: ctrl.signal, dispatcher: agent });
     clearTimeout(timer);
     return r;
   } catch(e) { clearTimeout(timer); throw e; }
 }
-
-// For self-signed TLS we use undici (bundled with Node 18+)
-async function pfetchTLS(url, opts = {}) {
-  try {
-    const { fetch: undiciFetch, Agent } = await import('undici');
-    const agent = new Agent({ connect: { rejectUnauthorized: false } });
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    const r = await undiciFetch(url, { ...opts, signal: ctrl.signal, dispatcher: agent });
-    clearTimeout(timer);
-    return r;
-  } catch {
-    return pfetch(url, opts); // fallback
-  }
-}
-
-const go = (url, opts) => /^https/i.test(url) ? pfetchTLS(url, opts) : pfetch(url, opts);
 
 // ── Proxmox VE ───────────────────────────────────────────────
 router.post('/proxmox', async (req, res) => {
@@ -78,7 +61,7 @@ router.post('/truenas', async (req, res) => {
   } catch(e) { res.status(502).json({ error: e.message }); }
 });
 
-// ── Unraid (requires "Unraid API" community plugin) ──────────
+// ── Unraid ───────────────────────────────────────────────────
 router.post('/unraid', async (req, res) => {
   const { url, token } = req.body;
   if (!url || !token) return res.status(400).json({ error: 'url and token required' });
@@ -116,7 +99,7 @@ router.post('/esxi', async (req, res) => {
   } catch(e) { res.status(502).json({ error: e.message }); }
 });
 
-// ── Generic HTTP health probe ─────────────────────────────────
+// ── Generic HTTP probe ────────────────────────────────────────
 router.post('/probe', async (req, res) => {
   const { url, method = 'GET', headers = {} } = req.body;
   if (!url) return res.status(400).json({ error: 'url required' });
