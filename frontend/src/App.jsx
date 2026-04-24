@@ -96,15 +96,15 @@ function AppInner() {
   const showHeader = view.page !== "canvas";
   const navType = skin?.nav || "top";
 
-  // ── Shared nav actions ──────────────────────────────────────
-  const NavLogo = () => (
+  // ── Shared nav elements (inline, not components) ───────────
+  const navLogo = (
     <div onClick={goHome} style={{ display:"flex", alignItems:"center", gap:8, cursor:"pointer", userSelect:"none" }}>
       <span style={{ fontSize:20 }}>⬡</span>
       <span style={{ fontSize:14, fontWeight:800, color:"var(--accent)", letterSpacing:1 }}>NoNote</span>
     </div>
   );
-  const NavActions = ({ direction="row" }) => (
-    <div style={{ display:"flex", flexDirection:direction, alignItems:direction==="row"?"center":"stretch", gap:direction==="row"?4:2 }}>
+  const navActions = (
+    <div style={{ display:"flex", alignItems:"center", gap:3 }}>
       {view.page==="admin" && <button onClick={goHome} style={hBtn}>← Back</button>}
       <button onClick={() => setShowTutorial(true)} style={hBtn} title="Tutorial">🎓</button>
       <button onClick={() => setShowHelp(true)} style={hBtn} title="Help">?</button>
@@ -113,11 +113,18 @@ function AppInner() {
       <div onClick={() => setShowProfile(true)}
         style={{ width:28, height:28, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
           display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer",
-          flexShrink:0, title:user.display_name }}>
+          fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer", flexShrink:0 }}>
         {user.display_name?.[0]?.toUpperCase()}
       </div>
       <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }}>✕</button>
+    </div>
+  );
+  const navActionsCol = (
+    <div style={{ display:"flex", flexDirection:"column", alignItems:"stretch", gap:2 }}>
+      <button onClick={() => setShowTutorial(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Tutorial">🎓</button>
+      <button onClick={() => setShowHelp(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Help">?</button>
+      <button onClick={() => setShowAppearance(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Appearance">{THEMES[themeName]?.icon}</button>
+      {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Admin">⚙</button>}
     </div>
   );
 
@@ -135,7 +142,7 @@ function AppInner() {
 
   const modals = (
     <>
-      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="skins"/>}
+      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
@@ -153,9 +160,9 @@ function AppInner() {
           display:"flex", alignItems:"center", padding:"0 20px", flexShrink:0,
           position:"sticky", top:0, zIndex:20
         }}>
-          <NavLogo />
+          {navLogo}
           <div style={{ flex:1 }}/>
-          <NavActions direction="row"/>
+          {navActions}
         </div>
       )}
       <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>{pageContent}</div>
@@ -175,9 +182,9 @@ function AppInner() {
           backdropFilter:"var(--topbar-blur,none)", WebkitBackdropFilter:"var(--topbar-blur,none)",
           display:"flex", alignItems:"center", padding:"0 20px", gap:0,
         }}>
-          <NavLogo />
+          {navLogo}
           <div style={{ flex:1 }}/>
-          <NavActions direction="row"/>
+          {navActions}
         </div>
       )}
       {modals}
@@ -196,10 +203,7 @@ function AppInner() {
         }}>
           <div onClick={goHome} style={{ fontSize:22, cursor:"pointer", userSelect:"none", marginBottom:12 }}>⬡</div>
           {view.page==="admin" && <button onClick={goHome} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Back">←</button>}
-          <button onClick={() => setShowTutorial(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Tutorial">🎓</button>
-          <button onClick={() => setShowHelp(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Help">?</button>
-          <button onClick={() => setShowAppearance(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Appearance">{THEMES[themeName]?.icon}</button>
-          {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Admin">⚙</button>}
+          {navActionsCol}
           <div style={{ flex:1 }}/>
           <div onClick={() => setShowProfile(true)}
             style={{ width:32, height:32, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
@@ -226,11 +230,11 @@ function AppInner() {
           display:"flex", alignItems:"center", padding:"0 32px", flexShrink:0,
           position:"sticky", top:0, zIndex:20, gap:24,
         }}>
-          <NavLogo />
+          {navLogo}
           <div style={{ flex:1, textAlign:"center", fontSize:11, color:"var(--text4)", letterSpacing:"0.2em", textTransform:"uppercase" }}>
             {view.page === "admin" ? "ADMINISTRATION" : "NONOTE DIAGRAMMING"}
           </div>
-          <NavActions direction="row"/>
+          {navActions}
         </div>
       )}
       <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>{pageContent}</div>
