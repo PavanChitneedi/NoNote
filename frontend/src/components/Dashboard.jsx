@@ -122,6 +122,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [creating, setCreating]= useState(false);
   const [error, setError]     = useState("");
   const [conflict, setConflict] = useState(null);
+  const [toast, setToast] = useState(null); // {msg, type:"ok"|"err"}
+  const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
 
   useEffect(() => {
     getMaps().then(d=>setMaps(d.maps)).catch(e=>setError(e.message)).finally(()=>setLoading(false));
@@ -167,8 +169,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
           const nd = await createMap({ title: newTitle });
           await saveMap(nd.map.id, { nodes: src.nodes||[], edges: src.edges||[], groupBoxes:[] });
           setMaps(m=>[{...nd.map, title:newTitle},...m]);
-        } catch(e2) { alert("Duplicate failed: "+e2.message); }
-      } else { alert("Duplicate failed: "+e.message); }
+        } catch(e2) { showToast("Duplicate failed: "+e2.message, "err"); }
+      } else { showToast("Duplicate failed: "+e.message, "err"); }
     }
   };
 
@@ -199,7 +201,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       a.href = URL.createObjectURL(new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"}));
       a.download = `${(map.title||"map").replace(/[^a-z0-9]/gi,"-")}.nonote`;
       a.click(); URL.revokeObjectURL(a.href);
-    } catch(e) { alert("Export failed: "+e.message); }
+    } catch(e) { showToast("Export failed: "+e.message, "err"); }
   };
 
   const handleImportFile = async (e) => {
@@ -207,8 +209,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     if (!f) return;
     e.target.value = "";
     let raw;
-    try { raw = JSON.parse(await f.text()); } catch { alert("Invalid file"); return; }
-    if (raw.app !== "NoNote" || !Array.isArray(raw.nodes)) { alert("Not a valid .nonote file"); return; }
+    try { raw = JSON.parse(await f.text()); } catch { showToast("Invalid file", "err"); return; }
+    if (raw.app !== "NoNote" || !Array.isArray(raw.nodes)) { showToast("Not a valid .nonote file", "err"); return; }
 
     const nodes = raw.nodes.map(n => ({ ...n, notes: Array.isArray(n.notes) ? n.notes : [] }));
     const edges = raw.edges || [];
@@ -224,9 +226,10 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         // Overwrite
         try {
           await saveMap(existing.id, { nodes, edges, groupBoxes: [] });
-          alert(`"${title}" updated with ${nodes.length} nodes.`);
           getMaps().then(d => setMaps(d.maps)).catch(() => {});
-        } catch(err) { alert("Overwrite failed: " + err.message); }
+          showToast(`"${title}" updated — ${nodes.length} nodes`);
+          onOpenMap(existing.id);
+        } catch(err) { showToast("Overwrite failed: " + err.message, "err"); }
         return;
       } else {
         title = title + " (imported " + new Date().toLocaleTimeString() + ")";
@@ -237,8 +240,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
       const d = await createMap({ title });
       await saveMap(d.map.id, { nodes, edges, groupBoxes: [] });
       setMaps(m => [{ ...d.map, title }, ...m]);
-      alert(`"${title}" imported — ${nodes.length} nodes. Click the card to open.`);
-    } catch(err) { alert("Import failed: " + err.message); }
+      onOpenMap(d.map.id);
+    } catch(err) { showToast("Import failed: " + err.message, "err"); }
   };
   const handleDelete = async (id, e) => {
     e.stopPropagation();
@@ -309,6 +312,18 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         {error && (
           <div style={{ background:"var(--danger)18", border:`1px solid var(--danger)40`, borderRadius:8, padding:"10px 14px", fontSize:12, color:"var(--danger)", marginBottom:16 }}>
             {error}
+          </div>
+        )}
+
+        {/* Toast notification */}
+        {toast && (
+          <div style={{ position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", zIndex:9999,
+            background: toast.type==="err" ? "#3d0f0f" : "#0f2d1a",
+            border:`1px solid ${toast.type==="err" ? "var(--danger)" : "#2ea043"}`,
+            color: toast.type==="err" ? "var(--danger)" : "#3fb950",
+            borderRadius:10, padding:"11px 22px", fontSize:13, fontWeight:600,
+            boxShadow:"0 4px 24px #0008", pointerEvents:"none", whiteSpace:"nowrap" }}>
+            {toast.type==="err" ? "✕ " : "✓ "}{toast.msg}
           </div>
         )}
 

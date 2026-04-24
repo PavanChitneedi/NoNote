@@ -1009,6 +1009,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   const scheduleSave = useCallback((ns, es) => {
     if (!canEdit) return;
+    // Don't trigger a save if both nodes and edges are empty (brand-new map, nothing to persist yet)
+    if ((!ns || ns.length === 0) && (!es || es.length === 0)) return;
     setSaveState("saving"); setSaveMsg("Saving…");
 
     // ── WS broadcast (150ms debounce — catches drag, resize, all mutations) ──

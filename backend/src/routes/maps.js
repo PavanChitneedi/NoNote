@@ -204,20 +204,32 @@ router.post(
         [req.user.id, m.title + " (copy)", m.description]
       );
       const newId = newMap.rows[0].id;
-      // Copy nodes
-      await query(
-        `INSERT INTO map_nodes (id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,z_index)
-         SELECT id,$1,node_type,title,x,y,w,h,properties,custom_props,notes,z_index
-         FROM map_nodes WHERE map_id=$2`,
-        [newId, req.params.mapId]
-      );
-      // Copy edges (use COALESCE for optional columns that may not exist in older schemas)
-      await query(
-        `INSERT INTO map_edges (id,map_id,from_node,to_node,style,color,label)
-         SELECT id,$1,from_node,to_node,style,color,label
-         FROM map_edges WHERE map_id=$2`,
-        [newId, req.params.mapId]
-      );
+      // Copy nodes with NEW UUIDs to avoid conflicts on repeated duplication
+      const origNodes = await query(`SELECT * FROM map_nodes WHERE map_id=$1`, [req.params.mapId]);
+      const nodeIdMap = {};
+      for (const n of origNodes.rows) {
+        const newNodeId = (await query(`SELECT uuid_generate_v4() AS id`)).rows[0].id;
+        nodeIdMap[n.id] = newNodeId;
+        await query(
+          `INSERT INTO map_nodes (id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,z_index)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          [newNodeId, newId, n.node_type, n.title, n.x, n.y, n.w, n.h,
+           n.properties, n.custom_props, n.notes, n.z_index]
+        );
+      }
+      // Copy edges with NEW UUIDs, remapping node references
+      const origEdges = await query(`SELECT * FROM map_edges WHERE map_id=$1`, [req.params.mapId]);
+      for (const e of origEdges.rows) {
+        const newEdgeId = (await query(`SELECT uuid_generate_v4() AS id`)).rows[0].id;
+        const fromNode = nodeIdMap[e.from_node] || e.from_node;
+        const toNode   = nodeIdMap[e.to_node]   || e.to_node;
+        await query(
+          `INSERT INTO map_edges (id,map_id,from_node,to_node,style,color,label,from_anchor,to_anchor,mid_off)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          [newEdgeId, newId, fromNode, toNode, e.style, e.color, e.label,
+           e.from_anchor, e.to_anchor, e.mid_off]
+        );
+      }
       res.json({ map: newMap.rows[0] });
     } catch (err) {
       res.status(500).json({ error: "Failed to duplicate map" });
