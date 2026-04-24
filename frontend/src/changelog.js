@@ -1,7 +1,8 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.27.2",date:"Apr 2026",items:["Build fix: missing closing } after &&<>…</> fragment in PropsPanel TEMPLATE PROPERTIES block — caused vite build failure on deploy"]},
+  {v:"v5.27.3",date:"Apr 2026",items:["Critical fix: DP (default node properties map) was accidentally stripped during v5.27.0 icon refactor — caused ReferenceError on map load, resulting in empty canvas for all existing maps"]},
+  {v:"v5.27.2",date:"Apr 2026",items:["Build fix: missing closing } after &&<>…</> fragment in PropsPanel TEMPLATE PROPERTIES block"]},
   {v:"v5.27.1",date:"Apr 2026",items:["Build fix: comprehensive scan and repair of all JSX expression blocks missing closing } — properties/customProps indicators, Tutorial, HelpGuide, modals, ArrowHeads, fragment blocks"]},
   {v:"v5.27.1",date:"Apr 2026",items:["Build fix: restored 10 missing closing braces stripped by overly broad />} replacement across NodeCanvas JSX expression blocks"]},
   {v:"v5.27.1",date:"Apr 2026",items:["Build fix: restored missing } after double-edge fragment close — broken by overly broad />} replacement"]},
