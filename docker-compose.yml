@@ -12,8 +12,6 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
-    ports:
-      - "127.0.0.1:5432:5432"
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-nodemap}"]
@@ -28,8 +26,6 @@ services:
     command: redis-server --requirepass ${REDIS_PASSWORD:?required} --appendonly yes
     volumes:
       - redis_data:/data
-    ports:
-      - "127.0.0.1:6379:6379"
     networks: [internal]
     healthcheck:
       test: ["CMD", "redis-cli", "--pass", "${REDIS_PASSWORD}", "ping"]
@@ -49,12 +45,12 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3001
-      POSTGRES_HOST: 127.0.0.1
+      POSTGRES_HOST: postgres
       POSTGRES_PORT: 5432
       POSTGRES_DB: ${POSTGRES_DB:-nodemap}
       POSTGRES_USER: ${POSTGRES_USER:-nodemap}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      REDIS_HOST: 127.0.0.1
+      REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_PASSWORD: ${REDIS_PASSWORD}
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?required}
@@ -68,7 +64,7 @@ services:
       REGISTRATION_OPEN: ${REGISTRATION_OPEN:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?required}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?required}
-    network_mode: "host"
+    networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
       interval: 15s
@@ -99,8 +95,6 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
       - nginx_logs:/var/log/nginx
     networks: [internal, external]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:
@@ -110,6 +104,5 @@ volumes:
 networks:
   internal:
     driver: bridge
-    internal: true
   external:
     driver: bridge
