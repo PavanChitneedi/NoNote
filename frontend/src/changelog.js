@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.26.1",date:"Apr 2026",items:[
+    "All 107 node types audited and reorganized: cleaner labels, better category groupings",
+    "Fixed 18 duplicate icons — every node now has a unique icon for instant visual recognition",
+    "Network category reorganized into logical sub-groups: Core Devices, VPN & WAN, Routing Tiers, Infrastructure Services",
+    "New unique icons: heading→🔡, blocker→🛑, reference→📑, esp→📻, sensor→🌡️, tablet→🗒️, gateway→🚪, nas→🗂️, backup→♻️, ids→🚨, siem→🔭, apigateway→🚦, cache→💨, software→💽, database→🏦, api→🔗 and more",
+  ]},
   {v:"v5.26.0",date:"Apr 2026",items:[
     "Network nodes: 18 new types — VPN Client/Server/Concentrator, SD-WAN, Core/Edge Router, L3/PoE Switch, Wireless Controller, DHCP/DNS/NTP/RADIUS servers, Patch Panel, Network TAP, Monitor, Honeypot",
     "Notes category: 11 new note-taking nodes — Idea, Topic, Concept, Definition, Quote, Summary, Question, Answer, Warning, Tip, Code Block",
