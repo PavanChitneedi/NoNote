@@ -129,14 +129,14 @@ export default function ThemePicker({
                         userSelect:"none",
                         boxShadow: active ? `0 4px 20px ${acc}55` : "0 2px 8px rgba(0,0,0,0.3)",
                       }}
-                      onMouseEnter={e => { if(!active){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=acc+"88";}}}
+                      onMouseEnter={e => { if(!active){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=(acc||"#888")+"88";}}}
                       onMouseLeave={e => { if(!active){e.currentTarget.style.transform="";e.currentTarget.style.borderColor="rgba(128,128,128,0.25)";}}}
                     >
                       {/* Mini UI preview */}
                       <div style={{ height:70, background:bg0, position:"relative", overflow:"hidden", padding:"8px 8px 0" }}>
                         {/* Fake topbar */}
                         <div style={{ height:8, background:bg1, borderRadius:"2px 2px 0 0", marginBottom:4,
-                          border:`1px solid ${acc}44`, display:"flex", alignItems:"center", gap:2, padding:"0 4px" }}>
+                          border:`1px solid ${acc||"#888"}44`, display:"flex", alignItems:"center", gap:2, padding:"0 4px" }}>
                           <div style={{ width:4, height:4, borderRadius:"50%", background:acc, opacity:.8 }}/>
                           <div style={{ flex:1, height:2, background:acc, opacity:.3, borderRadius:1 }}/>
                         </div>
@@ -158,7 +158,7 @@ export default function ThemePicker({
                       <div style={{ padding:"8px 10px", background:bg1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
                           <span style={{ fontSize:14 }}>{s.icon}</span>
-                          <span style={{ fontSize:12, fontWeight:700, color:s.palette[3]||"#fff" }}>{s.name}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:String(s.palette?.[3]||"#fff") }}>{s.name}</span>
                         </div>
                         <div style={{ display:"flex", gap:3, marginBottom:6 }}>
                           {s.palette.map((col,i) => (
@@ -168,12 +168,12 @@ export default function ThemePicker({
                         </div>
                         <div style={{ display:"flex", gap:4, flexWrap:"wrap", alignItems:"center" }}>
                           <span style={{ fontSize:8, padding:"1px 6px", borderRadius:8,
-                            background:s.palette[2]+"33", color:s.palette[2],
+                            background:(s.palette?.[2]||"#888")+"33", color:s.palette[2],
                             border:`1px solid ${s.palette[2]}55`, fontWeight:700 }}>
                             {s.nav==="top"?"⬆ Top Nav":s.nav==="bottom"?"⬇ Dock":s.nav==="icon-dock"?"◀ Icon":s.nav==="editorial"?"⬛ Full":"?"}
                           </span>
-                          {s.tags.slice(0,2).map(t=>(
-                            <span key={t} style={{ fontSize:8, color:s.palette[3]||"#aaa", opacity:.6 }}>{t}</span>
+                          {(s.tags||[]).slice(0,2).map(t=>(
+                            <span key={t} style={{ fontSize:8, color:String(s.palette?.[3]||"#aaa"), opacity:.6 }}>{t}</span>
                           ))}
                         </div>
                       </div>

@@ -8,6 +8,7 @@ export const SKINS = {
 obsidian: {
   name: "Obsidian",  icon: "⬡",
   concept: "The Developer's Workshop. Dense, precise, monospaced. GitHub meets VS Code.",
+  tags: ["Dark","Monospace","Default"],
   nav: "top",
   palette: ["#0d1117","#161b22","#58a6ff","#3fb950","#f78166"],
   vars: {
@@ -44,6 +45,7 @@ body.skin-obsidian ::-webkit-scrollbar-thumb{background:#30363d;border-radius:3p
 aurora: {
   name: "Aurora",  icon: "🌌",
   concept: "Floating in deep space. Frosted glass panels over animated aurora gradients.",
+  tags: ["Dark","Glass","Animated"],
   nav: "top",
   palette: ["#05080f","#0d1424","#a78bfa","#34d399","#fb7185"],
   vars: {
@@ -83,6 +85,7 @@ body.skin-aurora ::-webkit-scrollbar-thumb{background:rgba(139,92,246,0.4);borde
 brutalist: {
   name: "Brutalist",  icon: "🏗",
   concept: "Raw concrete and steel. No metaphors. No softness. Design as confrontation.",
+  tags: ["Dark","Brutalist","Bold"],
   nav: "bottom",
   palette: ["#0a0a0a","#111111","#ffe600","#ffffff","#ff2e2e"],
   vars: {
@@ -122,6 +125,7 @@ body.skin-brutalist ::-webkit-scrollbar-thumb{background:#ffe600;border-radius:0
 neonTokyo: {
   name: "Neon Tokyo",  icon: "⚡",
   concept: "Rain on neon-soaked streets. Everything glows. Every click is electric.",
+  tags: ["Dark","Neon","Cyberpunk"],
   nav: "bottom",
   palette: ["#02000a","#06011a","#ff2d78","#00f5ff","#ffe600"],
   vars: {
@@ -161,6 +165,7 @@ body.skin-neon-tokyo ::-webkit-scrollbar-thumb{background:linear-gradient(180deg
 neumorphic: {
   name: "Neumorphic",  icon: "⬜",
   concept: "Everything is sculpted from a single material. Push it. Press it. Feel it.",
+  tags: ["Light","3D","Tactile"],
   nav: "icon-dock",
   palette: ["#dde4ef","#e8edf5","#5b8dee","#27ae60","#e74c3c"],
   vars: {
@@ -202,6 +207,7 @@ body.skin-neumorphic ::-webkit-scrollbar-thumb{background:#c8d0e0;border-radius:
 sakura: {
   name: "Sakura",  icon: "🌸",
   concept: "Ma — the Japanese art of negative space. Beauty lives in what is absent.",
+  tags: ["Light","Serif","Minimal"],
   nav: "icon-dock",
   palette: ["#fef8f9","#ffffff","#e8648a","#1a1a2e","#d4af37"],
   vars: {
@@ -242,6 +248,7 @@ body.skin-sakura ::-webkit-scrollbar-thumb:hover{background:#e8648a}`,
 vapor: {
   name: "Vapor",  icon: "🌊",
   concept: "A E S T H E T I C. Lost in the 80s. Palm trees. Grid lines. Infinite sunset.",
+  tags: ["Dark","Vaporwave","Retro"],
   nav: "editorial",
   palette: ["#0d001a","#1a0033","#ff71ce","#01cdfe","#b967ff"],
   vars: {
@@ -282,6 +289,7 @@ body.skin-vapor ::-webkit-scrollbar-thumb{background:linear-gradient(#ff71ce,#b9
 newspaper: {
   name: "Newspaper",  icon: "📰",
   concept: "All the news fit to diagram. Playfair Display meets The New York Times.",
+  tags: ["Light","Serif","Editorial"],
   nav: "editorial",
   palette: ["#fafaf8","#ffffff","#1a1a1a","#c41e3a","#2c5f8a"],
   vars: {
@@ -323,6 +331,7 @@ body.skin-newspaper ::-webkit-scrollbar-thumb{background:#c41e3a}`,
 coral: {
   name: "Coral",  icon: "🪸",
   concept: "Miami heat. Warm coral, electric cyan, deep ocean navy. Fun and alive.",
+  tags: ["Dark","Tropical","Vibrant"],
   nav: "bottom",
   palette: ["#0a1628","#112240","#ff6b6b","#00d4aa","#ffd93d"],
   vars: {
@@ -361,6 +370,7 @@ body.skin-coral ::-webkit-scrollbar-thumb{background:rgba(255,107,107,0.4);borde
 carbon: {
   name: "Carbon",  icon: "⚙",
   concept: "Forged, not designed. Carbon fiber texture, amber precision, zero tolerance.",
+  tags: ["Dark","Industrial","Mono"],
   nav: "icon-dock",
   palette: ["#0c0c0c","#141414","#ff8c00","#00c8ff","#ff2244"],
   vars: {
@@ -401,6 +411,7 @@ body.skin-carbon ::-webkit-scrollbar-thumb{background:#ff8c00;border-radius:1px}
 pastelPop: {
   name: "Pastel Pop",  icon: "🍬",
   concept: "Pure joy in pixels. Soft gradients, bouncy animations, every click is a delight.",
+  tags: ["Light","Kawaii","Fun"],
   nav: "bottom",
   palette: ["#fff0f8","#fce4ff","#ff6eb4","#7eb8ff","#ffd166"],
   vars: {
