@@ -132,12 +132,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     const title = newTitle.trim(); if (!title) return;
     setCreating(true); setError("");
     try {
-      const action = await createWithUnique(title, [], []);
-      if (action === "cancel") { setCreating(false); return; }
-      const finalTitle = action.startsWith("rename:") ? action.slice(7) : title;
-      if (action === "overwrite") {
-        const ex = maps.find(m=>m.title.toLowerCase()===title.toLowerCase());
-        if (ex) { await apiFetch(`/maps/${ex.id}`,{method:"PATCH",body:JSON.stringify({title:finalTitle})}); }
+      const duplicate = maps.find(m=>m.title.toLowerCase()===title.toLowerCase());
+      let finalTitle = title;
+      if (duplicate) {
+        const choice = window.confirm(`A map named "${title}" already exists.\n\nOK = create with a unique name\nCancel = cancel`);
+        if (!choice) { setCreating(false); return; }
+        finalTitle = `${title} (${new Date().toLocaleDateString("en-GB",{day:"2-digit",month:"short"})})`;
       }
       const d = await createMap({ title:finalTitle });
       setMaps(m=>[d.map,...m.filter(x=>x.id!==d.map.id)]);
