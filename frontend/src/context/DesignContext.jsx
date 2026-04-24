@@ -169,6 +169,11 @@ export function DesignProvider({ children }) {
   const [designName, setDesignNameRaw] = useState(
     () => localStorage.getItem("nn_design") || "workspace"
   );
+  useEffect(() => {
+    const h = (e) => { if (DESIGNS[e.detail]) setDesignNameRaw(e.detail); };
+    window.addEventListener("nn-set-design", h);
+    return () => window.removeEventListener("nn-set-design", h);
+  }, []);
 
   const design = DESIGNS[designName] || DESIGNS.workspace;
 
@@ -182,6 +187,7 @@ export function DesignProvider({ children }) {
     // Apply font-family to body
     document.body.style.fontFamily = design.vars["--font-ui"];
     localStorage.setItem("nn_design", designName);
+    window.dispatchEvent(new CustomEvent("nn-design-changed", { detail: designName }));
   }, [design, designName]);
 
   return (

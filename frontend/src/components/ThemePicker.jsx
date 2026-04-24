@@ -82,7 +82,7 @@ export default function ThemePicker({
       style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:"var(--radius-lg)", width:"100%", maxWidth:560, maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:"var(--radius-lg)", width:"100%", maxWidth:720, maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
         {/* Header */}
         <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border2)", display:"flex", alignItems:"center", gap:10 }}>
@@ -113,7 +113,7 @@ export default function ThemePicker({
                 Each skin is a complete visual overhaul — fonts, shapes, shadows, colors, and special effects.
                 Not just a color change.
               </div>
-              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10 }}>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 {SKIN_KEYS.map(key => {
                   const s = SKINS[key];
                   const active = skinName === key;
@@ -133,7 +133,7 @@ export default function ThemePicker({
                       onMouseLeave={e => { if(!active){e.currentTarget.style.transform="";e.currentTarget.style.borderColor="rgba(128,128,128,0.25)";}}}
                     >
                       {/* Mini UI preview */}
-                      <div style={{ height:70, background:bg0, position:"relative", overflow:"hidden", padding:"8px 8px 0" }}>
+                      <div style={{ height:80, background:bg0, position:"relative", overflow:"hidden", padding:"8px 8px 0" }}>
                         {/* Fake topbar */}
                         <div style={{ height:8, background:bg1, borderRadius:"2px 2px 0 0", marginBottom:4,
                           border:`1px solid ${acc||"#888"}44`, display:"flex", alignItems:"center", gap:2, padding:"0 4px" }}>
@@ -166,6 +166,7 @@ export default function ThemePicker({
                               border:"1px solid rgba(255,255,255,0.2)", flexShrink:0 }}/>
                           ))}
                         </div>
+                        <div style={{ fontSize:9, color:String(s.palette?.[3]||"#aaa"), opacity:.65, marginBottom:5, lineHeight:1.4, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{s.concept||""}</div>
                         <div style={{ display:"flex", gap:4, flexWrap:"wrap", alignItems:"center" }}>
                           <span style={{ fontSize:8, padding:"1px 6px", borderRadius:8,
                             background:(s.palette?.[2]||"#888")+"33", color:s.palette[2],

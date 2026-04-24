@@ -255,13 +255,13 @@ const hBtn = {
 export default function App() {
   return (
     <ThemeProvider>
-      <SkinProvider>
-        <DesignProvider>
+      <DesignProvider>
+        <SkinProvider>
           <AuthProvider>
             <AppInner />
           </AuthProvider>
-        </DesignProvider>
-      </SkinProvider>
+        </SkinProvider>
+      </DesignProvider>
     </ThemeProvider>
   );
 }

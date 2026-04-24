@@ -126,6 +126,11 @@ export function ThemeProvider({ children }) {
   const [themeName, setThemeName] = useState(
     () => localStorage.getItem("nm_theme") || "dark"
   );
+  useEffect(() => {
+    const h = (e) => { if (THEMES[e.detail]) setThemeName(e.detail); };
+    window.addEventListener("nn-set-theme", h);
+    return () => window.removeEventListener("nn-set-theme", h);
+  }, []);
   const [fontScale, setFontScaleRaw] = useState(
     () => parseInt(localStorage.getItem("nm_fontscale") || "100", 10)
   );
@@ -137,6 +142,7 @@ export function ThemeProvider({ children }) {
     const root = document.documentElement;
     Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
     localStorage.setItem("nm_theme", themeName);
+    window.dispatchEvent(new CustomEvent("nn-theme-changed", { detail: themeName }));
   }, [theme, themeName]);
 
   // Apply font scale
