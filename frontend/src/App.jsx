@@ -91,47 +91,44 @@ function AppInner() {
         <div style={{
           height:"var(--topbar-h)", background:"var(--bg2)",
           borderBottom:"1px solid var(--border2)",
-          display:"flex", alignItems:"center", gap:8,
-          padding:"0 16px", flexShrink:0,
+          display:"flex", alignItems:"center",
+          padding:"0 20px", flexShrink:0,
           position:"sticky", top:0, zIndex:20
         }}>
-          {/* NoNote logo + name */}
-          <span onClick={goHome} title="Home"
-            style={{ fontSize:22, cursor:"pointer", userSelect:"none" }}>⬡</span>
-          <span onClick={goHome}
-            style={{ fontSize:15, fontWeight:700, color:"var(--accent)", letterSpacing:1.5, cursor:"pointer", flex:1 }}>
-            NoNote
-          </span>
-
-          {/* Back when on admin */}
-          {view.page==="admin" && (
-            <button onClick={goHome} style={hBtn}>← BACK</button>
-          )}
-
-          {/* Tutorial + Help */}
-          <button onClick={() => setShowTutorial(true)} style={{...hBtn, color:"var(--accent)"}} title="Interactive tutorial — learn the app step by step">
-            🎓 Tutorial
-          </button>
-          <button onClick={() => setShowHelp(true)} style={hBtn} title="Full documentation and help guide">
-            ? Help
-          </button>
-
-          {/* Appearance */}
-          <button onClick={() => setShowAppearance(true)} style={hBtn} title="Theme, design & text size">
-            {THEMES[themeName]?.icon} Appearance
-          </button>
-
-          {/* Avatar → profile */}
-          <div onClick={() => setShowProfile(true)} title="My profile"
-            style={{ width:32, height:32, borderRadius:"50%", background:user.avatar_color||"#6C63FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:13, fontWeight:700, color:"#fff", flexShrink:0, cursor:"pointer" }}>
-            {user.display_name?.[0]?.toUpperCase()}
+          {/* Logo */}
+          <div onClick={goHome} style={{ display:"flex", alignItems:"center", gap:8,
+            cursor:"pointer", userSelect:"none", marginRight:20 }}>
+            <span style={{ fontSize:20 }}>⬡</span>
+            <span style={{ fontSize:14, fontWeight:800, color:"var(--accent)", letterSpacing:1 }}>NoNote</span>
           </div>
 
-          {["owner","admin"].includes(user.role) && (
-            <button onClick={openAdmin} style={hBtn}>⚙ ADMIN</button>
-          )}
+          {view.page==="admin" && <button onClick={goHome} style={hBtn}>← Back</button>}
 
-          <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }}>Logout</button>
+          <div style={{ flex:1 }}/>
+
+          <div style={{ display:"flex", alignItems:"center", gap:3 }}>
+            <button onClick={() => setShowTutorial(true)} style={hBtn} title="Tutorial">🎓 Tutorial</button>
+            <button onClick={() => setShowHelp(true)} style={hBtn} title="Help">? Help</button>
+            <button onClick={() => setShowAppearance(true)} style={hBtn} title="Appearance">
+              {THEMES[themeName]?.icon} Appearance
+            </button>
+            {["owner","admin"].includes(user.role) && (
+              <button onClick={openAdmin} style={hBtn}>⚙ ADMIN</button>
+            )}
+            <div onClick={() => setShowProfile(true)} title={user.display_name}
+              style={{ display:"flex", alignItems:"center", gap:7, padding:"3px 10px 3px 4px",
+                borderRadius:20, background:"var(--bg3)", border:"1px solid var(--border)",
+                cursor:"pointer", marginLeft:6 }}>
+              <div style={{ width:26, height:26, borderRadius:"50%",
+                background:user.avatar_color||"var(--accent2)",
+                display:"flex", alignItems:"center", justifyContent:"center",
+                fontSize:12, fontWeight:700, color:"#fff" }}>
+                {user.display_name?.[0]?.toUpperCase()}
+              </div>
+              <span style={{ fontSize:11, fontWeight:600, color:"var(--text3)" }}>{user.display_name}</span>
+            </div>
+            <button onClick={logout} style={{ ...hBtn, color:"var(--danger)", marginLeft:4 }}>Logout</button>
+          </div>
         </div>
       )}
 

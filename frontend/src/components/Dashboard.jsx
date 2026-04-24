@@ -326,31 +326,38 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   return (
     <>
-    <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"14px 24px" }}>
-      <div style={{ maxWidth:1400, margin:"0 auto" }}>
+    <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"20px 32px" }}>
+      <div style={{ maxWidth:1440, margin:"0 auto" }}>
 
-        {/* ── Compact header bar ── */}
-        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16, flexWrap:"wrap" }}>
-          <div style={{ display:"flex", gap:2, background:"var(--bg3)", borderRadius:7, padding:2, border:"1px solid var(--border)" }}>
-            {[["maps","🗺 Maps"],["live","📡 Live"]].map(([id,lbl])=>(
-              <button key={id} onClick={()=>setDashTab(id)}
-                style={{ fontSize:11, padding:"5px 14px", border:"none", borderRadius:5, cursor:"pointer",
-                  fontFamily:"var(--font-ui)", fontWeight:700,
-                  background: dashTab===id ? "var(--accent2)" : "transparent",
-                  color: dashTab===id ? "#fff" : "var(--text4)" }}>
-                {lbl}
-              </button>
-            ))}
+        {/* ── Header ── */}
+        <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:20, gap:16, flexWrap:"wrap" }}>
+          <div>
+            <div style={{ fontSize:22, fontWeight:800, color:"var(--text)", marginBottom:4, letterSpacing:-.3 }}>
+              {dashTab==="maps" ? "Your Maps" : "Live Dashboard"}
+            </div>
+            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
+              <div style={{ display:"flex", gap:1, background:"var(--bg3)", borderRadius:8, padding:3, border:"1px solid var(--border)" }}>
+                {[["maps","🗺  Maps"],["live","📡  Live"]].map(([id,lbl])=>(
+                  <button key={id} onClick={()=>setDashTab(id)}
+                    style={{ fontSize:11, padding:"4px 14px", border:"none", borderRadius:6, cursor:"pointer",
+                      fontFamily:"var(--font-ui)", fontWeight:700, transition:"all .12s",
+                      background: dashTab===id ? "var(--accent2)" : "transparent",
+                      color: dashTab===id ? "#fff" : "var(--text4)" }}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+              <span style={{ fontSize:11, color:"var(--text4)", marginLeft:4 }}>
+                {user?.display_name} · <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span>
+              </span>
+            </div>
           </div>
-          <span style={{ fontSize:11, color:"var(--text4)" }}>{user?.display_name} · <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span></span>
-          <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-            <button onClick={()=>setShowChangelog(true)}
-              style={{ background:"none", border:"1px solid var(--border)", borderRadius:6,
-                padding:"4px 10px", color:"var(--text4)", fontSize:10, fontWeight:600,
-                cursor:"pointer", fontFamily:"inherit" }}>
-              {CURRENT_VERSION} · What's new
-            </button>
-          </div>
+          <button onClick={()=>setShowChangelog(true)}
+            style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
+              padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
+              cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+            {CURRENT_VERSION} ✦ What's new
+          </button>
         </div>
 
         {/* ── Changelog Modal ── */}
@@ -435,7 +442,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         )}
 
         {/* ── Action bar (maps only) ── */}
-        {dashTab==="maps"&&<div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
+        {dashTab==="maps"&&<div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap", alignItems:"center" }}>
           {["owner","admin","editor"].includes(user?.role) && (
             showNew ? (
               <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
@@ -517,17 +524,17 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                 </div>
               </>
             )}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))", gap:12 }}>
               {maps.map(map=>(
                 <div key={map.id}
                   data-tut={maps.indexOf(map)===0?"map-card":undefined}
                   onClick={()=>onOpenMap(map.id)}
                   onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
-                  style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:8, padding:"12px 14px", cursor:"pointer", transition:"all .15s", position:"relative" }}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent)";e.currentTarget.style.transform="translateY(-2px)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border2)";e.currentTarget.style.transform="translateY(0)";}}
+                  style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:10, padding:"16px 18px", cursor:"pointer", transition:"border-color .15s, transform .12s, box-shadow .15s", position:"relative" }}
+                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent)";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 20px rgba(0,0,0,.2)";}}
+                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border2)";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}
                 >
-                  <div style={{ fontSize:13, fontWeight:700, color:"var(--text)", marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:24 }}>
+                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:26 }}>
                     {map.title}
                   </div>
                   {map.description&&<div style={{ fontSize:11, color:"var(--text3)", marginBottom:7, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{map.description}</div>}
@@ -549,7 +556,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                     )}
                     {map.is_public&&<span style={{ fontSize:10, color:"var(--success)", background:"var(--success)18", padding:"1px 7px", borderRadius:4 }}>public</span>}
                   </div>
-                  <div style={{ marginTop:5, fontSize:9, color:"var(--text4)" }}>Updated {new Date(map.updated_at).toLocaleDateString()}</div>
+                  <div style={{ marginTop:8, fontSize:10, color:"var(--text4)" }}>Updated {new Date(map.updated_at).toLocaleDateString()}</div>
                   {/* ⋮ options button */}
                   <button
                     onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
