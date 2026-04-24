@@ -2327,7 +2327,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               <path d={path} stroke={isSel?"var(--danger)":(edge.color||"var(--accent)")} strokeWidth={(isSel?3:(EDGE_STYLES[edge.style]?.strokeW||2))+3} fill="none" opacity={.25}/>
               <path d={path} stroke={isSel?"var(--danger)":(edge.color||"var(--accent)")} strokeWidth={isSel?3:(EDGE_STYLES[edge.style]?.strokeW||2)} fill="none"
                 markerEnd={EDGE_STYLES[edge.style]?.mEnd?`url(#${EDGE_STYLES[edge.style].mEnd})`:undefined}/>
-            </>
+            </>}
             {edge.label&&!isSel&&(
               <text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>
             )}
