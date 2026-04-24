@@ -269,7 +269,7 @@ router.post(
         idMap[n.id] = UUID_RE.test(n.id) ? n.id : _uuid();
       }
       for (const e of edges || []) {
-        if (!idMap[e.id]) idMap[e.id] = UUID_RE.test(e.id) ? e.id : _uuid();
+        if (!idMap[e.id]) idMap[e.id] = _uuid(); // always fresh — edges are delete+reinsert each save
       }
 
       await withTransaction(async (client) => {
