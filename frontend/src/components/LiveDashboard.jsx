@@ -73,7 +73,7 @@ function ProxmoxCard({node,result,color}){
   const rCT=all.filter(g=>g._type==='CT'&&g.status==='running').length, tCT=all.filter(g=>g._type==='CT').length;
   const filt=all.filter(g=>gf==='all'||(gf==='vm'&&g._type==='VM')||(gf==='ct'&&g._type==='CT')||(gf==='stopped'&&g.status!=='running'));
   return <><CardTabs tabs={[{id:'overview',label:'📊 Overview'},{id:'guests',label:`🖥 Guests (${all.length})`},{id:'storage',label:`💾 Storage (${stor.length})`}]} active={tab} onChange={setTab} color={color}/>
-  <div style={{padding:'12px 14px'}}>
+  <div style={{padding:'10px 14px',overflow:'auto'}}>
     {tab==='overview'&&d.nodes?.map(n=>{const s=n.status||{};const cp=Math.round((s.cpu||0)*100),mp=pct(s.memory?.used,s.memory?.total),dp=pct(s.rootfs?.used,s.rootfs?.total);return <div key={n.node}>
       <div style={{display:'flex',alignItems:'center',gap:7,marginBottom:10}}>
         <span style={{width:8,height:8,borderRadius:'50%',background:n.online?'var(--success)':'var(--danger)',boxShadow:n.online?'0 0 6px var(--success)':'none'}}/>
@@ -250,12 +250,12 @@ export default function LiveDashboard({maps}){
         <button onClick={()=>refresh()} disabled={refreshing} style={{fontSize:10,background:refreshing?'var(--bg3)':'var(--accent2)',border:'none',borderRadius:6,color:refreshing?'var(--text4)':'#fff',cursor:refreshing?'default':'pointer',padding:'5px 14px',fontFamily:'var(--font-ui)',fontWeight:700}}>{refreshing?'⏳ Refreshing…':'🔄 Refresh'}</button>
       </div>
     </div>
-    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:14,alignItems:'start'}}>
+    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:14}}>
       {nodes.map(node=>{
         const cfg=node.properties._integration,result=results[node.id];
         const type=cfg.type||NODE_INT_MAP[node.type]||'probe',Renderer=CARD_RENDERERS[type];
         const color=TYPE_COLOR[type]||'var(--accent2)',isOnline=result?.ok;
-        return <div key={node.id} style={{background:'var(--bg2)',borderRadius:10,overflow:'hidden',
+        return <div key={node.id} style={{background:'var(--bg2)',borderRadius:10,overflow:'hidden',display:'flex',flexDirection:'column',height:380,
           border:`1px solid ${isOnline?color+'55':result?'var(--danger)44':'var(--border)'}`,
           borderTop:`3px solid ${isOnline?color:'var(--border)'}`,boxShadow:'0 2px 12px rgba(0,0,0,.12)'}}>
           <div style={{padding:'11px 14px',borderBottom:'1px solid var(--border2)'}}>
@@ -271,7 +271,7 @@ export default function LiveDashboard({maps}){
           </div>
           {!result&&<div style={{padding:'16px 14px',fontSize:11,color:'var(--text4)',fontStyle:'italic'}}>Connecting…</div>}
           {result?.error&&<div style={{margin:'10px 14px',fontSize:10,color:'var(--danger)',padding:'6px 8px',background:'var(--danger)11',borderRadius:5,border:'1px solid var(--danger)33'}}>⚠ {result.error}</div>}
-          {result?.ok&&Renderer&&<Renderer node={node} result={result} color={color}/>}
+          <div style={{flex:1,overflow:'auto',minHeight:0}}>{result?.ok&&Renderer&&<Renderer node={node} result={result} color={color}/>}</div>}
           {result?.ts&&<div style={{fontSize:8,color:'var(--text4)',padding:'2px 14px 6px',textAlign:'right'}}>{new Date(result.ts).toLocaleTimeString()}</div>}
         </div>;
       })}

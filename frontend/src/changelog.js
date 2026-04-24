@@ -1,6 +1,7 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.30.5",date:"Apr 2026",items:["Live Dashboard: fixed card height (380px) with internal scroll — adding more integrations never shifts tile sizes","All cards uniform in grid regardless of content volume"]},
   {v:"v5.30.4",date:"Apr 2026",items:[
     "Live Dashboard: replaced show/hide toggle with tabs per card — Proxmox (Overview/Guests/Storage), TrueNAS (Overview/Pools/Services), Unraid (Overview/Docker/VMs)",
     "All colors now use CSS variables matching the app theme palette",
