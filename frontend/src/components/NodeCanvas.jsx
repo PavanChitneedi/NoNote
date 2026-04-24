@@ -5441,17 +5441,23 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
 function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
   onTabChange, onClose, onUpdate, onUpdateNotes, onChangeType,
   onUpdateCustom, onDeleteCustom, onAddCustom, onRenameCustom }) {
+  // onUpdateProp for Services/Ports tabs
+  const onUpdateProp = (key, val) => onUpdate({ properties: { ...node.properties, [key]: val } });
 
   const t = NT[node.type] || NT.note;
   const nodeEdges = edges.filter(e => e.from === node.id || e.to === node.id);
   const [typeSearch, setTypeSearch] = useState('');
   const [confirmType, setConfirmType] = useState(null);
 
+  const hasPorts    = Array.isArray(node.properties?.Ports)    && node.properties.Ports.length > 0;
+  const hasServices = Array.isArray(node.properties?.Services) && node.properties.Services.length > 0;
   const TABS = [
-    { id: 'notes',   label: '📝 Notes'      },
-    { id: 'props',   label: '⚙ Properties'  },
-    { id: 'type',    label: '🏷 Type'        },
-    { id: 'conns',   label: `🔗 Links (${nodeEdges.length})` },
+    { id: 'notes',    label: '📝 Notes'      },
+    { id: 'props',    label: '⚙ Properties'  },
+    ...(hasServices ? [{ id: 'services', label: `🔧 Services (${node.properties.Services.length})` }] : []),
+    ...(hasPorts    ? [{ id: 'ports',    label: `🔌 Ports (${node.properties.Ports.length})`       }] : []),
+    { id: 'type',     label: '🏷 Type'        },
+    { id: 'conns',    label: `🔗 Links (${nodeEdges.length})` },
   ];
 
   const inp = () => ({
@@ -5620,6 +5626,134 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
           </div>
         )}
 
+        {/* ── SERVICES TAB ── */}
+        {tab === 'services' && (
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
+              <span style={{fontSize:10,fontWeight:700,color:'var(--text4)',letterSpacing:2,flex:1}}>SERVICES / VMs / CONTAINERS</span>
+              {canEdit&&<button onClick={()=>{
+                const svcs=[...(node.properties.Services||[]),
+                  {id:Math.random().toString(36).slice(2,7),name:'',type:'Docker',ip:'',port:'',status:'Running',image:'',os:'',memory:'',cpu:'',notes:''}];
+                onUpdateProp('Services',svcs);
+              }} style={{fontSize:10,background:'none',border:'1px solid var(--border)',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Add</button>}
+            </div>
+            {(node.properties.Services||[]).map((svc,si)=>{
+              const isAuto=nodes.some(n=>n.id===svc.id);
+              return(
+              <div key={svc.id||si} style={{background:'var(--bg3)',borderRadius:7,padding:'8px 10px',
+                border:`1px solid ${svc.status==='Running'?'var(--success)33':svc.status==='Stopped'?'var(--danger)33':svc.status==='Error'?'var(--danger)55':'var(--border2)'}`}}>
+                {isAuto&&<div style={{fontSize:9,color:'var(--accent1)',marginBottom:4}}>⚡ auto — {nodes.find(n=>n.id===svc.id)?.title}</div>}
+                <div style={{display:'grid',gridTemplateColumns:'1fr 80px 70px auto',gap:4,marginBottom:4,alignItems:'center'}}>
+                  <input value={svc.name||''} placeholder='Service name…' disabled={!canEdit}
+                    onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],name:e.target.value};onUpdateProp('Services',s);}}
+                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none',fontWeight:600}}/>
+                  <select value={svc.type||'Docker'} disabled={!canEdit}
+                    onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],type:e.target.value};onUpdateProp('Services',s);}}
+                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 4px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}>
+                    <option>Docker</option><option>VM</option><option>LXC</option><option>App</option>
+                    <option>Service</option><option>Daemon</option><option>Web App</option><option>Database</option><option>API</option><option>Other</option>
+                  </select>
+                  <select value={svc.status||'Running'} disabled={!canEdit}
+                    onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],status:e.target.value};onUpdateProp('Services',s);}}
+                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 4px',
+                      color:svc.status==='Running'?'var(--success)':svc.status==='Stopped'||svc.status==='Error'?'var(--danger)':'var(--text)',
+                      fontSize:10,fontFamily:'var(--font-ui)',outline:'none',fontWeight:700}}>
+                    <option>Running</option><option>Stopped</option><option>Paused</option><option>Error</option><option>Starting</option>
+                  </select>
+                  {canEdit&&<button onClick={()=>{const s=(node.properties.Services||[]).filter((_,i)=>i!==si);onUpdateProp('Services',s);}}
+                    style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1}}>×</button>}
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'1fr 60px 1fr',gap:4}}>
+                  <input value={svc.ip||''} placeholder='IP' disabled={!canEdit}
+                    onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],ip:e.target.value};onUpdateProp('Services',s);}}
+                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                  <input value={svc.port||''} placeholder='Port' disabled={!canEdit}
+                    onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],port:e.target.value};onUpdateProp('Services',s);}}
+                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                  <input value={svc.image||svc.os||''} placeholder='Image / OS' disabled={!canEdit}
+                    onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],image:e.target.value,os:e.target.value};onUpdateProp('Services',s);}}
+                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                </div>
+              </div>
+              );
+            })}
+            {!node.properties?.Services?.length&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic'}}>No services configured</div>}
+          </div>
+        )}
+
+        {/* ── PORTS TAB ── */}
+        {tab === 'ports' && (()=>{
+          const canvasConn=edges.filter(e=>e.from===node.id||e.to===node.id)
+            .map(e=>{const oid=e.from===node.id?e.to:e.from;return nodes.find(n=>n.id===oid)?.title||null;})
+            .filter(Boolean);
+          const unassigned=canvasConn.filter(name=>!(node.properties.Ports||[]).some(p=>p.connected===name));
+          return(
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+              <span style={{fontSize:10,fontWeight:700,color:'var(--text4)',letterSpacing:2,flex:1}}>PORTS / INTERFACES</span>
+              {canEdit&&unassigned.length>0&&<button onClick={()=>{
+                const ports=[...(node.properties.Ports||[])];
+                let ui=0;
+                for(let pi=0;pi<ports.length&&ui<unassigned.length;pi++){
+                  if(!ports[pi].connected){ports[pi]={...ports[pi],connected:unassigned[ui]};ui++;}
+                }
+                onUpdateProp('Ports',ports);
+              }} style={{fontSize:10,background:'var(--accent1)18',border:'1px solid var(--accent1)',borderRadius:4,color:'var(--accent1)',cursor:'pointer',padding:'2px 7px',fontFamily:'var(--font-ui)'}}>⚡ Auto-fill</button>}
+              {canEdit&&<button onClick={()=>{
+                const ports=[...(node.properties.Ports||[]),
+                  {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:'Ethernet',connected:'',ip:'',vlan:''}];
+                onUpdateProp('Ports',ports);
+              }} style={{fontSize:10,background:'none',border:'1px solid var(--border)',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Port</button>}
+            </div>
+            {canvasConn.length>0&&(
+              <div style={{fontSize:10,color:'var(--text4)',background:'var(--bg3)',borderRadius:5,padding:'4px 8px',display:'flex',flexWrap:'wrap',gap:4,alignItems:'center'}}>
+                <span style={{fontWeight:700,marginRight:2}}>Canvas:</span>
+                {canvasConn.map((name,i)=>(
+                  <span key={i} style={{background:unassigned.includes(name)?'var(--accent1)22':'var(--success)22',
+                    color:unassigned.includes(name)?'var(--accent1)':'var(--success)',
+                    borderRadius:3,padding:'1px 5px',fontSize:9,fontWeight:600}}>
+                    {unassigned.includes(name)?'○ ':'✓ '}{name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <datalist id={`popportconn-${node.id}`}>
+              {canvasConn.map((name,i)=><option key={i} value={name}/>)}
+            </datalist>
+            {(node.properties.Ports||[]).map((port,pi)=>(
+              <div key={port.id||pi} style={{display:'grid',gridTemplateColumns:'55px 85px 1fr 1fr auto',gap:4,alignItems:'center',
+                background:'var(--bg3)',borderRadius:6,padding:'5px 8px',
+                border:port.connected?'1px solid var(--success)44':'1px solid var(--border2)'}}>
+                <input value={port.label||''} placeholder='eth0' disabled={!canEdit}
+                  onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],label:e.target.value};onUpdateProp('Ports',p);}}
+                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 5px',color:'var(--text)',fontSize:10,fontFamily:'monospace',outline:'none'}}/>
+                <select value={port.type||'Ethernet'} disabled={!canEdit}
+                  onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],type:e.target.value};onUpdateProp('Ports',p);}}
+                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 4px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}>
+                  <optgroup label="Network"><option>Ethernet</option><option>WAN</option><option>LAN</option>
+                    <option>uplink</option><option>access</option><option>trunk</option><option>PoE</option><option>SFP+</option></optgroup>
+                  <optgroup label="USB"><option>USB 3.0</option><option>USB 2.0</option><option>USB-C</option></optgroup>
+                  <optgroup label="Thunderbolt"><option>Thunderbolt 4</option><option>Thunderbolt 3</option></optgroup>
+                  <optgroup label="Video"><option>HDMI</option><option>DisplayPort</option><option>VGA</option></optgroup>
+                  <optgroup label="Mgmt"><option>iDRAC/iLO</option><option>IPMI</option></optgroup>
+                  <optgroup label="Other"><option>HBA</option><option>Fiber</option><option>Other</option></optgroup>
+                </select>
+                <input value={port.connected||''} placeholder='Connected to…' list={`popportconn-${node.id}`} disabled={!canEdit}
+                  onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],connected:e.target.value};onUpdateProp('Ports',p);}}
+                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 5px',
+                    color:port.connected?'var(--success)':'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                <input value={port.ip||port.vlan||''} placeholder='IP / VLAN' disabled={!canEdit}
+                  onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],ip:e.target.value,vlan:e.target.value};onUpdateProp('Ports',p);}}
+                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 5px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                {canEdit&&<button onClick={()=>{const p=(node.properties.Ports||[]).filter((_,i)=>i!==pi);onUpdateProp('Ports',p);}}
+                  style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1}}>×</button>}
+              </div>
+            ))}
+            {!node.properties?.Ports?.length&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic'}}>No ports configured</div>}
+          </div>
+          );
+        })()}
+
         {/* ── TYPE TAB ── */}
         {tab === 'type' && (
           <div>
@@ -5662,7 +5796,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
                           fontSize: 11, fontFamily: 'var(--font-ui)',
                           transition: 'all .1s',
                         }}>
-                        <span style={{ fontSize: 14 }}>{nt.icon}</span>
+                        <NodeIcon icon={nt.icon} size={13} color={key===node.type?nt.color:'var(--text4)'} />
                         <span style={{ fontWeight: key === node.type ? 700 : 400 }}>{nt.label}</span>
                         {key === node.type && <span style={{ fontSize: 9 }}>✓</span>}
                       </button>
@@ -5722,7 +5856,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
                   padding: '8px 10px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)',
                   border: '1px solid var(--border)' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0, paddingTop: 2 }}>
-                    <span style={{ fontSize: 16 }}>{ot.icon}</span>
+                    <NodeIcon icon={ot.icon} size={16} color={ot.color} />
                     <span style={{ fontSize: 18, color: ot.color, lineHeight: 1 }}>{isFrom ? '→' : '←'}</span>
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

@@ -1,6 +1,13 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.29.1",date:"Apr 2026",items:[
+    "Fix: Type and Links tabs in popup caused blank/white screen — Lucide icon components were rendered as raw React children instead of via NodeIcon; React 18 throws on this",
+    "Fix: same crash in the Links (conns) tab for connected node icons",
+    "New popup tabs: 🔧 Services and 🔌 Ports tabs appear automatically when a node has those arrays populated",
+    "Services tab in popup: full CRUD — add/edit/delete services with name, type, status (color-coded), IP, port, image/OS; ⚡ auto badge on canvas-linked entries",
+    "Ports tab in popup: full CRUD — add/edit/delete ports with label, type (grouped dropdown), connected device (datalist autocomplete from canvas edges), IP/VLAN; ⚡ Auto-fill button",
+  ]},
   {v:"v5.29.0",date:"Apr 2026",items:[
     "Fix: [object Object] in Properties tab — arrays (Services, Ports) are now excluded from template property inputs in both the popup and the side panel",
     "New node types: Docker Engine, Docker Container, Docker Compose, Virtual Machine (VM), LXC Container — all in correct categories with full property defaults",
