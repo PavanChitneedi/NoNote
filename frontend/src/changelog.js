@@ -1,6 +1,35 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.24.16",date:"Apr 2026",items:[
+    "Import fix: sanitizeImport now generates fresh crypto.randomUUID() for every node and edge — prevents ON CONFLICT silent update of source map nodes",
+    "Edge from/to references remapped correctly to new node IDs after ID reassignment",
+  ]},
+  {v:"v5.24.15",date:"Apr 2026",items:[
+    "Import fix: edge IDs now always get fresh UUIDs in save route — prevents duplicate key constraint on map_edges_pkey",
+  ]},
+  {v:"v5.24.14",date:"Apr 2026",items:[
+    "Import: sanitizeImport normalises all node/edge fields before save (handles node_type vs type, from_node vs from)",
+    "Import: orphaned empty map deleted if saveMap fails after createMap",
+    "Import conflict: inline modal replaces window.confirm (Overwrite / Save as copy / Cancel)",
+    "Create map duplicate: auto-renames with date suffix, no blocking dialog",
+  ]},
+  {v:"v5.24.13",date:"Apr 2026",items:[
+    "Import: all alert() calls replaced with toast notifications",
+    "Import: auto-navigates into map after successful import (no more click-the-card)",
+    "Save guard: skips DB save when both nodes and edges are empty (prevents spurious save-failed on blank maps)",
+  ]},
+  {v:"v5.24.12",date:"Apr 2026",items:[
+    "Dashboard: createWithUnique was undefined — replaced with inline duplicate-name handling",
+  ]},
+  {v:"v5.24.11",date:"Apr 2026",items:[
+    "Backend maps.js: missing imports restored (authenticate, mapPermission, query, withTransaction, body, validationResult)",
+  ]},
+  {v:"v5.24.10",date:"Apr 2026",items:[
+    "Duplicate map: now generates fresh UUIDs for all nodes and edges — prevents primary key conflicts on repeated duplication",
+    "Duplicate map: edge node references remapped to new node IDs",
+    "Duplicate map: from_anchor, to_anchor, mid_off now copied correctly",
+  ]},
   {v:"v5.24.9",date:"Apr 2026",items:[
     "Notes corruption root cause: literal newline character in content caused JSON.parse to throw Bad control character — fixed by escaping control chars before re-parsing",
     "Fix applied in three places: backend normalizeNotes (GET response), backend fixCorruptedNotes (DB migration), frontend tryExtractNotes",
@@ -213,3 +242,7 @@ export const CHANGELOG = [
     "Custom node properties and themes",
     "PNG export",]},
 ];
+
+
+// Single source of truth for current version — always the first entry in CHANGELOG
+export const CURRENT_VERSION = CHANGELOG[0].v;

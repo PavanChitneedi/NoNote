@@ -2,7 +2,7 @@ import React from 'react';
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch, saveMap, getAccessToken } from "../api/client.js";
-import { CHANGELOG } from "../changelog.js";
+import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
 
@@ -340,7 +340,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
               padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
               cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
-            v5.23.2 ✦ What's new
+            {CURRENT_VERSION} ✦ What's new
           </button>
         </div>
 
