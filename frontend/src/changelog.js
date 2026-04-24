@@ -1,6 +1,7 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.31.0",date:"Apr 2026",items:["Fix NaN% on storage pools — handles all Proxmox storage types (ZFS, NFS, SMB/CIFS, LVM, dir) by checking used/disk_used/maxdisk fields","Deduplication: same server in multiple maps/nodes shows only once in Live Dashboard (deduped by URL)","Standalone integrations: add servers directly to Live Dashboard without creating a map node — persisted in localStorage with remove button","Dashboard layout: max-width 1400px (was 920), reduced padding, compact header bar — tabs+username in single line","Live tab hides New Map / Import buttons to reduce clutter","Map grid: 200px min-width cards"]},
   {v:"v5.30.6",date:"Apr 2026",items:["Live Dashboard: always-visible metrics strip (CPU/RAM/disk/counts) + fixed 220px scroll tab area — cards never change size","Fixed stray } rendering bug","Map cards: denser grid (200px min), compact padding","Live dashboard card: left-border color accent per integration type"]},
   {v:"v5.30.5",date:"Apr 2026",items:["Live Dashboard: fixed card height (380px) with internal scroll — adding more integrations never shifts tile sizes","All cards uniform in grid regardless of content volume"]},
   {v:"v5.30.4",date:"Apr 2026",items:[

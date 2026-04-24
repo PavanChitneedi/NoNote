@@ -75,9 +75,9 @@ function ProxmoxCard({result, color}){
       {tab==='guests'&&<GuestList guests={guests} color={color}/>}
       {tab==='storage'&&<div>
         {stor.length===0&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic',textAlign:'center',padding:'8px 0'}}>No storage</div>}
-        {stor.map(st=>{const sp=pct(st.disk_used,st.total);return <div key={st.storage} style={{display:'grid',gridTemplateColumns:'1fr auto 120px auto',gap:8,alignItems:'center',padding:'6px 8px',borderRadius:5,marginBottom:4,background:'var(--bg)',border:'1px solid var(--border2)'}}>
+        {stor.map(st=>{const sp=pct(st.used||st.disk_used||0,st.total||st.maxdisk||1);return <div key={st.storage} style={{display:'grid',gridTemplateColumns:'1fr auto 120px auto',gap:8,alignItems:'center',padding:'6px 8px',borderRadius:5,marginBottom:4,background:'var(--bg)',border:'1px solid var(--border2)'}}>
           <span style={{fontSize:11,fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{st.storage}</span>
-          <span style={{fontSize:9,color:'var(--text4)',whiteSpace:'nowrap'}}>{fmt(st.disk_used)}/{fmt(st.total)}</span>
+          <span style={{fontSize:9,color:'var(--text4)',whiteSpace:'nowrap'}}>{fmt(st.used||st.disk_used||0)}/{fmt(st.total)}</span>
           <Bar v={sp} h={5}/>
           <span style={{fontSize:10,fontWeight:700,color:sp>=85?'var(--danger)':sp>=70?'#ff9800':'var(--success)',minWidth:32,textAlign:'right'}}>{sp}%</span>
         </div>;})}
@@ -173,6 +173,37 @@ async function fetchInt(node){
   catch(e){ return{nodeId:node.id,type,ok:false,error:e.message,ts:Date.now()}; }
 }
 
+function StandaloneAdd({onAdd}){
+  const [show,setShow]=useState(false);
+  const [form,setForm]=useState({title:'',type:'proxmox',url:'',token:'',username:'',password:''});
+  const save=()=>{
+    if(!form.url||!form.title) return;
+    const node={id:'standalone_'+Date.now(),title:form.title,type:form.type==='truenas'?'truenas':form.type==='unraid'?'unraid':form.type==='esxi'?'esxi':form.type==='probe'?'server':'proxmox',
+      properties:{_integration:{type:form.type,url:form.url.trim(),token:form.token,username:form.username,password:form.password}},
+      mapTitle:'Standalone',mapId:null};
+    // Persist to localStorage
+    const saved=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');
+    const deduped=saved.filter(s=>s.properties._integration.url!==node.properties._integration.url);
+    localStorage.setItem('nn_standalone_integrations',JSON.stringify([...deduped,node]));
+    onAdd(node); setShow(false); setForm({title:'',type:'proxmox',url:'',token:'',username:'',password:''});
+  };
+  return <div style={{marginBottom:12}}>
+    {!show&&<button onClick={()=>setShow(true)} style={{fontSize:10,padding:'5px 12px',background:'var(--bg3)',border:'1px dashed var(--border)',borderRadius:6,color:'var(--text4)',cursor:'pointer',fontFamily:'var(--font-ui)',fontWeight:600}}>＋ Add integration without map</button>}
+    {show&&<div style={{background:'var(--bg2)',borderRadius:8,padding:'12px 14px',border:'1px solid var(--border)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr auto auto',gap:8,alignItems:'end'}}>
+      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>NAME</div><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="My Proxmox" style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
+      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>TYPE</div>
+        <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none'}}>
+          <option value="proxmox">Proxmox VE</option><option value="truenas">TrueNAS</option><option value="unraid">Unraid</option><option value="esxi">ESXi/vCenter</option><option value="probe">HTTP Probe</option>
+        </select></div>
+      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>URL</div><input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://192.168.x.x:8006" style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
+      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>{form.type==='esxi'?'USERNAME':'TOKEN / API KEY'}</div>
+        <input value={form.type==='esxi'?form.username:form.token} onChange={e=>setForm(f=>form.type==='esxi'?{...f,username:e.target.value}:{...f,token:e.target.value})} type="password" placeholder={form.type==='esxi'?'admin@vsphere.local':'user@pam!id=uuid'} style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
+      <button onClick={save} style={{padding:'5px 14px',background:'var(--accent2)',border:'none',borderRadius:5,color:'#fff',cursor:'pointer',fontSize:11,fontWeight:700,fontFamily:'var(--font-ui)',whiteSpace:'nowrap'}}>Add</button>
+      <button onClick={()=>setShow(false)} style={{padding:'5px 10px',background:'none',border:'1px solid var(--border)',borderRadius:5,color:'var(--text4)',cursor:'pointer',fontSize:11,fontFamily:'var(--font-ui)'}}>×</button>
+    </div>}
+  </div>;
+}
+
 export default function LiveDashboard({maps}){
   const [nodes,setNodes]=useState([]);
   const [results,setResults]=useState({});
@@ -185,7 +216,14 @@ export default function LiveDashboard({maps}){
   const loadNodes=useCallback(async()=>{
     setLoading(true);
     try{ const all=await Promise.all(maps.map(m=>apiFetch(`/maps/${m.id}`).catch(()=>null)));
-      setNodes(all.flatMap(d=>{ if(!d?.nodes) return []; return d.nodes.filter(n=>n.properties?._integration?.url).map(n=>({...n,mapTitle:maps.find(m=>m.id===d.map?.id)?.title||'Map',mapId:d.map?.id})); }));
+      const raw=all.flatMap(d=>{ if(!d?.nodes) return []; return d.nodes.filter(n=>n.properties?._integration?.url).map(n=>({...n,mapTitle:maps.find(m=>m.id===d.map?.id)?.title||'Map',mapId:d.map?.id})); });
+      // Deduplicate by integration URL — keep first occurrence
+      const seen=new Set(); const deduped=raw.filter(n=>{ const url=n.properties._integration?.url; if(seen.has(url)) return false; seen.add(url); return true; });
+      // Merge standalone integrations from localStorage
+      const standalone=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');
+      const allNodes=[...deduped];
+      for(const s of standalone){ if(!allNodes.some(n=>n.properties._integration?.url===s.properties._integration?.url)) allNodes.push(s); }
+      setNodes(allNodes);
     }finally{ setLoading(false); }
   },[maps]);
 
@@ -223,7 +261,8 @@ export default function LiveDashboard({maps}){
       </div>
     </div>
 
-    {/* Cards — responsive, uniform height */}
+    <StandaloneAdd onAdd={node=>{setNodes(prev=>{const url=node.properties._integration?.url;if(prev.some(n=>n.properties._integration?.url===url)) return prev;return [...prev,node];});}}/>
+    {/* Cards */}
     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:12}}>
       {nodes.map(node=>{
         const cfg=node.properties._integration, result=results[node.id];
@@ -241,7 +280,10 @@ export default function LiveDashboard({maps}){
           {!result&&<div style={{padding:'20px',fontSize:11,color:'var(--text4)',fontStyle:'italic',textAlign:'center'}}>Connecting…</div>}
           {result?.error&&<div style={{margin:'10px',fontSize:10,color:'var(--danger)',padding:'6px 8px',background:'var(--danger)11',borderRadius:5}}>⚠ {result.error}</div>}
           {result?.ok&&Renderer&&<Renderer result={result} color={color}/>}
-          {result?.ts&&<div style={{fontSize:8,color:'var(--text4)',padding:'2px 10px 4px',textAlign:'right',borderTop:'1px solid var(--border2)'}}>{new Date(result.ts).toLocaleTimeString()}</div>}
+          <div style={{display:'flex',alignItems:'center',padding:'2px 10px 4px',borderTop:'1px solid var(--border2)'}}>
+            {node.mapId===null&&<button onClick={()=>{const saved=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');localStorage.setItem('nn_standalone_integrations',JSON.stringify(saved.filter(s=>s.properties._integration.url!==cfg.url)));setNodes(prev=>prev.filter(n=>n.id!==node.id));}} style={{fontSize:9,background:'none',border:'none',color:'var(--danger)',cursor:'pointer',padding:0,fontFamily:'var(--font-ui)'}}>✕ Remove</button>}
+            <span style={{fontSize:8,color:'var(--text4)',marginLeft:'auto'}}>{node.mapId===null?'standalone · ':'map: '+node.mapTitle+' · '}{result?.ts?new Date(result.ts).toLocaleTimeString():''}</span>
+          </div>
         </div>;
       })}
     </div>

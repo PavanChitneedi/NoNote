@@ -326,39 +326,31 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   return (
     <>
-    <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"28px 20px" }}>
-      <div style={{ maxWidth:920, margin:"0 auto" }}>
+    <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"14px 24px" }}>
+      <div style={{ maxWidth:1400, margin:"0 auto" }}>
 
-        {/* Welcome */}
-        <div style={{ marginBottom:26, display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
-          <div>
-            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
-              <div style={{ fontSize:22, fontWeight:700, color:"var(--text)" }}>
-                {dashTab==="maps"?"Your Maps":"Live Dashboard"}
-              </div>
-              <div style={{ display:"flex", gap:4, marginLeft:16 }}>
-                {[["maps","🗺 Maps"],["live","📡 Live"]].map(([id,lbl])=>(
-                  <button key={id} onClick={()=>setDashTab(id)}
-                    style={{ fontSize:11, padding:"4px 12px", border:"none", borderRadius:6, cursor:"pointer",
-                      fontFamily:"var(--font-ui)", fontWeight:700,
-                      background: dashTab===id ? "var(--accent2)" : "var(--bg3)",
-                      color: dashTab===id ? "#fff" : "var(--text4)" }}>
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div style={{ fontSize:12, color:"var(--text4)" }}>
-              {user?.display_name} ·{" "}
-              <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span>
-            </div>
+        {/* ── Compact header bar ── */}
+        <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:16, flexWrap:"wrap" }}>
+          <div style={{ display:"flex", gap:2, background:"var(--bg3)", borderRadius:7, padding:2, border:"1px solid var(--border)" }}>
+            {[["maps","🗺 Maps"],["live","📡 Live"]].map(([id,lbl])=>(
+              <button key={id} onClick={()=>setDashTab(id)}
+                style={{ fontSize:11, padding:"5px 14px", border:"none", borderRadius:5, cursor:"pointer",
+                  fontFamily:"var(--font-ui)", fontWeight:700,
+                  background: dashTab===id ? "var(--accent2)" : "transparent",
+                  color: dashTab===id ? "#fff" : "var(--text4)" }}>
+                {lbl}
+              </button>
+            ))}
           </div>
-          <button onClick={()=>setShowChangelog(true)}
-            style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
-              padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
-              cursor:"pointer", fontFamily:"inherit", marginTop:4 }}>
-            {CURRENT_VERSION} ✦ What's new
-          </button>
+          <span style={{ fontSize:11, color:"var(--text4)" }}>{user?.display_name} · <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span></span>
+          <div style={{ marginLeft:"auto", display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
+            <button onClick={()=>setShowChangelog(true)}
+              style={{ background:"none", border:"1px solid var(--border)", borderRadius:6,
+                padding:"4px 10px", color:"var(--text4)", fontSize:10, fontWeight:600,
+                cursor:"pointer", fontFamily:"inherit" }}>
+              {CURRENT_VERSION} · What's new
+            </button>
+          </div>
         </div>
 
         {/* ── Changelog Modal ── */}
@@ -442,8 +434,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
           </div>
         )}
 
-        {/* ── Action bar ── */}
-        <div style={{ display:"flex", gap:8, marginBottom:20, flexWrap:"wrap", alignItems:"center" }}>
+        {/* ── Action bar (maps only) ── */}
+        {dashTab==="maps"&&<div style={{ display:"flex", gap:8, marginBottom:14, flexWrap:"wrap", alignItems:"center" }}>
           {["owner","admin","editor"].includes(user?.role) && (
             showNew ? (
               <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
@@ -467,7 +459,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
             ↙ Import .nonote
             <input type="file" accept=".nonote,.json" style={{ display:"none" }} onChange={handleImportFile}/>
           </label>
-        </div>
+        </div>}
 
         {/* Map grid */}
         {dashTab==="live" ? (
