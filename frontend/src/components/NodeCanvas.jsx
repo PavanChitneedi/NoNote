@@ -4555,6 +4555,59 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
   );
 }
 // ── Props Panel ───────────────────────────────────────────────
+// ── Editable custom property key with duplicate detection ────────────────
+function CustomKeyInput({ propKey, node, canEdit, onRename, style }) {
+  const [val, setVal]   = useState(propKey);
+  const [err, setErr]   = useState("");
+
+  // Reset if the key changes externally (e.g. successful rename)
+  const prevKey = useRef(propKey);
+  useEffect(() => { if(propKey !== prevKey.current){ setVal(propKey); setErr(""); prevKey.current=propKey; }}, [propKey]);
+
+  const takenKeys = (inputVal) => {
+    const lower = inputVal.trim().toLowerCase();
+    const defaultKeys = Object.keys(node.properties||{}).map(k=>k.toLowerCase());
+    const customKeys  = Object.keys(node.customProps||{}).filter(k=>k!==propKey).map(k=>k.toLowerCase());
+    return [...defaultKeys,...customKeys].includes(lower);
+  };
+
+  const handleChange = (e) => {
+    const v = e.target.value;
+    setVal(v);
+    if(v.trim() && v.trim() !== propKey && takenKeys(v))
+      setErr("Name already used by another property");
+    else setErr("");
+  };
+
+  const handleBlur = (e) => {
+    const nk = e.target.value.trim();
+    if(!nk){ setVal(propKey); setErr(""); return; }           // empty → revert
+    if(nk === propKey){ setErr(""); return; }                  // unchanged → ok
+    if(takenKeys(nk)){ setErr("Name already used by another property"); setVal(propKey); return; } // dupe → revert
+    onRename(propKey, nk);                                     // success
+    setErr("");
+  };
+
+  return (
+    <div style={{flex:"0 0 42%",display:"flex",flexDirection:"column",gap:2}}>
+      <input
+        value={val}
+        disabled={!canEdit}
+        onChange={handleChange}
+        onBlur={handleBlur}
+        onKeyDown={e=>{if(e.key==="Enter")e.target.blur();e.stopPropagation();}}
+        placeholder="property name"
+        style={{...style,
+          border: err ? "1.5px solid var(--danger)" : style?.border,
+          outline: err ? "none" : undefined,
+          boxShadow: err ? "0 0 0 2px var(--danger)30" : undefined,
+        }}
+      />
+      {err && <span style={{fontSize:9,color:"var(--danger)",lineHeight:1.3,paddingLeft:2}}>{err}</span>}
+    </div>
+  );
+}
+
 function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdateProp,onUpdateCustom,onDeleteCustom,onAddCustom,onRenameCustom,onUpdateEdge,onDeleteEdge,onResetSize,onUpdateNotes,onStartEditTitle,onToggleCollapse}){
   const t=NT[node.type]||NT.note;
   const nodeEdges=edges.filter(e=>e.from===node.id||e.to===node.id);
@@ -4662,21 +4715,18 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
             {canEdit&&<button onClick={onAddCustom} style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",fontSize:10,padding:"2px 8px",fontFamily:"inherit"}}>+ ADD</button>}
           </div>
           {Object.entries(node.customProps||{}).map(([k,v])=>(
-            <div key={k} style={{display:"flex",gap:4,marginBottom:5}}>
-              <input defaultValue={k}
-                key={k}
-                disabled={!canEdit}
-                style={{...inp(),width:"42%",marginTop:0,fontWeight:600}}
-                onBlur={e=>{const nk=e.target.value.trim();if(nk&&nk!==k&&onRenameCustom)onRenameCustom(node.id,k,nk);else e.target.value=k;}}
-                onKeyDown={e=>{if(e.key==="Enter")e.target.blur();e.stopPropagation();}}
-                placeholder="property name"
+            <div key={k} style={{display:"flex",gap:4,marginBottom:5,alignItems:"flex-start"}}>
+              <CustomKeyInput propKey={k} node={node} canEdit={canEdit}
+                onRename={(old,nk)=>onRenameCustom&&onRenameCustom(node.id,old,nk)}
+                style={{...inp(),width:"100%",marginTop:0,fontWeight:600}}
               />
               <input value={v} onChange={e=>onUpdateCustom(node.id,k,e.target.value)} disabled={!canEdit}
-                style={{...inp(),flex:1,marginTop:0}}
+                style={{...inp(),flex:1,marginTop:0,alignSelf:"flex-start"}}
                 onKeyDown={e=>e.stopPropagation()}
                 placeholder="value"
               />
-              {canEdit&&<button onClick={()=>onDeleteCustom(node.id,k)} style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:16,flexShrink:0}}>×</button>}
+              {canEdit&&<button onClick={()=>onDeleteCustom(node.id,k)}
+                style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:16,flexShrink:0,alignSelf:"flex-start",paddingTop:2}}>×</button>}
             </div>
           ))}
           {!Object.keys(node.customProps||{}).length&&<div style={{fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>None yet</div>}
@@ -5435,13 +5485,9 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
               </div>
               {Object.entries(node.customProps || {}).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
-                  <input defaultValue={k}
-                    key={k}
-                    disabled={!canEdit}
-                    style={{ ...inp(), width: '38%', fontWeight: 600 }}
-                    placeholder="name"
-                    onBlur={e => { const nk=e.target.value.trim(); if(nk&&nk!==k&&onRenameCustom) onRenameCustom(k,nk); else e.target.value=k; }}
-                    onKeyDown={e=>{ if(e.key==='Enter') e.target.blur(); e.stopPropagation(); }}
+                  <CustomKeyInput propKey={k} node={node} canEdit={canEdit}
+                    onRename={(old,nk)=>onRenameCustom&&onRenameCustom(old,nk)}
+                    style={{ ...inp(), width: '100%', fontWeight: 600 }}
                   />
                   <input value={v} onChange={e => onUpdateCustom(k, e.target.value)} disabled={!canEdit}
                     style={{ ...inp(), flex: 1 }}
