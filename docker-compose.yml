@@ -99,6 +99,8 @@ services:
       - ./nginx/certs:/etc/nginx/certs:ro
       - nginx_logs:/var/log/nginx
     networks: [internal, external]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:
