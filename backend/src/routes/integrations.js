@@ -1,18 +1,17 @@
 import { Router } from 'express';
-import { fetch, Agent } from 'undici';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
 router.use(authenticate);
 
-// Allow self-signed TLS — homelab reality
-const agent = new Agent({ connect: { rejectUnauthorized: false } });
+// Disable TLS verification for self-signed certs (homelab)
+// Set via NODE_TLS_REJECT_UNAUTHORIZED=0 in docker-compose env
 
 async function go(url, opts = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
   try {
-    const r = await fetch(url, { ...opts, signal: ctrl.signal, dispatcher: agent });
+    const r = await fetch(url, { ...opts, signal: ctrl.signal });
     clearTimeout(timer);
     return r;
   } catch(e) { clearTimeout(timer); throw e; }
@@ -43,7 +42,7 @@ router.post('/proxmox', async (req, res) => {
   } catch(e) { res.status(502).json({ error: e.message }); }
 });
 
-// ── TrueNAS SCALE / CORE ─────────────────────────────────────
+// ── TrueNAS ──────────────────────────────────────────────────
 router.post('/truenas', async (req, res) => {
   const { url, token } = req.body;
   if (!url || !token) return res.status(400).json({ error: 'url and token required' });
@@ -73,12 +72,11 @@ router.post('/unraid', async (req, res) => {
       headers: { 'Content-Type': 'application/json', 'x-api-key': token },
       body: JSON.stringify({ query: gql }),
     });
-    const data = await r.json();
-    res.json({ ok: true, ...data });
+    res.json({ ok: true, ...(await r.json()) });
   } catch(e) { res.status(502).json({ error: e.message }); }
 });
 
-// ── VMware ESXi / vCenter ────────────────────────────────────
+// ── ESXi / vCenter ───────────────────────────────────────────
 router.post('/esxi', async (req, res) => {
   const { url, username, password } = req.body;
   if (!url || !username || !password) return res.status(400).json({ error: 'url, username, password required' });
