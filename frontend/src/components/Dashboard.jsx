@@ -525,17 +525,17 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                 </div>
               </>
             )}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(260px,1fr))", gap:14 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))", gap:10 }}>
               {maps.map(map=>(
                 <div key={map.id}
                   data-tut={maps.indexOf(map)===0?"map-card":undefined}
                   onClick={()=>onOpenMap(map.id)}
                   onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
-                  style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:12, padding:18, cursor:"pointer", transition:"all .15s", position:"relative" }}
+                  style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:8, padding:"12px 14px", cursor:"pointer", transition:"all .15s", position:"relative" }}
                   onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent)";e.currentTarget.style.transform="translateY(-2px)";}}
                   onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border2)";e.currentTarget.style.transform="translateY(0)";}}
                 >
-                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:28 }}>
+                  <div style={{ fontSize:13, fontWeight:700, color:"var(--text)", marginBottom:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:24 }}>
                     {map.title}
                   </div>
                   {map.description&&<div style={{ fontSize:11, color:"var(--text3)", marginBottom:7, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{map.description}</div>}
@@ -557,7 +557,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                     )}
                     {map.is_public&&<span style={{ fontSize:10, color:"var(--success)", background:"var(--success)18", padding:"1px 7px", borderRadius:4 }}>public</span>}
                   </div>
-                  <div style={{ marginTop:8, fontSize:10, color:"var(--text4)" }}>Updated {new Date(map.updated_at).toLocaleDateString()}</div>
+                  <div style={{ marginTop:5, fontSize:9, color:"var(--text4)" }}>Updated {new Date(map.updated_at).toLocaleDateString()}</div>
                   {/* ⋮ options button */}
                   <button
                     onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
