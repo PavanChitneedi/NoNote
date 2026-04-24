@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.27.0",date:"Apr 2026",items:[
+    "All 107 node icons replaced with clean Lucide SVG icons — crisp at any size, theme-aware, no emoji rendering inconsistencies",
+    "Added lucide-react library — consistent stroke-based icon design across all nodes",
+    "NodeIcon component: renders Lucide SVG in UI, graceful text fallback in canvas/export contexts",
+    "Every icon meaningfully chosen: FileText(note), Brain(concept), Scale(loadbalancer), TestTube(honeypot), ScanSearch(SIEM), etc.",
+  ]},
   {v:"v5.26.1",date:"Apr 2026",items:[
     "All 107 node types audited and reorganized: cleaner labels, better category groupings",
     "Fixed 18 duplicate icons — every node now has a unique icon for instant visual recognition",

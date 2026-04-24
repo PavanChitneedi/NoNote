@@ -76,6 +76,13 @@ function edgePt(node, tx, ty) {
   return {x:cx+dx*s, y:cy+dy*s};
 }
 
+function NodeIcon({ icon, size=18, color="currentColor" }) {
+  if (!icon) return null;
+  if (typeof icon === "string") return <span style={{fontSize:size,lineHeight:1}}>{icon}</span>;
+  const I = icon;
+  return <I size={size} color={color} strokeWidth={1.8} style={{flexShrink:0}} />;
+}
+
 export default function MobileCanvas({ mapId, onBack }) {
   const [nodes,   setNodes]   = useState([]);
   const [edges,   setEdges]   = useState([]);
@@ -446,7 +453,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                 {/* Header */}
                 <div style={{padding:"10px 12px 6px",background:`${t.color}18`,
                   borderRadius:"8px 8px 0 0",display:"flex",alignItems:"center",gap:8}}>
-                  <span style={{fontSize:20,lineHeight:1,flexShrink:0}}>{t.icon}</span>
+                  <NodeIcon icon={t.icon} size={20} color={t.color} />
                   <span style={{fontSize:13,fontWeight:700,color:"var(--text)",
                     overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,lineHeight:1.2}}>
                     {node.title||"Untitled"}
@@ -538,7 +545,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                 style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,
                   padding:"14px 6px",border:`1.5px solid ${t.color}40`,borderRadius:10,
                   background:`${t.color}12`,cursor:"pointer"}}>
-                <span style={{fontSize:28}}>{t.icon}</span>
+                <NodeIcon icon={t.icon} size={28} color={t.color} />
                 <span style={{fontSize:10,fontWeight:700,color:"var(--text2)",textAlign:"center",lineHeight:1.2}}>
                   {t.label}
                 </span>
@@ -563,7 +570,7 @@ export default function MobileCanvas({ mapId, onBack }) {
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
               background:`${NT[selNode.type]?.color||ACCENT}15`,borderRadius:8}}>
-              <span style={{fontSize:24}}>{NT[selNode.type]?.icon||"📄"}</span>
+              <NodeIcon icon={NT[selNode.type]?.icon} size={24} color={NT[selNode.type]?.color} />
               <span style={{fontSize:11,fontWeight:700,color:"var(--text4)",letterSpacing:1}}>
                 {NT[selNode.type]?.label||selNode.type}
               </span>

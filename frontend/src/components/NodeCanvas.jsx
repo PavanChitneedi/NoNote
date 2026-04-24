@@ -7,6 +7,17 @@ import Tutorial       from "./Tutorial.jsx";
 import HelpGuide      from "./HelpGuide.jsx";
 import DocExportModal  from "./DocExportModal.jsx";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
+import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,Pin,Brain,
+  BookOpen,Quote,AlignLeft,HelpCircle,CheckCircle,AlertTriangle,Sparkles,Code2,Square,
+  ClipboardList,Target,Flag,Clock,StopCircle,Play,XCircle,CheckCircle2,ExternalLink,
+  BookMarked,Paperclip,Layers,Bookmark,Calculator,Router,Network,Shield,Scale,Lock,Wifi,
+  Tv,Globe,Tag,Repeat,LogIn,ShieldCheck,GitMerge,Map,Building2,Navigation,Shuffle,Zap,
+  Radio,AtSign,Search,Timer,Key,LayoutGrid,Eye,Activity,TestTube,Monitor,Laptop,Cpu,
+  Tv2,Terminal,Server,Globe2,Settings,Database,Archive,Mail,Printer,HardDrive,
+  FolderArchive,Disc,ArchiveRestore,Film,Smartphone,Tablet,CircuitBoard,Binary,Waves,
+  Thermometer,Camera,Factory,DoorOpen,Wind,Cloud,Braces,ListOrdered,Share2,Package,
+  Hexagon,Box,ArrowUpDown,PackageOpen,Link2,Library,Power,Puzzle,Gauge,MessageCircle,
+  BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban } from "lucide-react";
 import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
@@ -14,264 +25,128 @@ import VersionHistory from "./VersionHistory.jsx";
 // ── Node type registry ────────────────────────────────────────
 const NT = {
   // ── General ──────────────────────────────────────────────────
-  note:        { label:"Note",               color:"#FFD93D", icon:"📝", cat:"General" },
-  heading:     { label:"Heading",            color:"#6C63FF", icon:"🔡", cat:"General" },
-  user:        { label:"User / Person",      color:"#E91E63", icon:"👤", cat:"General" },
-  process:     { label:"Process",            color:"#9C27B0", icon:"🔄", cat:"General" },
-  group:       { label:"Group",              color:"#9E9E9E", icon:"📂", cat:"General" },
-  decision:    { label:"Decision",           color:"#FF9800", icon:"◆",  cat:"General" },
-  annotation:  { label:"Annotation",         color:"#78909C", icon:"💬", cat:"General" },
+  note:        { label:"Note",                color:"#FFD93D", icon:FileText,     cat:"General" },
+  heading:     { label:"Heading",             color:"#6C63FF", icon:Type,         cat:"General" },
+  user:        { label:"User / Person",       color:"#E91E63", icon:User,         cat:"General" },
+  process:     { label:"Process",             color:"#9C27B0", icon:RefreshCw,    cat:"General" },
+  group:       { label:"Group",               color:"#9E9E9E", icon:Folder,       cat:"General" },
+  decision:    { label:"Decision",            color:"#FF9800", icon:GitBranch,    cat:"General" },
+  annotation:  { label:"Annotation",          color:"#78909C", icon:MessageSquare,cat:"General" },
   // ── Notes ────────────────────────────────────────────────────
-  idea:        { label:"Idea",               color:"#FFCA28", icon:"💡", cat:"Notes" },
-  topic:       { label:"Topic",              color:"#AB47BC", icon:"📌", cat:"Notes" },
-  concept:     { label:"Concept",            color:"#7E57C2", icon:"🧠", cat:"Notes" },
-  definition:  { label:"Definition",         color:"#5C6BC0", icon:"📖", cat:"Notes" },
-  quote:       { label:"Quote",              color:"#42A5F5", icon:"❝",  cat:"Notes" },
-  summary:     { label:"Summary",            color:"#26C6DA", icon:"📋", cat:"Notes" },
-  question:    { label:"Question",           color:"#FFA726", icon:"❓", cat:"Notes" },
-  answer:      { label:"Answer",             color:"#66BB6A", icon:"✅", cat:"Notes" },
-  warning:     { label:"Warning",            color:"#EF5350", icon:"⚠️", cat:"Notes" },
-  tip:         { label:"Tip",                color:"#26A69A", icon:"✨", cat:"Notes" },
-  codeblock:   { label:"Code Block",         color:"#78909C", icon:"⌨️", cat:"Notes" },
+  idea:        { label:"Idea",                color:"#FFCA28", icon:Lightbulb,    cat:"Notes" },
+  topic:       { label:"Topic",               color:"#AB47BC", icon:Pin,          cat:"Notes" },
+  concept:     { label:"Concept",             color:"#7E57C2", icon:Brain,        cat:"Notes" },
+  definition:  { label:"Definition",          color:"#5C6BC0", icon:BookOpen,     cat:"Notes" },
+  quote:       { label:"Quote",               color:"#42A5F5", icon:Quote,        cat:"Notes" },
+  summary:     { label:"Summary",             color:"#26C6DA", icon:AlignLeft,    cat:"Notes" },
+  question:    { label:"Question",            color:"#FFA726", icon:HelpCircle,   cat:"Notes" },
+  answer:      { label:"Answer",              color:"#66BB6A", icon:CheckCircle,  cat:"Notes" },
+  warning:     { label:"Warning",             color:"#EF5350", icon:AlertTriangle,cat:"Notes" },
+  tip:         { label:"Tip",                 color:"#26A69A", icon:Sparkles,     cat:"Notes" },
+  codeblock:   { label:"Code Block",          color:"#78909C", icon:Code2,        cat:"Notes" },
   // ── Planning ─────────────────────────────────────────────────
-  task:        { label:"Task",               color:"#29B6F6", icon:"☐",  cat:"Planning" },
-  checklist:   { label:"Checklist",          color:"#26C6DA", icon:"✓",  cat:"Planning" },
-  goal:        { label:"Goal",               color:"#66BB6A", icon:"🎯", cat:"Planning" },
-  milestone:   { label:"Milestone",          color:"#FFA726", icon:"🏁", cat:"Planning" },
-  deadline:    { label:"Deadline",           color:"#EF5350", icon:"⏰", cat:"Planning" },
-  blocker:     { label:"Blocker",            color:"#EF5350", icon:"🛑", cat:"Planning" },
-  step:        { label:"Step",               color:"#8BC34A", icon:"▶",  cat:"Planning" },
-  problem:     { label:"Problem",            color:"#F44336", icon:"🔴", cat:"Planning" },
-  solution:    { label:"Solution",           color:"#4CAF50", icon:"🟢", cat:"Planning" },
+  task:        { label:"Task",                color:"#29B6F6", icon:Square,       cat:"Planning" },
+  checklist:   { label:"Checklist",           color:"#26C6DA", icon:ClipboardList,cat:"Planning" },
+  goal:        { label:"Goal",                color:"#66BB6A", icon:Target,       cat:"Planning" },
+  milestone:   { label:"Milestone",           color:"#FFA726", icon:Flag,         cat:"Planning" },
+  deadline:    { label:"Deadline",            color:"#EF5350", icon:Clock,        cat:"Planning" },
+  blocker:     { label:"Blocker",             color:"#F44336", icon:StopCircle,   cat:"Planning" },
+  step:        { label:"Step",                color:"#8BC34A", icon:Play,         cat:"Planning" },
+  problem:     { label:"Problem",             color:"#F44336", icon:XCircle,      cat:"Planning" },
+  solution:    { label:"Solution",            color:"#4CAF50", icon:CheckCircle2, cat:"Planning" },
   // ── Knowledge ────────────────────────────────────────────────
-  reference:   { label:"Reference",          color:"#78909C", icon:"📑", cat:"Knowledge" },
-  resource:    { label:"Resource",           color:"#26A69A", icon:"📚", cat:"Knowledge" },
-  evidence:    { label:"Evidence",           color:"#5C6BC0", icon:"📎", cat:"Knowledge" },
-  flashcard:   { label:"Flashcard",          color:"#EC407A", icon:"🃏", cat:"Knowledge" },
-  bookmark:    { label:"Bookmark",           color:"#FF7043", icon:"🔖", cat:"Knowledge" },
-  formula:     { label:"Formula",            color:"#42A5F5", icon:"∑",  cat:"Knowledge" },
-  // ── Network — Core Devices ───────────────────────────────────
-  router:      { label:"Router",             color:"#00BCD4", icon:"📡", cat:"Network" },
-  switch:      { label:"Switch",             color:"#03A9F4", icon:"🔀", cat:"Network" },
-  firewall:    { label:"Firewall",           color:"#FF5722", icon:"🔥", cat:"Network" },
-  loadbal:     { label:"Load Balancer",      color:"#26C6DA", icon:"⚖️", cat:"Network" },
-  vpn:         { label:"VPN Gateway",        color:"#42A5F5", icon:"🔐", cat:"Network" },
-  ap:          { label:"Access Point",       color:"#29B6F6", icon:"📶", cat:"Network" },
-  modem:       { label:"Modem",              color:"#4DD0E1", icon:"📟", cat:"Network" },
-  wanlink:     { label:"WAN Link",           color:"#0288D1", icon:"🌐", cat:"Network" },
-  vlan:        { label:"VLAN",               color:"#0097A7", icon:"🏷️", cat:"Network" },
-  proxy:       { label:"Proxy",              color:"#00838F", icon:"🔁", cat:"Network" },
+  reference:   { label:"Reference",           color:"#78909C", icon:ExternalLink, cat:"Knowledge" },
+  resource:    { label:"Resource",            color:"#26A69A", icon:BookMarked,   cat:"Knowledge" },
+  evidence:    { label:"Evidence",            color:"#5C6BC0", icon:Paperclip,    cat:"Knowledge" },
+  flashcard:   { label:"Flashcard",           color:"#EC407A", icon:Layers,       cat:"Knowledge" },
+  bookmark:    { label:"Bookmark",            color:"#FF7043", icon:Bookmark,     cat:"Knowledge" },
+  formula:     { label:"Formula",             color:"#42A5F5", icon:Calculator,   cat:"Knowledge" },
+  // ── Network — Core ───────────────────────────────────────────
+  router:      { label:"Router",              color:"#00BCD4", icon:Router,       cat:"Network" },
+  switch:      { label:"Switch",              color:"#03A9F4", icon:Network,      cat:"Network" },
+  firewall:    { label:"Firewall",            color:"#FF5722", icon:Shield,       cat:"Network" },
+  loadbal:     { label:"Load Balancer",       color:"#26C6DA", icon:Scale,        cat:"Network" },
+  vpn:         { label:"VPN Gateway",         color:"#42A5F5", icon:Lock,         cat:"Network" },
+  ap:          { label:"Access Point",        color:"#29B6F6", icon:Wifi,         cat:"Network" },
+  modem:       { label:"Modem",               color:"#4DD0E1", icon:Tv,           cat:"Network" },
+  wanlink:     { label:"WAN Link",            color:"#0288D1", icon:Globe,        cat:"Network" },
+  vlan:        { label:"VLAN",                color:"#0097A7", icon:Tag,          cat:"Network" },
+  proxy:       { label:"Proxy",               color:"#00838F", icon:Repeat,       cat:"Network" },
   // ── Network — VPN & WAN ──────────────────────────────────────
-  vpnclient:   { label:"VPN Client",         color:"#1565C0", icon:"🔏", cat:"Network" },
-  vpnserver:   { label:"VPN Server",         color:"#0D47A1", icon:"🛡️", cat:"Network" },
-  vpnconc:     { label:"VPN Concentrator",   color:"#1976D2", icon:"🔃", cat:"Network" },
-  sdwan:       { label:"SD-WAN",             color:"#0277BD", icon:"🗺️", cat:"Network" },
+  vpnclient:   { label:"VPN Client",          color:"#1565C0", icon:LogIn,        cat:"Network" },
+  vpnserver:   { label:"VPN Server",          color:"#0D47A1", icon:ShieldCheck,  cat:"Network" },
+  vpnconc:     { label:"VPN Concentrator",    color:"#1976D2", icon:GitMerge,     cat:"Network" },
+  sdwan:       { label:"SD-WAN",              color:"#0277BD", icon:Map,          cat:"Network" },
   // ── Network — Routing Tiers ──────────────────────────────────
-  corerouter:  { label:"Core Router",        color:"#006064", icon:"🏛️", cat:"Network" },
-  edgerouter:  { label:"Edge Router",        color:"#00838F", icon:"🌉", cat:"Network" },
-  l3switch:    { label:"L3 Switch",          color:"#007B83", icon:"↕️", cat:"Network" },
-  poeswitch:   { label:"PoE Switch",         color:"#00ACC1", icon:"🔋", cat:"Network" },
-  wlcont:      { label:"Wireless Controller",color:"#0097A7", icon:"🗼", cat:"Network" },
-  // ── Network — Infrastructure Services ───────────────────────
-  dhcpsrv:     { label:"DHCP Server",        color:"#00796B", icon:"📮", cat:"Network" },
-  dnssrv:      { label:"DNS Server",         color:"#00695C", icon:"🔎", cat:"Network" },
-  ntpsrv:      { label:"NTP Server",         color:"#004D40", icon:"🕐", cat:"Network" },
-  radiussrv:   { label:"RADIUS Server",      color:"#37474F", icon:"🔑", cat:"Network" },
-  patchpanel:  { label:"Patch Panel",        color:"#546E7A", icon:"🎛️", cat:"Network" },
-  nettap:      { label:"Network TAP",        color:"#607D8B", icon:"👁️", cat:"Network" },
-  netmon:      { label:"Network Monitor",    color:"#78909C", icon:"📊", cat:"Network" },
-  honeypot:    { label:"Honeypot",           color:"#BF360C", icon:"🍯", cat:"Network" },
+  corerouter:  { label:"Core Router",         color:"#006064", icon:Building2,    cat:"Network" },
+  edgerouter:  { label:"Edge Router",         color:"#00838F", icon:Navigation,   cat:"Network" },
+  l3switch:    { label:"L3 Switch",           color:"#007B83", icon:Shuffle,      cat:"Network" },
+  poeswitch:   { label:"PoE Switch",          color:"#00ACC1", icon:Zap,          cat:"Network" },
+  wlcont:      { label:"Wireless Controller", color:"#0097A7", icon:Radio,        cat:"Network" },
+  // ── Network — Services ───────────────────────────────────────
+  dhcpsrv:     { label:"DHCP Server",         color:"#00796B", icon:AtSign,       cat:"Network" },
+  dnssrv:      { label:"DNS Server",          color:"#00695C", icon:Search,       cat:"Network" },
+  ntpsrv:      { label:"NTP Server",          color:"#004D40", icon:Timer,        cat:"Network" },
+  radiussrv:   { label:"RADIUS Server",       color:"#37474F", icon:Key,          cat:"Network" },
+  patchpanel:  { label:"Patch Panel",         color:"#546E7A", icon:LayoutGrid,   cat:"Network" },
+  nettap:      { label:"Network TAP",         color:"#607D8B", icon:Eye,          cat:"Network" },
+  netmon:      { label:"Network Monitor",     color:"#78909C", icon:Activity,     cat:"Network" },
+  honeypot:    { label:"Honeypot",            color:"#BF360C", icon:TestTube,     cat:"Network" },
   // ── Computers ────────────────────────────────────────────────
-  desktop:     { label:"Desktop PC",         color:"#8D6E63", icon:"🖥️", cat:"Computers" },
-  laptop:      { label:"Laptop",             color:"#A1887F", icon:"💻", cat:"Computers" },
-  workstation: { label:"Workstation",        color:"#795548", icon:"🖱️", cat:"Computers" },
-  thinclnt:    { label:"Thin Client",        color:"#6D4C41", icon:"📺", cat:"Computers" },
-  kiosk:       { label:"Kiosk",              color:"#5D4037", icon:"🏧", cat:"Computers" },
+  desktop:     { label:"Desktop PC",          color:"#8D6E63", icon:Monitor,      cat:"Computers" },
+  laptop:      { label:"Laptop",              color:"#A1887F", icon:Laptop,       cat:"Computers" },
+  workstation: { label:"Workstation",         color:"#795548", icon:Cpu,          cat:"Computers" },
+  thinclnt:    { label:"Thin Client",         color:"#6D4C41", icon:Tv2,          cat:"Computers" },
+  kiosk:       { label:"Kiosk",               color:"#5D4037", icon:Terminal,     cat:"Computers" },
   // ── Servers ──────────────────────────────────────────────────
-  server:      { label:"Server",             color:"#EF5350", icon:"🗄️", cat:"Servers" },
-  webserver:   { label:"Web Server",         color:"#E53935", icon:"🌍", cat:"Servers" },
-  appserver:   { label:"App Server",         color:"#F44336", icon:"⚙️", cat:"Servers" },
-  dbserver:    { label:"DB Server",          color:"#C62828", icon:"🗃️", cat:"Servers" },
-  fileserver:  { label:"File Server",        color:"#D32F2F", icon:"📁", cat:"Servers" },
-  mailserver:  { label:"Mail Server",        color:"#B71C1C", icon:"📧", cat:"Servers" },
-  printserver: { label:"Print Server",       color:"#FF8A80", icon:"🖨️", cat:"Servers" },
+  server:      { label:"Server",              color:"#EF5350", icon:Server,       cat:"Servers" },
+  webserver:   { label:"Web Server",          color:"#E53935", icon:Globe2,       cat:"Servers" },
+  appserver:   { label:"App Server",          color:"#F44336", icon:Settings,     cat:"Servers" },
+  dbserver:    { label:"DB Server",           color:"#C62828", icon:Database,     cat:"Servers" },
+  fileserver:  { label:"File Server",         color:"#D32F2F", icon:Archive,      cat:"Servers" },
+  mailserver:  { label:"Mail Server",         color:"#B71C1C", icon:Mail,         cat:"Servers" },
+  printserver: { label:"Print Server",        color:"#FF8A80", icon:Printer,      cat:"Servers" },
   // ── Storage ──────────────────────────────────────────────────
-  storage:     { label:"Storage",            color:"#607D8B", icon:"💾", cat:"Storage" },
-  nas:         { label:"NAS",                color:"#546E7A", icon:"🗂️", cat:"Storage" },
-  san:         { label:"SAN",                color:"#455A64", icon:"💿", cat:"Storage" },
-  backup:      { label:"Backup",             color:"#78909C", icon:"♻️", cat:"Storage" },
-  tape:        { label:"Tape Library",       color:"#90A4AE", icon:"📼", cat:"Storage" },
+  storage:     { label:"Storage",             color:"#607D8B", icon:HardDrive,    cat:"Storage" },
+  nas:         { label:"NAS",                 color:"#546E7A", icon:FolderArchive,cat:"Storage" },
+  san:         { label:"SAN",                 color:"#455A64", icon:Disc,         cat:"Storage" },
+  backup:      { label:"Backup",              color:"#78909C", icon:ArchiveRestore,cat:"Storage"},
+  tape:        { label:"Tape Library",        color:"#90A4AE", icon:Film,         cat:"Storage" },
   // ── Mobile & IoT ─────────────────────────────────────────────
-  mobile:      { label:"Mobile / Phone",     color:"#66BB6A", icon:"📱", cat:"Mobile & IoT" },
-  tablet:      { label:"Tablet",             color:"#4CAF50", icon:"🗒️", cat:"Mobile & IoT" },
-  rpi:         { label:"Raspberry Pi",       color:"#C62828", icon:"🍓", cat:"Mobile & IoT" },
-  arduino:     { label:"Arduino",            color:"#00979D", icon:"🔌", cat:"Mobile & IoT" },
-  esp:         { label:"ESP32/8266",         color:"#E65100", icon:"📻", cat:"Mobile & IoT" },
-  sensor:      { label:"Sensor",             color:"#26A69A", icon:"🌡️", cat:"Mobile & IoT" },
-  camera:      { label:"IP Camera",          color:"#43A047", icon:"📷", cat:"Mobile & IoT" },
-  plc:         { label:"PLC",                color:"#2E7D32", icon:"🏭", cat:"Mobile & IoT" },
-  gateway:     { label:"IoT Gateway",        color:"#388E3C", icon:"🚪", cat:"Mobile & IoT" },
-  hvac:        { label:"HVAC",               color:"#1B5E20", icon:"❄️", cat:"Mobile & IoT" },
+  mobile:      { label:"Mobile / Phone",      color:"#66BB6A", icon:Smartphone,   cat:"Mobile & IoT" },
+  tablet:      { label:"Tablet",              color:"#4CAF50", icon:Tablet,       cat:"Mobile & IoT" },
+  rpi:         { label:"Raspberry Pi",        color:"#C62828", icon:CircuitBoard, cat:"Mobile & IoT" },
+  arduino:     { label:"Arduino",             color:"#00979D", icon:Binary,       cat:"Mobile & IoT" },
+  esp:         { label:"ESP32/8266",          color:"#E65100", icon:Waves,        cat:"Mobile & IoT" },
+  sensor:      { label:"Sensor",              color:"#26A69A", icon:Thermometer,  cat:"Mobile & IoT" },
+  camera:      { label:"IP Camera",           color:"#43A047", icon:Camera,       cat:"Mobile & IoT" },
+  plc:         { label:"PLC",                 color:"#2E7D32", icon:Factory,      cat:"Mobile & IoT" },
+  gateway:     { label:"IoT Gateway",         color:"#388E3C", icon:DoorOpen,     cat:"Mobile & IoT" },
+  hvac:        { label:"HVAC",                color:"#1B5E20", icon:Wind,         cat:"Mobile & IoT" },
   // ── Cloud ────────────────────────────────────────────────────
-  cloud:       { label:"Cloud",              color:"#29B6F6", icon:"☁️", cat:"Cloud" },
-  lambda:      { label:"Function / Lambda",  color:"#FF9100", icon:"λ",  cat:"Cloud" },
-  queue:       { label:"Queue",              color:"#AB47BC", icon:"↔",  cat:"Cloud" },
-  cdn:         { label:"CDN",                color:"#26A69A", icon:"🕸️", cat:"Cloud" },
-  s3:          { label:"Object Store",       color:"#FF6D00", icon:"🪣", cat:"Cloud" },
-  k8s:         { label:"Kubernetes",         color:"#326CE5", icon:"⎈",  cat:"Cloud" },
-  container:   { label:"Container",          color:"#2496ED", icon:"📦", cat:"Cloud" },
-  apigateway:  { label:"API Gateway",        color:"#A100FF", icon:"🚦", cat:"Cloud" },
+  cloud:       { label:"Cloud",               color:"#29B6F6", icon:Cloud,        cat:"Cloud" },
+  lambda:      { label:"Function / Lambda",   color:"#FF9100", icon:Braces,       cat:"Cloud" },
+  queue:       { label:"Queue",               color:"#AB47BC", icon:ListOrdered,  cat:"Cloud" },
+  cdn:         { label:"CDN",                 color:"#26A69A", icon:Share2,       cat:"Cloud" },
+  s3:          { label:"Object Store",        color:"#FF6D00", icon:Package,      cat:"Cloud" },
+  k8s:         { label:"Kubernetes",          color:"#326CE5", icon:Hexagon,      cat:"Cloud" },
+  container:   { label:"Container",           color:"#2496ED", icon:Box,          cat:"Cloud" },
+  apigateway:  { label:"API Gateway",         color:"#A100FF", icon:ArrowUpDown,  cat:"Cloud" },
   // ── Software ─────────────────────────────────────────────────
-  software:    { label:"Software",           color:"#4CAF50", icon:"💽", cat:"Software" },
-  api:         { label:"API",                color:"#009688", icon:"🔗", cat:"Software" },
-  database:    { label:"Database",           color:"#3F51B5", icon:"🏦", cat:"Software" },
-  service:     { label:"Service",            color:"#8BC34A", icon:"⚡", cat:"Software" },
-  microservice:{ label:"Microservice",       color:"#66BB6A", icon:"🧩", cat:"Software" },
-  cache:       { label:"Cache",              color:"#FF7043", icon:"💨", cat:"Software" },
-  broker:      { label:"Msg Broker",         color:"#7B1FA2", icon:"📨", cat:"Software" },
+  software:    { label:"Software",            color:"#4CAF50", icon:PackageOpen,  cat:"Software" },
+  api:         { label:"API",                 color:"#009688", icon:Link2,        cat:"Software" },
+  database:    { label:"Database",            color:"#3F51B5", icon:Library,      cat:"Software" },
+  service:     { label:"Service",             color:"#8BC34A", icon:Power,        cat:"Software" },
+  microservice:{ label:"Microservice",        color:"#66BB6A", icon:Puzzle,       cat:"Software" },
+  cache:       { label:"Cache",               color:"#FF7043", icon:Gauge,        cat:"Software" },
+  broker:      { label:"Msg Broker",          color:"#7B1FA2", icon:MessageCircle,cat:"Software" },
   // ── Security ─────────────────────────────────────────────────
-  ids:         { label:"IDS / IPS",          color:"#F44336", icon:"🚨", cat:"Security" },
-  waf:         { label:"WAF",                color:"#E53935", icon:"🧱", cat:"Security" },
-  vault:       { label:"Vault / HSM",        color:"#B00020", icon:"🔒", cat:"Security" },
-  siem:        { label:"SIEM",               color:"#C62828", icon:"🔭", cat:"Security" },
-  dlp:         { label:"DLP",                color:"#D50000", icon:"🚫", cat:"Security" },
+  ids:         { label:"IDS / IPS",           color:"#F44336", icon:BellRing,     cat:"Security" },
+  waf:         { label:"WAF",                 color:"#E53935", icon:ShieldOff,    cat:"Security" },
+  vault:       { label:"Vault / HSM",         color:"#B00020", icon:LockKeyhole,  cat:"Security" },
+  siem:        { label:"SIEM",                color:"#C62828", icon:ScanSearch,   cat:"Security" },
+  dlp:         { label:"DLP",                 color:"#D50000", icon:Ban,          cat:"Security" },
 }
-
-// ── Default properties per node type ──────────────────────────
-const DP = {
-  note:{Content:""},
-  heading:{Level:"H1",Subtitle:""},
-  user:{Role:"",Email:"",Team:""},
-  process:{Step:"",Input:"",Output:""},
-  group:{Description:""},
-  decision:{Condition:"",Yes:"",No:""},
-  annotation:{Reference:""},
-  // Network
-  router:{IP:"",Domain:"",Subnet:"",Gateway:"",Make:"",Model:"",Protocol:"BGP",Firmware:"",
-    Ports:[
-      {id:"eth0",label:"eth0",type:"LAN",connected:"",ip:""},
-      {id:"eth1",label:"eth1",type:"WAN",connected:"",ip:""},
-      {id:"eth2",label:"eth2",type:"LAN",connected:"",ip:""},
-      {id:"eth3",label:"eth3",type:"LAN",connected:"",ip:""},
-    ]},
-  switch:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",PortCount:"24",VLAN:"",Layer:"L2",
-    Ports:[
-      {id:"p1",label:"Port 1",type:"access",connected:"",vlan:""},
-      {id:"p2",label:"Port 2",type:"access",connected:"",vlan:""},
-      {id:"p3",label:"Port 3",type:"trunk",connected:"",vlan:""},
-      {id:"p4",label:"Port 4",type:"trunk",connected:"",vlan:""},
-    ]},
-  firewall:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",Rules:"",Zone:"",OS:""},
-  loadbal:{Make:"",Model:"",Algorithm:"Round Robin",VIP:""},
-  vpn:{IP:"",Protocol:"IPSec",Endpoint:"",Peer:"",Tunnel:""},
-  ap:{IP:"",Make:"",Model:"",SSID:"",Band:"2.4GHz/5GHz",Channel:""},
-  modem:{IP:"",Make:"",Model:"",ISP:"",Type:"Cable"},
-  wanlink:{IP:"",Provider:"",Speed:"",Type:"MPLS",Redundant:"No"},
-  vlan:{ID:"",Name:"",Subnet:"",Tagged:""},
-  proxy:{Type:"Forward",IP:"",Port:"3128",Auth:""},
-  // Computers
-  desktop:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",User:""},
-  laptop:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",User:""},
-  workstation:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:""},
-  thinclnt:{IP:"",Make:"",Model:"",OS:"",Server:""},
-  kiosk:{IP:"",Make:"",OS:"",Location:"",App:""},
-  // Servers
-  server:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",Port:""},
-  webserver:{IP:"",Domain:"",Subnet:"",Software:"Nginx",Version:"",Port:"443",SSL:"Yes",CertExpiry:""},
-  appserver:{IP:"",Runtime:"",Version:"",Port:"",Instances:""},
-  dbserver:{IP:"",Engine:"PostgreSQL",Version:"",Port:"5432",RAM:""},
-  fileserver:{IP:"",OS:"",Shares:"",Storage:"",Protocol:"SMB"},
-  mailserver:{IP:"",Software:"",Domain:"",TLS:"Yes",Spam:""},
-  printserver:{IP:"",Make:"",Model:"",Queue:"",Protocol:"IPP"},
-  // Storage
-  storage:{IP:"",Capacity:"",Type:"SSD",RAID:"",Interface:""},
-  nas:{IP:"",Make:"",Model:"",Capacity:"",RAID:"",Shares:""},
-  san:{IP:"",Make:"",Model:"",Capacity:"",FC:"",Protocol:"iSCSI"},
-  backup:{IP:"",Software:"",Schedule:"",Retention:"",Target:""},
-  tape:{IP:"",Make:"",Model:"",Capacity:"",Library:""},
-  // Mobile & IoT
-  mobile:{IP:"",Make:"",Model:"",OS:"",User:"",MDM:""},
-  tablet:{IP:"",Make:"",Model:"",OS:"",User:""},
-  rpi:{IP:"",Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:""},
-  arduino:{IP:"",Model:"Uno",Firmware:"",Sensors:"",Protocol:""},
-  esp:{IP:"",Model:"ESP32",Firmware:"",WiFi:"",Protocol:"MQTT"},
-  sensor:{IP:"",Type:"",Protocol:"MQTT",Location:"",Unit:""},
-  camera:{Make:"",Model:"",Resolution:"",Protocol:"RTSP",IP:""},
-  plc:{IP:"",Make:"",Model:"",Protocol:"Modbus",IO:""},
-  gateway:{IP:"",Make:"",Model:"",Protocol:"",Upstream:""},
-  hvac:{IP:"",Make:"",Model:"",Zone:"",Protocol:"BACnet"},
-  // Cloud
-  cloud:{IP:"",Domain:"",Provider:"AWS",Region:"",Service:"",Account:""},
-  lambda:{Runtime:"Node.js 20",Trigger:"",Memory:"256MB",Timeout:"30s"},
-  queue:{Type:"SQS",MaxSize:"",DLQ:"",Delay:""},
-  cdn:{Provider:"CloudFront",Origin:"",TTL:"3600",Geo:""},
-  s3:{Provider:"AWS",Bucket:"",Region:"",Access:"Private"},
-  k8s:{IP:"",Cluster:"",Namespace:"",Replicas:"",Version:""},
-  container:{IP:"",Domain:"",Port:"",Image:"",Tag:"latest",Registry:""},
-  apigateway:{IP:"",Provider:"AWS",Stage:"",Auth:"",Throttle:""},
-  // Software
-  software:{IP:"",Version:"",License:"",Port:"",Platform:""},
-  api:{IP:"",Endpoint:"",Method:"REST",Auth:"Bearer",Version:"v1"},
-  database:{IP:"",Domain:"",Port:"5432",Engine:"PostgreSQL",Schema:"",HA:"",Backup:""},
-  service:{IP:"",URL:"",Status:"Running",Port:"",SLA:""},
-  microservice:{IP:"",Language:"",Port:"",Version:"",Replicas:""},
-  cache:{IP:"",Type:"Redis",Port:"6379",MaxMem:"",Eviction:"LRU"},
-  broker:{IP:"",Type:"Kafka",Port:"9092",Topics:"",Retention:"7d"},
-  // Security
-  ids:{IP:"",Make:"",Model:"",Mode:"Inline",Ruleset:"Snort"},
-  waf:{IP:"",Provider:"",Mode:"Block",Rules:"OWASP",SSL:"Yes"},
-  vault:{Type:"HashiCorp Vault",Auth:"",Secrets:"",HA:""},
-  siem:{Software:"",Sources:"",Retention:"90d",Alerts:""},
-  dlp:{Provider:"",Mode:"",Channels:"",Policy:""},
-  // Network extended
-  vpnclient:{IP:"",Protocol:"WireGuard",Server:"",Port:"51820",Auth:""},
-  vpnserver:{IP:"",Protocol:"WireGuard",Port:"51820",Clients:"",Subnet:""},
-  vpnconc:{IP:"",Protocol:"IPSec",Tunnels:"",HA:"",Make:"",Model:""},
-  sdwan:{IP:"",Make:"",Model:"",Uplinks:"",Policy:"",Orchestrator:""},
-  corerouter:{IP:"",Make:"",Model:"",BGP_AS:"",Protocols:"OSPF/BGP",Interfaces:""},
-  edgerouter:{IP:"",Make:"",Model:"",ISP:"",NAT:"Yes",Protocols:""},
-  l3switch:{IP:"",Make:"",Model:"",VLANs:"",RoutingProtocol:"",PortCount:""},
-  poeswitch:{IP:"",Make:"",Model:"",PortCount:"24",PoEBudget:"",VLANs:""},
-  wlcont:{IP:"",Make:"",Model:"",APs_Managed:"",SSID:"",Auth:"WPA3"},
-  dhcpsrv:{IP:"",Scope:"",RangeStart:"",RangeEnd:"",Lease:"24h",DNS:""},
-  dnssrv:{IP:"",Software:"BIND",Zones:"",Forwarders:"",DNSSEC:""},
-  ntpsrv:{IP:"",Stratum:"",Upstream:"",Clients:""},
-  radiussrv:{IP:"",Software:"FreeRADIUS",Port:"1812",Clients:"",Auth:"EAP-TLS"},
-  patchpanel:{Location:"",Ports:"24",RackUnit:"",Label:""},
-  nettap:{IP:"",Mode:"Passive",Make:"",Model:"",Speed:"",Mirror:""},
-  netmon:{IP:"",Software:"",Protocol:"SNMP",Hosts:"",Dashboard:""},
-  honeypot:{IP:"",Type:"Low-interaction",OS:"Decoy",Ports:"",Alert:""},
-  // Notes
-  idea:{Content:"",Tags:"",Status:"New"},
-  topic:{Content:"",Parent:"",Tags:""},
-  concept:{Content:"",RelatedTo:"",Tags:""},
-  definition:{Term:"",Definition:"",Source:""},
-  quote:{Text:"",Author:"",Source:"",Page:""},
-  summary:{Content:"",Source:"",KeyPoints:""},
-  question:{Question:"",Context:"",Priority:"Medium"},
-  answer:{Answer:"",Confidence:"High",References:""},
-  warning:{Message:"",Severity:"Medium",Action:""},
-  tip:{Content:"",Category:""},
-  codeblock:{Language:"",Code:"",Description:""},
-  // Planning
-  task:{Title:"",Status:"Todo",Priority:"Medium",Assignee:"",Due:""},
-  checklist:{Items:"",Done:"0",Total:"0"},
-  goal:{Objective:"",KPI:"",Target:"",Due:""},
-  milestone:{Name:"",Date:"",Status:"Upcoming",Owner:""},
-  deadline:{Date:"",Item:"",Owner:"",Hard:"Yes"},
-  blocker:{Issue:"",Impact:"High",Owner:"",Resolution:""},
-  step:{Number:"",Action:"",Input:"",Output:""},
-  problem:{Statement:"",Impact:"High",Cause:""},
-  solution:{Approach:"",Effort:"Medium",Risk:"",Owner:""},
-  // Knowledge
-  reference:{URL:"",Title:"",Author:"",Date:""},
-  resource:{Type:"Article",URL:"",Title:"",Tags:""},
-  evidence:{Content:"",Source:"",Strength:"Strong"},
-  flashcard:{Front:"",Back:"",Tags:"",Difficulty:"Medium"},
-  bookmark:{URL:"",Title:"",Tags:"",Note:""},
-  formula:{Expression:"",Variables:"",Unit:"",Notes:""},
-};
-
 // sidebar category order
 const SIDEBAR_CATS = ["Notes","Planning","Knowledge","General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
 
@@ -666,6 +541,22 @@ function snapToAnchor(node, nw, nh, cx, cy) {
   else                       return {side:"right",  t: Math.min(1,Math.max(0,(cy-node.y)/nh))};
 }
 
+
+// ── Lucide icon renderer ─────────────────────────────────────────────────
+// icon can be a Lucide component (new) or a string emoji (legacy/canvas fallback)
+function NodeIcon({ icon, size=18, color="currentColor", strokeWidth=1.8 }) {
+  if (!icon) return null;
+  if (typeof icon === "string") return <span style={{fontSize:size,lineHeight:1}}>{icon}</span>;
+  const I = icon;
+  return <I size={size} color={color} strokeWidth={strokeWidth} style={{flexShrink:0}} />;
+}
+// Text fallback for canvas/export contexts
+function iconChar(icon) {
+  if (!icon) return "□";
+  if (typeof icon === "string") return icon;
+  return "◉"; // generic fallback for SVG icons in canvas context
+}
+
 // ── PNG export ────────────────────────────────────────────────────
 function exportAsNoNote(nodes, edges, mapMeta) {
   const bundle = {
@@ -718,7 +609,7 @@ function exportAsPDF(nodes, edges, mapTitle) {
     const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
     return `<div class="nn-node" style="left:${n.x-minX}px;top:${n.y-minY}px;width:${n.w||220}px;min-height:${n.h||96}px;border-color:${t.color}65">
       <div class="nn-hdr" style="background:${t.color}15;border-bottom:1px solid ${t.color}28;padding:7px 10px 4px">
-        <b style="font-size:13px">${t.icon} ${n.title||""}</b>
+        <b style="font-size:13px">${iconChar(t.icon)} ${n.title||""}</b>
         ${n.description?`<div style="font-size:10px;color:#666;margin-top:2px">${n.description}</div>`:""}
         <div style="font-size:8px;text-align:right;color:${t.color};opacity:.7;margin-top:1px">${t.label}</div>
       </div>
@@ -761,7 +652,7 @@ function exportAsHTML(nodes, edges, mapTitle) {
     const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
     return `<div class="nn-node" style="left:${n.x-minX}px;top:${n.y-minY}px;width:${n.w||220}px;min-height:${n.h||96}px;border-color:${t.color}65;">
       <div class="nn-header" style="background:${t.color}1a;border-bottom-color:${t.color}28">
-        <span class="nn-icon">${t.icon}</span>
+        <span class="nn-icon">${iconChar(t.icon)}</span>
         <span class="nn-title">${n.title||""}</span>
         ${n.description?`<div class="nn-desc">${n.description}</div>`:""}
         <span class="nn-type" style="color:${t.color}80">${t.label}</span>
@@ -823,7 +714,7 @@ function exportAsDoc(nodes, mapTitle) {
   const lines=[`# ${mapTitle||"NoNote Map"}`,`*Exported: ${new Date().toLocaleDateString()}*`,""];
   nodes.forEach(n=>{
     const t=NT[n.type]||NT.note;
-    lines.push(`## ${t.icon} ${n.title||"Untitled"} (${t.label})`);
+    lines.push(`## ${iconChar(t.icon)} ${n.title||"Untitled"} (${t.label})`);
     if(n.description) lines.push(`*${n.description}*`);
     const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
     if(notes.length){
@@ -907,13 +798,13 @@ async function exportAsPNG(nodes, edges, mapTitle) {
     ctx.strokeStyle=`${t.color}70`;ctx.lineWidth=1.5;ctx.stroke();
     if(node.collapsed){
       ctx.font="24px serif";ctx.textAlign="center";ctx.textBaseline="middle";
-      ctx.fillText(t.icon,nx+nw/2,ny+nw/2-8);
+      ctx.fillText(iconChar(t.icon),nx+nw/2,ny+nw/2-8);
       ctx.font=`bold 10px monospace`;ctx.fillStyle=t.color;
       ctx.fillText(node.title.slice(0,10),nx+nw/2,ny+nh-10);
     } else {
       const hH=34;ctx.fillStyle=`${t.color}22`;ctx.beginPath();
       ctx.roundRect(nx,ny,nw,hH,[r,r,0,0]);ctx.fill();
-      ctx.font="14px serif";ctx.textBaseline="middle";ctx.fillText(t.icon,nx+10,ny+hH/2);
+      ctx.font="14px serif";ctx.textBaseline="middle";ctx.fillText(iconChar(t.icon),nx+10,ny+hH/2);
       ctx.font="bold 12px monospace";ctx.fillStyle=t.color;
       ctx.fillText(node.title.length>22?node.title.slice(0,22)+"…":node.title,nx+30,ny+hH/2);
       ctx.font="11px monospace";ctx.fillStyle=text3;ctx.textBaseline="top";
@@ -2436,7 +2327,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               <path d={path} stroke={isSel?"var(--danger)":(edge.color||"var(--accent)")} strokeWidth={(isSel?3:(EDGE_STYLES[edge.style]?.strokeW||2))+3} fill="none" opacity={.25}/>
               <path d={path} stroke={isSel?"var(--danger)":(edge.color||"var(--accent)")} strokeWidth={isSel?3:(EDGE_STYLES[edge.style]?.strokeW||2)} fill="none"
                 markerEnd={EDGE_STYLES[edge.style]?.mEnd?`url(#${EDGE_STYLES[edge.style].mEnd})`:undefined}/>
-            </>}
+            </>
             {edge.label&&!isSel&&(
               <text x={mid.x} y={mid.y-9} fill="var(--text3)" fontSize="11" textAnchor="middle" fontFamily="var(--font-ui)">{edge.label}</text>
             )}
@@ -2602,8 +2493,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <div style={{display:"flex",alignItems:"center",gap:5,minHeight:22}}>
 
             {/* Icon */}
-            <span style={{fontSize:14,width:20,height:20,display:"flex",alignItems:"center",
-              justifyContent:"center",flexShrink:0,lineHeight:1}}>{t.icon}</span>
+            <NodeIcon icon={t.icon} size={14} color={t.color} />
 
             {/* Title — editable inline */}
             <div style={{flex:1,minWidth:0}}>
@@ -3024,7 +2914,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         boxShadow:hasSel?`0 0 0 2px ${rs.color}55`:"none"}}>
                       {initials}
                       {hasSel&&<div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,
-                        borderRadius:"50%",background:"#22c55e",border:"1.5px solid var(--bg2)"}}/>}
+                        borderRadius:"50%",background:"#22c55e",border:"1.5px solid var(--bg2)"}}/>
                     </div>
                   );
                 })}
@@ -3331,7 +3221,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           marginBottom:2}}
                         onMouseEnter={e=>e.currentTarget.style.background=layoutDir===dir?"var(--accent2)30":"var(--bg3)"}
                         onMouseLeave={e=>e.currentTarget.style.background=layoutDir===dir?"var(--accent2)20":"transparent"}>
-                        <span style={{fontSize:16,width:24,textAlign:"center",flexShrink:0}}>{icon}</span>
+                        <NodeIcon icon={icon} size={16} />
                         <div>
                           <div style={{fontSize:11,fontWeight:700,color:layoutDir===dir?"var(--accent2)":"var(--text)"}}>{label}</div>
                           <div style={{fontSize:9,color:"var(--text4)"}}>{desc}</div>
@@ -3356,7 +3246,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete selected (Del)">🗑{selected.size>1?` ×${selected.size}`:""}</button>}
               {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Open properties panel">✏ Props</button>}
             </div>
-          </>}
+          </>
 
           <div style={{flex:1}}/>
 
@@ -3486,7 +3376,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       <div style={{width:36,height:36,borderRadius:"50%",flexShrink:0,
                         background:`${t.color}22`,border:`1.5px solid ${t.color}60`,
                         display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>
-                        {t.icon}
+                        <NodeIcon icon={t.icon} size={18} color={t.color} />
                       </div>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{display:"flex",alignItems:"baseline",gap:8,marginBottom:3}}>
@@ -4082,13 +3972,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       )}
 
       {/* ── Changelog Modal ── */}
-      {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
+      {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />
       {showDocExport && (
         <DocExportModal
           nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"}
           mode={docExportMode} onClose={()=>setShowDocExport(false)}/>
       )}
-      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
+      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />
       {showChangelog&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>setShowChangelog(false)}>
@@ -4127,10 +4017,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         </div>
       )}
 
-      {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
+      {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>
 
-      {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
-      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="global"/>}
+      {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>
+      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="global"/>
 
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -4153,13 +4043,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         g:hover .nn-mid-handle { opacity: 1 !important; }
         .nn-mid-handle { transition: opacity .15s; }
       `}</style>
-      {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
+      {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />
       {showDocExport && (
         <DocExportModal
           nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"}
           mode={docExportMode} onClose={()=>setShowDocExport(false)}/>
       )}
-      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
+      {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />
     </div>
   );
 }
@@ -4189,7 +4079,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
       }}
     >
       {/* Icon */}
-      <span style={{fontSize:28,lineHeight:1,userSelect:"none"}}>{t.icon}</span>
+      <NodeIcon icon={t.icon} size={28} color={t.color} />
       {/* Name */}
       <span style={{fontSize:10,fontWeight:700,color:t.color,textAlign:"center",lineHeight:1.2,padding:"0 4px",maxWidth:COL_W-8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
         {node.title}
@@ -4204,9 +4094,9 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
       )}
       {/* Status dots: notes (blue), properties (green), connections — injected via prop */}
       <div style={{position:"absolute",bottom:3,left:0,right:0,display:"flex",justifyContent:"center",gap:3,pointerEvents:"none"}}>
-        {(Array.isArray(node.notes)?node.notes:[]).length>0&&<div title="Has notes" style={{width:5,height:5,borderRadius:"50%",background:"var(--accent)",opacity:.9}}/>}
-        {Object.values(node.properties||{}).some(v=>v)&&<div title="Has properties" style={{width:5,height:5,borderRadius:"50%",background:"var(--success)",opacity:.9}}/>}
-        {Object.keys(node.customProps||{}).length>0&&<div title="Has custom fields" style={{width:5,height:5,borderRadius:"50%",background:"#d2a8ff",opacity:.9}}/>}
+        {(Array.isArray(node.notes)?node.notes:[]).length>0&&<div title="Has notes" style={{width:5,height:5,borderRadius:"50%",background:"var(--accent)",opacity:.9}}/>
+        {Object.values(node.properties||{}).some(v=>v)&&<div title="Has properties" style={{width:5,height:5,borderRadius:"50%",background:"var(--success)",opacity:.9}}/>
+        {Object.keys(node.customProps||{}).length>0&&<div title="Has custom fields" style={{width:5,height:5,borderRadius:"50%",background:"#d2a8ff",opacity:.9}}/>
       </div>
 
       {/* Hover tooltip */}
@@ -4218,7 +4108,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
           boxShadow:"0 8px 28px var(--shadow)",zIndex:100,
           pointerEvents:"none",
         }}>
-          <div style={{fontSize:12,fontWeight:700,color:t.color,marginBottom:6}}>{t.icon} {node.title}</div>
+          <div style={{fontSize:12,fontWeight:700,color:t.color,marginBottom:6}}><NodeIcon icon={t.icon} size={16} color={t.color} /> {node.title}</div>
           {propEntries.map(([k,v])=>(
             <div key={k} style={{display:"flex",gap:6,fontSize:11,marginBottom:2}}>
               <span style={{color:"var(--text4)",flexShrink:0}}>{k}:</span>
@@ -4287,7 +4177,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>
             {dense?"NODES":"NODES"}
           </span>}
-          {iconOnly&&<div style={{flex:1}}/>}
+          {iconOnly&&<div style={{flex:1}}/>
           {/* Mode cycle button */}
           <button onClick={onCycleMode}
             title={iconOnly?"Switch to full mode":dense?"Switch to icons only":"Switch to compact mode"}
@@ -4357,7 +4247,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                       transform:showOpen?"rotate(0deg)":"rotate(-90deg)"}}>▾</span>
                   </>
                 )}
-                {iconOnly&&<div style={{width:"100%",height:2,background:"var(--border2)",margin:"0 4px",borderRadius:1}}/>}
+                {iconOnly&&<div style={{width:"100%",height:2,background:"var(--border2)",margin:"0 4px",borderRadius:1}}/>
               </div>
 
               {/* Items */}
@@ -4389,7 +4279,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                           e.currentTarget.style.background="transparent";
                           e.currentTarget.style.borderColor="transparent";
                         }}>
-                        {t.icon}
+                        <NodeIcon icon={t.icon} size={16} color={t.color} />
                       </div>
                     ))}
                   </div>
@@ -4402,7 +4292,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                         borderLeft:"3px solid transparent",transition:"background .1s,border-color .1s"}}
                       onMouseEnter={e=>{if(canEdit){e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.borderLeftColor=t.color;}}}
                       onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderLeftColor="transparent";}}>
-                      <span style={{fontSize:15,width:20,textAlign:"center",flexShrink:0}}>{t.icon}</span>
+                      <NodeIcon icon={t.icon} size={15} color={t.color} />
                       <span style={{color:"var(--text2)",flex:1,overflow:"hidden",textOverflow:"ellipsis",
                         whiteSpace:"nowrap",fontSize:11}}>{t.label}</span>
                       <span style={{width:5,height:5,borderRadius:"50%",background:t.color,flexShrink:0}}/>
@@ -4494,7 +4384,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
   return(
     <div style={isMobile?{position:"absolute",bottom:0,left:0,right:0,height:"65vh",background:"var(--bg2)",borderTop:"1px solid var(--border)",borderRadius:"14px 14px 0 0",overflow:"auto",zIndex:40,animation:"slideUp .25s ease"}:{width:"var(--props-w)",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"auto",flexShrink:0}}>
       <div style={{padding:"11px 14px",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,background:"var(--bg2)",zIndex:1}}>
-        <span style={{fontSize:16}}>{t.icon}</span>
+        <NodeIcon icon={t.icon} size={16} color={t.color} />
         <span style={{fontSize:11,color:t.color,fontWeight:700,flex:1}}>{t.label.toUpperCase()}</span>
         <button onClick={onToggleCollapse} title={node.collapsed?"Expand node":"Collapse node"}
           style={{background:node.collapsed?"var(--success)18":"var(--bg3)",border:`1px solid ${node.collapsed?"var(--success)":"var(--border)"}`,borderRadius:5,color:node.collapsed?"var(--success)":"var(--text3)",cursor:"pointer",fontSize:10,padding:"3px 9px",fontFamily:"inherit",fontWeight:700}}>
@@ -4588,7 +4478,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
               <input value={v} onChange={e=>onUpdateProp(node.id,k,e.target.value)} disabled={!canEdit} style={inp()}/>
             </div>
           ))}
-        </>}
+        </>
         <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>CUSTOM PROPERTIES</span>
@@ -4899,7 +4789,7 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
         color:danger?"var(--danger)":"var(--text)"}}
       onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="var(--bg3)";}}
       onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-      <span style={{fontSize:14,flexShrink:0,minWidth:18,textAlign:"center"}}>{icon}</span>
+      <NodeIcon icon={icon} size={14} />
       <div style={{flex:1}}>
         <div style={{fontSize:12,fontWeight:600}}>{label}</div>
         {sub&&<div style={{fontSize:9,color:danger?"var(--danger)":"var(--text4)",marginTop:1}}>{sub}</div>}
@@ -4919,7 +4809,7 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
       {/* Header */}
       <div style={{padding:"8px 13px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",
         display:"flex",alignItems:"center",gap:7}}>
-        <span style={{fontSize:15}}>{t.icon}</span>
+        <NodeIcon icon={t.icon} size={15} color={t.color} />
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontSize:11,fontWeight:700,color:t.color,
             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{node.title}</div>
@@ -4939,7 +4829,7 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
         <Sep/>
         <Item icon="🗑" label={isMulti?`Delete ${selected.size} nodes`:"Delete node"} sub="Del"
           danger onClick={onDelete}/>
-      </>}
+      </>
       {!canEdit&&(
         <div style={{padding:"10px 13px",fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>View-only mode</div>
       )}
@@ -5075,9 +4965,9 @@ function EdgeIcon({ styleKey, size=40, active=false, color="var(--text3)" }) {
           strokeLinecap="round"/>
       )}
       {/* End arrowhead */}
-      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1}/>}
+      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1}/>
       {/* Start arrowhead */}
-      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1}/>}
+      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1}/>
     </svg>
   );
 }
@@ -5176,7 +5066,7 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
 
               {/* Node title row */}
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
-                <span style={{fontSize:14,flexShrink:0}}>{t.icon}</span>
+                <NodeIcon icon={t.icon} size={14} color={t.color} />
                 <span style={{fontSize:12,fontWeight:700,color:t.color,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                   <Hl text={r.node.title} q={query}/>
                 </span>
@@ -5251,7 +5141,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px',
         borderBottom: '1px solid var(--border2)', background: `${t.color}18`, flexShrink: 0 }}>
-        <span style={{ fontSize: 18 }}>{t.icon}</span>
+        <span style={{ fontSize: 18 }}><NodeIcon icon={t.icon} size={16} color={t.color} /></span>
         <input value={node.title} onChange={e => onUpdate({ title: e.target.value })}
           disabled={!canEdit}
           style={{ flex: 1, background: 'none', border: 'none', outline: 'none',
@@ -5400,7 +5290,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
         {tab === 'type' && (
           <div>
             <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 10 }}>
-              Current type: <span style={{ color: t.color, fontWeight: 700 }}>{t.icon} {t.label}</span>
+              Current type: <span style={{ color: t.color, fontWeight: 700 }}><NodeIcon icon={t.icon} size={16} color={t.color} /> {t.label}</span>
               {' '}<span style={{ color: 'var(--text4)', fontSize: 9 }}>(category: {t.cat})</span>
             </div>
             <div style={{ marginBottom: 10 }}>
@@ -5700,7 +5590,7 @@ function CommentsPanel({comments,nodes,commentNode,setCommentNode,draft,setDraft
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:4,
                   cursor:"pointer",padding:"4px 0"}}
                   onClick={()=>{setCommentNode(nodeId);onScrollTo(nodeId);}}>
-                  <span style={{fontSize:13}}>{t.icon}</span>
+                  <NodeIcon icon={t.icon} size={13} color={t.color} />
                   <span style={{fontSize:11,fontWeight:700,color:t.color,flex:1,
                     overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{node?.title}</span>
                   <span style={{fontSize:9,color:"var(--text4)"}}>{list.length}</span>
