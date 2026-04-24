@@ -2914,7 +2914,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         boxShadow:hasSel?`0 0 0 2px ${rs.color}55`:"none"}}>
                       {initials}
                       {hasSel&&<div style={{position:"absolute",bottom:-1,right:-1,width:6,height:6,
-                        borderRadius:"50%",background:"#22c55e",border:"1.5px solid var(--bg2)"}}/>
+                        borderRadius:"50%",background:"#22c55e",border:"1.5px solid var(--bg2)"}}/>}
                     </div>
                   );
                 })}
@@ -3246,7 +3246,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete selected (Del)">🗑{selected.size>1?` ×${selected.size}`:""}</button>}
               {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Open properties panel">✏ Props</button>}
             </div>
-          </>
+          </>}
 
           <div style={{flex:1}}/>
 
@@ -4017,10 +4017,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         </div>
       )}
 
-      {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>
+      {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
-      {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>
-      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="global"/>
+      {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
+      {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="global"/>}
 
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
@@ -4177,7 +4177,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
             overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",minWidth:0}}>
             {dense?"NODES":"NODES"}
           </span>}
-          {iconOnly&&<div style={{flex:1}}/>
+          {iconOnly&&<div style={{flex:1}}/>}
           {/* Mode cycle button */}
           <button onClick={onCycleMode}
             title={iconOnly?"Switch to full mode":dense?"Switch to icons only":"Switch to compact mode"}
@@ -4247,7 +4247,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                       transform:showOpen?"rotate(0deg)":"rotate(-90deg)"}}>▾</span>
                   </>
                 )}
-                {iconOnly&&<div style={{width:"100%",height:2,background:"var(--border2)",margin:"0 4px",borderRadius:1}}/>
+                {iconOnly&&<div style={{width:"100%",height:2,background:"var(--border2)",margin:"0 4px",borderRadius:1}}/>}
               </div>
 
               {/* Items */}
@@ -4829,7 +4829,7 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
         <Sep/>
         <Item icon="🗑" label={isMulti?`Delete ${selected.size} nodes`:"Delete node"} sub="Del"
           danger onClick={onDelete}/>
-      </>
+      </>}
       {!canEdit&&(
         <div style={{padding:"10px 13px",fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>View-only mode</div>
       )}
@@ -4965,9 +4965,9 @@ function EdgeIcon({ styleKey, size=40, active=false, color="var(--text3)" }) {
           strokeLinecap="round"/>
       )}
       {/* End arrowhead */}
-      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1}/>
+      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1}/>}
       {/* Start arrowhead */}
-      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1}/>
+      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1}/>}
     </svg>
   );
 }

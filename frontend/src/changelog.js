@@ -1,6 +1,7 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.27.1",date:"Apr 2026",items:["Build fix: restored 10 missing closing braces stripped by overly broad />} replacement across NodeCanvas JSX expression blocks"]},
   {v:"v5.27.1",date:"Apr 2026",items:["Build fix: restored missing } after double-edge fragment close — broken by overly broad />} replacement"]},
   {v:"v5.27.1",date:"Apr 2026",items:["Build fix: removed bad />} regex replacement that broke JSX expression blocks in edge renderer"]},
   {v:"v5.27.0",date:"Apr 2026",items:[
