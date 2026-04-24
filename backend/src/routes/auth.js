@@ -12,14 +12,19 @@ const router = Router();
 const ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12");
 
 function makeTokens(userId, role) {
+  const accessSecret  = process.env.JWT_ACCESS_SECRET;
+  const refreshSecret = process.env.JWT_REFRESH_SECRET;
+  if (!accessSecret || !refreshSecret) {
+    throw new Error("JWT_ACCESS_SECRET / JWT_REFRESH_SECRET not configured");
+  }
   const access = jwt.sign(
     { sub: userId, role },
-    process.env.JWT_ACCESS_SECRET,
+    accessSecret,
     { expiresIn: process.env.JWT_ACCESS_EXPIRES || "15m" }
   );
   const refresh = jwt.sign(
     { sub: userId, jti: uuidv4() },
-    process.env.JWT_REFRESH_SECRET,
+    refreshSecret,
     { expiresIn: process.env.JWT_REFRESH_EXPIRES || "7d" }
   );
   return { access, refresh };
@@ -68,7 +73,7 @@ router.post(
 
       // Audit
       try { await query("INSERT INTO audit_log (user_id, action, ip_address) VALUES ($1, 'login', $2)", [user.id, req.ip]); } catch {}
-      await appLog('info', 'auth', `User login: ${user.email}`, user.id, { ip: req.ip });
+      await appLog('info', 'auth', `User login: ${user.email}`, user.id, { ip: req.ip }).catch(()=>{});
 
       res.json({
         access_token: access,
@@ -83,7 +88,9 @@ router.post(
       });
     } catch (err) {
       console.error("[auth] login error:", err);
-      res.status(500).json({ error: "Login failed" });
+      const errMsg = err.message?.includes("JWT") ? "Server configuration error — contact admin" : "Login failed";
+      console.error("[auth] login error:", err.message);
+      res.status(500).json({ error: errMsg });
     }
   }
 );

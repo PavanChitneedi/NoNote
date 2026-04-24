@@ -93,20 +93,37 @@ app.use((err, req, res, _next) => {
 
 // ── Bootstrap: create initial admin user ─────────────────────
 async function seedAdmin() {
-  const { rows } = await query("SELECT id FROM users WHERE role = 'owner' LIMIT 1");
-  if (rows.length > 0) return;
-
   const email    = process.env.ADMIN_EMAIL;
   const password = process.env.ADMIN_PASSWORD;
+  const forceReset = process.env.FORCE_RESET_ADMIN === 'true';
+
   if (!email || !password) {
-    console.warn("[seed] ADMIN_EMAIL / ADMIN_PASSWORD not set, skipping admin creation");
+    console.warn("[seed] ADMIN_EMAIL / ADMIN_PASSWORD not set, skipping admin seed");
     return;
   }
 
   const hash = await bcrypt.hash(password, parseInt(process.env.BCRYPT_ROUNDS || "12"));
+
+  if (forceReset) {
+    // FORCE_RESET_ADMIN=true: always update the password for this email
+    const r = await query(
+      `INSERT INTO users (email, display_name, password_hash, role, is_active, avatar_color)
+       VALUES ($1, 'Admin', $2, 'owner', true, '#6C63FF')
+       ON CONFLICT (email) DO UPDATE SET password_hash=$2, is_active=true
+       RETURNING email`,
+      [email, hash]
+    );
+    console.log(`[seed] Admin password reset for: ${r.rows[0]?.email}`);
+    return;
+  }
+
+  // Normal: only create if no owner exists yet
+  const { rows } = await query("SELECT id FROM users WHERE role='owner' LIMIT 1");
+  if (rows.length > 0) return;
+
   await query(
-    `INSERT INTO users (email, display_name, password_hash, role, avatar_color)
-     VALUES ($1, 'Admin', $2, 'owner', '#6C63FF')
+    `INSERT INTO users (email, display_name, password_hash, role, is_active, avatar_color)
+     VALUES ($1, 'Admin', $2, 'owner', true, '#6C63FF')
      ON CONFLICT (email) DO NOTHING`,
     [email, hash]
   );
@@ -351,8 +368,12 @@ async function fixCorruptedNotes() {
           }
           if (!inner && c.startsWith('{')) {
             try {
-              const esc = c.replace(/[\x00-\x1f]/g, ch => ({'
-':'\\n','':'\\r','	':'\\t'}[ch] || '\\u'+ch.charCodeAt(0).toString(16).padStart(4,'0')));
+              const esc = c.replace(/[\x00-\x1f]/g, function(ch) {
+                if (ch === '\n') return '\\n';
+                if (ch === '\r') return '\\r';
+                if (ch === '\t') return '\\t';
+                return '\\u' + ch.charCodeAt(0).toString(16).padStart(4, '0');
+              });
               const p = JSON.parse('[' + esc + ']');
               if (Array.isArray(p) && p[0]?.content !== undefined) inner = p;
             } catch {}
