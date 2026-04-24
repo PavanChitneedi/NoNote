@@ -64,7 +64,7 @@ services:
       REGISTRATION_OPEN: ${REGISTRATION_OPEN:-false}
       ADMIN_EMAIL: ${ADMIN_EMAIL:?required}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?required}
-    networks: [internal]
+    networks: [internal, external]
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]
       interval: 15s
