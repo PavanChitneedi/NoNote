@@ -326,39 +326,69 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
 
   return (
     <>
-    <div style={{ minHeight:"calc(100vh - 50px)", background:"var(--bg)", padding:"20px 32px" }}>
-      <div style={{ maxWidth:1440, margin:"0 auto" }}>
+    {/* ── Sidebar + Content layout ── */}
+    <div style={{ display:"flex", minHeight:"calc(100vh - var(--topbar-h))", background:"var(--bg)" }}>
 
-        {/* ── Header ── */}
-        <div style={{ display:"flex", alignItems:"flex-end", justifyContent:"space-between", marginBottom:20, gap:16, flexWrap:"wrap" }}>
-          <div>
-            <div style={{ fontSize:22, fontWeight:800, color:"var(--text)", marginBottom:4, letterSpacing:-.3 }}>
-              {dashTab==="maps" ? "Your Maps" : "Live Dashboard"}
+      {/* ── Left Sidebar ── */}
+      <div style={{ width:220, flexShrink:0, background:"var(--bg2)",
+        borderRight:"1px solid var(--border2)", display:"flex", flexDirection:"column",
+        padding:"24px 0", position:"sticky", top:0, height:"calc(100vh - var(--topbar-h))",
+        overflowY:"auto" }}>
+        {/* User block */}
+        <div style={{ padding:"0 18px 20px", borderBottom:"1px solid var(--border2)", marginBottom:12 }}>
+          <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:10 }}>
+            <div style={{ width:36, height:36, borderRadius:"50%",
+              background:user?.avatar_color||"var(--accent2)",
+              display:"flex", alignItems:"center", justifyContent:"center",
+              fontSize:15, fontWeight:800, color:"#fff", flexShrink:0 }}>
+              {user?.display_name?.[0]?.toUpperCase()}
             </div>
-            <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-              <div style={{ display:"flex", gap:1, background:"var(--bg3)", borderRadius:8, padding:3, border:"1px solid var(--border)" }}>
-                {[["maps","🗺  Maps"],["live","📡  Live"]].map(([id,lbl])=>(
-                  <button key={id} onClick={()=>setDashTab(id)}
-                    style={{ fontSize:11, padding:"4px 14px", border:"none", borderRadius:6, cursor:"pointer",
-                      fontFamily:"var(--font-ui)", fontWeight:700, transition:"all .12s",
-                      background: dashTab===id ? "var(--accent2)" : "transparent",
-                      color: dashTab===id ? "#fff" : "var(--text4)" }}>
-                    {lbl}
-                  </button>
-                ))}
-              </div>
-              <span style={{ fontSize:11, color:"var(--text4)", marginLeft:4 }}>
-                {user?.display_name} · <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span>
-              </span>
+            <div>
+              <div style={{ fontSize:12, fontWeight:700, color:"var(--text)", lineHeight:1.2 }}>{user?.display_name}</div>
+              <div style={{ fontSize:10, color:RC[user?.role]||"var(--text4)", fontWeight:600 }}>{user?.role}</div>
             </div>
           </div>
+          {/* Stats row */}
+          <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
+            {[["Maps", maps.length],["Nodes", maps.reduce((a,m)=>a+(m.node_count||0),0)]].map(([l,v])=>(
+              <div key={l} style={{ background:"var(--bg3)", borderRadius:6, padding:"6px 8px", border:"1px solid var(--border2)" }}>
+                <div style={{ fontSize:16, fontWeight:800, color:"var(--text)", lineHeight:1 }}>{v}</div>
+                <div style={{ fontSize:9, color:"var(--text4)", marginTop:2 }}>{l}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Nav items */}
+        {[["maps","🗺","Maps"],["live","📡","Live Dashboard"]].map(([id,icon,label])=>(
+          <button key={id} onClick={()=>setDashTab(id)}
+            style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 18px",
+              border:"none", cursor:"pointer", fontFamily:"var(--font-ui)", fontWeight:600,
+              fontSize:12, textAlign:"left", transition:"all .1s",
+              background: dashTab===id ? "var(--accent2)22" : "transparent",
+              color: dashTab===id ? "var(--accent2)" : "var(--text3)",
+              borderLeft: dashTab===id ? "3px solid var(--accent2)" : "3px solid transparent" }}>
+            <span style={{ fontSize:14 }}>{icon}</span>{label}
+          </button>
+        ))}
+
+        <div style={{ flex:1 }}/>
+
+        {/* Bottom actions */}
+        <div style={{ padding:"0 12px", borderTop:"1px solid var(--border2)", paddingTop:12 }}>
           <button onClick={()=>setShowChangelog(true)}
-            style={{ background:"none", border:"1px solid var(--accent)", borderRadius:8,
-              padding:"6px 14px", color:"var(--accent)", fontSize:11, fontWeight:700,
-              cursor:"pointer", fontFamily:"inherit", whiteSpace:"nowrap", flexShrink:0 }}>
+            style={{ width:"100%", padding:"7px 10px", background:"none",
+              border:"1px solid var(--border)", borderRadius:7, color:"var(--text4)",
+              fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"var(--font-ui)", textAlign:"left" }}>
             {CURRENT_VERSION} ✦ What's new
           </button>
         </div>
+      </div>
+
+      {/* ── Main content ── */}
+      <div style={{ flex:1, overflowY:"auto", padding:"24px 28px", minWidth:0 }}>
+
+
 
         {/* ── Changelog Modal ── */}
         {showChangelog&&(
@@ -441,8 +471,14 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
           </div>
         )}
 
+        {/* Section title */}
+        <div style={{ marginBottom:18, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ fontSize:18, fontWeight:800, color:"var(--text)", letterSpacing:-.2 }}>
+            {dashTab==="maps" ? "Your Maps" : "Live Dashboard"}
+          </div>
+        </div>
         {/* ── Action bar (maps only) ── */}
-        {dashTab==="maps"&&<div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap", alignItems:"center" }}>
+        {dashTab==="maps"&&<div style={{ display:"flex", gap:8, marginBottom:18, flexWrap:"wrap", alignItems:"center" }}>
           {["owner","admin","editor"].includes(user?.role) && (
             showNew ? (
               <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
@@ -524,7 +560,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                 </div>
               </>
             )}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(230px,1fr))", gap:12 }}>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:12 }}>
               {maps.map(map=>(
                 <div key={map.id}
                   data-tut={maps.indexOf(map)===0?"map-card":undefined}
