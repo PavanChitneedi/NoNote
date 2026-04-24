@@ -1,0 +1,337 @@
+// IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
+import { useState, useEffect, useRef } from 'react';
+
+// Which integration type to use per node type
+const NODE_INT_MAP = {
+  proxmox: 'proxmox', esxi: 'esxi', hyperv: 'probe',
+  unraid: 'unraid', truenas: 'truenas', freenas: 'truenas',
+  nas: 'truenas', server: 'probe', appserver: 'probe',
+  router: 'probe', switch: 'probe', firewall: 'probe',
+  desktop: 'probe', laptop: 'probe', rpi: 'probe',
+};
+
+const INT_FIELDS = {
+  proxmox: [
+    { key: 'url',   label: 'URL',        placeholder: 'https://192.168.1.10:8006', type: 'text' },
+    { key: 'token', label: 'API Token',  placeholder: 'user@pam!tokenid=UUID',    type: 'password', help: 'Datacenter → API Tokens → Add' },
+  ],
+  truenas: [
+    { key: 'url',   label: 'URL',        placeholder: 'http://192.168.1.20',      type: 'text' },
+    { key: 'token', label: 'API Key',    placeholder: 'API key from UI',          type: 'password', help: 'Credentials → API Keys → Add' },
+  ],
+  unraid: [
+    { key: 'url',   label: 'URL',        placeholder: 'http://192.168.1.30',      type: 'text' },
+    { key: 'token', label: 'API Key',    placeholder: 'x-api-key value',          type: 'password', help: 'Requires "Unraid API" community plugin' },
+  ],
+  esxi: [
+    { key: 'url',      label: 'URL',      placeholder: 'https://192.168.1.40',    type: 'text' },
+    { key: 'username', label: 'Username', placeholder: 'administrator@vsphere.local', type: 'text' },
+    { key: 'password', label: 'Password', placeholder: '',                        type: 'password', help: 'Requires ESXi 7+ or vCenter 6.7+' },
+  ],
+  probe: [
+    { key: 'url',   label: 'Health URL', placeholder: 'http://192.168.1.x:port/health', type: 'text' },
+  ],
+};
+
+const API = '/api/integrations';
+
+function pct(used, total) { return total ? Math.round(used / total * 100) : 0; }
+function gb(bytes) { return bytes ? (bytes / 1073741824).toFixed(1) + ' GB' : '—'; }
+function fmt(bytes) { if (!bytes) return '—'; if (bytes > 1e12) return (bytes/1e12).toFixed(1)+'TB'; if (bytes > 1e9) return (bytes/1e9).toFixed(1)+'GB'; return (bytes/1e6).toFixed(0)+'MB'; }
+
+function Bar({ pct: p, warn = 80, crit = 90 }) {
+  const c = p >= crit ? '#f44336' : p >= warn ? '#ff9800' : '#4caf50';
+  return (
+    <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', marginTop: 2 }}>
+      <div style={{ height: '100%', width: `${p}%`, background: c, borderRadius: 3, transition: 'width .4s' }} />
+    </div>
+  );
+}
+
+function Stat({ label, value, sub }) {
+  return (
+    <div style={{ minWidth: 70 }}>
+      <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 1 }}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>{value}</div>
+      {sub && <div style={{ fontSize: 9, color: 'var(--text4)' }}>{sub}</div>}
+    </div>
+  );
+}
+
+// ── Metric renderers per integration type ─────────────────────
+function ProxmoxMetrics({ data }) {
+  return (
+    <div>
+      <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 8 }}>Proxmox VE {data.version}</div>
+      {(data.nodes || []).map(n => {
+        const s = n.status || {};
+        const cpuPct = Math.round((s.cpu || 0) * 100);
+        const memPct = pct(s.memory?.used, s.memory?.total);
+        const diskPct = pct(s.rootfs?.used, s.rootfs?.total);
+        const runVMs  = (n.vms || []).filter(v => v.status === 'running').length;
+        const runLXC  = (n.lxc || []).filter(v => v.status === 'running').length;
+        return (
+          <div key={n.node} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 12px', marginBottom: 8,
+            border: `1px solid ${n.online ? 'var(--success)44' : 'var(--danger)44'}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+              <span style={{ width: 8, height: 8, borderRadius: '50%', background: n.online ? 'var(--success)' : 'var(--danger)', flexShrink: 0 }} />
+              <span style={{ fontWeight: 700, fontSize: 12 }}>{n.node}</span>
+              <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{n.vms.length} VMs · {n.lxc.length} LXC</span>
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+              <Stat label="CPU" value={`${cpuPct}%`} />
+              <Stat label="RAM" value={`${memPct}%`} sub={`${gb(s.memory?.used)} / ${gb(s.memory?.total)}`} />
+              <Stat label="Disk" value={`${diskPct}%`} sub={`${fmt(s.rootfs?.used)} / ${fmt(s.rootfs?.total)}`} />
+              <Stat label="Running" value={`${runVMs}VM ${runLXC}CT`} />
+            </div>
+            <Bar pct={cpuPct} /><Bar pct={memPct} /><Bar pct={diskPct} />
+            {n.vms.length > 0 && (
+              <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+                {n.vms.slice(0, 8).map(v => (
+                  <span key={v.vmid} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3,
+                    background: v.status === 'running' ? 'var(--success)22' : 'var(--bg)',
+                    color: v.status === 'running' ? 'var(--success)' : 'var(--text4)',
+                    border: '1px solid var(--border)' }}>
+                    {v.name || `VM${v.vmid}`}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function TrueNASMetrics({ data }) {
+  const info = data.info || {};
+  const totalCap = (data.pools || []).reduce((a, p) => a + (p.size?.total || 0), 0);
+  const usedCap  = (data.pools || []).reduce((a, p) => a + (p.size?.allocated || 0), 0);
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+        <Stat label="HOSTNAME" value={info.hostname || '—'} />
+        <Stat label="VERSION" value={(info.version || '').split('-')[0]} />
+        <Stat label="UPTIME" value={info.uptimeSeconds ? Math.floor(info.uptimeSeconds / 86400) + 'd' : '—'} />
+      </div>
+      <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
+        {(data.services || []).map(s => (
+          <span key={s.service} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3,
+            background: s.state === 'RUNNING' ? 'var(--success)22' : 'var(--bg)',
+            color: s.state === 'RUNNING' ? 'var(--success)' : 'var(--text4)',
+            border: '1px solid var(--border)' }}>
+            {s.service}
+          </span>
+        ))}
+      </div>
+      {(data.pools || []).map(p => {
+        const diskPct = pct(p.size?.allocated, p.size?.total);
+        return (
+          <div key={p.name} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '8px 10px', marginBottom: 6,
+            border: `1px solid ${p.healthy ? 'var(--success)44' : 'var(--danger)44'}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, fontSize: 11 }}>{p.name}</span>
+              <span style={{ fontSize: 9, color: p.healthy ? 'var(--success)' : 'var(--danger)' }}>{p.status}</span>
+              <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{fmt(p.size?.allocated)} / {fmt(p.size?.total)}</span>
+            </div>
+            <Bar pct={diskPct} />
+          </div>
+        );
+      })}
+      {(data.alerts || []).length > 0 && (
+        <div style={{ marginTop: 8 }}>
+          {data.alerts.map((a, i) => (
+            <div key={i} style={{ fontSize: 10, color: 'var(--danger)', padding: '3px 6px', background: 'var(--danger)11', borderRadius: 4, marginBottom: 3 }}>
+              ⚠ {a.formatted || a.text}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function UnraidMetrics({ data }) {
+  const sys = data.data?.system || {};
+  const mem = sys.memory || {};
+  const memPct = pct(mem.total - mem.free, mem.total);
+  const cpuPct = Math.round((sys.cpu?.usage || 0));
+  const containers = data.data?.docker?.containers || [];
+  return (
+    <div>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
+        <Stat label="CPU" value={`${cpuPct}%`} />
+        <Stat label="RAM" value={`${memPct}%`} sub={`${gb(mem.total - mem.free)} / ${gb(mem.total)}`} />
+        <Stat label="CONTAINERS" value={containers.length} />
+      </div>
+      <Bar pct={cpuPct} /><Bar pct={memPct} />
+      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+        {containers.slice(0, 10).map((c, i) => (
+          <span key={i} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3,
+            background: c.state === 'running' ? 'var(--success)22' : 'var(--bg)',
+            color: c.state === 'running' ? 'var(--success)' : 'var(--text4)',
+            border: '1px solid var(--border)' }}>
+            {(c.names || ['?'])[0].replace(/^\//, '')}
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ProbeMetrics({ data }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0' }}>
+      <span style={{ fontSize: 24 }}>{data.ok ? '✅' : '❌'}</span>
+      <div>
+        <div style={{ fontWeight: 700, fontSize: 13, color: data.ok ? 'var(--success)' : 'var(--danger)' }}>
+          {data.ok ? 'Online' : 'Unreachable'}
+        </div>
+        <div style={{ fontSize: 10, color: 'var(--text4)' }}>HTTP {data.status} · {data.ms}ms</div>
+      </div>
+    </div>
+  );
+}
+
+const METRIC_RENDERERS = { proxmox: ProxmoxMetrics, truenas: TrueNASMetrics, unraid: UnraidMetrics, probe: ProbeMetrics };
+
+// ── Main component ─────────────────────────────────────────────
+export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
+  const intType = NODE_INT_MAP[node.type] || 'probe';
+  const fields  = INT_FIELDS[intType] || INT_FIELDS.probe;
+
+  const cfg    = node.properties?._integration || {};
+  const [form, setForm]   = useState({ type: intType, ...cfg });
+  const [data, setData]   = useState(null);
+  const [err,  setErr]    = useState('');
+  const [busy, setBusy]   = useState(false);
+  const [show, setShow]   = useState(false); // show credentials
+  const intervalRef       = useRef(null);
+
+  const save = () => onUpdateProp('_integration', form);
+
+  const fetch_ = async (silent = false) => {
+    if (!silent) setBusy(true);
+    setErr('');
+    try {
+      const token = localStorage.getItem('nn_token');
+      const body  = { ...form };
+      const r = await fetch(`${API}/${form.type}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify(body),
+      });
+      const json = await r.json();
+      if (!r.ok || !json.ok) throw new Error(json.error || 'Request failed');
+      setData(json);
+    } catch(e) { setErr(e.message); }
+    finally { if (!silent) setBusy(false); }
+  };
+
+  // Auto-refresh every 30s if connected
+  useEffect(() => {
+    if (data && !err) {
+      intervalRef.current = setInterval(() => fetch_(true), 30000);
+    }
+    return () => clearInterval(intervalRef.current);
+  }, [data, err]);
+
+  const Renderer = METRIC_RENDERERS[form.type] || ProbeMetrics;
+  const isConfigured = fields.every(f => form[f.key]);
+
+  return (
+    <div>
+      {/* Config section */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+          <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text4)', letterSpacing: 2, flex: 1 }}>
+            {intType.toUpperCase()} INTEGRATION
+          </span>
+          {isConfigured && (
+            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: data ? 'var(--success)22' : 'var(--bg3)',
+              color: data ? 'var(--success)' : 'var(--text4)', border: `1px solid ${data ? 'var(--success)' : 'var(--border)'}` }}>
+              {data ? '● live' : '○ not connected'}
+            </span>
+          )}
+          <button onClick={() => setShow(s => !s)}
+            style={{ fontSize: 10, background: 'none', border: '1px solid var(--border)', borderRadius: 4,
+              color: 'var(--text4)', cursor: 'pointer', padding: '2px 8px', fontFamily: 'var(--font-ui)' }}>
+            {show ? 'Hide' : 'Configure'}
+          </button>
+        </div>
+
+        {show && (
+          <div style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 12px', marginBottom: 8 }}>
+            {/* Type override */}
+            <div style={{ marginBottom: 8 }}>
+              <label style={{ fontSize: 9, color: 'var(--text4)', display: 'block', marginBottom: 3 }}>INTEGRATION TYPE</label>
+              <select value={form.type} disabled={!canEdit}
+                onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                  padding: '5px 8px', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none' }}>
+                <option value="proxmox">Proxmox VE</option>
+                <option value="truenas">TrueNAS / FreeNAS</option>
+                <option value="unraid">Unraid</option>
+                <option value="esxi">VMware ESXi / vCenter</option>
+                <option value="probe">HTTP Health Probe</option>
+              </select>
+            </div>
+            {fields.map(f => (
+              <div key={f.key} style={{ marginBottom: 6 }}>
+                <label style={{ fontSize: 9, color: 'var(--text4)', display: 'block', marginBottom: 3 }}>
+                  {f.label.toUpperCase()}
+                  {f.help && <span style={{ fontSize: 8, color: 'var(--accent1)', marginLeft: 6 }}>ℹ {f.help}</span>}
+                </label>
+                <input type={f.type} value={form[f.key] || ''} placeholder={f.placeholder} disabled={!canEdit}
+                  onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                  style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                    padding: '5px 8px', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-ui)',
+                    outline: 'none', boxSizing: 'border-box', fontFamily: f.type === 'password' ? 'monospace' : 'var(--font-ui)' }}
+                />
+              </div>
+            ))}
+            {canEdit && (
+              <button onClick={() => { save(); setShow(false); }}
+                style={{ width: '100%', padding: '6px', background: 'var(--accent2)', border: 'none', borderRadius: 4,
+                  color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)', marginTop: 4 }}>
+                Save Configuration
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Connect / Refresh */}
+      {isConfigured && (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <button onClick={() => fetch_()} disabled={busy}
+            style={{ flex: 1, padding: '7px', background: busy ? 'var(--bg3)' : 'var(--accent2)', border: 'none',
+              borderRadius: 6, color: busy ? 'var(--text4)' : '#fff', cursor: busy ? 'default' : 'pointer',
+              fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)' }}>
+            {busy ? '⏳ Connecting…' : data ? '🔄 Refresh' : '⚡ Connect'}
+          </button>
+          {data && <button onClick={() => { setData(null); clearInterval(intervalRef.current); }}
+            style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+              color: 'var(--text4)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+            Disconnect
+          </button>}
+        </div>
+      )}
+
+      {err && <div style={{ fontSize: 11, color: 'var(--danger)', background: 'var(--danger)11', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>⚠ {err}</div>}
+
+      {/* Metrics */}
+      {data && <Renderer data={data} />}
+
+      {!isConfigured && !show && (
+        <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text4)', fontSize: 11 }}>
+          Click <strong>Configure</strong> to set up live integration.
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── exportable helpers for LiveDashboard ──────────────────────
+export { NODE_INT_MAP, METRIC_RENDERERS, Bar, Stat, fmt, gb, pct };

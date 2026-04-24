@@ -1,5 +1,6 @@
 import React from 'react';
 import { useState, useEffect } from "react";
+import LiveDashboard from "./LiveDashboard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch, saveMap, getAccessToken } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
@@ -116,6 +117,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [shareMap,  setShareMap]  = useState(null);
   const { user, logout } = useAuth();
   const [maps, setMaps]       = useState([]);
+  const [dashTab, setDashTab] = useState("maps"); // "maps" | "live"
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle]= useState("");
   const [showNew, setShowNew] = useState(false);
@@ -330,7 +332,22 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         {/* Welcome */}
         <div style={{ marginBottom:26, display:"flex", alignItems:"flex-start", justifyContent:"space-between" }}>
           <div>
-            <div style={{ fontSize:22, fontWeight:700, color:"var(--text)", marginBottom:5 }}>Your Maps</div>
+            <div style={{ display:"flex", alignItems:"center", gap:8 }}>
+              <div style={{ fontSize:22, fontWeight:700, color:"var(--text)" }}>
+                {dashTab==="maps"?"Your Maps":"Live Dashboard"}
+              </div>
+              <div style={{ display:"flex", gap:4, marginLeft:16 }}>
+                {[["maps","🗺 Maps"],["live","📡 Live"]].map(([id,lbl])=>(
+                  <button key={id} onClick={()=>setDashTab(id)}
+                    style={{ fontSize:11, padding:"4px 12px", border:"none", borderRadius:6, cursor:"pointer",
+                      fontFamily:"var(--font-ui)", fontWeight:700,
+                      background: dashTab===id ? "var(--accent2)" : "var(--bg3)",
+                      color: dashTab===id ? "#fff" : "var(--text4)" }}>
+                    {lbl}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div style={{ fontSize:12, color:"var(--text4)" }}>
               {user?.display_name} ·{" "}
               <span style={{ color:RC[user?.role]||"var(--text3)" }}>{user?.role}</span>
@@ -453,7 +470,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
         </div>
 
         {/* Map grid */}
-        {loading ? (
+        {dashTab==="live" ? (
+          <LiveDashboard maps={maps} />
+        ) : loading ? (
           <div style={{ textAlign:"center", color:"var(--text4)", fontSize:13, padding:50 }}>Loading maps…</div>
         ) : maps.length===0 ? (
           <div style={{ textAlign:"center", padding:"70px 20px", color:"var(--text4)", fontSize:13, lineHeight:2 }}>

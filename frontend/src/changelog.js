@@ -1,6 +1,18 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.30.0",date:"Apr 2026",items:[
+    "Live integrations: Proxmox VE, TrueNAS/FreeNAS, Unraid, VMware ESXi/vCenter, Generic HTTP probe — server-side proxy avoids CORS, self-signed TLS allowed",
+    "📡 Live tab on nodes: configure credentials per node, connect and see live CPU/RAM/disk/VMs/containers/pool metrics with auto-refresh every 30s",
+    "Proxmox: per-node CPU %, RAM %, disk %, running VMs + LXC count, VM status badges",
+    "TrueNAS: hostname/version/uptime, pool health + capacity bars, running services, active alerts",
+    "Unraid: CPU/RAM bars, Docker container list with running state (requires Unraid API community plugin)",
+    "ESXi/vCenter: host + VM list via vSphere REST API (requires ESXi 7+ or vCenter 6.7+)",
+    "HTTP probe: online/offline status + latency for any node type",
+    "📡 Live Dashboard tab on homepage: aggregated cards for all nodes with integrations configured across all maps, with global refresh and online/offline summary",
+    "_integration key filtered from template properties display",
+    "Backend: /api/integrations/{proxmox,truenas,unraid,esxi,probe} proxy routes with 8s timeout",
+  ]},
   {v:"v5.29.1",date:"Apr 2026",items:[
     "Fix: Type and Links tabs in popup caused blank/white screen — Lucide icon components were rendered as raw React children instead of via NodeIcon; React 18 throws on this",
     "Fix: same crash in the Links (conns) tab for connected node icons",

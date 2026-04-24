@@ -14,6 +14,7 @@ import mapsRouter  from "./routes/maps.js";
 import usersRouter from "./routes/users.js";
 import llmRouter      from "./routes/llm.js";
 import versionsRouter from "./routes/versions.js";
+import integrationsRouter from "./routes/integrations.js";
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || "3001");
@@ -74,6 +75,7 @@ app.use("/api/maps",  mapsRouter);
 app.use("/api/users", usersRouter);
 app.use("/api/llm",   llmRouter);
 app.use("/api/maps",  versionsRouter);  // version history sub-routes
+app.use("/api/integrations", integrationsRouter);
 
 // ── Health ────────────────────────────────────────────────────
 app.get("/health", (req, res) => {

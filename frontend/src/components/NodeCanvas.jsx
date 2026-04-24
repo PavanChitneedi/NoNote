@@ -20,6 +20,7 @@ import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,P
   BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban,
   Boxes,AppWindow,Component,Layers2,Container,MemoryStick } from "lucide-react";
 import ThemePicker    from "./ThemePicker.jsx";
+import IntegrationPanel from "./IntegrationPanel.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
 // ── Node types ────────────────────────────────────────────────
@@ -4806,7 +4807,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         )}
         {Object.keys(node.properties||{}).filter(k=>k!=="Ports"&&k!=="Services").length>0&&<>
           <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>TEMPLATE PROPERTIES</div>
-          {Object.entries(node.properties||{}).filter(([k,v])=>k!=="Ports"&&k!=="Services"&&!Array.isArray(v)&&typeof v!=="object").map(([k,v])=>(
+          {Object.entries(node.properties||{}).filter(([k,v])=>!k.startsWith('_')&&k!=="Ports"&&k!=="Services"&&!Array.isArray(v)&&typeof v!=="object").map(([k,v])=>(
             <div key={k}>
               <label style={{fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:3,display:"block",color:`${t.color}cc`}}>{k.toUpperCase()}</label>
               <input value={v} onChange={e=>onUpdateProp(node.id,k,e.target.value)} disabled={!canEdit} style={inp()}/>
@@ -5437,6 +5438,8 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
   );
 }
 
+const NODE_INT_TYPES = new Set(['proxmox','unraid','truenas','freenas','esxi','hyperv','nas','server','appserver','router','switch','firewall','desktop','laptop','rpi']);
+
 // ── Inline Node Editor — tabbed popup at node ────────────────────
 function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
   onTabChange, onClose, onUpdate, onUpdateNotes, onChangeType,
@@ -5451,11 +5454,13 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
 
   const hasPorts    = Array.isArray(node.properties?.Ports)    && node.properties.Ports.length > 0;
   const hasServices = Array.isArray(node.properties?.Services) && node.properties.Services.length > 0;
+  const hasIntegration = !!(node.properties?._integration?.url || NODE_INT_TYPES.has(node.type));
   const TABS = [
     { id: 'notes',    label: '📝 Notes'      },
     { id: 'props',    label: '⚙ Properties'  },
     ...(hasServices ? [{ id: 'services', label: `🔧 Services (${node.properties.Services.length})` }] : []),
     ...(hasPorts    ? [{ id: 'ports',    label: `🔌 Ports (${node.properties.Ports.length})`       }] : []),
+    ...(hasIntegration ? [{ id: 'live',  label: '📡 Live' }] : []),
     { id: 'type',     label: '🏷 Type'        },
     { id: 'conns',    label: `🔗 Links (${nodeEdges.length})` },
   ];
@@ -5574,7 +5579,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
             {Object.keys(node.properties || {}).length > 0 && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, marginBottom: 6 }}>TEMPLATE PROPERTIES</div>
-                {Object.entries(node.properties || {}).filter(([k,v])=>!Array.isArray(v)&&typeof v!=='object').map(([k, v]) => (
+                {Object.entries(node.properties || {}).filter(([k,v])=>!k.startsWith('_')&&!Array.isArray(v)&&typeof v!=='object').map(([k, v]) => (
                   <div key={k} style={{ marginBottom: 6 }}>
                     <label style={{ fontSize: 9, fontWeight: 700, color: `${t.color}cc`, letterSpacing: 0.5, display: 'block', marginBottom: 2 }}>{k.toUpperCase()}</label>
                     <input value={v} onChange={e => onUpdateCustom ? (() => {
@@ -5753,6 +5758,15 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
           </div>
           );
         })()}
+
+        {/* ── LIVE TAB ── */}
+        {tab === 'live' && (
+          <IntegrationPanel
+            node={node}
+            canEdit={canEdit}
+            onUpdateProp={(key, val) => onUpdate({ properties: { ...node.properties, [key]: val } })}
+          />
+        )}
 
         {/* ── TYPE TAB ── */}
         {tab === 'type' && (
