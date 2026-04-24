@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.24.2",date:"Apr 2026",items:[
+    "Switch node: IP field confirmed present (also added IP to NAS, storage, SAN, IoT, sensors, industrial nodes)",
+    "Custom properties: key/name is now editable — click and type a new name, blur to rename (unique per node)",
+    "Custom property key uniqueness enforced against both default and custom property names",
+    "N shortcut: fixed execution order — selected node gets inline note, bare N adds a note-type node",
+  ]},
   {v:"v5.24.1",date:"Apr 2026",items:[
     "IP field added to all network devices: VPN, AP, modem, WAN link, laptop, workstation, thin client, app/DB/file/mail servers, NAS, mobile, tablet, IoT (RPi, ESP), gateway, IDS, WAF, cache, broker, microservice, API, k8s",
     "Note add (+ button or N shortcut) now opens inline in edit mode with title auto-focused — no popup",

@@ -135,22 +135,22 @@ const DP = {
   mailserver:{IP:"",Software:"",Domain:"",TLS:"Yes",Spam:""},
   printserver:{IP:"",Make:"",Model:"",Queue:"",Protocol:"IPP"},
   // Storage
-  storage:{Capacity:"",Type:"SSD",RAID:"",Interface:""},
+  storage:{IP:"",Capacity:"",Type:"SSD",RAID:"",Interface:""},
   nas:{IP:"",Make:"",Model:"",Capacity:"",RAID:"",Shares:""},
-  san:{Make:"",Model:"",Capacity:"",FC:"",Protocol:"iSCSI"},
-  backup:{Software:"",Schedule:"",Retention:"",Target:""},
-  tape:{Make:"",Model:"",Capacity:"",Library:""},
+  san:{IP:"",Make:"",Model:"",Capacity:"",FC:"",Protocol:"iSCSI"},
+  backup:{IP:"",Software:"",Schedule:"",Retention:"",Target:""},
+  tape:{IP:"",Make:"",Model:"",Capacity:"",Library:""},
   // Mobile & IoT
   mobile:{IP:"",Make:"",Model:"",OS:"",User:"",MDM:""},
   tablet:{IP:"",Make:"",Model:"",OS:"",User:""},
   rpi:{IP:"",Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:""},
-  arduino:{Model:"Uno",Firmware:"",Sensors:"",Protocol:""},
+  arduino:{IP:"",Model:"Uno",Firmware:"",Sensors:"",Protocol:""},
   esp:{IP:"",Model:"ESP32",Firmware:"",WiFi:"",Protocol:"MQTT"},
-  sensor:{Type:"",Protocol:"MQTT",Location:"",Unit:""},
+  sensor:{IP:"",Type:"",Protocol:"MQTT",Location:"",Unit:""},
   camera:{Make:"",Model:"",Resolution:"",Protocol:"RTSP",IP:""},
-  plc:{Make:"",Model:"",Protocol:"Modbus",IO:""},
+  plc:{IP:"",Make:"",Model:"",Protocol:"Modbus",IO:""},
   gateway:{IP:"",Make:"",Model:"",Protocol:"",Upstream:""},
-  hvac:{Make:"",Model:"",Zone:"",Protocol:"BACnet"},
+  hvac:{IP:"",Make:"",Model:"",Zone:"",Protocol:"BACnet"},
   // Cloud
   cloud:{IP:"",Domain:"",Provider:"AWS",Region:"",Service:"",Account:""},
   lambda:{Runtime:"Node.js 20",Trigger:"",Memory:"256MB",Timeout:"30s"},
@@ -1133,7 +1133,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         });
         return;
       }
-      if(e.code==="KeyN"&&canEdit){addNode("note");return;}
+      // N with a node selected = inline note on that node; N alone = add note node
+      if(e.code==="KeyN"&&canEdit&&!isInput&&editMode&&selected.size===1){
+        e.preventDefault();
+        const nid=[...selected][0];
+        const nd=nodesRef.current.find(n=>n.id===nid);
+        if(nd){
+          const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false,editing:true};
+          const arr=[...(Array.isArray(nd.notes)?nd.notes:[]),newNote];
+          updateNotes(nid,arr);
+          updateNode(nid,{showNotes:true,expandedNoteIds:[...(nd.expandedNoteIds||[]),newNote.id]});
+          setTimeout(()=>setInlineEditField({noteId:newNote.id,field:"noteTitle"}),60);
+        }
+        return;
+      }
+      if(e.code==="KeyN"&&canEdit&&!isInput){addNode("note");return;}
       if(e.code==="F2"&&selected.size===1){
         e.preventDefault();
         setEditingTitle([...selected][0]);
@@ -1162,21 +1176,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         } else { setEditMode(v=>!v); }
         return;
       }
-      // N = quick add inline note to selected node (same as clicking + note button)
-      if(e.code==="KeyN"&&!isInput&&canEdit&&editMode&&selected.size===1){
-        e.preventDefault();
-        const nid=[...selected][0];
-        const nd=nodesRef.current.find(n=>n.id===nid);
-        if(nd){
-          const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false,editing:true};
-          const arr=[...(Array.isArray(nd.notes)?nd.notes:[]),newNote];
-          updateNotes(nid,arr);
-          updateNode(nid,{showNotes:true,expandedNoteIds:[...(nd.expandedNoteIds||[]),newNote.id]});
-          // Auto-focus the new note title after React renders
-          setTimeout(()=>setInlineEditField({noteId:newNote.id,field:'noteTitle'}),60);
-        }
-        return;
-      }
+
       if(e.code==="KeyV"&&canEdit){setShowVersions(true);return;}
       if(e.code==="KeyF"&&mod){e.preventDefault();setShowSearch(v=>!v);setSearchQuery("");return;}
       if(e.code==="KeyA"&&mod){e.preventDefault();setSelected(new Set(nodes.map(n=>n.id)));return;}
@@ -1596,6 +1596,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const updateProp   =(id,k,v)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,properties:{...n.properties,[k]:v}}:n));
   const updateCustom =(id,k,v)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,customProps:{...n.customProps,[k]:v}}:n));
   const deleteCustom =(id,k)=>applyNodes(ns=>ns.map(n=>{if(n.id!==id)return n;const c={...n.customProps};delete c[k];return{...n,customProps:c};}));
+  // Rename a custom property key — preserves order, checks uniqueness against default+custom keys
+  const renameCustom =(id,oldKey,newKey)=>{
+    newKey=newKey.trim();
+    if(!newKey||newKey===oldKey) return;
+    applyNodes(ns=>ns.map(n=>{
+      if(n.id!==id) return n;
+      const takenKeys=[...Object.keys(n.properties||{}),...Object.keys(n.customProps||{}).filter(k=>k!==oldKey)];
+      if(takenKeys.map(k=>k.toLowerCase()).includes(newKey.toLowerCase())) return n; // silently ignore dupe
+      const entries=Object.entries(n.customProps||{});
+      const updated=Object.fromEntries(entries.map(([k,v])=>k===oldKey?[newKey,v]:[k,v]));
+      return {...n,customProps:updated};
+    }));
+  };
   const resetSize    =(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,w:n.type==="group"?GRP_W:DEF_W,h:n.type==="group"?GRP_H:DEF_H}:n));
   const toggleCollapse=(id)=>applyNodes(ns=>ns.map(n=>n.id===id?{...n,collapsed:!n.collapsed}:n));
   const collapseAll=()=>{ applyNodes(ns=>ns.map(n=>({...n,collapsed:true}))); setGlobalCollapsed(true); };
@@ -3018,7 +3031,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.24.1✦</button>
+              title="What's new">v5.24.2✦</button>
             <button onClick={logout}
               style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
                 border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}
@@ -3693,6 +3706,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             onUpdate={updateNode} onUpdateProp={updateProp}
             onUpdateCustom={updateCustom} onDeleteCustom={deleteCustom}
             onAddCustom={()=>{const k=`field_${Object.keys(selectedNode.customProps||{}).length+1}`;updateCustom(selectedNode.id,k,"");}}
+            onRenameCustom={renameCustom}
             onUpdateEdge={(eid,u)=>applyEdges(es=>es.map(e=>e.id===eid?{...e,...u}:e))}
             onDeleteEdge={eid=>applyEdges(es=>es.filter(e=>e.id!==eid))}
             onResetSize={()=>resetSize(selectedNode.id)}
@@ -4540,7 +4554,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
   );
 }
 // ── Props Panel ───────────────────────────────────────────────
-function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdateProp,onUpdateCustom,onDeleteCustom,onAddCustom,onUpdateEdge,onDeleteEdge,onResetSize,onUpdateNotes,onStartEditTitle,onToggleCollapse}){
+function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdateProp,onUpdateCustom,onDeleteCustom,onAddCustom,onRenameCustom,onUpdateEdge,onDeleteEdge,onResetSize,onUpdateNotes,onStartEditTitle,onToggleCollapse}){
   const t=NT[node.type]||NT.note;
   const nodeEdges=edges.filter(e=>e.from===node.id||e.to===node.id);
   return(
@@ -4648,8 +4662,18 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
           </div>
           {Object.entries(node.customProps||{}).map(([k,v])=>(
             <div key={k} style={{display:"flex",gap:4,marginBottom:5}}>
-              <input value={k} readOnly style={{...inp(),width:"42%",marginTop:0,opacity:.7}}/>
-              <input value={v} onChange={e=>onUpdateCustom(node.id,k,e.target.value)} disabled={!canEdit} style={{...inp(),flex:1,marginTop:0}}/>
+              <input value={k}
+                readOnly={!canEdit}
+                style={{...inp(),width:"42%",marginTop:0,opacity:canEdit?1:.7,fontWeight:600}}
+                onBlur={e=>onRenameCustom&&onRenameCustom(node.id,k,e.target.value)}
+                onKeyDown={e=>{if(e.key==="Enter")e.target.blur();e.stopPropagation();}}
+                placeholder="property name"
+              />
+              <input value={v} onChange={e=>onUpdateCustom(node.id,k,e.target.value)} disabled={!canEdit}
+                style={{...inp(),flex:1,marginTop:0}}
+                onKeyDown={e=>e.stopPropagation()}
+                placeholder="value"
+              />
               {canEdit&&<button onClick={()=>onDeleteCustom(node.id,k)} style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:16,flexShrink:0}}>×</button>}
             </div>
           ))}
