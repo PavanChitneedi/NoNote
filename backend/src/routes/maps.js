@@ -2,6 +2,8 @@ import { randomUUID as _uuid } from 'crypto';
 import { Router } from "express";
 import { appLog } from "../utils/logger.js";
 
+const router = Router();
+
 // ── Normalize corrupted notes from DB ────────────────────────────────────
 // Old save code stored the serialized notes array as the content of a single
 // wrapper note. This unwraps it back into real individual notes.
