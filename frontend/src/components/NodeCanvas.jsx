@@ -146,6 +146,13 @@ const NT = {
   vault:       { label:"Vault / HSM",         color:"#B00020", icon:LockKeyhole,  cat:"Security" },
   siem:        { label:"SIEM",                color:"#C62828", icon:ScanSearch,   cat:"Security" },
   dlp:         { label:"DLP",                 color:"#D50000", icon:Ban,          cat:"Security" },
+  // ── Homelab / Hypervisors ────────────────────────────────────
+  proxmox:     { label:"Proxmox VE",          color:"#FF6C2F", icon:Layers,       cat:"Servers" },
+  esxi:        { label:"VMware ESXi",         color:"#717CBD", icon:Cpu,          cat:"Servers" },
+  hyperv:      { label:"Hyper-V Host",        color:"#0078D4", icon:Settings,     cat:"Servers" },
+  unraid:      { label:"Unraid Server",       color:"#E67C1C", icon:LayoutGrid,   cat:"Servers" },
+  truenas:     { label:"TrueNAS",             color:"#0095D5", icon:HardDrive,    cat:"Storage" },
+  freenas:     { label:"FreeNAS (Legacy)",    color:"#1565C0", icon:FolderArchive,cat:"Storage" },
 }
 // sidebar category order
 const SIDEBAR_CATS = ["Notes","Planning","Knowledge","General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
@@ -301,29 +308,29 @@ const DP = {
   vlan:{ID:"",Name:"",Subnet:"",Tagged:""},
   proxy:{Type:"Forward",IP:"",Port:"3128",Auth:""},
   // Computers
-  desktop:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",User:""},
-  laptop:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",User:""},
-  workstation:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:""},
+  desktop:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",User:"",Services:[{id:"svc1",name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"Ethernet",type:"Ethernet",connected:"",ip:""},{id:"usb1",label:"USB-A 1",type:"USB 3.0",connected:"",ip:""},{id:"usb2",label:"USB-A 2",type:"USB 3.0",connected:"",ip:""},{id:"hdmi",label:"HDMI",type:"HDMI",connected:"",ip:""}]},
+  laptop:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",User:"",Ports:[{id:"eth0",label:"Ethernet",type:"Ethernet",connected:"",ip:""},{id:"usbc1",label:"USB-C 1",type:"USB-C",connected:"",ip:""},{id:"usbc2",label:"USB-C 2",type:"Thunderbolt 4",connected:"",ip:""},{id:"hdmi",label:"HDMI",type:"HDMI",connected:"",ip:""}]},
+  workstation:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:"",Services:[{id:"svc1",name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"Ethernet",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""},{id:"usbc1",label:"Thunderbolt 1",type:"Thunderbolt 4",connected:"",ip:""},{id:"usbc2",label:"Thunderbolt 2",type:"Thunderbolt 4",connected:"",ip:""},{id:"dp1",label:"DisplayPort",type:"DisplayPort",connected:"",ip:""},{id:"hdmi",label:"HDMI",type:"HDMI",connected:"",ip:""}]},
   thinclnt:{IP:"",Make:"",Model:"",OS:"",Server:""},
   kiosk:{IP:"",Make:"",OS:"",Location:"",App:""},
   // Servers
-  server:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",Port:""},
+  server:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",Port:"",Services:[{id:"svc1",name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"iDRAC/iLO",type:"iDRAC/iLO",connected:"",ip:""}]},
   webserver:{IP:"",Domain:"",Subnet:"",Software:"Nginx",Version:"",Port:"443",SSL:"Yes",CertExpiry:""},
-  appserver:{IP:"",Runtime:"",Version:"",Port:"",Instances:""},
+  appserver:{IP:"",Runtime:"",Version:"",Port:"",Instances:"",Services:[{id:"svc1",name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}]},
   dbserver:{IP:"",Engine:"PostgreSQL",Version:"",Port:"5432",RAM:""},
   fileserver:{IP:"",OS:"",Shares:"",Storage:"",Protocol:"SMB"},
   mailserver:{IP:"",Software:"",Domain:"",TLS:"Yes",Spam:""},
   printserver:{IP:"",Make:"",Model:"",Queue:"",Protocol:"IPP"},
   // Storage
   storage:{IP:"",Capacity:"",Type:"SSD",RAID:"",Interface:""},
-  nas:{IP:"",Make:"",Model:"",Capacity:"",RAID:"",Shares:""},
+  nas:{IP:"",Make:"",Model:"",Capacity:"",RAID:"",Shares:"",Services:[{id:"svc1",name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""}]},
   san:{IP:"",Make:"",Model:"",Capacity:"",FC:"",Protocol:"iSCSI"},
   backup:{IP:"",Software:"",Schedule:"",Retention:"",Target:""},
   tape:{IP:"",Make:"",Model:"",Capacity:"",Library:""},
   // Mobile & IoT
   mobile:{IP:"",Make:"",Model:"",OS:"",User:"",MDM:""},
   tablet:{IP:"",Make:"",Model:"",OS:"",User:""},
-  rpi:{IP:"",Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:""},
+  rpi:{IP:"",Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:"",Services:[{id:"svc1",name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"Ethernet",type:"Ethernet",connected:"",ip:""},{id:"usb1",label:"USB-A 1",type:"USB 3.0",connected:"",ip:""},{id:"usb2",label:"USB-A 2",type:"USB 3.0",connected:"",ip:""},{id:"usbc",label:"USB-C Power",type:"USB-C",connected:"",ip:""},{id:"hdmi1",label:"HDMI 1",type:"HDMI",connected:"",ip:""}]},
   arduino:{IP:"",Model:"Uno",Firmware:"",Sensors:"",Protocol:""},
   esp:{IP:"",Model:"ESP32",Firmware:"",WiFi:"",Protocol:"MQTT"},
   sensor:{IP:"",Type:"",Protocol:"MQTT",Location:"",Unit:""},
@@ -359,10 +366,10 @@ const DP = {
   vpnserver:{IP:"",Protocol:"WireGuard",Port:"51820",Clients:"",Subnet:""},
   vpnconc:{IP:"",Protocol:"IPSec",Tunnels:"",HA:"",Make:"",Model:""},
   sdwan:{IP:"",Make:"",Model:"",Uplinks:"",Policy:"",Orchestrator:""},
-  corerouter:{IP:"",Make:"",Model:"",BGP_AS:"",Protocols:"OSPF/BGP",Interfaces:""},
-  edgerouter:{IP:"",Make:"",Model:"",ISP:"",NAT:"Yes",Protocols:""},
-  l3switch:{IP:"",Make:"",Model:"",VLANs:"",RoutingProtocol:"",PortCount:""},
-  poeswitch:{IP:"",Make:"",Model:"",PortCount:"24",PoEBudget:"",VLANs:""},
+  corerouter:{IP:"",Make:"",Model:"",BGP_AS:"",Protocols:"OSPF/BGP",Interfaces:"",Ports:[{id:"eth0",label:"eth0",type:"WAN",connected:"",ip:""},{id:"eth1",label:"eth1",type:"LAN",connected:"",ip:""},{id:"eth2",label:"eth2",type:"LAN",connected:"",ip:""},{id:"sfp1",label:"SFP+ 1",type:"SFP+",connected:"",ip:""}]},
+  edgerouter:{IP:"",Make:"",Model:"",ISP:"",NAT:"Yes",Protocols:"",Ports:[{id:"eth0",label:"eth0",type:"WAN",connected:"",ip:""},{id:"eth1",label:"eth1",type:"LAN",connected:"",ip:""},{id:"eth2",label:"eth2",type:"LAN",connected:"",ip:""}]},
+  l3switch:{IP:"",Make:"",Model:"",VLANs:"",RoutingProtocol:"",PortCount:"",Ports:[{id:"p1",label:"Port 1",type:"trunk",connected:"",vlan:""},{id:"p2",label:"Port 2",type:"trunk",connected:"",vlan:""},{id:"up1",label:"Uplink 1",type:"uplink",connected:"",vlan:""},{id:"up2",label:"Uplink 2",type:"uplink",connected:"",vlan:""}]},
+  poeswitch:{IP:"",Make:"",Model:"",PortCount:"24",PoEBudget:"",VLANs:"",Ports:[{id:"p1",label:"Port 1",type:"PoE",connected:"",vlan:""},{id:"p2",label:"Port 2",type:"PoE",connected:"",vlan:""},{id:"up1",label:"Uplink 1",type:"uplink",connected:"",vlan:""}]},
   wlcont:{IP:"",Make:"",Model:"",APs_Managed:"",SSID:"",Auth:"WPA3"},
   dhcpsrv:{IP:"",Scope:"",RangeStart:"",RangeEnd:"",Lease:"24h",DNS:""},
   dnssrv:{IP:"",Software:"BIND",Zones:"",Forwarders:"",DNSSEC:""},
@@ -372,7 +379,13 @@ const DP = {
   nettap:{IP:"",Mode:"Passive",Make:"",Model:"",Speed:"",Mirror:""},
   netmon:{IP:"",Software:"",Protocol:"SNMP",Hosts:"",Dashboard:""},
   honeypot:{IP:"",Type:"Low-interaction",OS:"Decoy",Ports:"",Alert:""},
-  // Notes
+  // Homelab / Hypervisors
+  proxmox:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",CPU:"",RAM:"",Storage:"",PCIPassthrough:"",ClusterName:"",Services:[{id:"svc1",name:"Ubuntu VM",type:"VM",ip:"",port:"",status:"Running",image:"",os:"Ubuntu 22.04",memory:"4GB",cpu:"2",notes:""},{id:"svc2",name:"nginx",type:"LXC",ip:"",port:"80",status:"Running",image:"",os:"Debian",memory:"512MB",cpu:"1",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"IPMI/BMC",type:"iDRAC/iLO",connected:"",ip:""}]},
+  esxi:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",vCenter:"",Cluster:"",Version:"",CPU:"",RAM:"",DatastoreGB:"",Services:[{id:"svc1",name:"",type:"VM",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"vmnic0",label:"vmnic0",type:"Ethernet",connected:"",ip:""},{id:"vmnic1",label:"vmnic1",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"IPMI/iDRAC",type:"iDRAC/iLO",connected:"",ip:""}]},
+  hyperv:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",WindowsVersion:"",vSwitches:"",Cluster:"",Services:[{id:"svc1",name:"",type:"VM",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"iDRAC/iLO",type:"iDRAC/iLO",connected:"",ip:""}]},
+  unraid:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",OS:"Unraid 7",CPU:"",RAM:"",ArraySize:"",Parity:"",Services:[{id:"svc1",name:"Ubuntu VM",type:"VM",ip:"",port:"",status:"Running",image:"",os:"Ubuntu 22.04",memory:"4GB",cpu:"2",notes:""},{id:"svc2",name:"nginx",type:"LXC",ip:"",port:"80",status:"Running",image:"",os:"Debian",memory:"512MB",cpu:"1",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1 (bonded)",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"IPMI",type:"iDRAC/iLO",connected:"",ip:""}]},
+  truenas:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",Version:"",Capacity:"",RAID:"RAIDZ2",Shares:"",iSCSI:"",Services:[{id:"svc1",name:"",type:"App",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""},{id:"hba1",label:"HBA 1",type:"HBA",connected:"",ip:""}]},
+  freenas:{IP:"",Domain:"",Subnet:"",Version:"",Capacity:"",RAID:"ZFS RAIDZ",Shares:""},
   idea:{Content:"",Tags:"",Status:"New"},
   topic:{Content:"",Parent:"",Tags:""},
   concept:{Content:"",RelatedTo:"",Tags:""},
@@ -4548,48 +4561,83 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
             ))}
           </div>
         </div>
-        {/* ── PORTS / INTERFACES section (router, switch only) ── */}
-        {Array.isArray(node.properties?.Ports)&&(
+        {/* ── PORTS / INTERFACES — with canvas auto-populate ── */}
+        {Array.isArray(node.properties?.Ports)&&(()=>{
+          const canvasConn=edges.filter(e=>e.from===node.id||e.to===node.id)
+            .map(e=>{const oid=e.from===node.id?e.to:e.from;return nodes.find(n=>n.id===oid)?.title||null;})
+            .filter(Boolean);
+          const unassigned=canvasConn.filter(name=>!(node.properties.Ports||[]).some(p=>p.connected===name));
+          const autoFill=()=>{
+            const ports=[...(node.properties.Ports||[])];
+            let ui=0;
+            for(let pi=0;pi<ports.length&&ui<unassigned.length;pi++){
+              if(!ports[pi].connected){ports[pi]={...ports[pi],connected:unassigned[ui]};ui++;}
+            }
+            onUpdateProp(node.id,"Ports",ports);
+          };
+          return(
           <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
               <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>PORTS / INTERFACES</span>
+              {canEdit&&unassigned.length>0&&<button onClick={autoFill}
+                title={`Auto-assign: ${unassigned.join(", ")}`}
+                style={{fontSize:10,background:"var(--accent1)18",border:"1px solid var(--accent1)",
+                  borderRadius:"var(--radius-xs)",color:"var(--accent1)",cursor:"pointer",
+                  padding:"2px 7px",fontFamily:"inherit"}}>⚡ Auto-fill</button>}
               {canEdit&&<button onClick={()=>{
                 const ports=[...(node.properties.Ports||[]),
-                  {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:"access",connected:"",ip:"",vlan:""}];
+                  {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:"Ethernet",connected:"",ip:"",vlan:""}];
                 onUpdateProp(node.id,"Ports",ports);
               }} style={{fontSize:10,background:"none",border:"1px solid var(--border)",
                 borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",
                 padding:"2px 8px",fontFamily:"inherit"}}>+ Port</button>}
             </div>
+            {canvasConn.length>0&&(
+              <div style={{fontSize:10,color:"var(--text4)",background:"var(--bg3)",borderRadius:5,
+                padding:"4px 8px",marginBottom:6,display:"flex",flexWrap:"wrap",gap:4,alignItems:"center"}}>
+                <span style={{fontWeight:700,marginRight:2}}>Canvas:</span>
+                {canvasConn.map((name,i)=>(
+                  <span key={i} style={{background:unassigned.includes(name)?"var(--accent1)22":"var(--success)22",
+                    color:unassigned.includes(name)?"var(--accent1)":"var(--success)",
+                    borderRadius:3,padding:"1px 5px",fontSize:9,fontWeight:600}}>
+                    {unassigned.includes(name)?"○ ":"✓ "}{name}
+                  </span>
+                ))}
+              </div>
+            )}
+            <datalist id={`portconn-${node.id}`}>
+              {canvasConn.map((name,i)=><option key={i} value={name}/>)}
+            </datalist>
             <div style={{display:"grid",gridTemplateColumns:"1fr",gap:4}}>
               {(node.properties.Ports||[]).map((port,pi)=>(
                 <div key={port.id||pi} style={{display:"grid",
-                  gridTemplateColumns:"60px 70px 1fr 1fr auto",
+                  gridTemplateColumns:"60px 90px 1fr 1fr auto",
                   gap:4,alignItems:"center",
                   background:"var(--bg3)",borderRadius:6,padding:"5px 8px",
-                  border:"1px solid var(--border2)"}}>
-                  {/* Label */}
+                  border:port.connected?"1px solid var(--success)44":"1px solid var(--border2)"}}>
                   <input value={port.label||""} placeholder="eth0"
                     disabled={!canEdit}
                     onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],label:e.target.value};onUpdateProp(node.id,"Ports",p);}}
                     style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0,fontFamily:"monospace"}}/>
-                  {/* Type */}
-                  <select value={port.type||"access"} disabled={!canEdit}
+                  <select value={port.type||"Ethernet"} disabled={!canEdit}
                     onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],type:e.target.value};onUpdateProp(node.id,"Ports",p);}}
                     style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0}}>
-                    <option value="access">Access</option>
-                    <option value="trunk">Trunk</option>
-                    <option value="WAN">WAN</option>
-                    <option value="LAN">LAN</option>
-                    <option value="mgmt">Mgmt</option>
-                    <option value="uplink">Uplink</option>
+                    <optgroup label="Network"><option>Ethernet</option><option>WAN</option><option>LAN</option>
+                      <option>uplink</option><option>access</option><option>trunk</option><option>PoE</option>
+                      <option>mgmt</option><option>SFP+</option><option>SFP28</option><option>QSFP28</option></optgroup>
+                    <optgroup label="USB"><option>USB 3.0</option><option>USB 2.0</option><option>USB-C</option></optgroup>
+                    <optgroup label="Thunderbolt"><option>Thunderbolt 4</option><option>Thunderbolt 3</option></optgroup>
+                    <optgroup label="Video"><option>HDMI</option><option>DisplayPort</option><option>VGA</option></optgroup>
+                    <optgroup label="Storage"><option>SATA</option><option>PCIe/NVMe</option><option>HBA</option></optgroup>
+                    <optgroup label="Management"><option>iDRAC/iLO</option><option>IPMI</option></optgroup>
+                    <optgroup label="Other"><option>Serial/COM</option><option>Fiber</option><option>Other</option></optgroup>
                   </select>
-                  {/* Connected device */}
                   <input value={port.connected||""} placeholder="Connected to…"
+                    list={`portconn-${node.id}`}
                     disabled={!canEdit}
                     onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],connected:e.target.value};onUpdateProp(node.id,"Ports",p);}}
-                    style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0}}/>
-                  {/* IP or VLAN */}
+                    style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0,
+                      color:port.connected?"var(--success)":"inherit"}}/>
                   <input value={port.ip||port.vlan||""} placeholder="IP / VLAN"
                     disabled={!canEdit}
                     onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],ip:e.target.value,vlan:e.target.value};onUpdateProp(node.id,"Ports",p);}}
@@ -4603,8 +4651,82 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
               )}
             </div>
           </div>
+          );
+        })()}
+        {/* ── SERVICES / VMs / CONTAINERS ── */}
+        {Array.isArray(node.properties?.Services)&&(
+          <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+              <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>SERVICES / VMs / CONTAINERS</span>
+              {canEdit&&<button onClick={()=>{
+                const svcs=[...(node.properties.Services||[]),
+                  {id:Math.random().toString(36).slice(2,7),name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}];
+                onUpdateProp(node.id,"Services",svcs);
+              }} style={{fontSize:10,background:"none",border:"1px solid var(--border)",
+                borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",
+                padding:"2px 8px",fontFamily:"inherit"}}>+ Add</button>}
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr",gap:6}}>
+              {(node.properties.Services||[]).map((svc,si)=>(
+                <div key={svc.id||si} style={{background:"var(--bg3)",borderRadius:7,padding:"8px 10px",
+                  border:`1px solid ${svc.status==="Running"?"var(--success)33":svc.status==="Stopped"?"var(--danger)33":svc.status==="Error"?"var(--danger)55":"var(--border2)"}`}}>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 88px 76px auto",gap:4,marginBottom:5,alignItems:"center"}}>
+                    <input value={svc.name||""} placeholder="Service name…" disabled={!canEdit}
+                      onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],name:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                      style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0,fontWeight:600}}/>
+                    <select value={svc.type||"Docker"} disabled={!canEdit}
+                      onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],type:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                      style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0}}>
+                      <option>Docker</option><option>VM</option><option>LXC</option>
+                      <option>App</option><option>Service</option><option>Daemon</option>
+                      <option>Web App</option><option>Database</option><option>API</option><option>Other</option>
+                    </select>
+                    <select value={svc.status||"Running"} disabled={!canEdit}
+                      onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],status:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                      style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0,fontWeight:600,
+                        color:svc.status==="Running"?"var(--success)":svc.status==="Stopped"?"var(--danger)":svc.status==="Error"?"var(--danger)":"var(--text2)"}}>
+                      <option>Running</option><option>Stopped</option><option>Paused</option><option>Error</option><option>Starting</option>
+                    </select>
+                    {canEdit&&<button onClick={()=>{const s=(node.properties.Services||[]).filter((_,i)=>i!==si);onUpdateProp(node.id,"Services",s);}}
+                      style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:14,lineHeight:1}}>×</button>}
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"1fr 70px 1fr",gap:4,marginBottom:4}}>
+                    <div><label style={{fontSize:9,color:"var(--text4)"}}>IP</label>
+                      <input value={svc.ip||""} placeholder="192.168.x.x" disabled={!canEdit}
+                        onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],ip:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                        style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:1}}/></div>
+                    <div><label style={{fontSize:9,color:"var(--text4)"}}>PORT</label>
+                      <input value={svc.port||""} placeholder="8080" disabled={!canEdit}
+                        onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],port:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                        style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:1}}/></div>
+                    <div><label style={{fontSize:9,color:"var(--text4)"}}>IMAGE / OS</label>
+                      <input value={svc.image||svc.os||""} placeholder="nginx:latest / Ubuntu…" disabled={!canEdit}
+                        onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],image:e.target.value,os:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                        style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:1}}/></div>
+                  </div>
+                  <div style={{display:"grid",gridTemplateColumns:"72px 56px 1fr",gap:4}}>
+                    <div><label style={{fontSize:9,color:"var(--text4)"}}>MEMORY</label>
+                      <input value={svc.memory||""} placeholder="2GB" disabled={!canEdit}
+                        onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],memory:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                        style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:1}}/></div>
+                    <div><label style={{fontSize:9,color:"var(--text4)"}}>CPU</label>
+                      <input value={svc.cpu||""} placeholder="2" disabled={!canEdit}
+                        onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],cpu:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                        style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:1}}/></div>
+                    <div><label style={{fontSize:9,color:"var(--text4)"}}>NOTES</label>
+                      <input value={svc.notes||""} placeholder="…" disabled={!canEdit}
+                        onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],notes:e.target.value};onUpdateProp(node.id,"Services",s);}}
+                        style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:1}}/></div>
+                  </div>
+                </div>
+              ))}
+              {!(node.properties?.Services?.length)&&(
+                <div style={{fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>No services configured</div>
+              )}
+            </div>
+          </div>
         )}
-        {Object.keys(node.properties||{}).filter(k=>k!=="Ports").length>0&&<>
+        {Object.keys(node.properties||{}).filter(k=>k!=="Ports"&&k!=="Services").length>0&&<>
           <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>TEMPLATE PROPERTIES</div>
           {Object.entries(node.properties||{}).filter(([k,v])=>k!=="Ports"&&!Array.isArray(v)).map(([k,v])=>(
             <div key={k}>

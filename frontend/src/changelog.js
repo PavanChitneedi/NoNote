@@ -1,6 +1,17 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.28.0",date:"Apr 2026",items:[
+    "New node types: Proxmox VE, VMware ESXi, Hyper-V Host, Unraid Server, TrueNAS, FreeNAS (all with full defaults)",
+    "Services/VMs/Containers panel on server, proxmox, unraid, esxi, hyperv, appserver, nas, truenas, rpi, desktop, workstation — add Docker/VM/LXC/App services with IP, port, image/OS, memory, CPU, status",
+    "Status color-coding on service cards: Running=green, Stopped=red, Error=red border",
+    "Ports expanded to computers: desktop (USB 3.0, HDMI, Ethernet), laptop (USB-C, Thunderbolt 4, HDMI), workstation (dual TB4, DisplayPort, dual Ethernet, Raspberry Pi (USB, HDMI)",
+    "Ports expanded to L3 switch, PoE switch, core router, edge router — with interface defaults",
+    "Port type dropdown extended: Network, USB, Thunderbolt, Video, Storage, Management — 20+ types in grouped optgroups",
+    "Canvas auto-populate: Ports panel shows live canvas connection badges (green=assigned, orange=unassigned)",
+    "⚡ Auto-fill button: assigns unassigned edge-connected nodes to empty port slots",
+    "Port row border turns green when connected device is filled; datalist autocomplete from canvas edges",
+  ]},
   {v:"v5.27.3",date:"Apr 2026",items:["Critical fix: DP (default node properties map) was accidentally stripped during v5.27.0 icon refactor — caused ReferenceError on map load, resulting in empty canvas for all existing maps"]},
   {v:"v5.27.2",date:"Apr 2026",items:["Build fix: missing closing } after &&<>…</> fragment in PropsPanel TEMPLATE PROPERTIES block"]},
   {v:"v5.27.1",date:"Apr 2026",items:["Build fix: comprehensive scan and repair of all JSX expression blocks missing closing } — properties/customProps indicators, Tutorial, HelpGuide, modals, ArrowHeads, fragment blocks"]},
