@@ -1,5 +1,6 @@
 // IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
 import { useState, useEffect, useRef } from 'react';
+import { apiFetch } from '../api/client.js';
 
 // Which integration type to use per node type
 const NODE_INT_MAP = {
@@ -33,7 +34,6 @@ const INT_FIELDS = {
   ],
 };
 
-const API = '/api/integrations';
 
 function pct(used, total) { return total ? Math.round(used / total * 100) : 0; }
 function gb(bytes) { return bytes ? (bytes / 1073741824).toFixed(1) + ' GB' : '—'; }
@@ -215,15 +215,11 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
     if (!silent) setBusy(true);
     setErr('');
     try {
-      const token = localStorage.getItem('nn_token');
-      const body  = { ...form };
-      const r = await fetch(`${API}/${form.type}`, {
+      const json = await apiFetch(`/integrations/${form.type}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify(body),
+        body: JSON.stringify({ ...form }),
       });
-      const json = await r.json();
-      if (!r.ok || !json.ok) throw new Error(json.error || 'Request failed');
+      if (!json.ok) throw new Error(json.error || 'Request failed');
       setData(json);
     } catch(e) { setErr(e.message); }
     finally { if (!silent) setBusy(false); }

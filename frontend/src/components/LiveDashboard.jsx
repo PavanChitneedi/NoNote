@@ -1,26 +1,19 @@
 // LiveDashboard.jsx — shows live metrics for all nodes with integrations configured
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { apiFetch } from '../api/client.js';
 import { NODE_INT_MAP, Bar, Stat, fmt, gb, pct } from './IntegrationPanel.jsx';
 
-const API = '/api/integrations';
 const REFRESH_INTERVAL = 30000;
-
-function authHeader() {
-  const t = localStorage.getItem('nn_token');
-  return { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` };
-}
 
 async function fetchIntegration(node) {
   const cfg = node.properties?._integration;
   if (!cfg?.url) return null;
   const type = cfg.type || NODE_INT_MAP[node.type] || 'probe';
   try {
-    const r = await fetch(`${API}/${type}`, {
+    const json = await apiFetch(`/integrations/${type}`, {
       method: 'POST',
-      headers: authHeader(),
       body: JSON.stringify(cfg),
     });
-    const json = await r.json();
     return { nodeId: node.id, type, data: json, ok: json.ok, ts: Date.now() };
   } catch(e) {
     return { nodeId: node.id, type, ok: false, error: e.message, ts: Date.now() };
@@ -118,9 +111,8 @@ export default function LiveDashboard({ maps }) {
   const loadNodes = useCallback(async () => {
     setLoading(true);
     try {
-      const t = localStorage.getItem('nn_token');
       const all = await Promise.all(
-        maps.map(m => fetch(`/api/maps/${m.id}`, { headers: { Authorization: `Bearer ${t}` } }).then(r => r.json()).catch(() => null))
+        maps.map(m => apiFetch(`/maps/${m.id}`).catch(() => null))
       );
       const integNodes = all.flatMap(d => {
         if (!d?.nodes) return [];
