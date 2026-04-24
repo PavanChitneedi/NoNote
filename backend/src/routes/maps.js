@@ -233,8 +233,8 @@ router.post(
                properties=$9, custom_props=$10, notes=$11, z_index=$12`,
             [nodeId, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
              JSON.stringify(n.properties || {}),
-             JSON.stringify(n.customProps || {}),
-             n.notes || "", n.z_index || 0]
+             JSON.stringify(n.customProps || n.custom_props || {}),
+             typeof n.notes === 'string' ? n.notes : JSON.stringify(Array.isArray(n.notes) ? n.notes : []), n.z_index || 0]
           );
         }
 

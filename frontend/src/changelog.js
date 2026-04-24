@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.24.1",date:"Apr 2026",items:[
+    "IP field added to all network devices: VPN, AP, modem, WAN link, laptop, workstation, thin client, app/DB/file/mail servers, NAS, mobile, tablet, IoT (RPi, ESP), gateway, IDS, WAF, cache, broker, microservice, API, k8s",
+    "Note add (+ button or N shortcut) now opens inline in edit mode with title auto-focused — no popup",
+    "Keyboard N shortcut: adds inline note to selected node (same as clicking + note, works in edit mode)",
+    "Delete button (✕) added beside each note's edit pencil — hover the note row to see both icons",
+  ]},
   {v:"v5.24.0",date:"Apr 2026",items:[
     "Dashboard: Import .nonote — fixed auth, saves before navigating, no longer opens empty canvas",
     "Dashboard: Share map opens inline modal — no longer navigates away to map view",
@@ -49,6 +55,7 @@ export const CHANGELOG = [
     "Focus mode now dims edges (v5.19 fix carried over)",
     "Drag select fixed: didBoxSel ref prevents onClick from clearing box-selection",
   ]},
+  
   {v:"v5.24.0",date:"Apr 2026",items:[
     "Dashboard: Import .nonote — fixed auth, saves before navigating, no longer opens empty canvas",
     "Dashboard: Share map opens inline modal — no longer navigates away to map view",

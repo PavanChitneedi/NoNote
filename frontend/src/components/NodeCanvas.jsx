@@ -35,7 +35,7 @@ const NT = {
   // Computers & Workstations
   desktop:    { label:"Desktop PC",    color:"#8D6E63", icon:"🖥️", cat:"Computers" },
   laptop:     { label:"Laptop",        color:"#A1887F", icon:"💻", cat:"Computers" },
-  workstation:{ label:"Workstation",   color:"#795548", icon:"🖱️", cat:"Computers" },
+  workstation:{IP:"", label:"Workstation",   color:"#795548", icon:"🖱️", cat:"Computers" },
   thinclnt:   { label:"Thin Client",   color:"#6D4C41", icon:"📺", cat:"Computers" },
   kiosk:      { label:"Kiosk",         color:"#5D4037", icon:"🏧", cat:"Computers" },
   // Servers
@@ -45,7 +45,7 @@ const NT = {
   dbserver:   { label:"DB Server",     color:"#C62828", icon:"🗃️", cat:"Servers" },
   fileserver: { label:"File Server",   color:"#D32F2F", icon:"📁", cat:"Servers" },
   mailserver: { label:"Mail Server",   color:"#B71C1C", icon:"📧", cat:"Servers" },
-  printserver:{ label:"Print Server",  color:"#FF8A80", icon:"🖨️", cat:"Servers" },
+  printserver:{IP:"", label:"Print Server",  color:"#FF8A80", icon:"🖨️", cat:"Servers" },
   // Storage
   storage:    { label:"Storage",       color:"#607D8B", icon:"💾", cat:"Storage" },
   nas:        { label:"NAS",           color:"#546E7A", icon:"🗄️", cat:"Storage" },
@@ -77,7 +77,7 @@ const NT = {
   api:        { label:"API",           color:"#009688", icon:"🔌", cat:"Software" },
   database:   { label:"Database",      color:"#3F51B5", icon:"🗃️", cat:"Software" },
   service:    { label:"Service",       color:"#8BC34A", icon:"⚡", cat:"Software" },
-  microservice:{ label:"Microservice", color:"#66BB6A", icon:"🧩", cat:"Software" },
+  microservice:{IP:"", label:"Microservice", color:"#66BB6A", icon:"🧩", cat:"Software" },
   cache:      { label:"Cache",         color:"#FF7043", icon:"⚡", cat:"Software" },
   broker:     { label:"Msg Broker",    color:"#7B1FA2", icon:"📨", cat:"Software" },
   // Security
@@ -114,42 +114,42 @@ const DP = {
     ]},
   firewall:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",Rules:"",Zone:"",OS:""},
   loadbal:{Make:"",Model:"",Algorithm:"Round Robin",VIP:""},
-  vpn:{Protocol:"IPSec",Endpoint:"",Peer:"",Tunnel:""},
-  ap:{Make:"",Model:"",SSID:"",Band:"2.4GHz/5GHz",Channel:""},
-  modem:{Make:"",Model:"",ISP:"",Type:"Cable"},
-  wanlink:{Provider:"",Speed:"",Type:"MPLS",Redundant:"No"},
+  vpn:{IP:"",Protocol:"IPSec",Endpoint:"",Peer:"",Tunnel:""},
+  ap:{IP:"",Make:"",Model:"",SSID:"",Band:"2.4GHz/5GHz",Channel:""},
+  modem:{IP:"",Make:"",Model:"",ISP:"",Type:"Cable"},
+  wanlink:{IP:"",Provider:"",Speed:"",Type:"MPLS",Redundant:"No"},
   vlan:{ID:"",Name:"",Subnet:"",Tagged:""},
   proxy:{Type:"Forward",IP:"",Port:"3128",Auth:""},
   // Computers
   desktop:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"Windows 11",CPU:"",RAM:"",User:""},
-  laptop:{Make:"",Model:"",OS:"",CPU:"",RAM:"",User:""},
-  workstation:{Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:""},
-  thinclnt:{Make:"",Model:"",OS:"",Server:""},
-  kiosk:{Make:"",OS:"",Location:"",App:""},
+  laptop:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",User:""},
+  workstation:{IP:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",GPU:""},
+  thinclnt:{IP:"",Make:"",Model:"",OS:"",Server:""},
+  kiosk:{IP:"",Make:"",OS:"",Location:"",App:""},
   // Servers
   server:{IP:"",Domain:"",Subnet:"",MAC:"",Make:"",Model:"",OS:"",CPU:"",RAM:"",Role:"",Port:""},
   webserver:{IP:"",Domain:"",Subnet:"",Software:"Nginx",Version:"",Port:"443",SSL:"Yes",CertExpiry:""},
-  appserver:{Runtime:"",Version:"",Port:"",Instances:""},
-  dbserver:{Engine:"PostgreSQL",Version:"",Port:"5432",RAM:""},
-  fileserver:{OS:"",Shares:"",Storage:"",Protocol:"SMB"},
-  mailserver:{Software:"",Domain:"",TLS:"Yes",Spam:""},
-  printserver:{Make:"",Model:"",Queue:"",Protocol:"IPP"},
+  appserver:{IP:"",Runtime:"",Version:"",Port:"",Instances:""},
+  dbserver:{IP:"",Engine:"PostgreSQL",Version:"",Port:"5432",RAM:""},
+  fileserver:{IP:"",OS:"",Shares:"",Storage:"",Protocol:"SMB"},
+  mailserver:{IP:"",Software:"",Domain:"",TLS:"Yes",Spam:""},
+  printserver:{IP:"",Make:"",Model:"",Queue:"",Protocol:"IPP"},
   // Storage
   storage:{Capacity:"",Type:"SSD",RAID:"",Interface:""},
-  nas:{Make:"",Model:"",Capacity:"",RAID:"",Shares:""},
+  nas:{IP:"",Make:"",Model:"",Capacity:"",RAID:"",Shares:""},
   san:{Make:"",Model:"",Capacity:"",FC:"",Protocol:"iSCSI"},
   backup:{Software:"",Schedule:"",Retention:"",Target:""},
   tape:{Make:"",Model:"",Capacity:"",Library:""},
   // Mobile & IoT
-  mobile:{Make:"",Model:"",OS:"",User:"",MDM:""},
-  tablet:{Make:"",Model:"",OS:"",User:""},
-  rpi:{Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:""},
+  mobile:{IP:"",Make:"",Model:"",OS:"",User:"",MDM:""},
+  tablet:{IP:"",Make:"",Model:"",OS:"",User:""},
+  rpi:{IP:"",Model:"Pi 4B",OS:"Raspberry Pi OS",RAM:"4GB",Role:""},
   arduino:{Model:"Uno",Firmware:"",Sensors:"",Protocol:""},
-  esp:{Model:"ESP32",Firmware:"",WiFi:"",Protocol:"MQTT"},
+  esp:{IP:"",Model:"ESP32",Firmware:"",WiFi:"",Protocol:"MQTT"},
   sensor:{Type:"",Protocol:"MQTT",Location:"",Unit:""},
   camera:{Make:"",Model:"",Resolution:"",Protocol:"RTSP",IP:""},
   plc:{Make:"",Model:"",Protocol:"Modbus",IO:""},
-  gateway:{Make:"",Model:"",Protocol:"",Upstream:""},
+  gateway:{IP:"",Make:"",Model:"",Protocol:"",Upstream:""},
   hvac:{Make:"",Model:"",Zone:"",Protocol:"BACnet"},
   // Cloud
   cloud:{IP:"",Domain:"",Provider:"AWS",Region:"",Service:"",Account:""},
@@ -157,20 +157,20 @@ const DP = {
   queue:{Type:"SQS",MaxSize:"",DLQ:"",Delay:""},
   cdn:{Provider:"CloudFront",Origin:"",TTL:"3600",Geo:""},
   s3:{Provider:"AWS",Bucket:"",Region:"",Access:"Private"},
-  k8s:{Cluster:"",Namespace:"",Replicas:"",Version:""},
+  k8s:{IP:"",Cluster:"",Namespace:"",Replicas:"",Version:""},
   container:{IP:"",Domain:"",Port:"",Image:"",Tag:"latest",Registry:""},
-  apigateway:{Provider:"AWS",Stage:"",Auth:"",Throttle:""},
+  apigateway:{IP:"",Provider:"AWS",Stage:"",Auth:"",Throttle:""},
   // Software
-  software:{Version:"",License:"",Port:"",Platform:""},
-  api:{Endpoint:"",Method:"REST",Auth:"Bearer",Version:"v1"},
+  software:{IP:"",Version:"",License:"",Port:"",Platform:""},
+  api:{IP:"",Endpoint:"",Method:"REST",Auth:"Bearer",Version:"v1"},
   database:{IP:"",Domain:"",Port:"5432",Engine:"PostgreSQL",Schema:"",HA:"",Backup:""},
-  service:{URL:"",Status:"Running",Port:"",SLA:""},
-  microservice:{Language:"",Port:"",Version:"",Replicas:""},
-  cache:{Type:"Redis",Port:"6379",MaxMem:"",Eviction:"LRU"},
-  broker:{Type:"Kafka",Port:"9092",Topics:"",Retention:"7d"},
+  service:{IP:"",URL:"",Status:"Running",Port:"",SLA:""},
+  microservice:{IP:"",Language:"",Port:"",Version:"",Replicas:""},
+  cache:{IP:"",Type:"Redis",Port:"6379",MaxMem:"",Eviction:"LRU"},
+  broker:{IP:"",Type:"Kafka",Port:"9092",Topics:"",Retention:"7d"},
   // Security
-  ids:{Make:"",Model:"",Mode:"Inline",Ruleset:"Snort"},
-  waf:{Provider:"",Mode:"Block",Rules:"OWASP",SSL:"Yes"},
+  ids:{IP:"",Make:"",Model:"",Mode:"Inline",Ruleset:"Snort"},
+  waf:{IP:"",Provider:"",Mode:"Block",Rules:"OWASP",SSL:"Yes"},
   vault:{Type:"HashiCorp Vault",Auth:"",Secrets:"",HA:""},
   siem:{Software:"",Sources:"",Retention:"90d",Alerts:""},
   dlp:{Provider:"",Mode:"",Channels:"",Policy:""},
@@ -1162,15 +1162,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         } else { setEditMode(v=>!v); }
         return;
       }
-      // N = quick add note to selected node
+      // N = quick add inline note to selected node (same as clicking + note button)
       if(e.code==="KeyN"&&!isInput&&canEdit&&editMode&&selected.size===1){
+        e.preventDefault();
         const nid=[...selected][0];
         const nd=nodesRef.current.find(n=>n.id===nid);
         if(nd){
-          const nn={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false};
-          const arr=[...(Array.isArray(nd.notes)?nd.notes:[]),nn];
+          const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false,editing:true};
+          const arr=[...(Array.isArray(nd.notes)?nd.notes:[]),newNote];
           updateNotes(nid,arr);
-          setNodePopup({nodeId:nid,tab:'notes'});
+          updateNode(nid,{showNotes:true,expandedNoteIds:[...(nd.expandedNoteIds||[]),newNote.id]});
+          // Auto-focus the new note title after React renders
+          setTimeout(()=>setInlineEditField({noteId:newNote.id,field:'noteTitle'}),60);
         }
         return;
       }
@@ -2582,8 +2585,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false,editing:true};
                     const arr=[...(Array.isArray(node.notes)?node.notes:[]),newNote];
                     updateNotes(node.id,arr);
-                    // Show notes inline and open for editing
-                    updateNode(node.id,{showNotes:true});
+                    updateNode(node.id,{showNotes:true,expandedNoteIds:[...(node.expandedNoteIds||[]),newNote.id]});
+                    // Auto-focus the new note's title field
+                    setTimeout(()=>setInlineEditField({noteId:newNote.id,field:'noteTitle'}),60);
                   }}
                   title="Add note (opens editor)"
                   style={{display:"flex",alignItems:"center",gap:2,background:"none",border:`1px solid ${t.color}40`,
@@ -2655,12 +2659,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                                 {nt.sensitive?"🔒 Sensitive":nt.title||"Untitled note"}
                               </span>
                               {canEdit&&editMode&&!nt.sensitive&&(
-                                <button className="nn-pencil-btn"
-                                  onMouseDown={e=>e.stopPropagation()}
-                                  onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteTitle'});}}
-                                  title="Edit note title (click ✎)"
-                                  style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
-                                    flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                                <>
+                                  <button className="nn-pencil-btn"
+                                    onMouseDown={e=>e.stopPropagation()}
+                                    onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteTitle'});}}
+                                    title="Edit note title"
+                                    style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
+                                      flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                                  <button className="nn-pencil-btn"
+                                    onMouseDown={e=>e.stopPropagation()}
+                                    onClick={e=>{
+                                      e.stopPropagation();
+                                      const arr=(Array.isArray(node.notes)?node.notes:[]).filter(n=>n.id!==nt.id);
+                                      updateNotes(node.id,arr);
+                                    }}
+                                    title="Delete note"
+                                    style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
+                                      flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:10,color:"var(--danger)",lineHeight:1}}>✕</button>
+                                </>
                               )}
                             </div>
                           )}
@@ -3002,7 +3018,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">v5.24.0✦</button>
+              title="What's new">v5.24.1✦</button>
             <button onClick={logout}
               style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
                 border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}

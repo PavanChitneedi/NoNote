@@ -175,12 +175,25 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const handleExportNoNote = async (map) => {
     try {
       const d = await apiFetch(`/maps/${map.id}`);
+      // DB rows use node_type/custom_props — map to frontend format for .nonote compatibility
+      const nodes = (d.nodes || []).map(n => ({
+        id: n.id, type: n.node_type || n.type, title: n.title,
+        x: n.x, y: n.y, w: n.w, h: n.h,
+        description: n.description || "",
+        properties: typeof n.properties === "string" ? JSON.parse(n.properties||"{}") : (n.properties||{}),
+        customProps: typeof n.custom_props === "string" ? JSON.parse(n.custom_props||"{}") : (n.custom_props||n.customProps||{}),
+        notes: (() => { try { return JSON.parse(n.notes||"[]"); } catch { return []; } })(),
+      }));
+      const edges = (d.edges || []).map(e => ({
+        id: e.id, from: e.from_node || e.from, to: e.to_node || e.to,
+        label: e.label||"", style: e.style||"arrow", color: e.color||"#58a6ff",
+        fromAnchor: e.from_anchor, toAnchor: e.to_anchor, midOff: e.mid_off,
+      }));
       const bundle = {
         version:1, app:"NoNote",
         title: d.map?.title || map.title,
         exported: new Date().toISOString(),
-        nodes: d.nodes || [],
-        edges: d.edges || [],
+        nodes, edges,
       };
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"}));
