@@ -1,6 +1,7 @@
 import { useState, useEffect, Component } from "react";
 import { AuthProvider, useAuth } from "./context/AuthContext.jsx";
 import { ThemeProvider, useTheme, THEMES } from "./context/ThemeContext.jsx";
+import { SkinProvider } from "./context/SkinContext.jsx";
 import { DesignProvider } from "./context/DesignContext.jsx";
 import LoginPage    from "./components/LoginPage.jsx";
 import Dashboard    from "./components/Dashboard.jsx";
@@ -37,6 +38,7 @@ class MobileErrorBoundary extends Component {
 
 function AppInner() {
   const { user, loading, logout } = useAuth();
+  const { setThemeName } = useTheme();
   const { themeName }             = useTheme();
   const [view,         setView]         = useState({ page:"dashboard", mapId:null });
   const [isMobile, setIsMobile] = useState(false);
@@ -70,6 +72,15 @@ function AppInner() {
     return () => window.removeEventListener("popstate", onPop);
   }, []);
 
+  // Handle skin force-theme events
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && setThemeName) setThemeName(e.detail);
+    };
+    window.addEventListener("nn-skin-force-theme", handler);
+    return () => window.removeEventListener("nn-skin-force-theme", handler);
+  }, []);
+
   if (loading) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"var(--text4)" }}>
@@ -88,9 +99,11 @@ function AppInner() {
 
       {/* ── Global header (dashboard + admin) ── */}
       {showHeader && (
-        <div style={{
-          height:"var(--topbar-h)", background:"var(--bg2)",
-          borderBottom:"1px solid var(--border2)",
+        <div className="nn-topbar" style={{
+          height:"var(--topbar-h)", background:"var(--topbar-bg,var(--bg2))",
+          borderBottom:"var(--topbar-border,1px solid var(--border2))",
+          backdropFilter:"var(--topbar-blur,none)",
+          WebkitBackdropFilter:"var(--topbar-blur,none)",
           display:"flex", alignItems:"center",
           padding:"0 20px", flexShrink:0,
           position:"sticky", top:0, zIndex:20
@@ -161,11 +174,13 @@ const hBtn = {
 export default function App() {
   return (
     <ThemeProvider>
-      <DesignProvider>
-        <AuthProvider>
-          <AppInner />
-        </AuthProvider>
-      </DesignProvider>
+      <SkinProvider>
+        <DesignProvider>
+          <AuthProvider>
+            <AppInner />
+          </AuthProvider>
+        </DesignProvider>
+      </SkinProvider>
     </ThemeProvider>
   );
 }

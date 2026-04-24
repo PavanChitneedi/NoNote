@@ -345,8 +345,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
     <div style={{ display:"flex", minHeight:"calc(100vh - var(--topbar-h))", background:"var(--bg)" }}>
 
       {/* ── Left Sidebar ── */}
-      <div style={{ width:220, flexShrink:0, background:"var(--bg2)",
-        borderRight:"1px solid var(--border2)", display:"flex", flexDirection:"column",
+      <div className="nn-sidebar" style={{ width:"var(--sidebar-w,220px)", flexShrink:0,
+        background:"var(--sidebar-bg,var(--bg2))",
+        borderRight:"var(--sidebar-border,1px solid var(--border2))",
+        backdropFilter:"var(--sidebar-blur,none)",
+        WebkitBackdropFilter:"var(--sidebar-blur,none)",
+        display:"flex", flexDirection:"column",
         padding:"24px 0", position:"sticky", top:0, height:"calc(100vh - var(--topbar-h))",
         overflowY:"auto" }}>
         {/* User block */}

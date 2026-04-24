@@ -102,6 +102,59 @@ export default function ThemePicker({
         {/* Content */}
         <div style={{ flex:1, overflow:"auto", padding:"16px 20px" }}>
 
+          {/* ── Skins ── */}
+          {tab==="skins" && (
+            <div>
+              <div style={{ fontSize:11, color:"var(--text4)", marginBottom:14, lineHeight:1.6 }}>
+                Skins change the entire visual identity — typography, layout, shadows, and effects. Not just colors.
+              </div>
+              <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:10 }}>
+                {SKIN_KEYS.map(key => {
+                  const s = SKINS[key];
+                  const active = skinName === key;
+                  return (
+                    <div key={key}
+                      onClick={() => setSkinName(key)}
+                      style={{
+                        borderRadius:"var(--radius-md)", cursor:"pointer", overflow:"hidden",
+                        border:`2px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                        background: active ? "var(--accent2)14" : "var(--bg3)",
+                        transition:"var(--transition-all)", userSelect:"none",
+                      }}
+                      onMouseEnter={e => { if(!active) e.currentTarget.style.borderColor="var(--text4)"; }}
+                      onMouseLeave={e => { if(!active) e.currentTarget.style.borderColor="var(--border)"; }}
+                    >
+                      <div style={{ height:48, display:"flex", position:"relative", overflow:"hidden" }}>
+                        {s.palette.map((col, i) => <div key={i} style={{ flex:1, background:col }} />)}
+                        <div style={{ position:"absolute", inset:0, display:"flex", alignItems:"center", justifyContent:"center", fontSize:26 }}>{s.icon}</div>
+                        {active && <div style={{ position:"absolute", top:6, right:8, fontSize:14, color:"#fff", textShadow:"0 1px 4px rgba(0,0,0,.8)" }}>✓</div>}
+                      </div>
+                      <div style={{ padding:"9px 12px" }}>
+                        <div style={{ fontSize:12, fontWeight:700, color:"var(--text)", marginBottom:3 }}>{s.name}</div>
+                        <div style={{ fontSize:10, color:"var(--text4)", marginBottom:5, lineHeight:1.45 }}>{s.desc}</div>
+                        <div style={{ display:"flex", gap:4, flexWrap:"wrap" }}>
+                          {s.tags.map(t => (
+                            <span key={t} style={{ fontSize:9, padding:"1px 6px", borderRadius:10,
+                              background:"var(--bg)", border:"1px solid var(--border)", color:"var(--text4)" }}>
+                              {t}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {SKINS[skinName]?.forceTheme && (
+                <div style={{ marginTop:12, padding:"8px 12px", background:"var(--accent2)18",
+                  border:"1px solid var(--accent2)44", borderRadius:"var(--radius-sm)",
+                  fontSize:10, color:"var(--accent)" }}>
+                  💡 <strong>{SKINS[skinName].name}</strong> skin works best with the <em>{SKINS[skinName].forceTheme}</em> color theme (auto-applied on first select).
+                </div>
+              )}
+            </div>
+          )}
+
           {/* ── Global Theme ── */}
           {tab==="global" && (
             <>
