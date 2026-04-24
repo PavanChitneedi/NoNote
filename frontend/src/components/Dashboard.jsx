@@ -7,6 +7,16 @@ import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
 
+const MAP_ACCENT_COLORS = ["#6C63FF","#FF6C2F","#0095D5","#16a34a","#E67C1C","#be185d","#0891b2","#7c3aed","#dc2626","#059669"];
+const MAP_ICON_OPTIONS   = ["🗺","🏠","🌐","⚙","🔒","☁","💾","📊","🔌","🧪","🏢","📱","🚀","🎯","📡"];
+const DEFAULT_GROUPS     = ["Personal","Work","Infrastructure","Network","Security","Archive"];
+
+function getMapMeta(id)       { try{return JSON.parse(localStorage.getItem("nn_mm_"+id)||"{}");}catch{return {};} }
+function setMapMeta(id, meta) { localStorage.setItem("nn_mm_"+id, JSON.stringify(meta)); }
+function mapColor(id,idx)     { return getMapMeta(id).color || MAP_ACCENT_COLORS[idx%MAP_ACCENT_COLORS.length]; }
+function mapGroup(id)         { return getMapMeta(id).group || ""; }
+function mapIcon(id)          { return getMapMeta(id).icon  || "🗺"; }
+
 // ── Inline Share Modal (shown from dashboard without navigating away) ────
 function ShareModal({ map, onClose }) {
   const [email, setEmail]         = useState("");
@@ -117,7 +127,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
   const [shareMap,  setShareMap]  = useState(null);
   const { user, logout } = useAuth();
   const [maps, setMaps]       = useState([]);
-  const [dashTab, setDashTab] = useState("maps"); // "maps" | "live"
+  const [dashTab, setDashTab]     = useState("maps");
+  const [viewMode, setViewMode]   = useState("grid");   // "grid" | "list"
+  const [activeGroup, setGroup]   = useState("all");
+  const [mapSearch, setMapSearch] = useState("");
+  const [editingMeta, setEditingMeta] = useState(null); // mapId being meta-edited
+  const [, forceUpdate] = useState(0); // re-render after meta change
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle]= useState("");
   const [showNew, setShowNew] = useState(false);
@@ -560,49 +575,222 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes }) {
                 </div>
               </>
             )}
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(220px,1fr))", gap:12 }}>
-              {maps.map(map=>(
-                <div key={map.id}
-                  data-tut={maps.indexOf(map)===0?"map-card":undefined}
-                  onClick={()=>onOpenMap(map.id)}
-                  onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
-                  style={{ background:"var(--bg2)", border:`1px solid var(--border2)`, borderRadius:10, padding:"16px 18px", cursor:"pointer", transition:"border-color .15s, transform .12s, box-shadow .15s", position:"relative" }}
-                  onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent)";e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow="0 4px 20px rgba(0,0,0,.2)";}}
-                  onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border2)";e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}
-                >
-                  <div style={{ fontSize:14, fontWeight:700, color:"var(--text)", marginBottom:5, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap", paddingRight:26 }}>
-                    {map.title}
+{(()=>{
+              // Filter + group maps
+              const allGroups = [...new Set(maps.map(m=>mapGroup(m.id)).filter(Boolean))];
+              const filtered  = maps.filter(m=>{
+                const matchGroup = activeGroup==="all" || mapGroup(m.id)===activeGroup;
+                const matchSearch = !mapSearch || m.title.toLowerCase().includes(mapSearch.toLowerCase());
+                return matchGroup && matchSearch;
+              });
+              const grouped = activeGroup==="all" && !mapSearch
+                ? [...new Set(["", ...allGroups])].reduce((acc,g)=>{
+                    const items=maps.filter(m=>mapGroup(m.id)===(g||""));
+                    if(items.length) acc.push({group:g||"Ungrouped",items});
+                    return acc;
+                  },[])
+                : [{group:"",items:filtered}];
+
+              return <>
+                {/* ── Toolbar ── */}
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
+                  {/* Search */}
+                  <input value={mapSearch} onChange={e=>setMapSearch(e.target.value)} placeholder="Search maps…"
+                    style={{flex:"0 0 200px",padding:"6px 10px",background:"var(--bg3)",border:"1px solid var(--border)",
+                      borderRadius:7,color:"var(--text)",fontSize:11,outline:"none",fontFamily:"var(--font-ui)"}}/>
+                  {/* Group pills */}
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:1}}>
+                    {[["all","All"],...allGroups.map(g=>[g,g])].map(([id,lbl])=>(
+                      <button key={id} onClick={()=>setGroup(id)}
+                        style={{fontSize:10,padding:"4px 10px",border:"none",borderRadius:6,cursor:"pointer",
+                          fontFamily:"var(--font-ui)",fontWeight:600,
+                          background:activeGroup===id?"var(--accent2)":"var(--bg3)",
+                          color:activeGroup===id?"#fff":"var(--text4)"}}>
+                        {lbl} <span style={{opacity:.6}}>({id==="all"?maps.length:maps.filter(m=>mapGroup(m.id)===id).length})</span>
+                      </button>
+                    ))}
                   </div>
-                  {map.description&&<div style={{ fontSize:11, color:"var(--text3)", marginBottom:7, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{map.description}</div>}
-                  <div style={{ display:"flex", gap:8, alignItems:"center", flexWrap:"wrap" }}>
-                    <span style={{ fontSize:10, color:"var(--text4)" }}>{map.node_count||0} nodes</span>
-                    {/* Shared-to-me badge */}
-                    {map.permission&&map.owner_id!==user?.id&&(
-                      <span style={{fontSize:9,color:"var(--accent)",background:"var(--accent)15",
-                        padding:"1px 6px",borderRadius:4,border:"1px solid var(--accent)30",fontWeight:600}}>
-                        👁 {map.permission} · {map.owner_name?"by "+map.owner_name:"shared"}
-                      </span>
-                    )}
-                    {/* Owner with collaborators */}
-                    {(map.owner_id===user?.id||!map.permission)&&(map.collab_count>0)&&(
-                      <span style={{fontSize:9,color:"#4d9be6",background:"#1565C018",
-                        padding:"1px 6px",borderRadius:4,border:"1px solid #1565C030",fontWeight:600}}>
-                        👥 Shared · {map.collab_count}
-                      </span>
-                    )}
-                    {map.is_public&&<span style={{ fontSize:10, color:"var(--success)", background:"var(--success)18", padding:"1px 7px", borderRadius:4 }}>public</span>}
+                  {/* View toggle */}
+                  <div style={{display:"flex",gap:2,background:"var(--bg3)",borderRadius:6,padding:2,border:"1px solid var(--border)",flexShrink:0}}>
+                    {[["grid","⊞"],["list","☰"]].map(([v,icon])=>(
+                      <button key={v} onClick={()=>setViewMode(v)}
+                        style={{fontSize:14,padding:"3px 8px",border:"none",borderRadius:4,cursor:"pointer",
+                          background:viewMode===v?"var(--accent2)":"transparent",
+                          color:viewMode===v?"#fff":"var(--text4)"}}>
+                        {icon}
+                      </button>
+                    ))}
                   </div>
-                  <div style={{ marginTop:8, fontSize:10, color:"var(--text4)" }}>Updated {new Date(map.updated_at).toLocaleDateString()}</div>
-                  {/* ⋮ options button */}
-                  <button
-                    onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
-                    style={{ position:"absolute", top:10, right:10, background:"none", border:"1px solid transparent", borderRadius:6, color:"var(--text4)", cursor:"pointer", fontSize:16, lineHeight:1, padding:"2px 6px", transition:"all .12s" }}
-                    onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--border)";e.currentTarget.style.color="var(--text2)";}}
-                    onMouseLeave={e=>{e.currentTarget.style.borderColor="transparent";e.currentTarget.style.color="var(--text4)";}}
-                    title="Map options">⋮</button>
                 </div>
-              ))}
-            </div>
+
+                {/* ── Map meta editor modal ── */}
+                {editingMeta&&(()=>{
+                  const meta=getMapMeta(editingMeta);
+                  return <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center"}}
+                    onClick={()=>setEditingMeta(null)}>
+                    <div style={{background:"var(--bg2)",borderRadius:12,padding:20,width:380,border:"1px solid var(--border)",boxShadow:"0 16px 48px rgba(0,0,0,.6)"}}
+                      onClick={e=>e.stopPropagation()}>
+                      <div style={{fontSize:13,fontWeight:700,color:"var(--text)",marginBottom:14}}>Customize Map</div>
+                      {/* Group input */}
+                      <div style={{marginBottom:12}}>
+                        <div style={{fontSize:10,color:"var(--text4)",marginBottom:4,fontWeight:700}}>GROUP</div>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
+                          {DEFAULT_GROUPS.map(g=>(
+                            <button key={g} onClick={()=>{setMapMeta(editingMeta,{...meta,group:g});forceUpdate(n=>n+1);}}
+                              style={{fontSize:10,padding:"3px 9px",border:`1px solid ${meta.group===g?"var(--accent2)":"var(--border)"}`,
+                                borderRadius:6,cursor:"pointer",background:meta.group===g?"var(--accent2)":"var(--bg3)",
+                                color:meta.group===g?"#fff":"var(--text3)",fontFamily:"var(--font-ui)"}}>
+                              {g}
+                            </button>
+                          ))}
+                        </div>
+                        <input value={meta.group||""} onChange={e=>{setMapMeta(editingMeta,{...meta,group:e.target.value});forceUpdate(n=>n+1);}}
+                          placeholder="Custom group name…"
+                          style={{width:"100%",boxSizing:"border-box",padding:"6px 10px",background:"var(--bg3)",
+                            border:"1px solid var(--border)",borderRadius:7,color:"var(--text)",fontSize:11,outline:"none"}}/>
+                      </div>
+                      {/* Icon picker */}
+                      <div style={{marginBottom:12}}>
+                        <div style={{fontSize:10,color:"var(--text4)",marginBottom:6,fontWeight:700}}>ICON</div>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          {MAP_ICON_OPTIONS.map(ic=>(
+                            <button key={ic} onClick={()=>{setMapMeta(editingMeta,{...meta,icon:ic});forceUpdate(n=>n+1);}}
+                              style={{fontSize:18,padding:"4px 8px",border:`2px solid ${meta.icon===ic?"var(--accent2)":"var(--border)"}`,
+                                borderRadius:7,cursor:"pointer",background:meta.icon===ic?"var(--accent2)22":"var(--bg3)"}}>
+                              {ic}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      {/* Color picker */}
+                      <div style={{marginBottom:16}}>
+                        <div style={{fontSize:10,color:"var(--text4)",marginBottom:6,fontWeight:700}}>ACCENT COLOR</div>
+                        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+                          {MAP_ACCENT_COLORS.map(col=>(
+                            <button key={col} onClick={()=>{setMapMeta(editingMeta,{...meta,color:col});forceUpdate(n=>n+1);}}
+                              style={{width:24,height:24,borderRadius:"50%",background:col,border:`2px solid ${meta.color===col?"white":"transparent"}`,
+                                cursor:"pointer",boxShadow:meta.color===col?"0 0 0 2px "+col:"none"}}>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <button onClick={()=>setEditingMeta(null)}
+                        style={{width:"100%",padding:"8px",background:"var(--accent2)",border:"none",borderRadius:8,
+                          color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>
+                        Done
+                      </button>
+                    </div>
+                  </div>;
+                })()}
+
+                {/* ── Groups + Cards ── */}
+                {grouped.map(({group,items})=>(
+                  <div key={group} style={{marginBottom:28}}>
+                    {group&&group!=="Ungrouped"&&<div style={{fontSize:11,fontWeight:700,color:"var(--text4)",
+                      letterSpacing:1.5,marginBottom:10,display:"flex",alignItems:"center",gap:8}}>
+                      <span style={{flex:1,height:1,background:"var(--border2)"}}/>
+                      <span style={{padding:"2px 10px",background:"var(--bg3)",borderRadius:10,border:"1px solid var(--border2)"}}>{group.toUpperCase()}</span>
+                      <span style={{flex:1,height:1,background:"var(--border2)"}}/>
+                    </div>}
+
+                    {/* Grid view */}
+                    {viewMode==="grid"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(210px,1fr))",gap:12}}>
+                      {items.map((map,idx)=>{
+                        const accent=mapColor(map.id,maps.indexOf(map));
+                        const icon=mapIcon(map.id);
+                        return <div key={map.id}
+                          data-tut={maps.indexOf(map)===0?"map-card":undefined}
+                          onClick={()=>onOpenMap(map.id)}
+                          onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
+                          style={{background:"var(--bg2)",border:"1px solid var(--border2)",borderRadius:10,
+                            cursor:"pointer",position:"relative",overflow:"hidden",
+                            transition:"transform .12s, box-shadow .15s",
+                            borderTop:`3px solid ${accent}`}}
+                          onMouseEnter={e=>{e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.boxShadow=`0 6px 24px rgba(0,0,0,.25)`;}}
+                          onMouseLeave={e=>{e.currentTarget.style.transform="translateY(0)";e.currentTarget.style.boxShadow="none";}}>
+                          {/* Color band + icon */}
+                          <div style={{padding:"14px 14px 10px",paddingRight:32}}>
+                            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                              <span style={{fontSize:20,lineHeight:1}}>{icon}</span>
+                              <div style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",
+                                textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1}}>{map.title}</div>
+                            </div>
+                            {map.description&&<div style={{fontSize:10,color:"var(--text3)",marginBottom:6,
+                              overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{map.description}</div>}
+                            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:8,flexWrap:"wrap"}}>
+                              <span style={{fontSize:10,fontWeight:600,color:accent,background:accent+"18",
+                                padding:"1px 7px",borderRadius:4}}>{map.node_count||0} nodes</span>
+                              {map.permission&&map.owner_id!==user?.id&&(
+                                <span style={{fontSize:9,color:"var(--accent)",background:"var(--accent)15",padding:"1px 6px",borderRadius:4,fontWeight:600}}>
+                                  👁 shared
+                                </span>
+                              )}
+                              {(map.owner_id===user?.id||!map.permission)&&map.collab_count>0&&(
+                                <span style={{fontSize:9,color:"#4d9be6",background:"#1565C018",padding:"1px 6px",borderRadius:4,fontWeight:600}}>
+                                  👥 {map.collab_count}
+                                </span>
+                              )}
+                              {map.is_public&&<span style={{fontSize:9,color:"var(--success)",background:"var(--success)18",padding:"1px 6px",borderRadius:4}}>public</span>}
+                            </div>
+                            <div style={{marginTop:8,fontSize:9,color:"var(--text4)"}}>
+                              {new Date(map.updated_at).toLocaleDateString()}
+                            </div>
+                          </div>
+                          {/* Options + customize */}
+                          <div style={{position:"absolute",top:8,right:6,display:"flex",gap:2}}>
+                            <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
+                              style={{fontSize:12,background:"none",border:"none",color:"var(--text4)",cursor:"pointer",padding:"2px 5px",opacity:.6}}
+                              title="Customize">✎</button>
+                            <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
+                              style={{fontSize:15,background:"none",border:"none",color:"var(--text4)",cursor:"pointer",padding:"2px 4px"}}
+                              title="Options">⋮</button>
+                          </div>
+                        </div>;
+                      })}
+                    </div>}
+
+                    {/* List view */}
+                    {viewMode==="list"&&<div style={{display:"flex",flexDirection:"column",gap:4}}>
+                      {items.map((map,idx)=>{
+                        const accent=mapColor(map.id,maps.indexOf(map));
+                        const icon=mapIcon(map.id);
+                        return <div key={map.id}
+                          onClick={()=>onOpenMap(map.id)}
+                          onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
+                          style={{display:"grid",gridTemplateColumns:"28px 1fr auto auto auto 90px 90px",
+                            alignItems:"center",gap:10,padding:"9px 14px",
+                            background:"var(--bg2)",borderRadius:8,cursor:"pointer",
+                            borderLeft:`3px solid ${accent}`,
+                            transition:"background .1s, box-shadow .1s"}}
+                          onMouseEnter={e=>{e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,.15)";}}
+                          onMouseLeave={e=>{e.currentTarget.style.background="var(--bg2)";e.currentTarget.style.boxShadow="none";}}>
+                          <span style={{fontSize:16}}>{icon}</span>
+                          <div>
+                            <div style={{fontSize:13,fontWeight:600,color:"var(--text)"}}>{map.title}</div>
+                            {map.description&&<div style={{fontSize:10,color:"var(--text4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{map.description}</div>}
+                          </div>
+                          <span style={{fontSize:10,color:accent,fontWeight:600,whiteSpace:"nowrap"}}>{map.node_count||0} nodes</span>
+                          {map.collab_count>0?<span style={{fontSize:9,color:"#4d9be6"}}>👥 {map.collab_count}</span>:<span/>}
+                          {map.is_public?<span style={{fontSize:9,color:"var(--success)"}}>public</span>:<span/>}
+                          <span style={{fontSize:10,color:"var(--text4)",whiteSpace:"nowrap"}}>{new Date(map.updated_at).toLocaleDateString()}</span>
+                          <div style={{display:"flex",gap:2,justifyContent:"flex-end"}}>
+                            <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
+                              style={{fontSize:11,background:"none",border:"none",color:"var(--text4)",cursor:"pointer",padding:"2px 5px"}}
+                              title="Customize">✎</button>
+                            <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
+                              style={{fontSize:14,background:"none",border:"none",color:"var(--text4)",cursor:"pointer",padding:"2px 4px"}}
+                              title="Options">⋮</button>
+                          </div>
+                        </div>;
+                      })}
+                    </div>}
+                  </div>
+                ))}
+                {filtered.length===0&&<div style={{textAlign:"center",padding:"50px 0",color:"var(--text4)",fontSize:13}}>
+                  No maps match your search.
+                </div>}
+              </>;
+            })()}
           </>
         )}
       </div>
