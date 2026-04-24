@@ -1,6 +1,17 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.29.0",date:"Apr 2026",items:[
+    "Fix: [object Object] in Properties tab — arrays (Services, Ports) are now excluded from template property inputs in both the popup and the side panel",
+    "New node types: Docker Engine, Docker Container, Docker Compose, Virtual Machine (VM), LXC Container — all in correct categories with full property defaults",
+    "Auto-populate Services: connecting a service-type node (Docker, VM, LXC, Container, App, API, DB, etc.) to a host node (Server, Proxmox, Unraid, ESXi, Hyper-V, NAS, TrueNAS, RPi, Desktop, Workstation, Docker Engine, K8s) instantly adds it to the host's Services panel",
+    "Auto-sync: when the service node title, IP, port, image, memory or CPU changes, its entry in the host's Services panel updates automatically",
+    "Auto-remove: disconnecting an edge removes the auto-populated service entry from the host",
+    "Auto entries show ⚡ auto badge linked to source node name — manual entries are never touched",
+    "Docker Engine node also acts as a host — connecting Docker Containers to it populates its Services panel",
+    "K8s and Docker Compose nodes also act as hosts for container/service nodes",
+    "Auto-populate does not push to undo/redo history — clean workflow",
+  ]},
   {v:"v5.28.0",date:"Apr 2026",items:[
     "New node types: Proxmox VE, VMware ESXi, Hyper-V Host, Unraid Server, TrueNAS, FreeNAS (all with full defaults)",
     "Services/VMs/Containers panel on server, proxmox, unraid, esxi, hyperv, appserver, nas, truenas, rpi, desktop, workstation — add Docker/VM/LXC/App services with IP, port, image/OS, memory, CPU, status",

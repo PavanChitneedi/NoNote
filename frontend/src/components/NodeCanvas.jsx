@@ -17,7 +17,8 @@ import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,P
   FolderArchive,Disc,ArchiveRestore,Film,Smartphone,Tablet,CircuitBoard,Binary,Waves,
   Thermometer,Camera,Factory,DoorOpen,Wind,Cloud,Braces,ListOrdered,Share2,Package,
   Hexagon,Box,ArrowUpDown,PackageOpen,Link2,Library,Power,Puzzle,Gauge,MessageCircle,
-  BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban } from "lucide-react";
+  BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban,
+  Boxes,AppWindow,Component,Layers2,Container,MemoryStick } from "lucide-react";
 import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
@@ -153,6 +154,12 @@ const NT = {
   unraid:      { label:"Unraid Server",       color:"#E67C1C", icon:LayoutGrid,   cat:"Servers" },
   truenas:     { label:"TrueNAS",             color:"#0095D5", icon:HardDrive,    cat:"Storage" },
   freenas:     { label:"FreeNAS (Legacy)",    color:"#1565C0", icon:FolderArchive,cat:"Storage" },
+  // ── Virtualisation & Containers ──────────────────────────────
+  vm:          { label:"Virtual Machine",     color:"#8E24AA", icon:AppWindow,    cat:"Servers" },
+  lxc:         { label:"LXC Container",       color:"#00897B", icon:Component,    cat:"Servers" },
+  docker:      { label:"Docker Engine",       color:"#2496ED", icon:Container,    cat:"Software" },
+  dockercont:  { label:"Docker Container",    color:"#1A7CC1", icon:Boxes,        cat:"Software" },
+  compose:     { label:"Docker Compose",      color:"#003F8E", icon:Layers2,      cat:"Software" },
 }
 // sidebar category order
 const SIDEBAR_CATS = ["Notes","Planning","Knowledge","General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
@@ -386,6 +393,12 @@ const DP = {
   unraid:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",OS:"Unraid 7",CPU:"",RAM:"",ArraySize:"",Parity:"",Services:[{id:"svc1",name:"Ubuntu VM",type:"VM",ip:"",port:"",status:"Running",image:"",os:"Ubuntu 22.04",memory:"4GB",cpu:"2",notes:""},{id:"svc2",name:"nginx",type:"LXC",ip:"",port:"80",status:"Running",image:"",os:"Debian",memory:"512MB",cpu:"1",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1 (bonded)",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"IPMI",type:"iDRAC/iLO",connected:"",ip:""}]},
   truenas:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",Version:"",Capacity:"",RAID:"RAIDZ2",Shares:"",iSCSI:"",Services:[{id:"svc1",name:"",type:"App",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""},{id:"hba1",label:"HBA 1",type:"HBA",connected:"",ip:""}]},
   freenas:{IP:"",Domain:"",Subnet:"",Version:"",Capacity:"",RAID:"ZFS RAIDZ",Shares:""},
+  // Virtualisation & Containers
+  vm:{IP:"",OS:"Ubuntu 22.04",RAM:"4GB",CPU:"2",Disk:"50GB",Snapshot:"",Hypervisor:"",Status:"Running"},
+  lxc:{IP:"",OS:"Debian",RAM:"512MB",CPU:"1",Disk:"10GB",Unprivileged:"Yes",Status:"Running"},
+  docker:{IP:"",Version:"",Compose:"Yes",Swarm:"No",Networks:"bridge,host",Volumes:"",Services:[{id:"svc1",name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}]},
+  dockercont:{Image:"",Tag:"latest",Port:"",IP:"",Memory:"256MB",CPU:"1",Env:"",Volumes:"",Network:"bridge",Status:"Running"},
+  compose:{File:"docker-compose.yml",Services:"",Networks:"",Volumes:"",Version:"3.8"},
   idea:{Content:"",Tags:"",Status:"New"},
   topic:{Content:"",Parent:"",Tags:""},
   concept:{Content:"",RelatedTo:"",Tags:""},
@@ -1223,6 +1236,65 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const edgesRef = useRef([]);
   useEffect(()=>{ nodesRef.current = nodes; },[nodes]);
   useEffect(()=>{ edgesRef.current = edges; },[edges]);
+  // ── Auto-populate Services from connected canvas nodes ───────
+  const HOST_TYPES = new Set(['server','proxmox','unraid','esxi','hyperv','appserver','nas','truenas','rpi','desktop','workstation','docker','k8s','compose']);
+  const SVC_TYPES  = new Set(['docker','dockercont','vm','lxc','compose','container','software','api','database','service','microservice','cache','broker','lambda','k8s','webserver','appserver','dbserver','fileserver','mailserver','server','nas','rpi']);
+  const SVC_TYPE_LABEL = {docker:'Docker',dockercont:'Docker',vm:'VM',lxc:'LXC',compose:'Docker',container:'Docker',software:'App',api:'API',database:'Database',service:'Service',microservice:'Service',cache:'Service',broker:'Service',lambda:'App',k8s:'App',webserver:'Web App',appserver:'App',dbserver:'Database',fileserver:'Service',mailserver:'Service',server:'Service',nas:'Service',rpi:'Service'};
+  useEffect(()=>{
+    applyNodes(prev=>{
+      const nodeById = id => prev.find(n=>n.id===id);
+      const allIds = new Set(prev.map(n=>n.id));
+      let changed = false;
+      const next = prev.map(host=>{
+        if(!HOST_TYPES.has(host.type)||!Array.isArray(host.properties?.Services)) return host;
+        // connected service-type nodes via edges
+        const connSvcIds = edges
+          .filter(e=>e.from===host.id||e.to===host.id)
+          .map(e=>e.from===host.id?e.to:e.from)
+          .filter(id=>{ const n=nodeById(id); return n&&SVC_TYPES.has(n.type)&&n.id!==host.id; });
+        // split existing services: manual (random ids) vs auto (node ids)
+        const manual  = host.properties.Services.filter(s=>!allIds.has(s.id));
+        const autoOld = host.properties.Services.filter(s=>allIds.has(s.id));
+        // keep auto entries still connected; update their name/props from node
+        const keep = autoOld
+          .filter(s=>connSvcIds.includes(s.id))
+          .map(s=>{ const n=nodeById(s.id); if(!n)return s;
+            const updated={...s,name:n.title,
+              ip:n.properties?.IP||s.ip,
+              port:n.properties?.Port||n.properties?.port||s.port,
+              image:n.properties?.Image||n.properties?.image||s.image,
+              os:n.properties?.OS||s.os,
+              memory:n.properties?.RAM||n.properties?.Memory||n.properties?.memory||s.memory,
+              cpu:n.properties?.CPU||n.properties?.cpu||s.cpu,
+            };
+            return JSON.stringify(updated)===JSON.stringify(s)?s:updated;
+          });
+        const keepIds = new Set(keep.map(s=>s.id));
+        // add newly connected service nodes
+        const added = connSvcIds
+          .filter(id=>!keepIds.has(id))
+          .map(id=>{ const n=nodeById(id); return {
+            id, name:n.title,
+            type:SVC_TYPE_LABEL[n.type]||'Service',
+            ip:n.properties?.IP||'',
+            port:n.properties?.Port||n.properties?.port||'',
+            status:'Running',
+            image:n.properties?.Image||n.properties?.image||'',
+            os:n.properties?.OS||'',
+            memory:n.properties?.RAM||n.properties?.Memory||n.properties?.memory||'',
+            cpu:n.properties?.CPU||n.properties?.cpu||'',
+            notes:n.description||'',
+          };});
+        const newSvcs=[...manual,...keep,...added];
+        if(JSON.stringify(newSvcs)===JSON.stringify(host.properties.Services)) return host;
+        changed=true;
+        return {...host,properties:{...host.properties,Services:newSvcs}};
+      });
+      return changed?next:prev;
+    },true); // skipHistory — auto-populate doesn't pollute undo stack
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  },[edges]);
+
   useEffect(()=>{ draggingRef.current = dragging; }, [dragging]);
   useEffect(()=>{ resizingRef.current = resizing; }, [resizing]);
 
@@ -4670,6 +4742,12 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
               {(node.properties.Services||[]).map((svc,si)=>(
                 <div key={svc.id||si} style={{background:"var(--bg3)",borderRadius:7,padding:"8px 10px",
                   border:`1px solid ${svc.status==="Running"?"var(--success)33":svc.status==="Stopped"?"var(--danger)33":svc.status==="Error"?"var(--danger)55":"var(--border2)"}`}}>
+                  {/* auto-populated badge */}
+                  {nodes.find(n=>n.id===svc.id)&&(
+                    <div style={{fontSize:9,color:"var(--accent1)",background:"var(--accent1)15",borderRadius:3,padding:"1px 6px",marginBottom:4,display:"inline-flex",alignItems:"center",gap:3}}>
+                      ⚡ auto — linked to <strong>{nodes.find(n=>n.id===svc.id)?.title}</strong>
+                    </div>
+                  )}
                   <div style={{display:"grid",gridTemplateColumns:"1fr 88px 76px auto",gap:4,marginBottom:5,alignItems:"center"}}>
                     <input value={svc.name||""} placeholder="Service name…" disabled={!canEdit}
                       onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],name:e.target.value};onUpdateProp(node.id,"Services",s);}}
@@ -4728,7 +4806,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         )}
         {Object.keys(node.properties||{}).filter(k=>k!=="Ports"&&k!=="Services").length>0&&<>
           <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>TEMPLATE PROPERTIES</div>
-          {Object.entries(node.properties||{}).filter(([k,v])=>k!=="Ports"&&!Array.isArray(v)).map(([k,v])=>(
+          {Object.entries(node.properties||{}).filter(([k,v])=>k!=="Ports"&&k!=="Services"&&!Array.isArray(v)&&typeof v!=="object").map(([k,v])=>(
             <div key={k}>
               <label style={{fontSize:10,fontWeight:700,letterSpacing:1,marginBottom:3,display:"block",color:`${t.color}cc`}}>{k.toUpperCase()}</label>
               <input value={v} onChange={e=>onUpdateProp(node.id,k,e.target.value)} disabled={!canEdit} style={inp()}/>
@@ -5490,7 +5568,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
             {Object.keys(node.properties || {}).length > 0 && (
               <div>
                 <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, marginBottom: 6 }}>TEMPLATE PROPERTIES</div>
-                {Object.entries(node.properties || {}).map(([k, v]) => (
+                {Object.entries(node.properties || {}).filter(([k,v])=>!Array.isArray(v)&&typeof v!=='object').map(([k, v]) => (
                   <div key={k} style={{ marginBottom: 6 }}>
                     <label style={{ fontSize: 9, fontWeight: 700, color: `${t.color}cc`, letterSpacing: 0.5, display: 'block', marginBottom: 2 }}>{k.toUpperCase()}</label>
                     <input value={v} onChange={e => onUpdateCustom ? (() => {
