@@ -1,15 +1,22 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.38.1",date:"Apr 2026",items:[
+    "Fix: Neumorphic card top-accent stripe now uses inset box-shadow instead of border-top — eliminates the wide arc artifact that appeared on rounded corners",
+    "Fix: Neumorphic border radius reduced (radius-lg 28px → 20px, radius-md 20px → 16px) — restores the smooth filleted look matching the original design",
+    "Fix: Neumorphic shadow colors now fully theme-aware — all 13 themes have explicit --neu-dark/--neu-light values (sepia, mint, parchment added); dark themes auto-derive via color-mix",
+    "Fix: Neumorphic --shadow-node vars updated to use dynamic --neu-dark/--neu-light without clay-specific fallbacks",
+    "Fix: color-mix ratios adjusted (72%/68%) for better shadow contrast across light and dark themes",
+  ]},
   {v:"v5.38.0",date:"Apr 2026",items:[
     "Removed: Design tab removed from Appearance modal — spacing is now a fixed clean baseline (no user-selectable density options)",
     "Removed: defaultDesign auto-apply on skin switch — skins no longer override spacing",
-    "Fix: Neumorphic skin now looks great on ALL themes — shadows derived via color-mix(in srgb, var(--bg) 78%, #000/fff) instead of hardcoded clay-only values",
-    "Fix: NeonTokyo scanline overlay now adapts to any theme — uses color-mix(in srgb, var(--text) 5%, transparent) so scanlines are visible on both light and dark backgrounds",
-    "Fix: Vapor retro grid now uses accent-tinted lines (color-mix) instead of border2 — looks vibrant on any theme",
-    "Fix: Carbon fiber texture now adapts to theme brightness — uses color-mix(in srgb, var(--text) 4%, transparent) so it shows on both light and dark",
-    "Fix: Newspaper card shadows now use var(--shadow) — properly visible on dark themes",
-    "Docs: All MD files updated — CLAUDE.md, README.md, ARCHITECTURE.md, FEATURES.md, SKINS.md fully reflect v5.38.0 state",
+    "Fix: Neumorphic skin now works on ALL themes — shadows derived via color-mix instead of hardcoded clay-only values",
+    "Fix: NeonTokyo scanlines now adapt to any theme using color-mix(in srgb, var(--text) 5%, transparent)",
+    "Fix: Vapor retro grid uses accent-tinted lines via color-mix — vibrant on any theme",
+    "Fix: Carbon texture uses color-mix(in srgb, var(--text) 4%, transparent) — visible on light and dark",
+    "Fix: Newspaper card shadows use var(--shadow) — visible on dark themes",
+    "Docs: All MD files updated — CLAUDE.md, README.md, ARCHITECTURE.md, FEATURES.md, SKINS.md",
   ]},
   {v:"v5.37.0",date:"Apr 2026",items:[
     "Security/Reliability: WebSocket rate limiter — max 120 messages/min per connection; excess messages are dropped with an error frame (prevents DB write storms during collaboration)",

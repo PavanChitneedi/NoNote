@@ -181,21 +181,24 @@ body.skin-neon-tokyo .nn-map-list-row:hover{background:var(--bg3)!important;box-
       "--font-node":"'Nunito',system-ui,sans-serif",
       "--font-weight-ui":"700","--font-weight-node":"600",
       "--letter-space":"0em","--line-height":"1.65",
-      "--radius-xs":"10px","--radius-sm":"14px","--radius-md":"20px","--radius-lg":"28px",
-      "--radius-node":"20px","--radius-btn":"14px",
-      "--shadow-node":"8px 8px 16px var(--neu-dark,#bec7d8),-8px -8px 16px var(--neu-light,#f4faff)",
-      "--shadow-node-sel":"6px 6px 12px var(--neu-dark,#bec7d8),-6px -6px 12px var(--neu-light,#f4faff),0 0 0 3px var(--accent)44",
+      // Radius kept moderate — large radius causes border-top to arc dramatically
+      "--radius-xs":"8px","--radius-sm":"12px","--radius-md":"16px","--radius-lg":"20px",
+      "--radius-node":"16px","--radius-btn":"12px",
+      // shadow-node uses dynamic --neu-dark/light set by body css block below
+      "--shadow-node":"8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)",
+      "--shadow-node-sel":"6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light),0 0 0 3px var(--accent)44",
       "--transition-all":"all 0.15s ease",
       "--topbar-bg":"var(--bg2)","--topbar-border":"none","--topbar-blur":"none",
       "--sidebar-bg":"var(--bg)","--sidebar-border":"none",
     },
     bodyClass:"skin-neumorphic",
     css:`body.skin-neumorphic{background:var(--bg);
-  /* Derive neumorphic shadow colors from current bg — works with any theme */
-  --neu-dark:color-mix(in srgb,var(--bg) 78%,#000);
-  --neu-light:color-mix(in srgb,var(--bg) 78%,#fff);
+  /* Derive neumorphic shadow colors dynamically from theme bg — works with any theme.
+     Using 72% bg + dark/light gives enough contrast on both light and dark themes. */
+  --neu-dark:color-mix(in srgb,var(--bg) 72%,#000);
+  --neu-light:color-mix(in srgb,var(--bg) 68%,#fff);
 }
-body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),-0px -1px 0 var(--neu-light)!important;border-bottom:none!important}
+body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),0 -1px 0 var(--neu-light)!important;border-bottom:none!important}
 body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-dark)!important;border-right:none!important}
 body.skin-neumorphic button{background:var(--bg2)!important;border:none!important;box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
 body.skin-neumorphic button:not([disabled]):hover{box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important;transform:translateY(-1px)!important}
@@ -205,10 +208,23 @@ body.skin-neumorphic input:focus,body.skin-neumorphic select:focus{box-shadow:in
 body.skin-neumorphic ::-webkit-scrollbar{width:8px}
 body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 6px var(--neu-dark);border-radius:4px}
 body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;box-shadow:2px 2px 4px var(--neu-dark)}
-body.skin-neumorphic .nn-map-card{background:var(--bg)!important;border:none;border-top:3px solid var(--ca);box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)}
-body.skin-neumorphic .nn-map-card:hover{transform:translateY(-2px);box-shadow:8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)}
+body.skin-neumorphic .nn-map-card{
+  background:var(--bg)!important;
+  border:none!important;
+  /* Use inset box-shadow for top accent stripe — avoids the arc/curve artifact
+     that border-top creates on highly-rounded corners */
+  box-shadow:
+    6px 6px 14px var(--neu-dark),
+    -6px -6px 14px var(--neu-light),
+    inset 0 3px 0 var(--ca) !important}
+body.skin-neumorphic .nn-map-card:hover{
+  transform:translateY(-2px);
+  box-shadow:
+    8px 8px 18px var(--neu-dark),
+    -8px -8px 18px var(--neu-light),
+    inset 0 3px 0 var(--ca) !important}
 body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light)}
+body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light);border-left:3px solid var(--ca)!important}
 body.skin-neumorphic .nn-map-list-row:hover{box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)}`,
   },
 

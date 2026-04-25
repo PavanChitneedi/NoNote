@@ -101,7 +101,7 @@ export const THEMES = {
       "--text":"#1e1408","--text2":"#3c2a18","--text3":"#7a5e3c","--text4":"#a8886a",
       "--accent":"#7c4f1e","--accent2":"#5a3a14",
       "--success":"#2d5a1e","--danger":"#8b1c1c",
-      "--canvas-dot":"#c4a882","--node-bg":"#f9f3e8","--shadow":"rgba(0,0,0,0.09)",
+      "--canvas-dot":"#c4a882","--node-bg":"#f9f3e8","--shadow":"rgba(0,0,0,0.09)","--neu-dark":"#cdb89a","--neu-light":"#fff8ec",
     },
   },
   rose: {
@@ -134,7 +134,7 @@ export const THEMES = {
       "--text":"#082018","--text2":"#143a28","--text3":"#3d7a58","--text4":"#6aaa88",
       "--accent":"#16a34a","--accent2":"#15803d",
       "--success":"#16a34a","--danger":"#dc2626",
-      "--canvas-dot":"#a8e6bf","--node-bg":"#f8fffc","--shadow":"rgba(0,0,0,0.07)",
+      "--canvas-dot":"#a8e6bf","--node-bg":"#f8fffc","--shadow":"rgba(0,0,0,0.07)","--neu-dark":"#a8d8bc","--neu-light":"#f4fff8",
     },
   },
   clay: {
@@ -157,7 +157,7 @@ export const THEMES = {
       "--text":"#1a1410","--text2":"#3a2e24","--text3":"#7a6a56","--text4":"#a89a84",
       "--accent":"#8b6914","--accent2":"#6b4e0c",
       "--success":"#3a6e28","--danger":"#9e2020",
-      "--canvas-dot":"#d8cdb8","--node-bg":"#ffffff","--shadow":"rgba(0,0,0,0.06)",
+      "--canvas-dot":"#d8cdb8","--node-bg":"#ffffff","--shadow":"rgba(0,0,0,0.06)","--neu-dark":"#c8baa0","--neu-light":"#ffffff",
     },
   },
 };
