@@ -225,49 +225,213 @@ function ProxmoxMetrics({ data }) {
 }
 
 function TrueNASMetrics({ data }) {
-  const info = data.info || {};
-  const totalCap = (data.pools || []).reduce((a, p) => a + (p.size?.total || 0), 0);
-  const usedCap  = (data.pools || []).reduce((a, p) => a + (p.size?.allocated || 0), 0);
+  const info      = data.info       || {};
+  const pools     = data.pools      || [];
+  const services  = data.services   || [];
+  const disks     = data.disks      || [];
+  const datasets  = data.datasets   || [];
+  const ifaces    = data.interfaces || [];
+  const vms       = data.vms        || [];
+  const alerts    = data.alerts     || [];
+  const storage   = data.storage    || {};
+  const [tab, setTab] = useState('overview');
+
+  const uptime = info.uptimeSeconds
+    ? (() => {
+        const d = Math.floor(info.uptimeSeconds / 86400);
+        const h = Math.floor((info.uptimeSeconds % 86400) / 3600);
+        const m = Math.floor((info.uptimeSeconds % 3600) / 60);
+        return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
+      })()
+    : '—';
+
+  const TabBtn = ({ id, label }) => (
+    <button onClick={() => setTab(id)} style={{
+      fontSize: 9, padding: '2px 8px', borderRadius: 4, border: 'none',
+      background: tab === id ? 'var(--accent2)' : 'var(--bg3)',
+      color: tab === id ? '#fff' : 'var(--text3)',
+      cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 600,
+    }}>{label}</button>
+  );
+
   return (
     <div>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 10 }}>
+      {/* Header stats */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
         <Stat label="HOSTNAME" value={info.hostname || '—'} />
-        <Stat label="VERSION" value={(info.version || '').split('-')[0]} />
-        <Stat label="UPTIME" value={info.uptimeSeconds ? Math.floor(info.uptimeSeconds / 86400) + 'd' : '—'} />
+        <Stat label="VERSION"  value={(info.version || '').split('-')[0] || '—'} />
+        <Stat label="UPTIME"   value={uptime} />
+        <Stat label="POOLS"    value={pools.length} />
+        <Stat label="DISKS"    value={disks.length} />
       </div>
-      <div style={{ display: 'flex', gap: 4, marginBottom: 10, flexWrap: 'wrap' }}>
-        {(data.services || []).map(s => (
-          <span key={s.service} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3,
+
+      {/* Total storage bar */}
+      {storage.totalSize > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text4)', marginBottom: 2 }}>
+            <span>TOTAL STORAGE</span>
+            <span>{fmt(storage.totalAllocated)} used / {fmt(storage.totalSize)}</span>
+          </div>
+          <Bar pct={pct(storage.totalAllocated, storage.totalSize)} />
+        </div>
+      )}
+
+      {/* Service pills */}
+      <div style={{ display: 'flex', gap: 3, marginBottom: 8, flexWrap: 'wrap' }}>
+        {services.map(s => (
+          <span key={s.service} style={{
+            fontSize: 9, padding: '1px 6px', borderRadius: 3,
             background: s.state === 'RUNNING' ? 'var(--success)22' : 'var(--bg)',
             color: s.state === 'RUNNING' ? 'var(--success)' : 'var(--text4)',
-            border: '1px solid var(--border)' }}>
-            {s.service}
-          </span>
+            border: `1px solid ${s.state === 'RUNNING' ? 'var(--success)44' : 'var(--border)'}`,
+            fontWeight: s.state === 'RUNNING' ? 700 : 400,
+          }}>{s.service}</span>
         ))}
       </div>
-      {(data.pools || []).map(p => {
-        const diskPct = pct(p.size?.allocated, p.size?.total);
+
+      {/* Alerts */}
+      {alerts.length > 0 && (
+        <div style={{ marginBottom: 8 }}>
+          {alerts.map((a, i) => (
+            <div key={i} style={{
+              fontSize: 10, color: 'var(--danger)',
+              padding: '3px 7px', background: 'var(--danger)11', borderRadius: 4, marginBottom: 3,
+              border: '1px solid var(--danger)22',
+            }}>⚠ {a.formatted || a.text}</div>
+          ))}
+        </div>
+      )}
+
+      {/* Sub-tabs */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
+        {['overview','pools','disks','datasets','network',...(vms.length > 0 ? ['vms'] : [])].map(t => (
+          <TabBtn key={t} id={t} label={t.charAt(0).toUpperCase() + t.slice(1)} />
+        ))}
+      </div>
+
+      {/* ── Overview ── */}
+      {tab === 'overview' && pools.map(p => {
+        const used = p.size?.allocated || 0;
+        const total = p.size?.total || p.size || 0;
         return (
           <div key={p.name} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '8px 10px', marginBottom: 6,
             border: `1px solid ${p.healthy ? 'var(--success)44' : 'var(--danger)44'}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
               <span style={{ fontWeight: 700, fontSize: 11 }}>{p.name}</span>
-              <span style={{ fontSize: 9, color: p.healthy ? 'var(--success)' : 'var(--danger)' }}>{p.status}</span>
-              <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{fmt(p.size?.allocated)} / {fmt(p.size?.total)}</span>
+              <span style={{ fontSize: 9, fontWeight: 700, color: p.healthy ? 'var(--success)' : 'var(--danger)' }}>{p.status}</span>
+              <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{fmt(used)} / {fmt(total)}</span>
             </div>
-            <Bar pct={diskPct} />
+            <Bar pct={pct(used, total)} />
+            <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 3 }}>
+              {p.topology?.data?.[0]?.type && `RAID: ${p.topology.data[0].type}`}
+              {p.autotrim?.value === 'on' && ' · AutoTRIM'}
+            </div>
           </div>
         );
       })}
-      {(data.alerts || []).length > 0 && (
-        <div style={{ marginTop: 8 }}>
-          {data.alerts.map((a, i) => (
-            <div key={i} style={{ fontSize: 10, color: 'var(--danger)', padding: '3px 6px', background: 'var(--danger)11', borderRadius: 4, marginBottom: 3 }}>
-              ⚠ {a.formatted || a.text}
+
+      {/* ── Pools ── */}
+      {tab === 'pools' && pools.map(p => (
+        <div key={p.name} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 12px', marginBottom: 8,
+          border: `1px solid ${p.healthy ? 'var(--success)33' : 'var(--danger)33'}` }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+            <span style={{ fontWeight: 700, fontSize: 12 }}>{p.name}</span>
+            <span style={{ fontSize: 10, color: p.healthy ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>{p.status}</span>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 10px', fontSize: 10, marginBottom: 6 }}>
+            {[['Used', fmt(p.size?.allocated||0)],['Free', fmt(p.size?.free||0)],
+              ['Total', fmt(p.size?.total||p.size||0)],['Fragmentation', (p.fragmentation??'—')+'%'],
+              ['Dedup', p.dedup?.value??'—'],['Compress ratio', p.compress_ratio??'—']
+            ].map(([k,v]) => [
+              <span key={k+'k'} style={{ color: 'var(--text4)' }}>{k}</span>,
+              <span key={k+'v'}>{v}</span>
+            ])}
+          </div>
+          <Bar pct={pct(p.size?.allocated, p.size?.total||p.size)} />
+          {(p.topology?.data||[]).map((vdev, vi) => (
+            <div key={vi} style={{ marginTop: 6, fontSize: 9, color: 'var(--text3)' }}>
+              <span style={{ fontWeight: 700, color: 'var(--text2)' }}>{vdev.type||'DISK'}</span>
+              {(vdev.children||[]).map((c,ci) => (
+                <span key={ci} style={{ marginLeft: 6, color: c.stats?.state==='ONLINE'?'var(--success)':'var(--danger)' }}>
+                  {c.disk||c.name}
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
+      ))}
+
+      {/* ── Disks ── */}
+      {tab === 'disks' && (
+        <div>
+          {disks.length === 0 && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No disk data</div>}
+          {disks.map((d, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
+              <span style={{ fontWeight: 700, color: 'var(--text)', minWidth: 40 }}>{d.name}</span>
+              <span style={{ color: 'var(--text3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.model||'—'}</span>
+              <span style={{ color: 'var(--text4)', minWidth: 42, textAlign: 'right' }}>{fmt(d.size)}</span>
+              <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'var(--bg3)', color: 'var(--text4)' }}>{d.type||'—'}</span>
+              {d.temp != null && (
+                <span style={{ fontSize: 9, color: d.temp > 50 ? 'var(--danger)' : d.temp > 40 ? '#f59e0b' : 'var(--success)', minWidth: 32, textAlign: 'right' }}>
+                  {d.temp}°C
+                </span>
+              )}
             </div>
           ))}
         </div>
       )}
+
+      {/* ── Datasets ── */}
+      {tab === 'datasets' && (
+        <div>
+          {datasets.length === 0 && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No dataset data</div>}
+          {datasets.map((d, i) => (
+            <div key={i} style={{ padding: '5px 8px', borderBottom: '1px solid var(--border2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
+                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{d.id}</span>
+                <span style={{ color: 'var(--text4)', flexShrink: 0, marginLeft: 6 }}>{fmt(d.used)} / {fmt(d.used + d.available)}</span>
+              </div>
+              <Bar pct={pct(d.used, d.used + d.available)} />
+              <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
+                {d.compression && <span style={{ fontSize: 8, color: 'var(--text4)' }}>comp:{d.compression}</span>}
+                {d.encrypted   && <span style={{ fontSize: 8, color: 'var(--accent)' }}>🔒 enc</span>}
+                {d.mountpoint  && <span style={{ fontSize: 8, color: 'var(--text4)' }}>{d.mountpoint}</span>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Network ── */}
+      {tab === 'network' && (
+        <div>
+          {ifaces.length === 0 && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No interface data</div>}
+          {ifaces.map((iface, i) => (
+            <div key={i} style={{ padding: '6px 8px', borderBottom: '1px solid var(--border2)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', background: iface.up ? 'var(--success)' : 'var(--danger)', flexShrink: 0 }} />
+                <span style={{ fontWeight: 700, fontSize: 11 }}>{iface.name}</span>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>{iface.type}</span>
+                {iface.speed && <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{iface.speed >= 1000 ? iface.speed/1000+'G' : iface.speed+'M'}</span>}
+              </div>
+              {iface.aliases.map((a, ai) => (
+                <div key={ai} style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 14 }}>{a}</div>
+              ))}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── VMs ── */}
+      {tab === 'vms' && vms.map((v, i) => (
+        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: v.status === 'RUNNING' ? 'var(--success)' : 'var(--text4)', flexShrink: 0 }} />
+          <span style={{ fontWeight: 600, flex: 1 }}>{v.name}</span>
+          <span style={{ color: 'var(--text4)' }}>{v.vcpus} vCPU</span>
+          <span style={{ color: 'var(--text4)' }}>{gb(v.memory * 1024 * 1024)}</span>
+          <span style={{ fontSize: 9, color: v.status === 'RUNNING' ? 'var(--success)' : 'var(--text4)' }}>{v.status}</span>
+        </div>
+      ))}
     </div>
   );
 }

@@ -112,14 +112,84 @@ router.post('/truenas', async (req, res) => {
   const base = url.replace(/\/$/, '');
   const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
   try {
-    const [iR, pR, aR, sR] = await Promise.all([
-      go(`${base}/api/v2.0/system/info`, { headers: h }),
-      go(`${base}/api/v2.0/pool`,        { headers: h }),
-      go(`${base}/api/v2.0/alert/list`,  { headers: h }),
-      go(`${base}/api/v2.0/service`,     { headers: h }),
+    // Fetch all endpoints in parallel
+    const [iR, pR, aR, sR, dR, dsR, nR, snR, vmR] = await Promise.all([
+      go(`${base}/api/v2.0/system/info`,              { headers: h }),
+      go(`${base}/api/v2.0/pool`,                     { headers: h }),
+      go(`${base}/api/v2.0/alert/list`,               { headers: h }),
+      go(`${base}/api/v2.0/service`,                  { headers: h }),
+      go(`${base}/api/v2.0/disk`,                     { headers: h }),
+      go(`${base}/api/v2.0/pool/dataset?limit=200`,   { headers: h }),
+      go(`${base}/api/v2.0/interface`,                { headers: h }),
+      go(`${base}/api/v2.0/zfs/snapshot?limit=5`,     { headers: h }),
+      go(`${base}/api/v2.0/vm`,                       { headers: h }),
     ]);
-    const [info, pools, alerts, services] = await Promise.all([iR.json(), pR.json(), aR.json(), sR.json()]);
-    res.json({ ok: true, info, pools, alerts: (alerts||[]).filter(a => a.level !== 'INFO'), services });
+
+    const [info, pools, alerts, services, disks, datasets, interfaces, snapshots, vms] =
+      await Promise.all([iR.json(), pR.json(), aR.json(), sR.json(),
+        dR.json(), dsR.json(), nR.json(), snR.json(), vmR.json()]);
+
+    // Compute aggregate storage stats across all pools
+    const totalSize      = (pools||[]).reduce((a,p) => a + (p.size?.total      || p.size || 0), 0);
+    const totalAllocated = (pools||[]).reduce((a,p) => a + (p.size?.allocated  || 0),            0);
+    const totalFree      = (pools||[]).reduce((a,p) => a + (p.size?.free       || 0),            0);
+
+    // Disk summary
+    const diskSummary = (disks||[]).map(d => ({
+      name:   d.name,
+      size:   d.size,
+      model:  d.model,
+      serial: d.serial,
+      type:   d.type,
+      temp:   d.temperature,
+    }));
+
+    // Dataset summary (root datasets only to avoid noise)
+    const rootDatasets = (datasets||[])
+      .filter(d => !d.id.includes('/') || d.id.split('/').length <= 2)
+      .slice(0, 20)
+      .map(d => ({
+        id:          d.id,
+        used:        d.used?.parsed || 0,
+        available:   d.available?.parsed || 0,
+        compression: d.compression?.value,
+        type:        d.type,
+        mountpoint:  d.mountpoint,
+        encrypted:   !!d.encrypted,
+      }));
+
+    // Network interfaces (physical only)
+    const netIfaces = (interfaces||[])
+      .filter(i => !i.fake)
+      .map(i => ({
+        name:    i.name,
+        type:    i.type,
+        up:      i.state?.link_state === 'LINK_STATE_UP',
+        speed:   i.state?.speed,
+        aliases: (i.aliases||[]).filter(a => a.type === 'INET' || a.type === 'INET6').map(a => a.address),
+      }));
+
+    // VM summary
+    const vmSummary = (vms||[]).map(v => ({
+      name:   v.name,
+      status: v.status?.state,
+      vcpus:  v.vcpus,
+      memory: v.memory,
+    }));
+
+    res.json({
+      ok: true,
+      info,
+      pools,
+      alerts:    (alerts||[]).filter(a => a.level !== 'INFO'),
+      services,
+      disks:     diskSummary,
+      datasets:  rootDatasets,
+      interfaces: netIfaces,
+      snapshots: { count: (snapshots||[]).length },
+      vms:       vmSummary,
+      storage:   { totalSize, totalAllocated, totalFree },
+    });
   } catch(e) { res.status(502).json({ error: e.message }); }
 });
 

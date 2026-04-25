@@ -1,6 +1,17 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.6",date:"Apr 2026",items:[
+    "TrueNAS: Backend now fetches 9 API endpoints in parallel -- disks, datasets, network interfaces, VMs, ZFS snapshots, plus richer pool topology",
+    "TrueNAS: Frontend panel now has 5 sub-tabs: Overview, Pools, Disks, Datasets, Network (plus VMs tab when VMs exist)",
+    "TrueNAS: Pools tab shows vdev topology with per-disk health, dedup ratio, fragmentation, compress ratio",
+    "TrueNAS: Disks tab shows all disks with model, size, type, and temperature with color coding (green/amber/red)",
+    "TrueNAS: Datasets tab shows used/available per dataset with usage bar, compression, encryption flag, mountpoint",
+    "TrueNAS: Network tab shows all interfaces with up/down status, speed, and IP addresses",
+    "TrueNAS: Total storage aggregate bar shown at top across all pools",
+    "TrueNAS: Uptime now shows days+hours format instead of just days",
+    "TrueNAS: Service pills now bold and green-bordered when RUNNING",
+  ]},
   {v:"v5.39.5",date:"Apr 2026",items:[
     "Fix: Integration proxy (Proxmox, TrueNAS, Unraid, ESXi) now uses https.request instead of native fetch -- native fetch ignores the agent option so self-signed certs on homelab appliances caused fetch failed errors",
     "Fix: selfSignedAgent (rejectUnauthorized:false) now correctly applied to all HTTPS requests to homelab endpoints",

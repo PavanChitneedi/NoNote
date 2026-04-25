@@ -1,6 +1,6 @@
 {
   "name": "nodemap-backend",
-  "version": "5.39.5",
+  "version": "5.39.6",
   "type": "module",
   "scripts": {
     "start": "node src/index.js",
