@@ -213,7 +213,19 @@ router.patch("/:id", authenticate, async (req, res) => {
     const updates = [], vals = [];
 
     if (display_name !== undefined) {
+      // Self-edits must respect admin setting guards (same as /me route)
+      if (isSelf && !isAdmin) {
+        const setting = await getSetting("allow_username_change", "true");
+        if (setting !== "true") return res.status(403).json({ error: "Username changes are disabled by admin" });
+      }
       updates.push(`display_name=$${updates.length+1}`); vals.push(display_name.trim().slice(0,60));
+    }
+    if (avatar_color !== undefined) {
+      if (isSelf && !isAdmin) {
+        const setting = await getSetting("allow_avatar_change", "true");
+        if (setting !== "true") return res.status(403).json({ error: "Avatar changes are disabled by admin" });
+      }
+      updates.push(`avatar_color=$${updates.length+1}`); vals.push(avatar_color);
     }
     if (email !== undefined && isAdmin) {
       updates.push(`email=$${updates.length+1}`); vals.push(email.toLowerCase());
@@ -225,9 +237,6 @@ router.patch("/:id", authenticate, async (req, res) => {
     }
     if (is_active !== undefined && isAdmin) {
       updates.push(`is_active=$${updates.length+1}`); vals.push(is_active);
-    }
-    if (avatar_color !== undefined) {
-      updates.push(`avatar_color=$${updates.length+1}`); vals.push(avatar_color);
     }
     if (password !== undefined && isAdmin) {
       if (password.length < 8) return res.status(400).json({ error: "Password too short" });
@@ -269,11 +278,10 @@ router.delete("/:id", authenticate, requireRole("owner"), async (req, res) => {
 router.get("/audit", authenticate, requireRole("admin"), async (req, res) => {
   try {
     const { rows } = await query(
-      `SELECT a.id, a.action, a.target_user_id, a.meta, a.created_at,
-              u.display_name AS actor_name, t.display_name AS target_name
+      `SELECT a.id, a.action, a.resource, a.resource_id, a.ip_address, a.metadata as meta, a.created_at,
+              u.display_name AS actor_name
        FROM audit_log a
-       LEFT JOIN users u ON u.id=a.actor_id
-       LEFT JOIN users t ON t.id=a.target_user_id
+       LEFT JOIN users u ON u.id=a.user_id
        ORDER BY a.created_at DESC LIMIT 200`,
     );
     res.json({ logs: rows });
@@ -426,6 +434,12 @@ router.delete("/:id/permissions/:perm", authenticate, requireRole("admin"), asyn
 });
 
 // ── Global settings (admin) ───────────────────────────────────────────────
+const ALLOWED_SETTINGS = new Set([
+  'allow_username_change', 'allow_email_change', 'allow_password_change', 'allow_avatar_change',
+  'registration_enabled', 'allow_llm_for_viewers', 'allow_export_for_viewers',
+  'max_maps_per_user', 'session_timeout_hours', 'log_retention_days',
+]);
+
 router.get("/settings/global", authenticate, requireRole("admin"), async (req, res) => {
   try {
     const { rows } = await query("SELECT key, value FROM app_settings ORDER BY key");
@@ -437,6 +451,8 @@ router.patch("/settings/global", authenticate, requireRole("admin"), async (req,
   try {
     const entries = Object.entries(req.body);
     if (!entries.length) return res.status(400).json({ error: "No settings provided" });
+    const invalid = entries.filter(([k]) => !ALLOWED_SETTINGS.has(k));
+    if (invalid.length) return res.status(400).json({ error: `Unknown settings: ${invalid.map(([k])=>k).join(', ')}` });
     await Promise.all(entries.map(([k, v]) =>
       query(
         `INSERT INTO app_settings(key,value) VALUES($1,$2)
@@ -469,7 +485,7 @@ router.get("/logs", authenticate, async (req, res) => {
     );
     const total = await query(`SELECT COUNT(*) FROM app_logs ${where}`, params.slice(0,-2));
     res.json({ logs: rows.rows, total: parseInt(total.rows[0].count) });
-  } catch(err) { console.error("[logs] fetch error:", err); res.status(500).json({ error: "Failed to fetch logs: " + err.message }); }
+  } catch(err) { console.error("[logs] fetch error:", err); res.status(500).json({ error: "Failed to fetch logs" }); }
 });
 
 router.get("/logs/retention", authenticate, async (req, res) => {

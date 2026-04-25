@@ -148,15 +148,53 @@ wss.on("connection", (ws) => {
       }
 
       mapId = msg.mapId;
+
+      // ── Check map access (mirrors mapPermission middleware) ──
+      try {
+        const userRes = await query("SELECT role, display_name, is_active FROM users WHERE id=$1", [userId]);
+        const u = userRes.rows[0];
+        if (!u || !u.is_active) {
+          ws.send(JSON.stringify({ type: "auth_error", message: "User not found or disabled" }));
+          ws.close(1008, "Unauthorized");
+          return;
+        }
+        userName = u.display_name || "User";
+        // Admins/owners have global access; others need explicit map permission
+        if (!["owner","admin"].includes(u.role)) {
+          const accessRes = await query(
+            `SELECT m.owner_id, mc.permission, m.is_public
+             FROM maps m
+             LEFT JOIN map_collaborators mc ON mc.map_id=m.id AND mc.user_id=$2
+             WHERE m.id=$1`,
+            [mapId, userId]
+          );
+          const row = accessRes.rows[0];
+          if (!row) {
+            ws.send(JSON.stringify({ type: "auth_error", message: "Map not found" }));
+            ws.close(1008, "Forbidden");
+            return;
+          }
+          const hasAccess = row.owner_id === userId || row.permission || row.is_public;
+          if (!hasAccess) {
+            ws.send(JSON.stringify({ type: "auth_error", message: "No access to this map" }));
+            ws.close(1008, "Forbidden");
+            return;
+          }
+        } else {
+          // Admin/owner: still fetch display name
+          const row = await query("SELECT display_name FROM users WHERE id=$1", [userId]);
+          userName = row.rows[0]?.display_name || "User";
+        }
+      } catch (e) {
+        console.error("[ws] access check error:", e.message);
+        ws.send(JSON.stringify({ type: "auth_error", message: "Access check failed" }));
+        ws.close(1011, "Error");
+        return;
+      }
+
       ws.userId   = userId;
       ws.mapId    = mapId;
-
-      // Fetch display name from DB
-      try {
-        const row = await query("SELECT display_name FROM users WHERE id=$1", [userId]);
-        userName = row.rows[0]?.display_name || "User";
-        ws.userName = userName;
-      } catch {}
+      ws.userName = userName;
 
       // Register in room
       if (!rooms.has(mapId)) rooms.set(mapId, new Set());
@@ -308,7 +346,11 @@ async function runMigrations() {
       granted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       PRIMARY KEY (user_id, permission)
     )`,
-    // ── Seed default global settings ──────────────────────────
+    // ── Add 'restricted' to user_role enum if missing ─────────
+    `DO $$ BEGIN
+       ALTER TYPE user_role ADD VALUE IF NOT EXISTS 'restricted';
+     EXCEPTION WHEN duplicate_object THEN NULL;
+     END $$`,
     `INSERT INTO app_settings(key,value) VALUES
       ('allow_username_change','true'),
       ('allow_email_change','false'),
@@ -332,12 +374,33 @@ async function runMigrations() {
 
 // ── Start ─────────────────────────────────────────────────────
 httpServer.listen(PORT, "0.0.0.0", async () => {
+  // Read version from package.json for accurate logging
+  let appVersion = "unknown";
+  try {
+    const { readFileSync } = await import("fs");
+    const pkg = JSON.parse(readFileSync(new URL("../package.json", import.meta.url)));
+    appVersion = pkg.version || appVersion;
+  } catch {}
   console.log(`[server] NodeMap API + WS running on :${PORT}`);
   await runMigrations().catch(console.error);
   await seedAdmin().catch(console.error);
-  // Seed a startup log entry so the Logs tab is never empty
   try {
     const { appLog } = await import("./utils/logger.js");
-    await appLog("info", "system", `Server started on port ${PORT} — NoNote v5.23.0`);
+    await appLog("info", "system", `Server started on port ${PORT} — NoNote v${appVersion}`);
   } catch {}
+
+  // ── M-2: Periodic cleanup of expired/revoked refresh tokens ──
+  // Runs once at startup then every 24h — prevents unbounded table growth
+  async function cleanExpiredTokens() {
+    try {
+      const r = await query(
+        "DELETE FROM refresh_tokens WHERE expires_at < NOW() OR revoked_at IS NOT NULL"
+      );
+      if (r.rowCount > 0) console.log(`[cleanup] Removed ${r.rowCount} expired/revoked refresh tokens`);
+    } catch (e) {
+      console.error("[cleanup] token cleanup error:", e.message);
+    }
+  }
+  cleanExpiredTokens();
+  setInterval(cleanExpiredTokens, 24 * 60 * 60 * 1000);
 });

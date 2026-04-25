@@ -393,7 +393,7 @@ async function callAnthropic({ base_url, model, api_key, system, messages }) {
 }
 
 async function callGemini({ base_url, model, api_key, system, messages }) {
-  const url = `${base_url.replace(/\/$/, "")}/models/${model}:generateContent?key=${api_key}`;
+  const url = `${base_url.replace(/\/$/, "")}/models/${model}:generateContent`;
   const contents = messages.map(m => ({
     role: m.role === "assistant" ? "model" : "user",
     parts: [{ text: m.content }],
@@ -406,7 +406,11 @@ async function callGemini({ base_url, model, api_key, system, messages }) {
 
   const res = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      // Key in header instead of URL query param to avoid logging exposure
+      "x-goog-api-key": api_key,
+    },
     body: JSON.stringify(body),
   });
   if (!res.ok) {

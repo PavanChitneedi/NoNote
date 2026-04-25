@@ -87,7 +87,6 @@ router.post(
         },
       });
     } catch (err) {
-      console.error("[auth] login error:", err);
       const errMsg = err.message?.includes("JWT") ? "Server configuration error — contact admin" : "Login failed";
       console.error("[auth] login error:", err.message);
       res.status(500).json({ error: errMsg });

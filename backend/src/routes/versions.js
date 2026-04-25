@@ -1,11 +1,14 @@
 import { Router } from "express";
 import { query } from "../db/pool.js";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, mapPermission } from "../middleware/auth.js";
 
 const router = Router();
 
 // ── GET /api/maps/:mapId/versions ────────────────────────────
-router.get("/:mapId/versions", authenticate, async (req, res) => {
+router.get("/:mapId/versions",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
   try {
     const { rows } = await query(
       `SELECT v.id, v.label, v.node_count, v.edge_count, v.created_at,
@@ -25,7 +28,10 @@ router.get("/:mapId/versions", authenticate, async (req, res) => {
 });
 
 // ── POST /api/maps/:mapId/versions ───────────────────────────
-router.post("/:mapId/versions", authenticate, async (req, res) => {
+router.post("/:mapId/versions",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
+  async (req, res) => {
   try {
     const { nodes = [], edges = [], label = "" } = req.body;
     const { rows } = await query(
@@ -56,7 +62,10 @@ router.post("/:mapId/versions", authenticate, async (req, res) => {
 });
 
 // ── GET /api/maps/:mapId/versions/:versionId ─────────────────
-router.get("/:mapId/versions/:versionId", authenticate, async (req, res) => {
+router.get("/:mapId/versions/:versionId",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
   try {
     const { rows } = await query(
       `SELECT v.*, u.display_name as saved_by
@@ -77,7 +86,10 @@ router.get("/:mapId/versions/:versionId", authenticate, async (req, res) => {
 });
 
 // ── DELETE /api/maps/:mapId/versions/:versionId ──────────────
-router.delete("/:mapId/versions/:versionId", authenticate, async (req, res) => {
+router.delete("/:mapId/versions/:versionId",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
+  async (req, res) => {
   try {
     await query(
       "DELETE FROM map_versions WHERE id = $1 AND map_id = $2",

@@ -289,17 +289,30 @@ router.post(
           );
         }
 
-        // Sync edges: delete all, re-insert with real UUIDs
-        await client.query("DELETE FROM map_edges WHERE map_id = $1", [mapId]);
+        // Sync edges: upsert by edge ID (avoids concurrent-save data loss from delete-all approach)
+        // First delete edges that no longer exist in the current save
+        const edgeIds = (edges || []).map(e => idMap[e.id] || _uuid()).filter(id => UUID_RE.test(id));
+        if (edgeIds.length > 0) {
+          await client.query(
+            `DELETE FROM map_edges WHERE map_id=$1 AND id != ALL($2::uuid[])`,
+            [mapId, edgeIds]
+          );
+        } else {
+          await client.query("DELETE FROM map_edges WHERE map_id=$1", [mapId]);
+        }
+        // Upsert each edge
         for (const e of edges || []) {
           const edgeId   = idMap[e.id]   || _uuid();
           const fromNode = idMap[e.from]  || e.from;
           const toNode   = idMap[e.to]    || e.to;
-          if (!UUID_RE.test(fromNode) || !UUID_RE.test(toNode)) continue; // skip orphaned
+          if (!UUID_RE.test(fromNode) || !UUID_RE.test(toNode)) continue;
           await client.query(
             `INSERT INTO map_edges (id, map_id, from_node, to_node, label, style, color, from_anchor, to_anchor, mid_off)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-[edgeId, mapId, fromNode, toNode,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+             ON CONFLICT (id) DO UPDATE SET
+               from_node=$3, to_node=$4, label=$5, style=$6, color=$7,
+               from_anchor=$8, to_anchor=$9, mid_off=$10`,
+            [edgeId, mapId, fromNode, toNode,
              e.label || "", e.style || "arrow", e.color || "#58a6ff",
              e.fromAnchor ? JSON.stringify(e.fromAnchor) : null,
              e.toAnchor   ? JSON.stringify(e.toAnchor)   : null,
