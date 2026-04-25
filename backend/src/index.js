@@ -47,7 +47,18 @@ app.set("trust proxy", 1);
 
 // ── Logging ───────────────────────────────────────────────────
 if (process.env.NODE_ENV !== "test") {
-  app.use(morgan("combined"));
+  // Custom format: combined minus the Authorization header to avoid token logging
+  morgan.token("safe-url", (req) => {
+    // Strip any ?key= or ?token= query params from logged URL
+    try {
+      const u = new URL(req.url, "http://x");
+      u.searchParams.delete("key");
+      u.searchParams.delete("token");
+      u.searchParams.delete("api_key");
+      return u.pathname + (u.search ? u.search : "");
+    } catch { return req.url; }
+  });
+  app.use(morgan(':remote-addr - :remote-user [:date[clf]] ":method :safe-url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'));
 }
 
 // ── Rate limiting ─────────────────────────────────────────────
@@ -130,7 +141,22 @@ wss.on("connection", (ws) => {
   let userId  = null;
   let userName = "User";
 
+  // ── Per-connection rate limiter: max 120 messages/min ────────
+  let msgCount = 0;
+  let rlWindow = Date.now();
+  const WS_RATE_LIMIT = 120;
+  const WS_RATE_WINDOW_MS = 60_000;
+
   ws.on("message", async (raw) => {
+    // Rate limit check (skip for join message — no userId yet)
+    const now = Date.now();
+    if (now - rlWindow > WS_RATE_WINDOW_MS) { msgCount = 0; rlWindow = now; }
+    msgCount++;
+    if (msgCount > WS_RATE_LIMIT) {
+      ws.send(JSON.stringify({ type: "error", message: "Rate limit exceeded. Slow down." }));
+      return;
+    }
+
     let msg;
     try { msg = JSON.parse(raw); } catch { return; }
 

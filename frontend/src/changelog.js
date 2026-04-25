@@ -1,7 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.36.0",date:"Apr 2026",items:[
+  {v:"v5.37.0",date:"Apr 2026",items:[
+    "Security/Reliability: WebSocket rate limiter — max 120 messages/min per connection; excess messages are dropped with an error frame (prevents DB write storms during collaboration)",
+    "Feature: max_maps_per_user setting is now enforced on both map create and map duplicate — returns a clear 403 if the admin-configured limit is reached",
+    "Reliability: LLM chat history is now token-budget trimmed before each call — fetches last 60 messages, walks newest-first, stops at ~6000-word budget so large canvas contexts never cause provider context-window overflows",
+    "Performance: Map duplicate rewritten — now runs inside a single transaction with two batch multi-row INSERTs (one for nodes, one for edges) instead of N sequential round-trips; eliminates partial-write risk on failure",
+    "Security: Morgan access log now strips ?key=, ?token=, ?api_key= query params from logged URLs — prevents API key exposure in log files",
+    "Security: Integration proxy credentials validated before proxying — token must be 4–2048 printable ASCII characters; malformed tokens are rejected with 400 before any network call is made",
+    "Audit: Map delete now logs to app_logs in all cases; admin-deleting-another-user's-map produces a warn-level entry with map title and owner ID",
+  ]},
     "Security: WebSocket JOIN now verifies map access before admitting clients to a room (was auth-only, no map permission check)",
     "Security: Version history routes (GET/POST/DELETE) now enforce mapPermission — previously any authenticated user could read or delete any map's version snapshots",
     "Security: SSRF guard added to all integration proxy routes (Proxmox, TrueNAS, Unraid, ESXi, probe) — blocks RFC-1918, loopback, link-local, and internal Docker hostnames",

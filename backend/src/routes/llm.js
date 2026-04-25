@@ -248,15 +248,29 @@ router.post("/conversations/:id/chat", authenticate, async (req, res) => {
     const conv = convRes.rows[0];
     const apiKey = conv.api_key_enc ? decrypt(conv.api_key_enc) : null;
 
-    // Load history
+    // Load history — fetch generously then trim to fit context budget
     const histRes = await query(
-      "SELECT role, content FROM llm_messages WHERE conversation_id=$1 ORDER BY created_at ASC LIMIT 40",
+      "SELECT role, content FROM llm_messages WHERE conversation_id=$1 ORDER BY created_at ASC LIMIT 60",
       [req.params.id]
     );
-    const history = histRes.rows;
 
     // Build system prompt with canvas context
     const systemPrompt = buildSystemPrompt(canvas_context);
+
+    // ── Token budget: keep total under ~6000 words (~8k tokens) ──
+    // Rough heuristic: 1 token ≈ 0.75 words. Reserve 2048 for response.
+    const WORD_BUDGET = 6000;
+    const countWords = (s) => (s || "").split(/\s+/).length;
+    let usedWords = countWords(systemPrompt) + countWords(message);
+    // Walk history newest-first, include as many messages as fit
+    const histAll = histRes.rows;
+    const history = [];
+    for (let i = histAll.length - 1; i >= 0; i--) {
+      const w = countWords(histAll[i].content);
+      if (usedWords + w > WORD_BUDGET) break;
+      history.unshift(histAll[i]);
+      usedWords += w;
+    }
 
     // Save user message
     await query(

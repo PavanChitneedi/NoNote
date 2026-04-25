@@ -30,6 +30,11 @@ function isSafeUrl(rawUrl) {
   return true;
 }
 
+// ── Credential sanity check: non-empty, printable ASCII, reasonable length ──
+function isValidToken(t) {
+  return typeof t === 'string' && t.length >= 4 && t.length <= 2048 && /^[\x20-\x7E]+$/.test(t);
+}
+
 async function go(url, opts = {}) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), 8000);
@@ -45,6 +50,7 @@ async function go(url, opts = {}) {
 router.post('/proxmox', async (req, res) => {
   const { url, token } = req.body;
   if (!url || !token) return res.status(400).json({ error: 'url and token required' });
+  if (!isValidToken(token)) return res.status(400).json({ error: 'Invalid token format' });
   if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
   const base = url.replace(/\/$/, '');
   const h = { Authorization: `PVEAPIToken=${token}` };
@@ -72,6 +78,7 @@ router.post('/proxmox', async (req, res) => {
 router.post('/truenas', async (req, res) => {
   const { url, token } = req.body;
   if (!url || !token) return res.status(400).json({ error: 'url and token required' });
+  if (!isValidToken(token)) return res.status(400).json({ error: 'Invalid token format' });
   if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
   const base = url.replace(/\/$/, '');
   const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
@@ -91,6 +98,7 @@ router.post('/truenas', async (req, res) => {
 router.post('/unraid', async (req, res) => {
   const { url, token } = req.body;
   if (!url || !token) return res.status(400).json({ error: 'url and token required' });
+  if (!isValidToken(token)) return res.status(400).json({ error: 'Invalid token format' });
   if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
   const base = url.replace(/\/$/, '');
   const gql = `{ info { os { platform version } } system { cpu { usage } memory { total free } } docker { containers { names status state cpu memory } } vms { domain { name state } } }`;

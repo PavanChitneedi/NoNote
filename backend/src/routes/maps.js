@@ -78,6 +78,16 @@ router.post(
   validate,
   async (req, res) => {
     try {
+      // Enforce max_maps_per_user setting (0 = unlimited)
+      const limitRow = await query("SELECT value FROM app_settings WHERE key='max_maps_per_user'");
+      const maxMaps = parseInt(limitRow.rows[0]?.value || "0");
+      if (maxMaps > 0) {
+        const countRow = await query("SELECT COUNT(*) FROM maps WHERE owner_id=$1", [req.user.id]);
+        if (parseInt(countRow.rows[0].count) >= maxMaps) {
+          return res.status(403).json({ error: `Map limit reached (${maxMaps}). Contact admin to increase your limit.` });
+        }
+      }
+
       const { title, description = "" } = req.body;
       const { rows } = await query(
         `INSERT INTO maps (title, description, owner_id) VALUES ($1, $2, $3) RETURNING *`,
@@ -195,43 +205,79 @@ router.post(
   async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
   async (req, res) => {
     try {
-      const orig = await query("SELECT * FROM maps WHERE id=$1",[req.params.mapId]);
-      if (!orig.rows.length) return res.status(404).json({error:"Not found"});
+      // Enforce max_maps_per_user setting (0 = unlimited)
+      const limitRow = await query("SELECT value FROM app_settings WHERE key='max_maps_per_user'");
+      const maxMaps = parseInt(limitRow.rows[0]?.value || "0");
+      if (maxMaps > 0) {
+        const countRow = await query("SELECT COUNT(*) FROM maps WHERE owner_id=$1", [req.user.id]);
+        if (parseInt(countRow.rows[0].count) >= maxMaps) {
+          return res.status(403).json({ error: `Map limit reached (${maxMaps}). Contact admin to increase your limit.` });
+        }
+      }
+
+      const orig = await query("SELECT * FROM maps WHERE id=$1", [req.params.mapId]);
+      if (!orig.rows.length) return res.status(404).json({ error: "Not found" });
       const m = orig.rows[0];
-      // Create new map record
-      const newMap = await query(
-        `INSERT INTO maps (owner_id, title, description, is_public) VALUES ($1,$2,$3,false) RETURNING *`,
-        [req.user.id, m.title + " (copy)", m.description]
-      );
-      const newId = newMap.rows[0].id;
-      // Copy nodes with NEW UUIDs to avoid conflicts on repeated duplication
-      const origNodes = await query(`SELECT * FROM map_nodes WHERE map_id=$1`, [req.params.mapId]);
+
+      const [origNodes, origEdges] = await Promise.all([
+        query("SELECT * FROM map_nodes WHERE map_id=$1", [req.params.mapId]),
+        query("SELECT * FROM map_edges WHERE map_id=$1",  [req.params.mapId]),
+      ]);
+
+      // Build old→new UUID map
       const nodeIdMap = {};
-      for (const n of origNodes.rows) {
-        const newNodeId = (await query(`SELECT uuid_generate_v4() AS id`)).rows[0].id;
-        nodeIdMap[n.id] = newNodeId;
-        await query(
-          `INSERT INTO map_nodes (id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,z_index)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-          [newNodeId, newId, n.node_type, n.title, n.x, n.y, n.w, n.h,
-           n.properties, n.custom_props, n.notes, n.z_index]
+      origNodes.rows.forEach(n => { nodeIdMap[n.id] = _uuid(); });
+
+      const newMap = await withTransaction(async (client) => {
+        // 1. Create new map
+        const { rows: mapRows } = await client.query(
+          `INSERT INTO maps (owner_id, title, description, is_public, group_boxes)
+           VALUES ($1,$2,$3,false,$4) RETURNING *`,
+          [req.user.id, m.title + " (copy)", m.description, m.group_boxes || "[]"]
         );
-      }
-      // Copy edges with NEW UUIDs, remapping node references
-      const origEdges = await query(`SELECT * FROM map_edges WHERE map_id=$1`, [req.params.mapId]);
-      for (const e of origEdges.rows) {
-        const newEdgeId = (await query(`SELECT uuid_generate_v4() AS id`)).rows[0].id;
-        const fromNode = nodeIdMap[e.from_node] || e.from_node;
-        const toNode   = nodeIdMap[e.to_node]   || e.to_node;
-        await query(
-          `INSERT INTO map_edges (id,map_id,from_node,to_node,style,color,label,from_anchor,to_anchor,mid_off)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-          [newEdgeId, newId, fromNode, toNode, e.style, e.color, e.label,
-           e.from_anchor, e.to_anchor, e.mid_off]
-        );
-      }
-      res.json({ map: newMap.rows[0] });
+        const newId = mapRows[0].id;
+
+        // 2. Batch-insert nodes (single query with multiple value rows)
+        if (origNodes.rows.length > 0) {
+          const nodeCols = "(id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,z_index)";
+          const nodeVals = [], nodePlaceholders = [];
+          let pi = 1;
+          for (const n of origNodes.rows) {
+            nodePlaceholders.push(`($${pi},$${pi+1},$${pi+2},$${pi+3},$${pi+4},$${pi+5},$${pi+6},$${pi+7},$${pi+8},$${pi+9},$${pi+10},$${pi+11})`);
+            nodeVals.push(nodeIdMap[n.id], newId, n.node_type, n.title, n.x, n.y, n.w, n.h,
+              n.properties, n.custom_props, n.notes, n.z_index);
+            pi += 12;
+          }
+          await client.query(
+            `INSERT INTO map_nodes ${nodeCols} VALUES ${nodePlaceholders.join(",")}`,
+            nodeVals
+          );
+        }
+
+        // 3. Batch-insert edges with remapped node references
+        const validEdges = origEdges.rows.filter(e => nodeIdMap[e.from_node] && nodeIdMap[e.to_node]);
+        if (validEdges.length > 0) {
+          const edgeCols = "(id,map_id,from_node,to_node,style,color,label,from_anchor,to_anchor,mid_off)";
+          const edgeVals = [], edgePlaceholders = [];
+          let pi = 1;
+          for (const e of validEdges) {
+            edgePlaceholders.push(`($${pi},$${pi+1},$${pi+2},$${pi+3},$${pi+4},$${pi+5},$${pi+6},$${pi+7},$${pi+8},$${pi+9})`);
+            edgeVals.push(_uuid(), newId, nodeIdMap[e.from_node], nodeIdMap[e.to_node],
+              e.style, e.color, e.label, e.from_anchor, e.to_anchor, e.mid_off);
+            pi += 10;
+          }
+          await client.query(
+            `INSERT INTO map_edges ${edgeCols} VALUES ${edgePlaceholders.join(",")}`,
+            edgeVals
+          );
+        }
+
+        return mapRows[0];
+      });
+
+      res.json({ map: newMap });
     } catch (err) {
+      console.error("[maps] duplicate error:", err);
       res.status(500).json({ error: "Failed to duplicate map" });
     }
   }
@@ -240,10 +286,24 @@ router.post(
 router.delete(
   "/:mapId",
   authenticate,
+  // mapPermission("owner") grants access to the map's owner AND global admins/owners.
+  // Admins can delete any map intentionally (moderation). Logged below for audit trail.
   async (req, res, next) => { const fn = await mapPermission("owner"); fn(req, res, next); },
   async (req, res) => {
     try {
+      const mapRow = await query("SELECT title, owner_id FROM maps WHERE id=$1", [req.params.mapId]);
+      if (!mapRow.rows[0]) return res.status(404).json({ error: "Map not found" });
+      const { title, owner_id } = mapRow.rows[0];
+
       await query("DELETE FROM maps WHERE id = $1", [req.params.mapId]);
+
+      // Audit: log if an admin deleted another user's map
+      if (owner_id !== req.user.id) {
+        appLog("warn", "maps", `Admin "${req.user.email}" deleted map "${title}" owned by user ${owner_id}`, req.user.id).catch(()=>{});
+      } else {
+        appLog("info", "maps", `Map deleted: "${title}"`, req.user.id).catch(()=>{});
+      }
+
       res.json({ ok: true });
     } catch (err) {
       console.error("[maps] delete error:", err);
