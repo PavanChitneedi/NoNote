@@ -4254,14 +4254,28 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         .nn-node:hover .nn-pencil-btn { opacity: 0.5 !important; }
         .nn-pencil-btn:hover { opacity: 1 !important; color: var(--accent) !important; }
         .nn-addnote-btn:hover { opacity: 1 !important; }
-        .nn-node:hover .nn-addnote-btn { opacity: 0.6 !important; }
-        .nn-node:hover .nn-pencil-btn { opacity: 0.5 !important; }
-        .nn-pencil-btn:hover { opacity: 1 !important; color: var(--accent) !important; }
-        .nn-addnote-btn:hover { opacity: 1 !important; }
         .nn-node:hover .nn-collapse-btn { opacity: 0.7 !important; }
         .nn-collapse-btn:hover { opacity: 1 !important; }
         g:hover .nn-mid-handle { opacity: 1 !important; }
         .nn-mid-handle { transition: opacity .15s; }
+
+        /* ── InlineNodeEditor tab bar: scroll horizontally when tabs overflow ── */
+        [style*="z-index: 200"] > div:nth-child(3) {
+          overflow-x: auto !important;
+          scrollbar-width: none;
+          -ms-overflow-style: none;
+        }
+        [style*="z-index: 200"] > div:nth-child(3)::-webkit-scrollbar { display: none; }
+        [style*="z-index: 200"] > div:nth-child(3) > button {
+          flex: none !important;
+          white-space: nowrap;
+        }
+
+        /* ── InlineNodeEditor: clip shadow to panel, prevent overflow bleed ── */
+        [style*="z-index: 200"] {
+          overflow: visible;
+          contain: layout;
+        }
       `}</style>
       {showTutorial && <Tutorial page="canvas" onClose={()=>setShowTutorial(false)} />}
       {showDocExport && (

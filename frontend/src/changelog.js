@@ -1,6 +1,17 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.1",date:"Apr 2026",items:[
+    "Fix: InlineNodeEditor tab bar now scrolls horizontally when too many tabs — flex-shrink removed from buttons, overflow-x auto, scrollbar hidden",
+    "Fix: All 11 skins — comprehensive shadow override system applied to all hardcoded rgba(0,0,0) shadows across InlineNodeEditor popup, modals, command palette, dropdowns, collab panel, quick capture, admin dialogs",
+    "Neumorphic: Popup panels and modals now use clay dual-direction shadow instead of harsh dark drop shadows (fixes screenshot overflow bleed)",
+    "Neumorphic: Panel border separators replaced with shadow separator — no visible hard lines between panels",
+    "Brutalist: Panels and modals get flat offset shadow + accent border instead of blurred drop shadow",
+    "NeonTokyo: Panels get neon glow ring + dark fill shadow",
+    "Sakura/Newspaper/Coral/PastelPop: Light-skin shadow overrides — dark rgba shadows replaced with theme-appropriate soft shadows",
+    "Vapor: Panels get accent-tinted outline glow",
+    "Carbon: Panels get accent border + controlled dark shadow",
+  ]},
   {v:"v5.39.0",date:"Apr 2026",items:[
     "Comprehensive UI audit across all 11 skins — every element reviewed and fixed",
     "Fix: Aurora, Coral, Sakura, PastelPop — replaced border-top accent with inset box-shadow on cards (eliminated arc artifact on large-radius corners)",
