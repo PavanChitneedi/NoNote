@@ -5547,7 +5547,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
       </div>
 
       {/* Tab content */}
-      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px' }}>
+      <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', userSelect: 'text', pointerEvents: 'all' }}>
 
         {/* ── NOTES TAB ── */}
         {tab === 'notes' && (

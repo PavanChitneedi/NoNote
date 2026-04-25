@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.8",date:"Apr 2026",items:[
+    "Fix: TrueNAS (and all integration panel) sub-tab buttons were unclickable -- InlineNodeEditor outer div had userSelect:none + onMouseDown stopPropagation which blocked all child button interactions",
+    "Fix: Content scroll area now has userSelect:text and pointerEvents:all to restore interactivity for all sub-components",
+    "Fix: All IntegrationPanel buttons (Refresh, Disconnect, Configure, Save, sub-tabs) now explicitly stop propagation on both mouseDown and click",
+  ]},
   {v:"v5.39.7",date:"Apr 2026",items:[
     "Fix: TrueNAS integration JSON parse error -- each API endpoint now safe-parsed individually so one bad response does not break the whole panel",
     "Fix: Extended endpoints (disks, datasets, interfaces, VMs) are now best-effort and return null on failure rather than crashing the request",

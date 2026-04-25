@@ -246,12 +246,15 @@ function TrueNASMetrics({ data }) {
     : '—';
 
   const TabBtn = ({ id, label }) => (
-    <button onClick={() => setTab(id)} style={{
-      fontSize: 9, padding: '2px 8px', borderRadius: 4, border: 'none',
-      background: tab === id ? 'var(--accent2)' : 'var(--bg3)',
-      color: tab === id ? '#fff' : 'var(--text3)',
-      cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 600,
-    }}>{label}</button>
+    <button
+      onMouseDown={e => e.stopPropagation()}
+      onClick={e => { e.stopPropagation(); setTab(id); }}
+      style={{
+        fontSize: 9, padding: '2px 8px', borderRadius: 4, border: 'none',
+        background: tab === id ? 'var(--accent2)' : 'var(--bg3)',
+        color: tab === id ? '#fff' : 'var(--text3)',
+        cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 600,
+      }}>{label}</button>
   );
 
   return (
@@ -560,7 +563,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
               {data ? `● live · ↻${countdown}s` : '○ not connected'}
             </span>
           )}
-          <button onClick={() => setShow(s => !s)}
+          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setShow(s => !s); }}
             style={{ fontSize: 10, background: 'none', border: '1px solid var(--border)', borderRadius: 4,
               color: 'var(--text4)', cursor: 'pointer', padding: '2px 8px', fontFamily: 'var(--font-ui)' }}>
             {show ? 'Hide' : 'Configure'}
@@ -598,7 +601,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
               </div>
             ))}
             {canEdit && (
-              <button onClick={() => { save(); setShow(false); }}
+              <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); setShow(false); }}
                 style={{ width: '100%', padding: '6px', background: 'var(--accent2)', border: 'none', borderRadius: 4,
                   color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)', marginTop: 4 }}>
                 Save Configuration
@@ -611,13 +614,13 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
       {/* Connect / Refresh */}
       {isConfigured && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button onClick={() => doFetch()} disabled={busy}
+          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();doFetch()}} disabled={busy}
             style={{ flex: 1, padding: '7px', background: busy ? 'var(--bg3)' : 'var(--accent2)', border: 'none',
               borderRadius: 6, color: busy ? 'var(--text4)' : '#fff', cursor: busy ? 'default' : 'pointer',
               fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)' }}>
             {busy ? '⏳ Connecting…' : data ? '🔄 Refresh' : '⚡ Connect'}
           </button>
-          {data && <button onClick={() => { setData(null); clearInterval(intervalRef.current); clearInterval(countdownRef.current); }}
+          {data && <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setData(null); clearInterval(intervalRef.current); clearInterval(countdownRef.current); }}
             style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 6,
               color: 'var(--text4)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
             Disconnect
