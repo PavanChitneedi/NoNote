@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.9",date:"Apr 2026",items:[
+    "Fix: TrueNAS pool storage fields corrected -- API v2.0 returns p.allocated/p.free/p.size as top-level integers, not nested under p.size.* -- storage bars and totals now show real data",
+    "Fix: TrueNAS uptime field corrected -- API v2.0 returns uptime_seconds (snake_case), not uptimeSeconds -- uptime stat now shows correctly",
+    "Fix: TrueNAS Pools tab compress_ratio now reads .value from the object the API returns -- was showing [object Object] instead of ratio string",
+    "Fix: Backend totalAllocated/totalFree aggregates now use correct top-level pool fields",
+  ]},
   {v:"v5.39.8",date:"Apr 2026",items:[
     "Fix: TrueNAS (and all integration panel) sub-tab buttons were unclickable -- InlineNodeEditor outer div had userSelect:none + onMouseDown stopPropagation which blocked all child button interactions",
     "Fix: Content scroll area now has userSelect:text and pointerEvents:all to restore interactivity for all sub-components",

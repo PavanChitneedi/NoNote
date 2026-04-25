@@ -139,11 +139,11 @@ router.post('/truenas', async (req, res) => {
       safe('/api/v2.0/vm'),
     ]);
 
-    // Aggregate storage stats
+    // Aggregate storage stats — TrueNAS v2.0 returns p.size (int), p.allocated, p.free at top level
     const poolList = pools || [];
-    const totalSize      = poolList.reduce((a, p) => a + (p.size?.total     || p.size || 0), 0);
-    const totalAllocated = poolList.reduce((a, p) => a + (p.size?.allocated || 0), 0);
-    const totalFree      = poolList.reduce((a, p) => a + (p.size?.free      || 0), 0);
+    const totalSize      = poolList.reduce((a, p) => a + (p.size      || 0), 0);
+    const totalAllocated = poolList.reduce((a, p) => a + (p.allocated || 0), 0);
+    const totalFree      = poolList.reduce((a, p) => a + (p.free      || 0), 0);
 
     // Disk summary
     const diskSummary = (disks || []).map(d => ({

@@ -236,11 +236,12 @@ function TrueNASMetrics({ data }) {
   const storage   = data.storage    || {};
   const [tab, setTab] = useState('overview');
 
-  const uptime = info.uptimeSeconds
+  const uptimeSec = info.uptime_seconds || info.uptimeSeconds; // v2.0 uses snake_case
+  const uptime = uptimeSec
     ? (() => {
-        const d = Math.floor(info.uptimeSeconds / 86400);
-        const h = Math.floor((info.uptimeSeconds % 86400) / 3600);
-        const m = Math.floor((info.uptimeSeconds % 3600) / 60);
+        const d = Math.floor(uptimeSec / 86400);
+        const h = Math.floor((uptimeSec % 86400) / 3600);
+        const m = Math.floor((uptimeSec % 3600) / 60);
         return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
       })()
     : '—';
@@ -314,8 +315,8 @@ function TrueNASMetrics({ data }) {
 
       {/* ── Overview ── */}
       {tab === 'overview' && pools.map(p => {
-        const used = p.size?.allocated || 0;
-        const total = p.size?.total || p.size || 0;
+        const used = p.allocated || 0;
+        const total = p.size || 0;
         return (
           <div key={p.name} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '8px 10px', marginBottom: 6,
             border: `1px solid ${p.healthy ? 'var(--success)44' : 'var(--danger)44'}` }}>
@@ -342,15 +343,15 @@ function TrueNASMetrics({ data }) {
             <span style={{ fontSize: 10, color: p.healthy ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>{p.status}</span>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 10px', fontSize: 10, marginBottom: 6 }}>
-            {[['Used', fmt(p.size?.allocated||0)],['Free', fmt(p.size?.free||0)],
-              ['Total', fmt(p.size?.total||p.size||0)],['Fragmentation', (p.fragmentation??'—')+'%'],
-              ['Dedup', p.dedup?.value??'—'],['Compress ratio', p.compress_ratio??'—']
+            {[['Used', fmt(p.allocated||0)],['Free', fmt(p.free||0)],
+              ['Total', fmt(p.size||0)],['Fragmentation', (p.fragmentation??'—')+'%'],
+              ['Dedup', p.dedup?.value??'—'],['Compress ratio', p.compress_ratio?.value??'—']
             ].map(([k,v]) => [
               <span key={k+'k'} style={{ color: 'var(--text4)' }}>{k}</span>,
               <span key={k+'v'}>{v}</span>
             ])}
           </div>
-          <Bar pct={pct(p.size?.allocated, p.size?.total||p.size)} />
+          <Bar pct={pct(p.allocated, p.size)} />
           {(p.topology?.data||[]).map((vdev, vi) => (
             <div key={vi} style={{ marginTop: 6, fontSize: 9, color: 'var(--text3)' }}>
               <span style={{ fontWeight: 700, color: 'var(--text2)' }}>{vdev.type||'DISK'}</span>
