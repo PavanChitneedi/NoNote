@@ -117,19 +117,23 @@ export default function ThemePicker({
                 {SKIN_KEYS.map(key => {
                   const s = SKINS[key];
                   const active = skinName === key;
-                  const bg0 = s.palette[0], bg1 = s.palette[1], acc = s.palette[2];
+                  // No palette — use neutral preview colors based on skin tags
+                  const isDark = (s.tags||[]).some(t=>["Dark","Neon","Technical","Industrial","Bold","Atmospheric"].includes(t));
+                  const bg0 = isDark ? "#0d1117" : "#f5f5f0";
+                  const bg1 = isDark ? "#161b22" : "#ffffff";
+                  const acc = isDark ? "#58a6ff" : "#6366f1";
                   return (
                     <div key={key}
                       onClick={() => setSkinName(key)}
                       style={{
                         borderRadius:8, cursor:"pointer", overflow:"hidden",
-                        border:`2px solid ${active ? acc : "rgba(128,128,128,0.25)"}`,
+                        border:active?"2px solid var(--accent)":"2px solid var(--border)",
                         background: bg1,
                         transition:"transform 0.14s, border-color 0.14s, box-shadow 0.14s",
                         userSelect:"none",
-                        boxShadow: active ? `0 4px 20px ${acc}55` : "0 2px 8px rgba(0,0,0,0.3)",
+                        boxShadow: active ? "0 4px 20px var(--accent)44" : "0 2px 8px rgba(0,0,0,0.3)",
                       }}
-                      onMouseEnter={e => { if(!active){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor=(acc||"#888")+"88";}}}
+                      onMouseEnter={e => { if(!active){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor="var(--accent)";}}}
                       onMouseLeave={e => { if(!active){e.currentTarget.style.transform="";e.currentTarget.style.borderColor="rgba(128,128,128,0.25)";}}}
                     >
                       {/* Mini UI preview */}
@@ -149,32 +153,29 @@ export default function ThemePicker({
                           ))}
                         </div>
                         {active && (
-                          <div style={{ position:"absolute", top:4, right:6, background:acc,
+                          <div style={{ position:"absolute", top:4, right:6, background:"var(--accent)",
                             borderRadius:"50%", width:16, height:16, display:"flex", alignItems:"center",
-                            justifyContent:"center", fontSize:10, color:bg0, fontWeight:800 }}>✓</div>
+                            justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>✓</div>
                         )}
                       </div>
                       {/* Info */}
                       <div style={{ padding:"8px 10px", background:bg1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
                           <span style={{ fontSize:14 }}>{s.icon}</span>
-                          <span style={{ fontSize:12, fontWeight:700, color:String(s.palette?.[3]||"#fff") }}>{s.name}</span>
+                          <span style={{ fontSize:12, fontWeight:700, color:isDark?"#e6edf3":"#1a1a2e" }}>{s.name}</span>
                         </div>
                         <div style={{ display:"flex", gap:3, marginBottom:6 }}>
-                          {s.palette.map((col,i) => (
-                            <div key={i} style={{ width:14, height:14, borderRadius:"50%", background:col,
-                              border:"1px solid rgba(255,255,255,0.2)", flexShrink:0 }}/>
-                          ))}
+                          {/* Tag pills instead of palette dots */}
                         </div>
-                        <div style={{ fontSize:9, color:String(s.palette?.[3]||"#aaa"), opacity:.65, marginBottom:5, lineHeight:1.4, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{s.concept||""}</div>
+                        <div style={{ fontSize:9, color:isDark?"#7d8590":"#666", opacity:.65, marginBottom:5, lineHeight:1.4, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{s.concept||""}</div>
                         <div style={{ display:"flex", gap:4, flexWrap:"wrap", alignItems:"center" }}>
                           <span style={{ fontSize:8, padding:"1px 6px", borderRadius:8,
-                            background:(s.palette?.[2]||"#888")+"33", color:s.palette[2],
-                            border:`1px solid ${s.palette[2]}55`, fontWeight:700 }}>
+                            background:"var(--accent2)22", color:"var(--accent2)",
+                            border:"1px solid var(--accent2)44", fontWeight:700 }}>
                             {s.nav==="top"?"⬆ Top Nav":s.nav==="bottom"?"⬇ Dock":s.nav==="icon-dock"?"◀ Icon":s.nav==="editorial"?"⬛ Full":"?"}
                           </span>
                           {(s.tags||[]).slice(0,2).map(t=>(
-                            <span key={t} style={{ fontSize:8, color:String(s.palette?.[3]||"#aaa"), opacity:.6 }}>{t}</span>
+                            <span key={t} style={{ fontSize:8, color:isDark?"#7d8590":"#666", opacity:.6 }}>{t}</span>
                           ))}
                         </div>
                       </div>
