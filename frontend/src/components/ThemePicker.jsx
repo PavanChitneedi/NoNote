@@ -62,7 +62,7 @@ export default function ThemePicker({
 }) {
   const { themeName, setThemeName, fontScale, setFontScale } = useTheme();
   const { designName, setDesignName } = useDesign();
-  const { skinName, setSkinName } = useSkin();
+  const { skinName, setSkinName, skin, setAccent } = useSkin();
   const [tab, setTab]         = useState(defaultTab);
   const [fontInput, setFontInput] = useState(String(fontScale));
 
@@ -184,7 +184,29 @@ export default function ThemePicker({
                 })}
               </div>
               {/* Description of active */}
-              <div style={{ marginTop:12, padding:"10px 14px", background:"var(--bg3)",
+              {/* ── Accent quick-pick for current skin ── */}
+              {skin?.accentOptions && skin.accentOptions.length > 0 && (
+                <div style={{ marginTop:12, padding:"12px 14px", background:"var(--bg3)",
+                  border:"1px solid var(--border)", borderRadius:8 }}>
+                  <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:8 }}>
+                    Accent Color
+                    <span style={{ fontSize:10, fontWeight:400, color:"var(--text4)", marginLeft:6 }}>curated for this skin</span>
+                  </div>
+                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
+                    {skin.accentOptions.map(opt => (
+                      <button key={opt.name} onClick={() => setAccent(opt.accent, opt.accent2)}
+                        style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px",
+                          border:"1px solid var(--border)", borderRadius:"var(--radius-sm)",
+                          background:"var(--bg2)", cursor:"pointer", fontFamily:"var(--font-ui)", fontSize:10 }}>
+                        <span style={{ width:12, height:12, borderRadius:"50%", background:opt.accent, flexShrink:0, border:"1px solid rgba(255,255,255,0.2)" }}/>
+                        <span style={{ color:"var(--text3)" }}>{opt.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+                            <div style={{ marginTop:12, padding:"10px 14px", background:"var(--bg3)",
                 border:"1px solid var(--border)", borderRadius:8 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                   <span style={{ fontSize:18 }}>{SKINS[skinName]?.icon}</span>
@@ -234,7 +256,7 @@ export default function ThemePicker({
           {/* ── Design ── */}
           {tab==="design" && (
             <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ fontSize:12, color:"var(--text3)", marginBottom:4 }}>Controls node shape, spacing, and visual density.</div>
+              <div style={{ fontSize:12, color:"var(--text3)", marginBottom:4, lineHeight:1.6 }}>Controls spacing and density. Fonts, radius, and visual effects come from the selected Skin — Design and Skin are independent.</div>
               {Object.entries(DESIGNS).map(([key, d]) => (
                 <div key={key}
                   onClick={e => { e.stopPropagation(); setDesignName(key); }}
