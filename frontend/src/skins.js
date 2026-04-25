@@ -193,39 +193,122 @@ body.skin-neon-tokyo .nn-map-list-row:hover{background:var(--bg3)!important;box-
     },
     bodyClass:"skin-neumorphic",
     css:`body.skin-neumorphic{background:var(--bg);
-  /* Derive neumorphic shadow colors dynamically from theme bg — works with any theme.
-     Using 72% bg + dark/light gives enough contrast on both light and dark themes. */
   --neu-dark:color-mix(in srgb,var(--bg) 72%,#000);
   --neu-light:color-mix(in srgb,var(--bg) 68%,#fff);
+  /* Global fillet — override all inline borderRadius across the app */
+  --r: 14px;
 }
-body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),0 -1px 0 var(--neu-light)!important;border-bottom:none!important}
+
+/* ── Topbar / Sidebar ────────────────────────────────────── */
+body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),0 -1px 0 var(--neu-light)!important;border-bottom:none!important;border-radius:0!important}
 body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-dark)!important;border-right:none!important}
-body.skin-neumorphic button{background:var(--bg2)!important;border:none!important;box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
-body.skin-neumorphic button:not([disabled]):hover{box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important;transform:translateY(-1px)!important}
-body.skin-neumorphic button:not([disabled]):active{box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;transform:translateY(0)!important}
-body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{background:var(--bg)!important;border:none!important;box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
-body.skin-neumorphic input:focus,body.skin-neumorphic select:focus{box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light),0 0 0 2px var(--accent)44!important;outline:none}
+
+/* ── Buttons — all variants ──────────────────────────────── */
+body.skin-neumorphic button,
+body.skin-neumorphic label[style*="cursor"]{
+  background:var(--bg2)!important;border:none!important;
+  border-radius:var(--r)!important;
+  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;
+  color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
+body.skin-neumorphic button:not([disabled]):hover,
+body.skin-neumorphic label[style*="cursor"]:hover{
+  box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important;
+  transform:translateY(-1px)!important}
+body.skin-neumorphic button:not([disabled]):active{
+  box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;
+  transform:translateY(0)!important}
+
+/* ── Inputs / selects / textareas ────────────────────────── */
+body.skin-neumorphic input,
+body.skin-neumorphic select,
+body.skin-neumorphic textarea{
+  background:var(--bg)!important;border:none!important;
+  border-radius:var(--r)!important;
+  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
+body.skin-neumorphic input:focus,
+body.skin-neumorphic select:focus,
+body.skin-neumorphic textarea:focus{
+  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light),0 0 0 2px var(--accent)44!important;
+  outline:none}
+
+/* ── Cards / panels / modals — any div with a bg color ──── */
+body.skin-neumorphic [style*="borderRadius:14"],
+body.skin-neumorphic [style*="borderRadius: 14"],
+body.skin-neumorphic [style*="borderRadius:12"],
+body.skin-neumorphic [style*="borderRadius: 12"],
+body.skin-neumorphic [style*="borderRadius:10"],
+body.skin-neumorphic [style*="borderRadius: 10"],
+body.skin-neumorphic [style*="borderRadius:9"],
+body.skin-neumorphic [style*="borderRadius:8"],
+body.skin-neumorphic [style*="borderRadius: 8"]{border-radius:var(--r)!important}
+
+body.skin-neumorphic [style*="borderRadius:7"],
+body.skin-neumorphic [style*="borderRadius:6"],
+body.skin-neumorphic [style*="borderRadius:5"],
+body.skin-neumorphic [style*="borderRadius:4"]{border-radius:10px!important}
+
+body.skin-neumorphic [style*="borderRadius:3"]{border-radius:8px!important}
+
+/* ── Modals — give them a clay lift shadow ───────────────── */
+body.skin-neumorphic [style*="boxShadow"][style*="rgba(0,0,0,.5)"],
+body.skin-neumorphic [style*="box-shadow"][style*="rgba(0,0,0,0.5)"]{
+  box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important;
+  border-radius:22px!important;border:none!important}
+
+/* ── Badge / pill / tag spans ────────────────────────────── */
+body.skin-neumorphic span[style*="borderRadius"]{border-radius:10px!important}
+body.skin-neumorphic span[style*="border-radius"]{border-radius:10px!important}
+
+/* ── Admin panel section cards ───────────────────────────── */
+body.skin-neumorphic [style*="borderRadius:12"][style*="padding:18"],
+body.skin-neumorphic [style*="borderRadius:10"][style*="padding:\"12px 16px\""],
+body.skin-neumorphic [style*="borderRadius:10"][style*="padding:\"14px 16px\""]{
+  border-radius:20px!important;
+  box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)!important;
+  border:none!important}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
 body.skin-neumorphic ::-webkit-scrollbar{width:8px}
-body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 6px var(--neu-dark);border-radius:4px}
-body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;box-shadow:2px 2px 4px var(--neu-dark)}
+body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 6px var(--neu-dark);border-radius:8px}
+body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;box-shadow:2px 2px 4px var(--neu-dark)}
+
+/* ── Map cards ───────────────────────────────────────────── */
 body.skin-neumorphic .nn-map-card{
-  background:var(--bg)!important;
-  border:none!important;
-  /* Use inset box-shadow for top accent stripe — avoids the arc/curve artifact
-     that border-top creates on highly-rounded corners */
-  box-shadow:
-    6px 6px 14px var(--neu-dark),
-    -6px -6px 14px var(--neu-light),
-    inset 0 3px 0 var(--ca) !important}
+  background:var(--bg)!important;border:none!important;
+  box-shadow:6px 6px 14px var(--neu-dark),-6px -6px 14px var(--neu-light),inset 0 3px 0 var(--ca)!important}
 body.skin-neumorphic .nn-map-card:hover{
   transform:translateY(-2px);
-  box-shadow:
-    8px 8px 18px var(--neu-dark),
-    -8px -8px 18px var(--neu-light),
-    inset 0 3px 0 var(--ca) !important}
+  box-shadow:8px 8px 18px var(--neu-dark),-8px -8px 18px var(--neu-light),inset 0 3px 0 var(--ca)!important}
 body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light);border-left:3px solid var(--ca)!important}
-body.skin-neumorphic .nn-map-list-row:hover{box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)}`,
+
+/* ── List rows ───────────────────────────────────────────── */
+body.skin-neumorphic .nn-map-list-row{
+  background:var(--bg)!important;border-radius:var(--r)!important;
+  box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light);
+  border-left:3px solid var(--ca)!important;border-top:none!important;
+  border-right:none!important;border-bottom:none!important}
+body.skin-neumorphic .nn-map-list-row:hover{
+  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)}
+
+/* ── ThemePicker modal ────────────────────────────────────── */
+body.skin-neumorphic [style*="maxWidth:680"]{
+  border-radius:24px!important;border:none!important;
+  box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
+
+/* ── Skin preview cards inside ThemePicker ───────────────── */
+body.skin-neumorphic [style*="overflow:\"hidden\""][style*="borderRadius:8"],
+body.skin-neumorphic [style*="overflow:hidden"][style*="borderRadius:8"]{border-radius:14px!important}
+
+/* ── Context menu / dropdowns ─────────────────────────────── */
+body.skin-neumorphic [style*="position:\"absolute\""][style*="background"],
+body.skin-neumorphic [style*="position:absolute"][style*="background:\"var(--bg"]{
+  border-radius:18px!important;
+  box-shadow:8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)!important;
+  border:none!important}
+
+/* ── Toggle switches ──────────────────────────────────────── */
+body.skin-neumorphic [style*="borderRadius:20"],
+body.skin-neumorphic [style*="borderRadius: 20"]{border-radius:20px!important}`,
   },
 
   sakura: {

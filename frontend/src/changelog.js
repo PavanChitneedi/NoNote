@@ -1,20 +1,23 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.38.2",date:"Apr 2026",items:[
+    "Neumorphic: Global fillet pass — buttons, inputs, modals, badges, admin cards, context menus, list rows, ThemePicker all now have smooth rounded corners throughout",
+    "Neumorphic: Modals and overlays get clay lift shadow (12px dual-direction) instead of flat drop shadows",
+    "Neumorphic: Scrollbar thumb and track rounded to match skin",
+    "Neumorphic: Badge and pill spans rounded to 10px throughout the UI",
+  ]},
   {v:"v5.38.1",date:"Apr 2026",items:[
-    "Fix: Neumorphic card top-accent stripe now uses inset box-shadow instead of border-top — eliminates the wide arc artifact that appeared on rounded corners",
-    "Fix: Neumorphic border radius reduced (radius-lg 28px → 20px, radius-md 20px → 16px) — restores the smooth filleted look matching the original design",
-    "Fix: Neumorphic shadow colors now fully theme-aware — all 13 themes have explicit --neu-dark/--neu-light values (sepia, mint, parchment added); dark themes auto-derive via color-mix",
-    "Fix: Neumorphic --shadow-node vars updated to use dynamic --neu-dark/--neu-light without clay-specific fallbacks",
-    "Fix: color-mix ratios adjusted (72%/68%) for better shadow contrast across light and dark themes",
+    "Fix: Neumorphic card top-accent uses inset box-shadow to eliminate the arc artifact on rounded corners",
+    "Fix: Neumorphic border radius reduced to 20px — restores smooth filleted look from original design",
+    "Fix: Neumorphic shadow colors fully theme-aware — sepia, mint, parchment get explicit values; dark themes use color-mix",
+    "Fix: color-mix ratios adjusted (72%/68%) for better shadow contrast across all themes",
   ]},
   {v:"v5.38.0",date:"Apr 2026",items:[
-    "Removed: Design tab removed from Appearance modal — spacing is now a fixed clean baseline (no user-selectable density options)",
-    "Removed: defaultDesign auto-apply on skin switch — skins no longer override spacing",
-    "Fix: Neumorphic skin now works on ALL themes — shadows derived via color-mix instead of hardcoded clay-only values",
-    "Fix: NeonTokyo scanlines now adapt to any theme using color-mix(in srgb, var(--text) 5%, transparent)",
-    "Fix: Vapor retro grid uses accent-tinted lines via color-mix — vibrant on any theme",
-    "Fix: Carbon texture uses color-mix(in srgb, var(--text) 4%, transparent) — visible on light and dark",
+    "Removed: Design tab from Appearance modal — spacing is now a fixed clean baseline",
+    "Removed: defaultDesign auto-apply on skin switch",
+    "Fix: Neumorphic skin works on ALL themes via color-mix shadow derivation",
+    "Fix: NeonTokyo scanlines, Vapor grid, Carbon texture all use color-mix for theme adaptation",
     "Fix: Newspaper card shadows use var(--shadow) — visible on dark themes",
     "Docs: All MD files updated — CLAUDE.md, README.md, ARCHITECTURE.md, FEATURES.md, SKINS.md",
   ]},
