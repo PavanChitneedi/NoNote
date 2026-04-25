@@ -248,7 +248,185 @@ body.skin-neumorphic [style*="border-left: 1px solid"]{border-left:none!importan
 body.skin-neumorphic [style*="border-right: 1px solid"]{border-right:none!important;box-shadow:4px 0 8px var(--neu-dark)!important}
 /* LLMChat — replace panel borders with shadows */
 body.skin-neumorphic [style*="border-left: 1px solid var(--border)"] { border-left: none !important; box-shadow: -3px 0 8px var(--neu-dark) !important; }
-body.skin-neumorphic [style*="border-top: 1px solid var(--border)"] { border-top: none !important; box-shadow: 0 -3px 8px var(--neu-dark) !important; }`,
+body.skin-neumorphic [style*="border-top: 1px solid var(--border)"] { border-top: none !important; box-shadow: 0 -3px 8px var(--neu-dark) !important; }
+/* ════════════════════════════════════════════════════════════
+   NEUMORPHIC — COMPREHENSIVE UI ELEMENT TREATMENT
+   ════════════════════════════════════════════════════════════ */
+
+/* ── InlineNodeEditor popup (z-index: 200) ── */
+body.skin-neumorphic [style*="z-index: 200"]{
+  border-radius:20px!important;
+  box-shadow:16px 16px 32px var(--neu-dark),-16px -16px 32px var(--neu-light)!important;
+  overflow:hidden!important}
+
+/* ── Tab bar — inset groove look ── */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3){
+  background:var(--bg)!important;
+  border-bottom:none!important;
+  padding:6px 8px!important;
+  gap:3px!important;
+  box-shadow:inset 2px 2px 5px var(--neu-dark),inset -2px -2px 5px var(--neu-light)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button{
+  box-shadow:none!important;
+  border-radius:10px!important;
+  border:none!important;
+  padding:5px 8px!important;
+  flex:none!important}
+/* Active tab — pressed-in inset */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="background: var(--bg)"]:not([style*="background: var(--bg2)"]){
+  box-shadow:inset 2px 2px 5px var(--neu-dark),inset -1px -1px 3px var(--neu-light)!important;
+  background:var(--bg)!important}
+
+/* ── Popup header row ── */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(1){
+  border-bottom:none!important;
+  box-shadow:0 2px 6px var(--neu-dark)!important}
+
+/* ── Popup description row ── */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2){
+  border-bottom:none!important;
+  box-shadow:0 1px 3px var(--neu-dark)!important}
+
+/* ── Popup content scroll area — subtle inset ── */
+body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow: auto"]{
+  background:var(--bg)!important;
+  box-shadow:inset 2px 2px 6px var(--neu-dark),inset -2px -2px 6px var(--neu-light)!important}
+
+/* ── RichTextEditor — toolbar buttons (tiny, 22px) ── */
+body.skin-neumorphic button[style*="height: 22px"]{
+  box-shadow:2px 2px 4px var(--neu-dark),-2px -2px 4px var(--neu-light)!important;
+  border-radius:6px!important;
+  background:var(--bg2)!important;
+  margin:1px!important}
+body.skin-neumorphic button[style*="height: 22px"]:hover{
+  box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light)!important;
+  transform:translateY(-1px)!important}
+body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--accent2)"]{
+  box-shadow:inset 2px 2px 4px var(--neu-dark),inset -1px -1px 3px var(--neu-light)!important}
+
+/* ── RichTextEditor outer container — inset groove ── */
+body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="flex-direction: column"][style*="overflow: hidden"]{
+  border:none!important;
+  box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;
+  border-radius:14px!important}
+
+/* ── RichTextEditor toolbar rows — no hard border ── */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-bottom: 1px solid var(--border2)"]{
+  border-bottom:none!important;
+  box-shadow:0 2px 4px var(--neu-dark)!important}
+
+/* ── NoteCard outer — replace border with shadow ── */
+body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="border-radius: var(--radius-sm)"][style*="overflow: hidden"][style*="margin"]{
+  border:none!important;
+  box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)!important;
+  border-radius:14px!important}
+
+/* ── NoteCard header — no hard separator ── */
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border)"][style*="cursor: pointer"]{
+  border-bottom:none!important;
+  box-shadow:0 2px 6px var(--neu-dark)!important}
+
+/* ── Toggle row container ── */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 6px"]{
+  background:var(--bg)!important;
+  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
+
+/* ── Services/Properties small inline inputs & selects (inside popup) ── */
+body.skin-neumorphic [style*="z-index: 200"] input[style*="border: 1px solid var(--border)"],
+body.skin-neumorphic [style*="z-index: 200"] select[style*="border: 1px solid var(--border)"]{
+  border:none!important;
+  border-radius:10px!important;
+  box-shadow:inset 2px 2px 4px var(--neu-dark),inset -2px -2px 4px var(--neu-light)!important;
+  padding-left:8px!important}
+
+/* ── Services section cards ── */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: 7px"]{
+  background:var(--bg)!important;
+  border:none!important;
+  border-radius:14px!important;
+  box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important}
+
+/* ── Context menu ── */
+body.skin-neumorphic [style*="z-index: 601"][style*="background: var(--bg2)"]{
+  border:none!important;
+  border-radius:18px!important;
+  box-shadow:10px 10px 20px var(--neu-dark),-10px -10px 20px var(--neu-light)!important;
+  overflow:hidden!important}
+body.skin-neumorphic [style*="z-index: 601"] [style*="background: var(--bg3)"][style*="display: flex"]{
+  border-bottom:none!important;
+  box-shadow:0 2px 6px var(--neu-dark)!important}
+
+/* ── Canvas toolbar dropdowns ── */
+body.skin-neumorphic [style*="z-index: 501"][style*="background: var(--bg2)"]{
+  border:none!important;
+  border-radius:16px!important;
+  box-shadow:10px 10px 20px var(--neu-dark),-10px -10px 20px var(--neu-light)!important;
+  overflow:hidden!important}
+
+/* ── Props Panel (right side panel mode) ── */
+body.skin-neumorphic [style*="border-left: 1px solid var(--border2)"]{
+  border-left:none!important;
+  box-shadow:-6px 0 12px var(--neu-dark)!important}
+
+/* ── NodeSidebar (left) ── */
+body.skin-neumorphic [style*="border-right: 1px solid var(--border2)"]{
+  border-right:none!important;
+  box-shadow:6px 0 12px var(--neu-dark)!important}
+
+/* ── Admin panel section cards (borderRadius:12 + padding:18) ── */
+body.skin-neumorphic [style*="border-radius: 12px"][style*="padding: 18px"],
+body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 12px 16px"]{
+  border:none!important;
+  border-radius:18px!important;
+  box-shadow:8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)!important}
+
+/* ── Admin user list rows ── */
+body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 12px 16px"][style*="align-items: center"]{
+  border:none!important;
+  border-radius:16px!important;
+  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;
+  margin-bottom:6px!important}
+
+/* ── Canvas toolbar rows (topbar) — remove hard borders ── */
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"][style*="height: 40px"],
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"][style*="padding: 0 8px"]{
+  border-bottom:none!important;
+  box-shadow:0 2px 6px var(--neu-dark)!important}
+
+/* ── Tooltip/hover labels on canvas ── */
+body.skin-neumorphic [style*="pointer-events: none"][style*="white-space: nowrap"][style*="border-radius"]{
+  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;
+  border:none!important}
+
+/* ── ThemePicker modal (maxWidth 680) ── */
+body.skin-neumorphic [style*="max-width: 680px"]{
+  border:none!important;
+  border-radius:24px!important;
+  box-shadow:16px 16px 32px var(--neu-dark),-16px -16px 32px var(--neu-light)!important}
+
+/* ── Skin preview mini-cards inside ThemePicker ── */
+body.skin-neumorphic [style*="overflow: hidden"][style*="border-radius: 8px"][style*="cursor: pointer"]{
+  border-radius:14px!important;
+  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important}
+
+/* ── Collab change log panel ── */
+body.skin-neumorphic [style*="top: 76px"][style*="right: 8px"][style*="z-index: 800"]{
+  border:none!important;
+  border-radius:18px!important;
+  box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
+
+/* ── Command palette ── */
+body.skin-neumorphic [style*="top: 12%"][style*="z-index: 601"],
+body.skin-neumorphic [style*="top: 12%"][style*="z-index: 600"]{
+  border:none!important;
+  border-radius:20px!important;
+  box-shadow:16px 16px 32px var(--neu-dark),-16px -16px 32px var(--neu-light)!important}
+
+/* ── LiveDashboard integration cards ── */
+body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 14px 16px"]{
+  border:none!important;
+  border-radius:16px!important;
+  box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)!important}`,
   },
 
   sakura: {

@@ -1,6 +1,22 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.3",date:"Apr 2026",items:[
+    "Neumorphic: Deep UI audit — every element inside InlineNodeEditor popup now properly treated",
+    "Neumorphic: Tab bar becomes an inset groove with floating pill tabs — active tab has pressed-in inset shadow",
+    "Neumorphic: RichText toolbar tiny buttons (B/I/U/H1 etc) get micro clay shadows — previously full-size shadow looked bloated on 22px buttons",
+    "Neumorphic: RichTextEditor container is now an inset clay groove instead of flat bordered box",
+    "Neumorphic: NoteCard outer border replaced with clay lift shadow, header border replaced with shadow separator",
+    "Neumorphic: Show Notes toggle row is now an inset trough",
+    "Neumorphic: Services/Properties small inputs get inset clay shadow and rounded corners",
+    "Neumorphic: Services section cards get clay lift shadow",
+    "Neumorphic: Context menu, canvas dropdowns, command palette, collab log panel all get rounded clay shadows",
+    "Neumorphic: Node sidebar left/right panel separators use shadow instead of hard border lines",
+    "Neumorphic: Admin section cards and user rows get appropriate clay shadows",
+    "Neumorphic: Canvas toolbar row borders replaced with shadow separators",
+    "Fix: RichTextEditor default text color swatch now uses var(--text) — was hardcoded #e6edf3 (invisible on light themes)",
+    "Fix: execCommand foreColor now resolves CSS variables to computed hex before applying",
+  ]},
   {v:"v5.39.2",date:"Apr 2026",items:[
     "Fix: LLMChat panel was entirely hardcoded to GitHub Dark colors — now fully uses CSS variables (var(--bg), var(--text), var(--accent), var(--border)) and looks correct on all 11 skins and 13 themes",
     "Fix: LLMSettings provider manager also fully converted to CSS variables",

@@ -4939,8 +4939,16 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
   const Div = () => <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />;
 
   const FONT_SIZES = [['1', '10px', 'XS'], ['2', '12px', 'S'], ['3', '14px', 'M'], ['5', '18px', 'L'], ['6', '24px', 'XL']];
-  const TEXT_COLORS = ['#e6edf3', '#58a6ff', '#3fb950', '#f78166', '#ffa657', '#d2a8ff', '#ffb3c0', '#aff5b4'];
-  const BG_COLORS   = ['transparent', '#0d2d6e', '#0f3d1a', '#5d1a1a', '#3d2e0a', '#2a0a3d', 'transparent', 'transparent'];
+  const TEXT_COLORS = ['var(--text)', '#58a6ff', '#3fb950', '#f78166', '#ffa657', '#d2a8ff', '#ffb3c0', '#aff5b4'];
+  const execColor = (c) => {
+    // execCommand needs a real hex, resolve CSS vars first
+    if (c.startsWith('var(')) {
+      const resolved = getComputedStyle(document.documentElement).getPropertyValue(c.slice(4,-1).trim()).trim();
+      return resolved || '#cccccc';
+    }
+    return c;
+  };
+  // BG_COLORS unused - hiliteColor handled by Highlight swatches below
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
@@ -4985,7 +4993,7 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
       <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', background: 'var(--bg2)', borderBottom: '1px solid var(--border2)' }}>
         <span style={{ fontSize: 9, color: 'var(--text4)', marginRight: 2 }}>Text</span>
         {TEXT_COLORS.map(c => (
-          <div key={c} onMouseDown={e => { e.preventDefault(); exec('foreColor', c); }}
+          <div key={c} onMouseDown={e => { e.preventDefault(); exec('foreColor', execColor(c)); }}
             title={`Text: ${c}`}
             style={{ width: 14, height: 14, borderRadius: '50%', background: c, border: '1.5px solid var(--border)', cursor: disabled ? 'default' : 'pointer', flexShrink: 0 }}/>
         ))}
