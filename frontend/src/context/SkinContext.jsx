@@ -20,15 +20,22 @@ export function SkinProvider({ children }) {
   const setSkinName = (name) => {
     if (!SKINS[name]) return;
     setSkinRaw(name);
-    // Apply default theme + design for this skin (only on first switch, not on reload)
     const skin = SKINS[name];
+    // Apply default theme
     if (skin.defaultTheme) {
       localStorage.setItem("nm_theme", skin.defaultTheme);
       window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: skin.defaultTheme }));
     }
+    // Apply default design
     if (skin.defaultDesign) {
       localStorage.setItem("nn_design", skin.defaultDesign);
       window.dispatchEvent(new CustomEvent("nn-set-design", { detail: skin.defaultDesign }));
+    }
+    // Apply default accent — clears any previous accent override
+    if (skin.defaultAccent) {
+      localStorage.setItem("nn_skin_accent", JSON.stringify({ accent: skin.defaultAccent.accent, accent2: skin.defaultAccent.accent2, skinName: name }));
+    } else {
+      localStorage.removeItem("nn_skin_accent");
     }
   };
 
@@ -57,12 +64,16 @@ export function SkinProvider({ children }) {
     // Apply personality — deferred so theme/design run first, then skin wins on font/radius
     const t = setTimeout(() => {
       applyPersonality(skin);
-      // Restore accent override if it belongs to this skin
+      // Apply accent — saved override first, then defaultAccent
       try {
         const saved = JSON.parse(localStorage.getItem("nn_skin_accent") || "{}");
+        const skin2 = SKINS[skinName];
         if (saved.skinName === skinName && saved.accent) {
           document.documentElement.style.setProperty("--accent", saved.accent);
-          document.documentElement.style.setProperty("--accent2", saved.accent2);
+          document.documentElement.style.setProperty("--accent2", saved.accent2 || saved.accent);
+        } else if (skin2?.defaultAccent) {
+          document.documentElement.style.setProperty("--accent", skin2.defaultAccent.accent);
+          document.documentElement.style.setProperty("--accent2", skin2.defaultAccent.accent2);
         }
       } catch {}
     }, 0);
