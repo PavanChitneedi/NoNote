@@ -1,6 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.2",date:"Apr 2026",items:[
+    "Fix: LLMChat panel was entirely hardcoded to GitHub Dark colors — now fully uses CSS variables (var(--bg), var(--text), var(--accent), var(--border)) and looks correct on all 11 skins and 13 themes",
+    "Fix: LLMSettings provider manager also fully converted to CSS variables",
+    "Fix: Message bubbles use radius vars (var(--radius-md)/var(--radius-xs)) instead of hardcoded px — matches skin roundness",
+    "Fix: LoginPage card uses var(--radius-lg) and var(--shadow) — adapts to neumorphic/brutalist/etc",
+    "Fix: Login inputs and button use var(--radius-sm)/var(--radius-md) — no more hardcoded 8/10/16px",
+    "Neumorphic: LLMChat panel left border replaced with shadow separator",
+    "NeonTokyo/Vapor: LLMChat panel border tinted with accent color",
+  ]},
   {v:"v5.39.1",date:"Apr 2026",items:[
     "Fix: InlineNodeEditor tab bar now scrolls horizontally when too many tabs — flex-shrink removed from buttons, overflow-x auto, scrollbar hidden",
     "Fix: All 11 skins — comprehensive shadow override system applied to all hardcoded rgba(0,0,0) shadows across InlineNodeEditor popup, modals, command palette, dropdowns, collab panel, quick capture, admin dialogs",

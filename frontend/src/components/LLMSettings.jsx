@@ -148,26 +148,26 @@ export default function LLMSettings({ onClose }) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300, padding: 16 }}
       onClick={onClose}>
-      <div style={{ background: "#161b22", border: "1px solid #30363d", borderRadius: 16, width: "100%", maxWidth: 620, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
+      <div style={{ background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 16, width: "100%", maxWidth: 620, maxHeight: "88vh", display: "flex", flexDirection: "column", overflow: "hidden" }}
         onClick={e => e.stopPropagation()}>
 
         {/* Header */}
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid #21262d", display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 18 }}>🔌</span>
           <div style={{ flex: 1 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#e6edf3" }}>LLM Providers</div>
-            <div style={{ fontSize: 10, color: "#484f58" }}>Add your AI providers — API keys are encrypted at rest</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)" }}>LLM Providers</div>
+            <div style={{ fontSize: 10, color: "var(--text4)" }}>Add your AI providers — API keys are encrypted at rest</div>
           </div>
           <button onClick={onClose} style={xBtn}>×</button>
         </div>
 
         <div style={{ flex: 1, overflow: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
-          {error   && <Alert color="#f78166">{error}</Alert>}
+          {error   && <Alert color="var(--danger)">{error}</Alert>}
           {success && <Alert color="#4CAF50">{success}</Alert>}
 
           {/* Add / Edit form */}
           {showAdd ? (
-            <form onSubmit={handleSubmit} style={{ background: "#0d1117", border: "1px solid #30363d", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
+            <form onSubmit={handleSubmit} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 12, padding: 18, display: "flex", flexDirection: "column", gap: 12 }}>
               <div style={sectionLbl}>{editId ? "EDIT PROVIDER" : "ADD PROVIDER"}</div>
 
               {/* Provider type — grouped */}
@@ -175,7 +175,7 @@ export default function LLMSettings({ onClose }) {
                 <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                   {GROUPS.filter(g => Object.values(PRESETS).some(p => p.group===g)).map(group => (
                     <div key={group}>
-                      <div style={{ fontSize:9, fontWeight:700, color:"#484f58", letterSpacing:1.5, marginBottom:5 }}>{group.toUpperCase()}</div>
+                      <div style={{ fontSize:9, fontWeight:700, color:"var(--text4)", letterSpacing:1.5, marginBottom:5 }}>{group.toUpperCase()}</div>
                       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill,minmax(140px,1fr))", gap:6 }}>
                         {Object.entries(PRESETS).filter(([,p]) => p.group===group).map(([key, p]) => (
                           <div key={key}
@@ -183,12 +183,12 @@ export default function LLMSettings({ onClose }) {
                             title={p.note}
                             style={{
                               padding:"9px 12px", borderRadius:8, cursor:"pointer",
-                              border:`2px solid ${form.provider===key ? PROVIDER_COLORS[key] : "#21262d"}`,
+                              border:`2px solid ${form.provider===key ? PROVIDER_COLORS[key] : "var(--bg3)"}`,
                               background: form.provider===key ? `${PROVIDER_COLORS[key]}18` : "transparent",
                               display:"flex", alignItems:"center", gap:7, transition:"all .12s",
                             }}>
                             <span style={{ fontSize:15 }}>{p.icon}</span>
-                            <span style={{ fontSize:10, color: form.provider===key ? "#e6edf3" : "#7d8590",
+                            <span style={{ fontSize:10, color: form.provider===key ? "var(--text)" : "var(--text3)",
                               fontWeight: form.provider===key ? 700 : 400, lineHeight:1.2 }}>{p.label}</span>
                           </div>
                         ))}
@@ -197,9 +197,9 @@ export default function LLMSettings({ onClose }) {
                   ))}
                   {/* Provider note */}
                   {preset.note && (
-                    <div style={{ fontSize:11, color:"#7d8590", background:"#0d1117", borderRadius:6,
+                    <div style={{ fontSize:11, color:"var(--text3)", background:"var(--bg)", borderRadius:6,
                       padding:"7px 12px", borderLeft:"3px solid #1f6feb", lineHeight:1.4 }}>
-                      {preset.icon} <strong style={{ color:"#e6edf3" }}>{preset.label}:</strong> {preset.note}
+                      {preset.icon} <strong style={{ color:"var(--text)" }}>{preset.label}:</strong> {preset.note}
                     </div>
                   )}
                 </div>
@@ -225,9 +225,9 @@ export default function LLMSettings({ onClose }) {
                         {preset.models.map(m => (
                           <button key={m} type="button"
                             onClick={() => setForm(f => ({ ...f, model:m }))}
-                            style={{ padding:"2px 8px", fontSize:9, border:`1px solid ${form.model===m?"#1f6feb":"#30363d"}`,
+                            style={{ padding:"2px 8px", fontSize:9, border:`1px solid ${form.model===m?"var(--accent2)":"var(--border)"}`,
                               borderRadius:4, background: form.model===m?"#1f6feb22":"transparent",
-                              color: form.model===m?"#58a6ff":"#7d8590", cursor:"pointer", fontFamily:"inherit" }}>
+                              color: form.model===m?"var(--accent)":"var(--text3)", cursor:"pointer", fontFamily:"inherit" }}>
                             {m.split("/").pop()}
                           </button>
                         ))}
@@ -251,7 +251,7 @@ export default function LLMSettings({ onClose }) {
                     {/* Link to get API key */}
                     {!editId && PRESETS[form.provider]?.apiLink && (
                       <a href={PRESETS[form.provider].apiLink} target="_blank" rel="noreferrer"
-                        style={{ fontSize:10, color:"#58a6ff", marginTop:4, display:"block" }}>
+                        style={{ fontSize:10, color:"var(--accent)", marginTop:4, display:"block" }}>
                         Get API key →
                       </a>
                     )}
@@ -259,7 +259,7 @@ export default function LLMSettings({ onClose }) {
                 )}
               </div>
 
-              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "#7d8590", cursor: "pointer" }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 11, color: "var(--text3)", cursor: "pointer" }}>
                 <input type="checkbox" checked={form.is_default} onChange={e => setForm(f => ({ ...f, is_default: e.target.checked }))} />
                 Set as default provider
               </label>
@@ -275,9 +275,9 @@ export default function LLMSettings({ onClose }) {
 
           {/* Provider list */}
           {loading ? (
-            <div style={{ color: "#484f58", fontSize: 12, textAlign: "center", padding: 20 }}>Loading…</div>
+            <div style={{ color: "var(--text4)", fontSize: 12, textAlign: "center", padding: 20 }}>Loading…</div>
           ) : providers.length === 0 ? (
-            <div style={{ color: "#484f58", fontSize: 12, textAlign: "center", padding: 30, lineHeight: 2 }}>
+            <div style={{ color: "var(--text4)", fontSize: 12, textAlign: "center", padding: 30, lineHeight: 2 }}>
               No providers yet. Add your first LLM to start chatting with your maps.
             </div>
           ) : (
@@ -286,21 +286,21 @@ export default function LLMSettings({ onClose }) {
                 const pr = PRESETS[p.provider] || PRESETS.custom;
                 const col = PROVIDER_COLORS[p.provider] || "#9E9E9E";
                 return (
-                  <div key={p.id} style={{ background: "#0d1117", border: `1px solid ${col}30`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <div key={p.id} style={{ background: "var(--bg)", border: `1px solid ${col}30`, borderRadius: 10, padding: "12px 16px", display: "flex", alignItems: "center", gap: 12 }}>
                     <span style={{ fontSize: 20, flexShrink: 0 }}>{pr.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <span style={{ fontSize: 12, fontWeight: 700, color: "#e6edf3" }}>{p.name}</span>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>{p.name}</span>
                         {p.is_default && <span style={{ fontSize: 9, background: `${col}25`, color: col, padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>DEFAULT</span>}
                       </div>
-                      <div style={{ fontSize: 10, color: "#7d8590", marginTop: 2 }}>
+                      <div style={{ fontSize: 10, color: "var(--text3)", marginTop: 2 }}>
                         {pr.label} · {p.model}
                       </div>
-                      <div style={{ fontSize: 9, color: "#3d4349", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.base_url}</div>
+                      <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.base_url}</div>
                     </div>
                     <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
                       <button onClick={() => startEdit(p)} style={{ ...ghostBtn, padding: "4px 10px", fontSize: 9 }}>EDIT</button>
-                      <button onClick={() => handleDelete(p.id)} style={{ background: "none", border: "1px solid #f7816640", borderRadius: 6, color: "#f78166", cursor: "pointer", fontSize: 9, padding: "4px 10px", fontFamily: "inherit", fontWeight: 700 }}>REMOVE</button>
+                      <button onClick={() => handleDelete(p.id)} style={{ background: "none", border: "1px solid #f7816640", borderRadius: 6, color: "var(--danger)", cursor: "pointer", fontSize: 9, padding: "4px 10px", fontFamily: "inherit", fontWeight: 700 }}>REMOVE</button>
                     </div>
                   </div>
                 );
@@ -308,7 +308,7 @@ export default function LLMSettings({ onClose }) {
             </div>
           )}
 
-          <div style={{ fontSize: 10, color: "#3d4349", lineHeight: 1.6, borderTop: "1px solid #21262d", paddingTop: 12, marginTop: 4 }}>
+          <div style={{ fontSize: 10, color: "var(--text4)", lineHeight: 1.6, borderTop: "1px solid var(--border)", paddingTop: 12, marginTop: 4 }}>
             🔒 API keys are encrypted with AES-256-GCM before storage. They are never sent to the frontend — all LLM calls are proxied through the NodeMap backend.
           </div>
         </div>
@@ -322,8 +322,8 @@ const Alert = ({ color, children }) => (
   <div style={{ background: `${color}18`, border: `1px solid ${color}40`, borderRadius: 8, padding: "9px 12px", fontSize: 12, color }}>{children}</div>
 );
 
-const sectionLbl = { fontSize: 9, fontWeight: 700, color: "#484f58", letterSpacing: 2, marginBottom: 4 };
-const inp   = { width: "100%", background: "#161b22", border: "1px solid #30363d", borderRadius: 7, padding: "8px 10px", color: "#e6edf3", fontSize: 12, fontFamily: "inherit", outline: "none" };
-const primBtn = { padding: "9px 18px", background: "#1f6feb", border: "none", borderRadius: 8, color: "#fff", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer" };
-const ghostBtn= { padding: "9px 18px", background: "#21262d", border: "none", borderRadius: 8, color: "#7d8590", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer" };
-const xBtn    = { background: "none", border: "none", color: "#7d8590", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 4px" };
+const sectionLbl = { fontSize: 9, fontWeight: 700, color: "var(--text4)", letterSpacing: 2, marginBottom: 4 };
+const inp   = { width: "100%", background: "var(--bg2)", border: "1px solid var(--border)", borderRadius: 7, padding: "8px 10px", color: "var(--text)", fontSize: 12, fontFamily: "inherit", outline: "none" };
+const primBtn = { padding: "9px 18px", background: "var(--accent2)", border: "none", borderRadius: 8, color: "#fff", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer" };
+const ghostBtn= { padding: "9px 18px", background: "var(--bg3)", border: "none", borderRadius: 8, color: "var(--text3)", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: "pointer" };
+const xBtn    = { background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 22, lineHeight: 1, padding: "0 4px" };

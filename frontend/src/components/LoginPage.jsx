@@ -24,7 +24,7 @@ export default function LoginPage() {
       padding:20 }}>
       <div style={{ width:"100%", maxWidth:380 }}>
         {/* Card */}
-        <div style={{ background:"var(--bg2)", border:`1px solid var(--border)`, borderRadius:16, padding:"36px 30px", boxShadow:"0 24px 80px var(--shadow)" }}>
+        <div style={{ background:"var(--bg2)", border:`1px solid var(--border)`, borderRadius:"var(--radius-lg)", padding:"36px 30px", boxShadow:"0 8px 40px var(--shadow)" }}>
           <div style={{ textAlign:"center", marginBottom:30 }}>
             <div style={{ fontSize:38 }}>⬡</div>
             <div style={{ fontSize:24, fontWeight:700, color:"var(--accent)", letterSpacing:2, marginTop:8 }}>NoNote</div>
@@ -36,22 +36,22 @@ export default function LoginPage() {
               <label style={{ display:"block", fontSize:10, fontWeight:700, color:"var(--text4)", letterSpacing:2, marginBottom:5 }}>EMAIL</label>
               <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email"
                 placeholder="you@example.com"
-                style={{ width:"100%", background:"var(--bg)", border:`1px solid var(--border)`, borderRadius:8, padding:"11px 12px", color:"var(--text)", fontSize:14, outline:"none", boxSizing:"border-box" }}
+                style={{ width:"100%", background:"var(--bg)", border:`1px solid var(--border)`, borderRadius:"var(--radius-sm)", padding:"11px 12px", color:"var(--text)", fontSize:14, outline:"none", boxSizing:"border-box" }}
               />
             </div>
             <div>
               <label style={{ display:"block", fontSize:10, fontWeight:700, color:"var(--text4)", letterSpacing:2, marginBottom:5 }}>PASSWORD</label>
               <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required autoComplete="current-password"
                 placeholder="••••••••"
-                style={{ width:"100%", background:"var(--bg)", border:`1px solid var(--border)`, borderRadius:8, padding:"11px 12px", color:"var(--text)", fontSize:14, outline:"none", boxSizing:"border-box" }}
+                style={{ width:"100%", background:"var(--bg)", border:`1px solid var(--border)`, borderRadius:"var(--radius-sm)", padding:"11px 12px", color:"var(--text)", fontSize:14, outline:"none", boxSizing:"border-box" }}
               />
             </div>
             {error && (
-              <div style={{ background:"var(--danger)18", border:`1px solid var(--danger)50`, borderRadius:8, padding:"10px 14px", fontSize:12, color:"var(--danger)" }}>
+              <div style={{ background:"var(--danger)18", border:`1px solid var(--danger)50`, borderRadius:"var(--radius-sm)", padding:"10px 14px", fontSize:12, color:"var(--danger)" }}>
                 {error}
               </div>
             )}
-            <button type="submit" disabled={loading} style={{ marginTop:6, padding:"12px", background:loading?"var(--bg3)":"var(--accent2)", border:"none", borderRadius:10, color:loading?"var(--text4)":"#fff", fontSize:13, fontWeight:700, letterSpacing:1, cursor:loading?"not-allowed":"pointer", transition:"all .2s", fontFamily:"inherit" }}>
+            <button type="submit" disabled={loading} style={{ marginTop:6, padding:"12px", background:loading?"var(--bg3)":"var(--accent2)", border:"none", borderRadius:"var(--radius-md)", color:loading?"var(--text4)":"#fff", fontSize:13, fontWeight:700, letterSpacing:1, cursor:loading?"not-allowed":"pointer", transition:"all .2s", fontFamily:"inherit" }}>
               {loading ? "SIGNING IN…" : "SIGN IN →"}
             </button>
           </form>

@@ -135,40 +135,40 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     <>
       <div style={{
         width: 360, height: "100%",
-        display: "flex", background: "#0d1117",
-        borderLeft: "1px solid #21262d",
+        display: "flex", background: "var(--bg)",
+        borderLeft: "1px solid var(--border)",
         flexShrink: 0, overflow: "hidden",
       }}>
         {/* Sidebar */}
         {(showSidebar || !isMobile) && (
           <div style={{
             width: isMobile ? "100%" : 240,
-            background: "#161b22",
-            borderRight: "1px solid #21262d",
+            background: "var(--bg2)",
+            borderRight: "1px solid var(--border)",
             display: "flex", flexDirection: "column",
             flexShrink: 0,
             ...(isMobile ? { position: "absolute", inset: 0, zIndex: 10 } : {}),
           }}>
             {/* Sidebar header */}
-            <div style={{ padding: "8px 14px", borderBottom: "1px solid #21262d", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "#58a6ff", flex: 1, letterSpacing: 0.5 }}>CONVERSATIONS</span>
+            <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", flex: 1, letterSpacing: 0.5 }}>CONVERSATIONS</span>
               <button onClick={() => setShowSettings(true)} title="Manage providers"
-                style={{ background: "none", border: "none", color: "#484f58", cursor: "pointer", fontSize: 14 }}>⚙</button>
+                style={{ background: "none", border: "none", color: "var(--text4)", cursor: "pointer", fontSize: 14 }}>⚙</button>
             </div>
 
             {/* Provider selector */}
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid #21262d" }}>
-              <div style={{ fontSize: 9, color: "#484f58", fontWeight: 700, letterSpacing: 2, marginBottom: 5 }}>PROVIDER</div>
+            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
+              <div style={{ fontSize: 9, color: "var(--text4)", fontWeight: 700, letterSpacing: 2, marginBottom: 5 }}>PROVIDER</div>
               {providers.length === 0 ? (
                 <button onClick={() => setShowSettings(true)}
-                  style={{ width: "100%", padding: "8px 10px", background: "#1f6feb22", border: "1px dashed #1f6feb", borderRadius: 7, color: "#58a6ff", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>
+                  style={{ width: "100%", padding: "8px 10px", background: "var(--accent2)22", border: "1px dashed var(--accent2)", borderRadius: 7, color: "var(--accent)", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>
                   + Add a provider
                 </button>
               ) : (
                 <select
                   value={selectedProvider}
                   onChange={e => setSelectedProvider(e.target.value)}
-                  style={{ width: "100%", background: "#0d1117", border: "1px solid #30363d", borderRadius: 7, padding: "7px 9px", color: "#e6edf3", fontSize: 11, fontFamily: "inherit", outline: "none" }}
+                  style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 7, padding: "7px 9px", color: "var(--text)", fontSize: 11, fontFamily: "inherit", outline: "none" }}
                 >
                   {providers.map(p => (
                     <option key={p.id} value={p.id}>
@@ -178,7 +178,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 </select>
               )}
               <button onClick={startNewChat} disabled={!selectedProvider}
-                style={{ marginTop: 8, width: "100%", padding: "7px", background: selectedProvider ? "#1f6feb" : "#21262d", border: "none", borderRadius: 7, color: selectedProvider ? "#fff" : "#484f58", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: selectedProvider ? "pointer" : "default", fontFamily: "inherit" }}>
+                style={{ marginTop: 8, width: "100%", padding: "7px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)", border: "none", borderRadius: 7, color: selectedProvider ? "#fff" : "var(--text4)", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: selectedProvider ? "pointer" : "default", fontFamily: "inherit" }}>
                 + NEW CHAT
               </button>
             </div>
@@ -186,7 +186,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
             {/* Conversation list */}
             <div style={{ flex: 1, overflow: "auto" }}>
               {conversations.length === 0 ? (
-                <div style={{ padding: "20px 14px", fontSize: 11, color: "#484f58", textAlign: "center", lineHeight: 1.7 }}>
+                <div style={{ padding: "20px 14px", fontSize: 11, color: "var(--text4)", textAlign: "center", lineHeight: 1.7 }}>
                   Start a chat to discuss<br/>your architecture with AI
                 </div>
               ) : conversations.map(c => (
@@ -194,34 +194,34 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                   onClick={() => { openConversation(c.id); if (isMobile) setShowSidebar(false); }}
                   style={{
                     padding: "10px 14px", cursor: "pointer",
-                    background: activeConvId === c.id ? "#1f6feb15" : "transparent",
-                    borderLeft: `3px solid ${activeConvId === c.id ? "#1f6feb" : "transparent"}`,
+                    background: activeConvId === c.id ? "var(--accent2)15" : "transparent",
+                    borderLeft: `3px solid ${activeConvId === c.id ? "var(--accent2)" : "transparent"}`,
                     transition: "all 0.12s",
                     display: "flex", alignItems: "flex-start", gap: 8,
                   }}
-                  onMouseEnter={e => { if (activeConvId !== c.id) e.currentTarget.style.background = "#21262d"; }}
+                  onMouseEnter={e => { if (activeConvId !== c.id) e.currentTarget.style.background = "var(--bg3)"; }}
                   onMouseLeave={e => { if (activeConvId !== c.id) e.currentTarget.style.background = "transparent"; }}
                 >
                   <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{PROVIDER_ICONS[c.provider] || "💬"}</span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, color: "#c9d1d9", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: activeConvId === c.id ? 700 : 400 }}>
+                    <div style={{ fontSize: 11, color: "var(--text2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: activeConvId === c.id ? 700 : 400 }}>
                       {c.title}
                     </div>
-                    <div style={{ fontSize: 9, color: "#3d4349", marginTop: 2 }}>
+                    <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 2 }}>
                       {c.provider_name} · {new Date(c.updated_at).toLocaleDateString()}
                     </div>
                   </div>
                   <button onClick={e => handleDeleteConv(c.id, e)}
-                    style={{ background: "none", border: "none", color: "#3d4349", cursor: "pointer", fontSize: 14, flexShrink: 0, padding: "0 2px" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "#f78166"}
-                    onMouseLeave={e => e.currentTarget.style.color = "#3d4349"}
+                    style={{ background: "none", border: "none", color: "var(--text4)", cursor: "pointer", fontSize: 14, flexShrink: 0, padding: "0 2px" }}
+                    onMouseEnter={e => e.currentTarget.style.color = "var(--danger)"}
+                    onMouseLeave={e => e.currentTarget.style.color = "var(--text4)"}
                   >×</button>
                 </div>
               ))}
             </div>
 
             {/* Canvas context badge */}
-            <div style={{ padding: "10px 14px", borderTop: "1px solid #21262d", fontSize: 9, color: "#3d4349", lineHeight: 1.6 }}>
+            <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", fontSize: 9, color: "var(--text4)", lineHeight: 1.6 }}>
               📌 Canvas context: {nodes.length} nodes, {edges.length} connections
             </div>
           </div>
@@ -230,45 +230,45 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
         {/* Main chat area */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
           {/* Chat header */}
-          <div style={{ height: 48, background: "#161b22", borderBottom: "1px solid #21262d", display: "flex", alignItems: "center", gap: 10, padding: "0 16px", flexShrink: 0 }}>
+          <div style={{ height: 48, background: "var(--bg2)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, padding: "0 16px", flexShrink: 0 }}>
             {isMobile && (
-              <button onClick={() => setShowSidebar(true)} style={{ background: "none", border: "none", color: "#7d8590", cursor: "pointer", fontSize: 18 }}>☰</button>
+              <button onClick={() => setShowSidebar(true)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 18 }}>☰</button>
             )}
-            <span style={{ fontSize: 12, fontWeight: 700, color: "#e6edf3", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {activeConv ? activeConv.title : "Select or start a chat"}
             </span>
             {activeConv && (
-              <span style={{ fontSize: 9, color: "#484f58" }}>
+              <span style={{ fontSize: 9, color: "var(--text4)" }}>
                 {PROVIDER_ICONS[activeConv.provider]} {activeConv.provider_name} · {activeConv.model}
               </span>
             )}
             {!isMobile && (
-              <button onClick={onClose} style={{ background: "none", border: "none", color: "#484f58", cursor: "pointer", fontSize: 20 }}>×</button>
+              <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text4)", cursor: "pointer", fontSize: 20 }}>×</button>
             )}
           </div>
 
           {/* Messages */}
           <div style={{ flex: 1, overflow: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
             {error && (
-              <div style={{ background: "#f7816618", border: "1px solid #f7816640", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "#f78166" }}>{error}</div>
+              <div style={{ background: "var(--danger)18", border: "1px solid #f7816640", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "var(--danger)" }}>{error}</div>
             )}
 
             {!activeConvId ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, color: "#484f58", textAlign: "center" }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, color: "var(--text4)", textAlign: "center" }}>
                 <div style={{ fontSize: 48 }}>💬</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "#7d8590" }}>Chat with your architecture</div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text3)" }}>Chat with your architecture</div>
                 <div style={{ fontSize: 12, maxWidth: 360, lineHeight: 1.7 }}>
-                  Select a provider and start a new chat. The AI will have full context of your <strong style={{ color: "#58a6ff" }}>{mapTitle}</strong> canvas — {nodes.length} nodes and {edges.length} connections.
+                  Select a provider and start a new chat. The AI will have full context of your <strong style={{ color: "var(--accent)" }}>{mapTitle}</strong> canvas — {nodes.length} nodes and {edges.length} connections.
                 </div>
                 {providers.length === 0 && (
                   <button onClick={() => setShowSettings(true)}
-                    style={{ padding: "10px 20px", background: "#1f6feb", border: "none", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                    style={{ padding: "10px 20px", background: "var(--accent2)", border: "none", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
                     + Add your first LLM provider
                   </button>
                 )}
               </div>
             ) : messages.length === 0 && !loading ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "#484f58" }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--text4)" }}>
                 <div style={{ fontSize: 32 }}>✨</div>
                 <div style={{ fontSize: 12, textAlign: "center", lineHeight: 1.7, maxWidth: 340 }}>
                   New conversation started. Ask anything about your architecture — the AI knows your full canvas.
@@ -283,9 +283,9 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                     "Generate documentation for this map",
                   ].map(prompt => (
                     <button key={prompt} onClick={() => { setInput(prompt); textareaRef.current?.focus(); }}
-                      style={{ padding: "6px 12px", background: "#21262d", border: "1px solid #30363d", borderRadius: 20, color: "#7d8590", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = "#58a6ff"; e.currentTarget.style.color = "#58a6ff"; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = "#30363d"; e.currentTarget.style.color = "#7d8590"; }}
+                      style={{ padding: "6px 12px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 20, color: "var(--text3)", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}
+                      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+                      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text3)"; }}
                     >
                       {prompt}
                     </button>
@@ -298,11 +298,11 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
 
             {sending && (
               <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "#6C63FF22", border: "1px solid #6C63FF40", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>🤖</div>
-                <div style={{ background: "#21262d", borderRadius: "4px 12px 12px 12px", padding: "10px 14px" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent)22", border: "1px solid #6C63FF40", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>🤖</div>
+                <div style={{ background: "var(--bg3)", borderRadius: "4px 12px 12px 12px", padding: "10px 14px" }}>
                   <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
                     {[0, 0.2, 0.4].map(d => (
-                      <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "#58a6ff", animation: `pulse 1s ${d}s infinite` }} />
+                      <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", animation: `pulse 1s ${d}s infinite` }} />
                     ))}
                   </div>
                 </div>
@@ -312,7 +312,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
           </div>
 
           {/* Input */}
-          <div style={{ padding: "12px 16px", background: "#161b22", borderTop: "1px solid #21262d", display: "flex", gap: 10, alignItems: "flex-end" }}>
+          <div style={{ padding: "12px 16px", background: "var(--bg2)", borderTop: "1px solid var(--border)", display: "flex", gap: 10, alignItems: "flex-end" }}>
             <textarea
               ref={textareaRef}
               value={input}
@@ -322,8 +322,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               placeholder={activeConvId ? "Ask about your architecture… (Enter to send, Shift+Enter for newline)" : "Start a new chat first"}
               rows={1}
               style={{
-                flex: 1, background: "#0d1117", border: "1px solid #30363d", borderRadius: 10,
-                padding: "10px 12px", color: "#e6edf3", fontSize: 13, fontFamily: "inherit",
+                flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
+                padding: "10px 12px", color: "var(--text)", fontSize: 13, fontFamily: "inherit",
                 resize: "none", outline: "none", lineHeight: 1.5, maxHeight: 120, overflowY: "auto",
               }}
               onInput={e => {
@@ -336,8 +336,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               disabled={!activeConvId || !input.trim() || sending}
               style={{
                 width: 40, height: 40, borderRadius: 10, border: "none", flexShrink: 0,
-                background: (activeConvId && input.trim() && !sending) ? "#1f6feb" : "#21262d",
-                color: (activeConvId && input.trim() && !sending) ? "#fff" : "#484f58",
+                background: (activeConvId && input.trim() && !sending) ? "var(--accent2)" : "var(--bg3)",
+                color: (activeConvId && input.trim() && !sending) ? "#fff" : "var(--text4)",
                 cursor: (activeConvId && input.trim() && !sending) ? "pointer" : "default",
                 fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all 0.15s",
@@ -373,23 +373,23 @@ function MessageBubble({ message }) {
     <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexDirection: isUser ? "row-reverse" : "row" }}>
       <div style={{
         width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-        background: isUser ? "#1f6feb22" : "#6C63FF22",
-        border: `1px solid ${isUser ? "#1f6feb40" : "#6C63FF40"}`,
+        background: isUser ? "var(--accent2)22" : "var(--accent)22",
+        border: `1px solid ${isUser ? "var(--accent2)40" : "var(--accent)40"}`,
         display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
       }}>
         {isUser ? "👤" : "🤖"}
       </div>
       <div style={{ maxWidth: "75%", display: "flex", flexDirection: "column", gap: 4, alignItems: isUser ? "flex-end" : "flex-start" }}>
         <div style={{
-          background: isUser ? "#1f6feb22" : "#21262d",
-          border: `1px solid ${isUser ? "#1f6feb30" : "#30363d"}`,
-          borderRadius: isUser ? "12px 4px 12px 12px" : "4px 12px 12px 12px",
-          padding: "10px 14px", fontSize: 13, color: "#e6edf3", lineHeight: 1.65,
+          background: isUser ? "var(--accent2)22" : "var(--bg3)",
+          border: `1px solid ${isUser ? "var(--accent2)30" : "var(--border)"}`,
+          borderRadius: isUser ? "var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-md)" : "var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md)",
+          padding: "10px 14px", fontSize: 13, color: "var(--text)", lineHeight: 1.65,
           whiteSpace: "pre-wrap", wordBreak: "break-word",
         }}>
           <FormattedContent content={message.content} />
         </div>
-        <div style={{ fontSize: 9, color: "#3d4349", paddingLeft: 4 }}>
+        <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 4 }}>
           {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
           {message.tokens_used && ` · ${message.tokens_used} tokens`}
         </div>
@@ -408,16 +408,16 @@ function FormattedContent({ content }) {
         if (part.startsWith("```") && part.endsWith("```")) {
           const code = part.slice(3, -3).replace(/^[a-z]+\n/, "");
           return (
-            <pre key={i} style={{ background: "#0d1117", border: "1px solid #30363d", borderRadius: 6, padding: "10px 12px", fontSize: 11, overflowX: "auto", margin: "6px 0", fontFamily: "monospace", color: "#79c0ff" }}>
+            <pre key={i} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 12px", fontSize: 11, overflowX: "auto", margin: "6px 0", fontFamily: "monospace", color: "var(--accent)" }}>
               {code}
             </pre>
           );
         }
         if (part.startsWith("`") && part.endsWith("`")) {
-          return <code key={i} style={{ background: "#0d1117", border: "1px solid #30363d", borderRadius: 4, padding: "1px 5px", fontSize: 11, color: "#79c0ff" }}>{part.slice(1, -1)}</code>;
+          return <code key={i} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 11, color: "var(--accent)" }}>{part.slice(1, -1)}</code>;
         }
         if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={i} style={{ color: "#e6edf3" }}>{part.slice(2, -2)}</strong>;
+          return <strong key={i} style={{ color: "var(--text)" }}>{part.slice(2, -2)}</strong>;
         }
         return <span key={i}>{part}</span>;
       })}
