@@ -54,27 +54,23 @@ function AppInner() {
   const [showTutorial, setShowTutorial] = useState(false);
   const [showHelp,     setShowHelp]     = useState(false);
 
-  const goHome    = () => { setView({ page:"dashboard", mapId:null }); window.history.pushState({page:"dashboard"}, ""); window.location.hash = "dashboard"; };
-  const openMap   = id => { setView({ page:"canvas",    mapId:id   }); window.history.pushState({page:"canvas",mapId:id}, ""); window.location.hash = `canvas/${id}`; };
-  const openAdmin = ()  => { setView({ page:"admin",    mapId:null }); window.history.pushState({page:"admin"}, ""); window.location.hash = "admin"; };
+  const goHome    = () => { setView({ page:"dashboard", mapId:null }); window.history.pushState({page:"dashboard"}, ""); };
+  const openMap   = id => { setView({ page:"canvas",    mapId:id   }); window.history.pushState({page:"canvas",mapId:id}, ""); };
+  const openAdmin = ()  => { setView({ page:"admin",    mapId:null }); window.history.pushState({page:"admin"}, ""); };
 
-  // Handle browser back/forward + hash routing
+  // Handle browser back/forward
   useEffect(() => {
-    const parseHash = () => {
-      const h = window.location.hash.replace("#","");
-      if (h.startsWith("canvas/")) { const id=h.slice(7); if(id) return {page:"canvas",mapId:id}; }
-      if (h === "admin") return {page:"admin",mapId:null};
-      if (h === "live")  return {page:"dashboard",mapId:null,tab:"live"};
-      return {page:"dashboard",mapId:null};
+    const onPop = (e) => {
+      const state = e.state;
+      if (!state || state.page === "dashboard") setView({ page:"dashboard", mapId:null });
+      else if (state.page === "canvas" && state.mapId) setView({ page:"canvas", mapId:state.mapId });
+      else if (state.page === "admin") setView({ page:"admin", mapId:null });
+      else setView({ page:"dashboard", mapId:null });
     };
-    const onPop = () => { const v=parseHash(); setView({page:v.page,mapId:v.mapId||null}); };
     window.addEventListener("popstate", onPop);
-    window.addEventListener("hashchange", onPop);
-    // Restore from hash on load
-    const initial = parseHash();
-    if (initial.page !== "dashboard" || initial.mapId) setView({page:initial.page,mapId:initial.mapId||null});
+    // Set initial history state so back from dashboard goes nowhere inside the app
     if (!window.history.state) window.history.replaceState({page:"dashboard"}, "");
-    return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("hashchange", onPop); };
+    return () => window.removeEventListener("popstate", onPop);
   }, []);
 
   // Handle skin force-theme events

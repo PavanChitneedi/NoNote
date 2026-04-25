@@ -380,7 +380,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
 
         {/* Nav items */}
         {[["maps","🗺","Maps"],["live","📡","Live Dashboard"]].map(([id,icon,label])=>(
-          <button key={id} onClick={()=>{ setDashTab(id); window.location.hash=id==="live"?"live":"dashboard"; }}
+          <button key={id} onClick={()=>setDashTab(id)}
             style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 18px",
               border:"none", cursor:"pointer", fontFamily:"var(--font-ui)", fontWeight:600,
               fontSize:12, textAlign:"left", transition:"all .1s",
@@ -407,48 +407,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
       {/* ── Main content ── */}
       <div style={{ flex:1, overflowY:"auto", padding:"24px 28px", minWidth:0 }}>
 
-        {/* ── Compact nav header for non-sidebar skins ── */}
-        {skinNav !== "top" && (
-          <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:20,
-            padding:"8px 12px", background:"var(--bg2)", borderRadius:"var(--radius-md)",
-            border:"1px solid var(--border2)", flexShrink:0, flexWrap:"wrap" }}>
-            {/* User pill */}
-            <div style={{ display:"flex", alignItems:"center", gap:8, marginRight:4 }}>
-              <div style={{ width:28, height:28, borderRadius:"50%",
-                background:user?.avatar_color||"var(--accent2)",
-                display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:12, fontWeight:700, color:"#fff", flexShrink:0 }}>
-                {user?.display_name?.[0]?.toUpperCase()}
-              </div>
-              <div style={{ fontSize:11, fontWeight:600, color:"var(--text3)" }}>
-                {user?.display_name}
-              </div>
-            </div>
-            <div style={{ width:1, height:20, background:"var(--border2)", flexShrink:0 }}/>
-            {/* Maps / Live tabs */}
-            <div style={{ display:"flex", gap:2, background:"var(--bg3)",
-              borderRadius:"var(--radius-sm)", padding:2, border:"1px solid var(--border)" }}>
-              {[["maps","🗺 Maps"],["live","📡 Live"]].map(([id,lbl])=>(
-                <button key={id}
-                  onClick={()=>{ setDashTab(id); window.location.hash=id==="live"?"live":"dashboard"; }}
-                  style={{ fontSize:11, padding:"4px 12px",
-                    border:"none", borderRadius:"var(--radius-xs)", cursor:"pointer",
-                    fontFamily:"var(--font-ui)", fontWeight:700,
-                    background: dashTab===id ? "var(--accent2)" : "transparent",
-                    color: dashTab===id ? "#fff" : "var(--text4)" }}>
-                  {lbl}
-                </button>
-              ))}
-            </div>
-            <div style={{ flex:1 }}/>
-            <button onClick={()=>setShowChangelog(true)}
-              style={{ background:"none", border:"1px solid var(--border)", borderRadius:"var(--radius-btn)",
-                padding:"4px 10px", color:"var(--text4)", fontSize:10, cursor:"pointer",
-                fontFamily:"var(--font-ui)", fontWeight:600 }}>
-              {CURRENT_VERSION} ✦ What's new
-            </button>
-          </div>
-        )}
+
 
         {/* ── Changelog Modal ── */}
         {showChangelog&&(
@@ -531,14 +490,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
           </div>
         )}
 
-        {/* Section title — only show for top-nav skins (others get nav strip above) */}
-        {skinNav === "top" && (
-          <div style={{ marginBottom:18, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
-            <div style={{ fontSize:18, fontWeight:800, color:"var(--text)", letterSpacing:-.2 }}>
-              {dashTab==="maps" ? "Your Maps" : "Live Dashboard"}
-            </div>
+        {/* Section title */}
+        <div style={{ marginBottom:18, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <div style={{ fontSize:18, fontWeight:800, color:"var(--text)", letterSpacing:-.2 }}>
+            {dashTab==="maps" ? "Your Maps" : "Live Dashboard"}
           </div>
-        )}
+        </div>
         {/* ── Action bar (maps only) ── */}
         {dashTab==="maps"&&<div style={{ display:"flex", gap:8, marginBottom:18, flexWrap:"wrap", alignItems:"center" }}>
           {["owner","admin","editor"].includes(user?.role) && (
