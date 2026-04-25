@@ -1,48 +1,58 @@
-# NoNote — Skin / Theme / Design System
+# NoNote — Skin & Theme System
 
 ## Philosophy
-Three independent layers. Any combination works.
+Two independent layers. Any combination works.
 
 | Layer | File | Controls | Never touches |
 |---|---|---|---|
 | **Theme** | `ThemeContext.jsx` | Colors only | Fonts, spacing |
-| **Design** | `DesignContext.jsx` | Spacing/density only | Fonts, radius, colors |
-| **Skin** | `skins.js` + `SkinContext.jsx` | Font, radius, shadow, effects, nav layout | Colors, spacing |
+| **Skin** | `skins.js` + `SkinContext.jsx` | Font, radius, shadow, effects, nav layout | Colors |
+
+> **Note:** The Design layer (spacing/density) was removed from the user-facing UI. `DesignContext.jsx` still exists and applies a fixed "clean" spacing baseline — it is no longer user-selectable.
 
 ## Application Order
 1. `ThemeContext.useEffect` → applies color vars
-2. `DesignContext.useEffect` → applies spacing vars
+2. `DesignContext.useEffect` → applies fixed "clean" spacing vars
 3. `SkinContext.useEffect` (with `setTimeout(0)`) → applies personality vars LAST
 
-Skin vars **always win** over theme/design on their variables. When theme/design change, SkinContext listens to `nn-theme-changed` / `nn-design-changed` events and re-applies personality vars on top.
+Skin vars **always win** over theme on their variables. When theme changes, SkinContext listens to `nn-theme-changed` and re-applies personality vars on top.
 
 ## Current Skins (11)
 
-| Key | Name | Nav | Font | Character |
+| Key | Name | Nav | Font | Default Theme |
 |---|---|---|---|---|
-| `obsidian` | Obsidian | top | JetBrains Mono | GitHub Dark developer tool |
-| `aurora` | Aurora | top | Inter | Deep space glassmorphism |
-| `brutalist` | Brutalist | bottom | Space Grotesk | Raw, confrontational, yellow on black |
-| `neonTokyo` | Neon Tokyo | bottom | Rajdhani | Cyberpunk, CRT scanlines, neon glow |
-| `neumorphic` | Neumorphic | icon-dock | Nunito | Soft clay 3D, dual-direction shadows |
-| `sakura` | Sakura | icon-dock | Cormorant Garamond | Japanese minimal, Ma space |
-| `vapor` | Vapor | editorial | VT323 | 80s vaporwave, grid lines |
-| `newspaper` | Newspaper | editorial | Playfair Display | NYT editorial serif |
-| `coral` | Coral | bottom | DM Sans | Miami tropical, bouncy |
-| `carbon` | Carbon | icon-dock | IBM Plex Mono | Industrial, carbon fiber |
-| `pastelPop` | Pastel Pop | bottom | Nunito Black | Kawaii, spring physics |
+| `obsidian` | Obsidian | top | JetBrains Mono | dark |
+| `aurora` | Aurora | top | Inter | midnight |
+| `brutalist` | Brutalist | bottom | Space Grotesk | dark |
+| `neonTokyo` | Neon Tokyo | bottom | Rajdhani | ocean |
+| `neumorphic` | Neumorphic | icon-dock | Nunito | clay |
+| `sakura` | Sakura | icon-dock | Cormorant Garamond | cream |
+| `vapor` | Vapor | editorial | VT323 | violet |
+| `newspaper` | Newspaper | editorial | Playfair Display | parchment |
+| `coral` | Coral | bottom | DM Sans | dark |
+| `carbon` | Carbon | icon-dock | IBM Plex Mono | amber |
+| `pastelPop` | Pastel Pop | bottom | Nunito Black | rose |
+
+## Theme Compatibility
+
+All 11 skins work correctly with all 13 themes. Adaptive techniques used:
+
+| Skin | Technique |
+|---|---|
+| **Neumorphic** | `color-mix(in srgb, var(--bg) 78%, #000/fff)` derives shadow colors from any theme bg |
+| **NeonTokyo** | Scanlines use `color-mix(in srgb, var(--text) 5%, transparent)` — readable on light and dark |
+| **Vapor** | Grid lines use `color-mix(in srgb, var(--accent) 18%, transparent)` — always visible |
+| **Carbon** | Texture uses `color-mix(in srgb, var(--text) 4%, transparent)` — visible on both |
+| **Newspaper** | Card shadows use `var(--shadow)` — adapts between light/dark |
+| All others | Already fully CSS-var-based, no hardcoded colors |
 
 ## Nav Layout Types
 ```
-"top"       → Standard topbar + left sidebar (Dashboard shows sidebar nav)
+"top"       → Standard topbar + left sidebar
 "bottom"    → Content fills screen + fixed 60px dock at bottom
 "icon-dock" → 56px vertical icon column on left side
 "editorial" → Full-width with centered topbar text
 ```
-
-Dashboard.jsx checks `skinNav` prop:
-- `skinNav === "top"` → render full sidebar
-- `skinNav !== "top"` → render compact nav strip (Maps/Live tabs inline)
 
 ## Skin Definition Structure
 ```js
@@ -51,31 +61,29 @@ skinKey: {
   icon: "emoji",
   nav: "top" | "bottom" | "icon-dock" | "editorial",
   concept: "One-line personality description",
-  tags: ["Tag1", "Tag2"],  // shown in picker cards
+  tags: ["Tag1", "Tag2"],
 
-  defaultTheme: "themeName",   // auto-applied on skin switch
-  defaultDesign: "designName", // auto-applied on skin switch
-  defaultAccent: { accent: "#hex", accent2: "#hex" }, // auto-applied on switch
+  defaultTheme: "themeName",    // auto-applied on skin switch
+  defaultAccent: { accent: "#hex", accent2: "#hex" },  // optional
 
   accentOptions: [
     { name: "Label", accent: "#hex", accent2: "#hex" },
-    // 5 entries — shown in Appearance > Skins tab
+    // 5 entries shown in Appearance > Skins tab
   ],
 
   vars: {
-    // ONLY: font, radius, shadow, transition, topbar-bg/border/blur, sidebar-bg/border
+    // ONLY: font, radius, shadow, transition, topbar/sidebar bg/border
     "--font-ui": "...",
     "--radius-xs": "...",
     "--shadow-node": "...",
-    "--topbar-bg": "var(--bg2)",   // use CSS vars, not hex!
-    // etc.
+    "--topbar-bg": "var(--bg2)",  // use CSS vars, never hex!
   },
 
   bodyClass: "skin-kebab-name",  // added to <body>
 
   css: `
     /* Injected into <style id="nn-skin-css"> */
-    /* ALWAYS use var(--accent), var(--bg), etc. — never hardcode colors */
+    /* ALWAYS use var(--accent), var(--bg), color-mix() — never hardcode colors */
     body.skin-name button:hover { ... }
   `,
 }
@@ -86,69 +94,37 @@ skinKey: {
 ### Dark (6)
 | Key | Name | Character |
 |---|---|---|
-| `dark` | Dark | GitHub Dark — the classic |
+| `dark` | Dark | GitHub Dark |
 | `midnight` | Midnight | Tokyo Night indigo |
-| `forest` | Forest | Deep forest with teal accent |
+| `forest` | Forest | Deep forest teal |
 | `ocean` | Ocean | Deep abyss cyan |
-| `amber` | Amber | Volcanic warm amber terminal |
-| `violet` | Violet | Dracula-inspired purple |
+| `amber` | Amber | Volcanic warm amber |
+| `violet` | Violet | Dracula purple |
 
 ### Light (7)
-| Key | Name | Character |
+| Key | Name | Notes |
 |---|---|---|
 | `light` | Light | Clean crisp white |
-| `cream` | Cream | Warm terracotta parchment |
-| `sepia` | Sepia | Vintage editorial brown |
-| `rose` | Rose | Vibrant rose pink |
+| `cream` | Cream | Warm terracotta |
+| `sepia` | Sepia | Vintage brown |
+| `rose` | Rose | Vibrant pink |
 | `softblue` | Soft Blue | Airy sky blue |
-| `mint` | Mint | Fresh garden green |
+| `mint` | Mint | Fresh green |
 | `parchment` | Parchment | Medieval manuscript |
-| `clay` | Clay | **Neumorphic default** — exact v5.34.3 colors with `--neu-dark`/`--neu-light` |
-
-## Current Designs (5)
-| Key | Name | Feel |
-|---|---|---|
-| `workspace` | Workspace | Dense, tight, original dev feel |
-| `clean` | Clean | Spacious, Notion-like |
-| `comfort` | Comfort | Extra breathing room |
-| `professional` | Professional | Balanced corporate |
-| `minimal` | Minimal | Ultra-sparse, max focus |
-
-Designs set **only**: `--topbar-h`, `--node-header-h`, `--node-pad`, `--node-body-pad`, `--btn-pad`, `--sidebar-w`, `--props-w`, `--node-border-w`, `--line-height`, `--letter-space`.
-
-## Special CSS Variables
-- `--neu-dark`, `--neu-light`: Required by Neumorphic skin. The clay theme provides exact values (`#bec7d8`, `#f4faff`). Other light themes have contextually appropriate fallbacks. Dark themes don't define these — neumorphic looks flat on dark (correct physics).
-- `--topbar-bg`/`--topbar-blur`: Allows skin to make topbar frosted glass (Aurora) or accent-colored (Newspaper)
-- `--shadow-node`/`--shadow-node-sel`: Node shadow + selected state — skin defines style, theme provides `var(--shadow)` color
+| `clay` | Clay | Neumorphic default — provides `--neu-dark`/`--neu-light` vars |
 
 ## Adding a New Skin — Checklist
 1. Add entry to `SKINS` in `skins.js`
-2. Set `nav` type (determines which App.jsx shell renders)
-3. Set `defaultTheme` + `defaultDesign` + `defaultAccent`
+2. Set `nav` type
+3. Set `defaultTheme` + optional `defaultAccent`
 4. Set 5 `accentOptions`
 5. In `vars`: only set font/radius/shadow/topbar-bg vars
-6. In `css`: only use `var(--accent)`, `var(--bg)`, etc. — never hardcode hex
+6. In `css`: use `var(--accent)`, `var(--bg)`, `color-mix()` — never hardcode hex
 7. `bodyClass`: unique `skin-kebab-name`
-8. Build + test all 13 themes with the new skin
-9. Test all 5 designs with the new skin
+8. Test with dark, light, and clay themes minimum
 
 ## Adding a New Theme — Checklist
 1. Add entry to `THEMES` in `ThemeContext.jsx`
-2. Set all color vars: `--bg`, `--bg2`, `--bg3`, `--border`, `--border2`, `--text`, `--text2`, `--text3`, `--text4`, `--accent`, `--accent2`, `--success`, `--danger`, `--canvas-dot`, `--node-bg`, `--shadow`
-3. For light themes, consider adding `--neu-dark`/`--neu-light` for Neumorphic compatibility
+2. Set all required vars: `--bg`, `--bg2`, `--bg3`, `--border`, `--border2`, `--text`, `--text2`, `--text3`, `--text4`, `--accent`, `--accent2`, `--success`, `--danger`, `--canvas-dot`, `--node-bg`, `--shadow`
+3. For themes intended for Neumorphic: add `--neu-dark`/`--neu-light` (optional — neumorphic now derives these via `color-mix` as fallback)
 4. Test with all 11 skins
-
-## SkinContext Events
-```js
-// Fired by ThemeContext after applying theme vars
-window.dispatchEvent(new CustomEvent("nn-theme-changed", { detail: themeName }))
-
-// Fired by DesignContext after applying design vars
-window.dispatchEvent(new CustomEvent("nn-design-changed", { detail: designName }))
-
-// Listened to by ThemeContext (from SkinContext on switch)
-window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: "themeName" }))
-
-// Listened to by DesignContext (from SkinContext on switch)
-window.dispatchEvent(new CustomEvent("nn-set-design", { detail: "designName" }))
-```

@@ -1,14 +1,24 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.38.0",date:"Apr 2026",items:[
+    "Removed: Design tab removed from Appearance modal — spacing is now a fixed clean baseline (no user-selectable density options)",
+    "Removed: defaultDesign auto-apply on skin switch — skins no longer override spacing",
+    "Fix: Neumorphic skin now looks great on ALL themes — shadows derived via color-mix(in srgb, var(--bg) 78%, #000/fff) instead of hardcoded clay-only values",
+    "Fix: NeonTokyo scanline overlay now adapts to any theme — uses color-mix(in srgb, var(--text) 5%, transparent) so scanlines are visible on both light and dark backgrounds",
+    "Fix: Vapor retro grid now uses accent-tinted lines (color-mix) instead of border2 — looks vibrant on any theme",
+    "Fix: Carbon fiber texture now adapts to theme brightness — uses color-mix(in srgb, var(--text) 4%, transparent) so it shows on both light and dark",
+    "Fix: Newspaper card shadows now use var(--shadow) — properly visible on dark themes",
+    "Docs: All MD files updated — CLAUDE.md, README.md, ARCHITECTURE.md, FEATURES.md, SKINS.md fully reflect v5.38.0 state",
+  ]},
   {v:"v5.37.0",date:"Apr 2026",items:[
     "Security/Reliability: WebSocket rate limiter — max 120 messages/min per connection; excess messages are dropped with an error frame (prevents DB write storms during collaboration)",
     "Feature: max_maps_per_user setting is now enforced on both map create and map duplicate — returns a clear 403 if the admin-configured limit is reached",
     "Reliability: LLM chat history is now token-budget trimmed before each call — fetches last 60 messages, walks newest-first, stops at ~6000-word budget so large canvas contexts never cause provider context-window overflows",
-    "Performance: Map duplicate rewritten — now runs inside a single transaction with two batch multi-row INSERTs (one for nodes, one for edges) instead of N sequential round-trips; eliminates partial-write risk on failure",
-    "Security: Morgan access log now strips ?key=, ?token=, ?api_key= query params from logged URLs — prevents API key exposure in log files",
-    "Security: Integration proxy credentials validated before proxying — token must be 4–2048 printable ASCII characters; malformed tokens are rejected with 400 before any network call is made",
-    "Audit: Map delete now logs to app_logs in all cases; admin-deleting-another-user's-map produces a warn-level entry with map title and owner ID",
+    "Performance: Map duplicate rewritten — now runs inside a single transaction with two batch multi-row INSERTs instead of N sequential round-trips; eliminates partial-write risk on failure",
+    "Security: Morgan access log now strips ?key=, ?token=, ?api_key= query params from logged URLs",
+    "Security: Integration proxy credentials validated before proxying — token must be 4-2048 printable ASCII characters",
+    "Audit: Map delete now logs to app_logs in all cases; admin-deleting-another-users-map produces a warn-level entry",
   ]},
   {v:"v5.36.0",date:"Apr 2026",items:[
     "Security: WebSocket JOIN now verifies map access before admitting clients to a room (was auth-only, no map permission check)",

@@ -26,11 +26,6 @@ export function SkinProvider({ children }) {
       localStorage.setItem("nm_theme", skin.defaultTheme);
       window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: skin.defaultTheme }));
     }
-    // Apply default design
-    if (skin.defaultDesign) {
-      localStorage.setItem("nn_design", skin.defaultDesign);
-      window.dispatchEvent(new CustomEvent("nn-set-design", { detail: skin.defaultDesign }));
-    }
     // Apply default accent — clears any previous accent override
     if (skin.defaultAccent) {
       localStorage.setItem("nn_skin_accent", JSON.stringify({ accent: skin.defaultAccent.accent, accent2: skin.defaultAccent.accent2, skinName: name }));

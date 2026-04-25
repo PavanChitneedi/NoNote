@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
-import { useDesign, DESIGNS } from "../context/DesignContext.jsx";
 import { useSkin } from "../context/SkinContext.jsx";
 import { SKINS, SKIN_KEYS } from "../skins.js";
 
@@ -61,7 +60,6 @@ export default function ThemePicker({
   defaultTab = "global",
 }) {
   const { themeName, setThemeName, fontScale, setFontScale } = useTheme();
-  const { designName, setDesignName } = useDesign();
   const { skinName, setSkinName, skin, setAccent } = useSkin();
   const [tab, setTab]         = useState(defaultTab);
   const [fontInput, setFontInput] = useState(String(fontScale));
@@ -71,7 +69,6 @@ export default function ThemePicker({
     { id:"skins",   label:"✨ Skins" },
     { id:"global",  label:"🌍 Theme" },
     ...(hasCanvas ? [{ id:"canvas", label:"🎨 Canvas" }] : []),
-    { id:"design",  label:"🖌 Design" },
     { id:"text",    label:"🔤 Text Size" },
   ];
 
@@ -251,30 +248,6 @@ export default function ThemePicker({
               </div>
               <ThemeGrid selected={canvasTheme} onSelect={key => { setCanvasTheme(key); }} />
             </>
-          )}
-
-          {/* ── Design ── */}
-          {tab==="design" && (
-            <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
-              <div style={{ fontSize:12, color:"var(--text3)", marginBottom:4, lineHeight:1.6 }}>Controls spacing and density. Fonts, radius, and visual effects come from the selected Skin — Design and Skin are independent.</div>
-              {Object.entries(DESIGNS).map(([key, d]) => (
-                <div key={key}
-                  onClick={e => { e.stopPropagation(); setDesignName(key); }}
-                  style={{
-                    padding:"12px 16px", borderRadius:"var(--radius-md)", cursor:"pointer",
-                    border:`2px solid ${designName===key?"var(--accent)":"var(--border)"}`,
-                    background: designName===key?"var(--accent2)18":"var(--bg3)",
-                    display:"flex", alignItems:"center", gap:12, userSelect:"none",
-                  }}>
-                  <span style={{ fontSize:24 }}>{d.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:13, fontWeight:600, color:"var(--text)" }}>{d.name}</div>
-                    <div style={{ fontSize:11, color:"var(--text4)", marginTop:2 }}>{d.desc}</div>
-                  </div>
-                  {designName===key && <span style={{ color:"var(--accent)", fontSize:16 }}>✓</span>}
-                </div>
-              ))}
-            </div>
           )}
 
           {/* ── Text Size ── */}

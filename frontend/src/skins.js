@@ -1,6 +1,6 @@
 // SKINS = personality: font + radius + shadow + effects + nav layout
 // Skins do NOT set colors (Theme) or spacing (Design) — those stay independent
-// Each skin has: defaultTheme, defaultDesign, accentOptions (curated accents for this skin)
+// Each skin has: defaultTheme, accentOptions (curated accents for this skin)
 
 export const SKINS = {
 
@@ -11,7 +11,7 @@ export const SKINS = {
     defaultTheme:"dark",
     defaultAccent:{accent:"#ff6b6b",accent2:"#e53535"},
     defaultAccent:{accent:"#ffe600",accent2:"#ccb800"},
-    defaultAccent:{accent:"#58a6ff",accent2:"#1f6feb"}, defaultDesign:"workspace",
+    defaultAccent:{accent:"#58a6ff",accent2:"#1f6feb"},
     accentOptions:[
       {name:"Blue",    accent:"#58a6ff", accent2:"#1f6feb"},
       {name:"Green",   accent:"#3fb950", accent2:"#16a34a"},
@@ -46,7 +46,7 @@ body.skin-obsidian .nn-map-list-row:hover{background:var(--bg3)!important;box-sh
     concept:"Frosted glass panels float over deep animated gradients. Everything breathes.",
     tags:["Glass","Blur","Rounded"],
     defaultTheme:"midnight",
-    defaultAccent:{accent:"#a78bfa",accent2:"#7c3aed"}, defaultDesign:"clean",
+    defaultAccent:{accent:"#a78bfa",accent2:"#7c3aed"},
     accentOptions:[
       {name:"Violet",  accent:"#a78bfa", accent2:"#7c3aed"},
       {name:"Teal",    accent:"#2dd4bf", accent2:"#0f766e"},
@@ -85,7 +85,7 @@ body.skin-aurora .nn-map-list-row:hover{background:var(--bg3)!important;box-shad
     name:"Brutalist", icon:"🏗", nav:"bottom",
     concept:"Raw concrete. Thick borders, hard offset shadows. Design as confrontation.",
     tags:["Bold","Angular","Statement"],
-    defaultTheme:"dark", defaultDesign:"professional",
+    defaultTheme:"dark",
     accentOptions:[
       {name:"Yellow",  accent:"#ffe600", accent2:"#ccb800"},
       {name:"Red",     accent:"#ff2e2e", accent2:"#cc0000"},
@@ -125,7 +125,7 @@ body.skin-brutalist .nn-map-list-row:hover{background:var(--bg3)!important;box-s
     concept:"Rain on neon-soaked streets. Everything glows. Every click is electric.",
     tags:["Neon","Glow","Cyberpunk"],
     defaultTheme:"ocean",
-    defaultAccent:{accent:"#ff2d78",accent2:"#cc0050"}, defaultDesign:"workspace",
+    defaultAccent:{accent:"#ff2d78",accent2:"#cc0050"},
     accentOptions:[
       {name:"Hot Pink", accent:"#ff2d78", accent2:"#cc0050"},
       {name:"Cyan",     accent:"#00f5ff", accent2:"#00c0c0"},
@@ -147,7 +147,9 @@ body.skin-brutalist .nn-map-list-row:hover{background:var(--bg3)!important;box-s
       "--sidebar-bg":"var(--bg)","--sidebar-border":"1px solid var(--border)",
     },
     bodyClass:"skin-neon-tokyo",
-    css:`body.skin-neon-tokyo::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9997;background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,rgba(0,0,0,0.06) 3px,rgba(0,0,0,0.06) 4px)}
+    css:`body.skin-neon-tokyo::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9997;
+  /* Adaptive scanlines — dark lines on light bg, subtle on dark bg */
+  background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,color-mix(in srgb,var(--text) 5%,transparent) 3px,color-mix(in srgb,var(--text) 5%,transparent) 4px)}
 body.skin-neon-tokyo .nn-topbar{position:relative}
 body.skin-neon-tokyo .nn-topbar::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),var(--accent),transparent);box-shadow:0 0 12px var(--accent)}
 body.skin-neon-tokyo button{text-transform:uppercase!important;letter-spacing:0.1em!important}
@@ -155,8 +157,8 @@ body.skin-neon-tokyo button:not([disabled]):hover{color:var(--accent)!important;
 body.skin-neon-tokyo input:focus,body.skin-neon-tokyo select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 1px var(--accent),0 0 16px var(--accent)44!important;outline:none}
 body.skin-neon-tokyo ::-webkit-scrollbar{width:4px}
 body.skin-neon-tokyo ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:2px}
-body.skin-neon-tokyo .nn-map-card{border:1px solid var(--ca)44;box-shadow:0 0 0 1px var(--ca)11}
-body.skin-neon-tokyo .nn-map-card:hover{border-color:var(--ca);box-shadow:0 0 20px var(--ca)44,0 0 0 1px var(--ca);transform:translateY(-1px)}
+body.skin-neon-tokyo .nn-map-card{border:1px solid var(--ca)55;box-shadow:0 0 0 1px var(--ca)18,0 2px 8px var(--shadow)}
+body.skin-neon-tokyo .nn-map-card:hover{border-color:var(--ca);box-shadow:0 0 24px var(--ca)44,0 0 0 1px var(--ca);transform:translateY(-1px)}
 body.skin-neon-tokyo .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-neon-tokyo .nn-map-list-row:hover{background:var(--bg3)!important;box-shadow:0 0 12px var(--ca)33}`,
   },
@@ -166,7 +168,7 @@ body.skin-neon-tokyo .nn-map-list-row:hover{background:var(--bg3)!important;box-
     concept:"Soft clay. Elements pushed out of or pressed into a single material.",
     tags:["3D","Tactile","Soft"],
     defaultTheme:"clay",
-    defaultAccent:{accent:"#5b8dee",accent2:"#2563eb"}, defaultDesign:"comfort",
+    defaultAccent:{accent:"#5b8dee",accent2:"#2563eb"},
     accentOptions:[
       {name:"Blue",    accent:"#5b8dee", accent2:"#2563eb"},
       {name:"Purple",  accent:"#9b7dea", accent2:"#7c3aed"},
@@ -188,22 +190,26 @@ body.skin-neon-tokyo .nn-map-list-row:hover{background:var(--bg3)!important;box-
       "--sidebar-bg":"var(--bg)","--sidebar-border":"none",
     },
     bodyClass:"skin-neumorphic",
-    css:`body.skin-neumorphic{background:var(--bg)}
-body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark,#bec7d8),0 -1px 0 var(--neu-light,#f4faff)!important;border-bottom:none!important}
-body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-dark,#bec7d8)!important;border-right:none!important}
-body.skin-neumorphic button{background:var(--bg2)!important;border:none!important;box-shadow:4px 4px 8px var(--neu-dark,#bec7d8),-4px -4px 8px var(--neu-light,#f4faff)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
-body.skin-neumorphic button:not([disabled]):hover{box-shadow:5px 5px 10px var(--neu-dark,#bec7d8),-5px -5px 10px var(--neu-light,#f4faff)!important;transform:translateY(-1px)!important}
-body.skin-neumorphic button:not([disabled]):active{box-shadow:inset 4px 4px 8px var(--neu-dark,#bec7d8),inset -4px -4px 8px var(--neu-light,#f4faff)!important;transform:translateY(0)!important}
-body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{background:var(--bg)!important;border:none!important;box-shadow:inset 3px 3px 6px var(--neu-dark,#bec7d8),inset -3px -3px 6px var(--neu-light,#f4faff)!important}
-body.skin-neumorphic input:focus,body.skin-neumorphic select:focus{box-shadow:inset 3px 3px 6px var(--neu-dark,#bec7d8),inset -3px -3px 6px var(--neu-light,#f4faff),0 0 0 2px var(--accent)44!important;outline:none}
+    css:`body.skin-neumorphic{background:var(--bg);
+  /* Derive neumorphic shadow colors from current bg — works with any theme */
+  --neu-dark:color-mix(in srgb,var(--bg) 78%,#000);
+  --neu-light:color-mix(in srgb,var(--bg) 78%,#fff);
+}
+body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),-0px -1px 0 var(--neu-light)!important;border-bottom:none!important}
+body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-dark)!important;border-right:none!important}
+body.skin-neumorphic button{background:var(--bg2)!important;border:none!important;box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
+body.skin-neumorphic button:not([disabled]):hover{box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important;transform:translateY(-1px)!important}
+body.skin-neumorphic button:not([disabled]):active{box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;transform:translateY(0)!important}
+body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{background:var(--bg)!important;border:none!important;box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
+body.skin-neumorphic input:focus,body.skin-neumorphic select:focus{box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light),0 0 0 2px var(--accent)44!important;outline:none}
 body.skin-neumorphic ::-webkit-scrollbar{width:8px}
-body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 6px var(--neu-dark,#bec7d8);border-radius:4px}
-body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;box-shadow:2px 2px 4px var(--neu-dark,#bec7d8)}
-body.skin-neumorphic .nn-map-card{background:var(--bg)!important;border:none;border-top:3px solid var(--ca);box-shadow:6px 6px 12px var(--neu-dark,#bec7d8),-6px -6px 12px var(--neu-light,#f4faff)}
-body.skin-neumorphic .nn-map-card:hover{transform:translateY(-2px);box-shadow:8px 8px 16px var(--neu-dark,#bec7d8),-8px -8px 16px var(--neu-light,#f4faff)}
+body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 6px var(--neu-dark);border-radius:4px}
+body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px;box-shadow:2px 2px 4px var(--neu-dark)}
+body.skin-neumorphic .nn-map-card{background:var(--bg)!important;border:none;border-top:3px solid var(--ca);box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)}
+body.skin-neumorphic .nn-map-card:hover{transform:translateY(-2px);box-shadow:8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)}
 body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;box-shadow:3px 3px 6px var(--neu-dark,#bec7d8),-3px -3px 6px var(--neu-light,#f4faff)}
-body.skin-neumorphic .nn-map-list-row:hover{box-shadow:4px 4px 8px var(--neu-dark,#bec7d8),-4px -4px 8px var(--neu-light,#f4faff)}`,
+body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light)}
+body.skin-neumorphic .nn-map-list-row:hover{box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)}`,
   },
 
   sakura: {
@@ -211,7 +217,7 @@ body.skin-neumorphic .nn-map-list-row:hover{box-shadow:4px 4px 8px var(--neu-dar
     concept:"Ma — the art of negative space. Beauty in what is absent.",
     tags:["Elegant","Serif","Minimal"],
     defaultTheme:"cream",
-    defaultAccent:{accent:"#e8648a",accent2:"#c0376a"}, defaultDesign:"clean",
+    defaultAccent:{accent:"#e8648a",accent2:"#c0376a"},
     accentOptions:[
       {name:"Cherry",  accent:"#e8648a", accent2:"#c0376a"},
       {name:"Ink",     accent:"#1a1a2e", accent2:"#0d0d1e"},
@@ -252,7 +258,7 @@ body.skin-sakura .nn-map-list-row:hover{background:var(--bg3)!important}`,
     concept:"A E S T H E T I C. Grid lines. Infinite sunset. Lost in the 80s.",
     tags:["Retro","Grid","Pixel"],
     defaultTheme:"violet",
-    defaultAccent:{accent:"#ff71ce",accent2:"#d4008e"}, defaultDesign:"workspace",
+    defaultAccent:{accent:"#ff71ce",accent2:"#d4008e"},
     accentOptions:[
       {name:"Pink",    accent:"#ff71ce", accent2:"#d4008e"},
       {name:"Cyan",    accent:"#01cdfe", accent2:"#00a0cc"},
@@ -274,15 +280,20 @@ body.skin-sakura .nn-map-list-row:hover{background:var(--bg3)!important}`,
       "--sidebar-bg":"var(--bg)","--sidebar-border":"1px solid var(--border)",
     },
     bodyClass:"skin-vapor",
-    css:`body.skin-vapor{background-image:repeating-linear-gradient(0deg,transparent,transparent 39px,var(--border2) 39px,var(--border2) 40px),repeating-linear-gradient(90deg,transparent,transparent 39px,var(--border2) 39px,var(--border2) 40px);background-attachment:fixed}
+    css:`body.skin-vapor{
+  /* Retro grid — adaptive to any theme bg */
+  background-image:
+    repeating-linear-gradient(0deg,transparent,transparent 39px,color-mix(in srgb,var(--accent) 18%,transparent) 39px,color-mix(in srgb,var(--accent) 18%,transparent) 40px),
+    repeating-linear-gradient(90deg,transparent,transparent 39px,color-mix(in srgb,var(--accent) 18%,transparent) 39px,color-mix(in srgb,var(--accent) 18%,transparent) 40px);
+  background-attachment:fixed}
 body.skin-vapor .nn-topbar{position:relative}
 body.skin-vapor .nn-topbar::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),var(--accent),transparent);box-shadow:0 0 12px var(--accent)}
 body.skin-vapor button{text-transform:uppercase!important;letter-spacing:0.15em!important;font-size:11px!important;border:1px solid var(--accent)55!important}
 body.skin-vapor button:not([disabled]):hover{background:var(--accent)15!important;box-shadow:0 0 12px var(--accent)44!important;color:var(--accent)!important}
 body.skin-vapor ::-webkit-scrollbar{width:4px}
 body.skin-vapor ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:0}
-body.skin-vapor .nn-map-card{border:1px solid var(--ca)33;box-shadow:0 0 16px var(--ca)11}
-body.skin-vapor .nn-map-card:hover{border-color:var(--ca)88;box-shadow:0 0 28px var(--ca)44,0 0 0 1px var(--ca)66;transform:translateY(-1px)}
+body.skin-vapor .nn-map-card{border:1px solid var(--ca)44;box-shadow:0 0 16px var(--ca)18,0 2px 8px var(--shadow)}
+body.skin-vapor .nn-map-card:hover{border-color:var(--ca)88;box-shadow:0 0 28px var(--ca)55,0 0 0 1px var(--ca)66;transform:translateY(-1px)}
 body.skin-vapor .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-vapor .nn-map-list-row:hover{background:var(--bg3)!important;box-shadow:0 0 12px var(--ca)33}`,
   },
@@ -292,7 +303,7 @@ body.skin-vapor .nn-map-list-row:hover{background:var(--bg3)!important;box-shado
     concept:"All the news fit to diagram. Playfair Display editorial clarity.",
     tags:["Print","Serif","Editorial"],
     defaultTheme:"parchment",
-    defaultAccent:{accent:"#c41e3a",accent2:"#9b1530"}, defaultDesign:"professional",
+    defaultAccent:{accent:"#c41e3a",accent2:"#9b1530"},
     accentOptions:[
       {name:"Crimson", accent:"#c41e3a", accent2:"#9b1530"},
       {name:"Navy",    accent:"#2c5f8a", accent2:"#1a3a5e"},
@@ -322,8 +333,8 @@ body.skin-newspaper input,body.skin-newspaper select{border:1px solid var(--bord
 body.skin-newspaper input:focus,body.skin-newspaper select:focus{border-top-color:var(--accent)!important;box-shadow:none!important;outline:none}
 body.skin-newspaper ::-webkit-scrollbar{width:6px}
 body.skin-newspaper ::-webkit-scrollbar-thumb{background:var(--accent)}
-body.skin-newspaper .nn-map-card{border:1px solid var(--border2);border-top:4px solid var(--ca);box-shadow:2px 2px 0 rgba(0,0,0,0.06)}
-body.skin-newspaper .nn-map-card:hover{box-shadow:3px 3px 0 rgba(0,0,0,0.1);transform:translate(-1px,-1px)}
+body.skin-newspaper .nn-map-card{border:1px solid var(--border);border-top:4px solid var(--ca);box-shadow:2px 2px 0 var(--shadow)}
+body.skin-newspaper .nn-map-card:hover{box-shadow:4px 4px 0 var(--shadow);transform:translate(-1px,-1px)}
 body.skin-newspaper .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-newspaper .nn-map-list-row{border-left:4px solid var(--ca)!important}
 body.skin-newspaper .nn-map-list-row:hover{background:var(--bg3)!important}`,
@@ -333,7 +344,7 @@ body.skin-newspaper .nn-map-list-row:hover{background:var(--bg3)!important}`,
     name:"Coral", icon:"🪸", nav:"bottom",
     concept:"Miami heat. Fun, bouncy, warm, alive. Every interaction feels good.",
     tags:["Vibrant","Bouncy","Warm"],
-    defaultTheme:"dark", defaultDesign:"comfort",
+    defaultTheme:"dark",
     accentOptions:[
       {name:"Coral",   accent:"#ff6b6b", accent2:"#e53535"},
       {name:"Teal",    accent:"#00d4aa", accent2:"#00a888"},
@@ -371,7 +382,7 @@ body.skin-coral .nn-map-list-row:hover{background:var(--bg3)!important;transform
     concept:"Forged, not designed. Carbon fiber, precision instruments, zero tolerance.",
     tags:["Industrial","Dense","Precise"],
     defaultTheme:"amber",
-    defaultAccent:{accent:"#f0a830",accent2:"#c88020"}, defaultDesign:"workspace",
+    defaultAccent:{accent:"#f0a830",accent2:"#c88020"},
     accentOptions:[
       {name:"Amber",   accent:"#f0a830", accent2:"#c88020"},
       {name:"Cyan",    accent:"#00c8ff", accent2:"#0090cc"},
@@ -393,13 +404,18 @@ body.skin-coral .nn-map-list-row:hover{background:var(--bg3)!important;transform
       "--sidebar-bg":"var(--bg)","--sidebar-border":"1px solid var(--border)",
     },
     bodyClass:"skin-carbon",
-    css:`body.skin-carbon{background-image:repeating-linear-gradient(45deg,rgba(255,255,255,0.012) 0px,rgba(255,255,255,0.012) 1px,transparent 1px,transparent 4px),repeating-linear-gradient(-45deg,rgba(255,255,255,0.012) 0px,rgba(255,255,255,0.012) 1px,transparent 1px,transparent 4px);background-attachment:fixed}
+    css:`body.skin-carbon{
+  /* Carbon weave - uses currentColor-derived pattern that works on any theme */
+  background-image:
+    repeating-linear-gradient(45deg,color-mix(in srgb,var(--text) 4%,transparent) 0px,color-mix(in srgb,var(--text) 4%,transparent) 1px,transparent 1px,transparent 4px),
+    repeating-linear-gradient(-45deg,color-mix(in srgb,var(--text) 4%,transparent) 0px,color-mix(in srgb,var(--text) 4%,transparent) 1px,transparent 1px,transparent 4px);
+  background-attachment:fixed}
 body.skin-carbon button{text-transform:uppercase!important;letter-spacing:0.06em!important;font-size:10px!important;border:1px solid var(--border)!important}
 body.skin-carbon button:not([disabled]):hover{border-color:var(--accent)!important;color:var(--accent)!important;box-shadow:0 0 8px var(--accent)33!important}
 body.skin-carbon ::-webkit-scrollbar{width:5px}
 body.skin-carbon ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:1px}
-body.skin-carbon .nn-map-card{border:1px solid var(--ca)22;box-shadow:inset 0 1px 0 var(--ca)18,0 1px 4px var(--shadow)}
-body.skin-carbon .nn-map-card:hover{border-color:var(--ca)55;box-shadow:0 0 12px var(--ca)22,inset 0 1px 0 var(--ca)18;transform:translateY(-1px)}
+body.skin-carbon .nn-map-card{border:1px solid var(--ca)33;box-shadow:inset 0 1px 0 var(--ca)22,0 2px 8px var(--shadow)}
+body.skin-carbon .nn-map-card:hover{border-color:var(--ca)66;box-shadow:0 0 16px var(--ca)22,inset 0 1px 0 var(--ca)22;transform:translateY(-1px)}
 body.skin-carbon .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-carbon .nn-map-list-row:hover{background:var(--bg3)!important;border-left-color:var(--ca)!important}`,
   },
@@ -409,7 +425,7 @@ body.skin-carbon .nn-map-list-row:hover{background:var(--bg3)!important;border-l
     concept:"Pure joy. Bouncy, soft, every interaction is a little celebration.",
     tags:["Fun","Rounded","Playful"],
     defaultTheme:"rose",
-    defaultAccent:{accent:"#ff6eb4",accent2:"#d4008e"}, defaultDesign:"comfort",
+    defaultAccent:{accent:"#ff6eb4",accent2:"#d4008e"},
     accentOptions:[
       {name:"Pink",    accent:"#ff6eb4", accent2:"#d4008e"},
       {name:"Lavender",accent:"#9b72e8", accent2:"#7c3aed"},
