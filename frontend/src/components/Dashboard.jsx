@@ -380,7 +380,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
 
         {/* Nav items */}
         {[["maps","🗺","Maps"],["live","📡","Live Dashboard"]].map(([id,icon,label])=>(
-          <button key={id} onClick={()=>setDashTab(id)}
+          <button key={id} onClick={()=>{ setDashTab(id); window.location.hash=id==="live"?"live":"dashboard"; }}
             style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 18px",
               border:"none", cursor:"pointer", fontFamily:"var(--font-ui)", fontWeight:600,
               fontSize:12, textAlign:"left", transition:"all .1s",

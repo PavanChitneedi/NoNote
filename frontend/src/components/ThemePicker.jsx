@@ -82,7 +82,7 @@ export default function ThemePicker({
       style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
       <div
         onClick={e => e.stopPropagation()}
-        style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:"var(--radius-lg)", width:"100%", maxWidth:720, maxHeight:"90vh", display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:12, width:"100%", maxWidth:680, height:"88vh", maxHeight:680, display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
         {/* Header */}
         <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border2)", display:"flex", alignItems:"center", gap:10 }}>
@@ -92,7 +92,7 @@ export default function ThemePicker({
         </div>
 
         {/* Tabs */}
-        <div style={{ display:"flex", gap:4, padding:"10px 16px", borderBottom:"1px solid var(--border2)", overflowX:"auto" }}>
+        <div style={{ display:"flex", gap:4, padding:"8px 16px", borderBottom:"1px solid var(--border2)", flexShrink:0, flexWrap:"wrap" }}>
           {tabs.map(t => (
             <button key={t.id} onClick={e => { e.stopPropagation(); setTab(t.id); }}
               style={{ padding:"7px 14px", border:"none", borderRadius:"var(--radius-sm)", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit", flexShrink:0,
@@ -104,7 +104,7 @@ export default function ThemePicker({
         </div>
 
         {/* Content */}
-        <div style={{ flex:1, overflow:"auto", padding:"16px 20px" }}>
+        <div style={{ flex:1, overflowY:"auto", overflowX:"hidden", padding:"16px 20px", minHeight:0 }}>
 
           {/* ── Skins ── */}
           {tab==="skins" && (() => { try { return (
