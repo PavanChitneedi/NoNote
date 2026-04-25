@@ -1,13 +1,10 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import https from 'https';
+import http from 'http';
 
 const router = Router();
 router.use(authenticate);
-
-// HTTPS agent that allows self-signed certs — used ONLY for homelab integration proxying.
-// NOT set globally so LLM API calls still use full TLS verification.
-const selfSignedAgent = new https.Agent({ rejectUnauthorized: false });
 
 // ── URL safety check ─────────────────────────────────────────
 // Integration routes are FOR homelab use — private IPs (192.168.x, 10.x, 172.16-31.x)
@@ -39,15 +36,43 @@ function isValidToken(t) {
   return typeof t === 'string' && t.length >= 4 && t.length <= 2048 && /^[\x20-\x7E]+$/.test(t);
 }
 
-async function go(url, opts = {}) {
-  const ctrl = new AbortController();
-  const timer = setTimeout(() => ctrl.abort(), 8000);
-  try {
-    const agentOpt = url.startsWith('https://') ? { agent: selfSignedAgent } : {};
-    const r = await fetch(url, { ...opts, signal: ctrl.signal, ...agentOpt });
-    clearTimeout(timer);
-    return r;
-  } catch(e) { clearTimeout(timer); throw e; }
+
+// Self-signed cert agent — homelab appliances use self-signed TLS certs
+const selfSignedAgent = new https.Agent({ rejectUnauthorized: false });
+
+// ── HTTP wrapper using https.request — correctly applies 'agent' unlike native fetch ──
+function go(url, opts = {}) {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('Request timeout')), 8000);
+    const parsed = new URL(url);
+    const isHttps = parsed.protocol === 'https:';
+    const lib = isHttps ? https : http;
+    const reqOpts = {
+      hostname: parsed.hostname,
+      port: parsed.port || (isHttps ? 443 : 80),
+      path: parsed.pathname + (parsed.search || ''),
+      method: opts.method || 'GET',
+      headers: opts.headers || {},
+      ...(isHttps ? { agent: selfSignedAgent } : {}),
+    };
+    const req = lib.request(reqOpts, (res) => {
+      clearTimeout(timer);
+      const chunks = [];
+      res.on('data', c => chunks.push(c));
+      res.on('end', () => {
+        const body = Buffer.concat(chunks).toString();
+        resolve({
+          ok: res.statusCode >= 200 && res.statusCode < 300,
+          status: res.statusCode,
+          json: () => Promise.resolve(JSON.parse(body)),
+          text: () => Promise.resolve(body),
+        });
+      });
+    });
+    req.on('error', e => { clearTimeout(timer); reject(e); });
+    if (opts.body) req.write(opts.body);
+    req.end();
+  });
 }
 
 // ── Proxmox VE ───────────────────────────────────────────────

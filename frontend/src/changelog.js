@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.5",date:"Apr 2026",items:[
+    "Fix: Integration proxy (Proxmox, TrueNAS, Unraid, ESXi) now uses https.request instead of native fetch -- native fetch ignores the agent option so self-signed certs on homelab appliances caused fetch failed errors",
+    "Fix: selfSignedAgent (rejectUnauthorized:false) now correctly applied to all HTTPS requests to homelab endpoints",
+  ]},
   {v:"v5.39.4",date:"Apr 2026",items:[
     "Fix: Proxmox, TrueNAS, Unraid, ESXi integrations broken since v5.36 audit -- SSRF guard was blocking all RFC-1918 private IPs (192.168.x, 10.x, 172.16-31.x) which is where homelab servers live",
     "Fix: SSRF guard now only blocks loopback (localhost/127.x), cloud metadata endpoint (169.254.x), and Docker internal service names -- private LAN IPs are allowed",
