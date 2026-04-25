@@ -9,7 +9,10 @@ router.use(authenticate);
 // NOT set globally so LLM API calls still use full TLS verification.
 const selfSignedAgent = new https.Agent({ rejectUnauthorized: false });
 
-// ── SSRF guard: block private/internal IP ranges ──────────────
+// ── URL safety check ─────────────────────────────────────────
+// Integration routes are FOR homelab use — private IPs (192.168.x, 10.x, 172.16-31.x)
+// are ALLOWED because Proxmox/TrueNAS/Unraid/ESXi live on LAN.
+// Only blocked: cloud metadata endpoint, loopback, Docker service names.
 function isSafeUrl(rawUrl) {
   let parsed;
   try { parsed = new URL(rawUrl); } catch { return false; }
@@ -17,16 +20,17 @@ function isSafeUrl(rawUrl) {
 
   if (!['http:', 'https:'].includes(parsed.protocol)) return false;
 
-  const BLOCKED = [
-    /^localhost$/i, /^127\./, /^0\./, /^10\./,
-    /^172\.(1[6-9]|2\d|3[01])\./, /^192\.168\./,
-    /^169\.254\./, /^::1$/, /^fc00:/i, /^fe80:/i,
-  ];
-  if (BLOCKED.some(r => r.test(hostname))) return false;
+  // Block loopback
+  if (/^localhost$/i.test(hostname) || /^127\./.test(hostname) || /^::1$/.test(hostname)) return false;
 
+  // Block cloud metadata (AWS/Azure/GCP link-local) — not a homelab address
+  if (/^169\.254\./.test(hostname)) return false;
+
+  // Block Docker internal service names (not IPs)
   const INTERNAL = ['postgres', 'redis', 'backend', 'frontend', 'nginx'];
   if (INTERNAL.includes(hostname)) return false;
 
+  // Private IPs (192.168.x, 10.x, 172.16-31.x) are ALLOWED — homelab lives here
   return true;
 }
 
