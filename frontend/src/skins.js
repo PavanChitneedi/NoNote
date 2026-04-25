@@ -9,8 +9,6 @@ export const SKINS = {
     concept:"The developer's workshop. Dense, precise, monospaced. GitHub meets VS Code.",
     tags:["Technical","Monospace"],
     defaultTheme:"dark",
-    defaultAccent:{accent:"#ff6b6b",accent2:"#e53535"},
-    defaultAccent:{accent:"#ffe600",accent2:"#ccb800"},
     defaultAccent:{accent:"#58a6ff",accent2:"#1f6feb"},
     accentOptions:[
       {name:"Blue",    accent:"#58a6ff", accent2:"#1f6feb"},
@@ -35,6 +33,7 @@ export const SKINS = {
     css:`body.skin-obsidian ::-webkit-scrollbar{width:6px;height:6px}
 body.skin-obsidian ::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 body.skin-obsidian ::-webkit-scrollbar-thumb:hover{background:var(--text4)}
+body.skin-obsidian input:focus,body.skin-obsidian select:focus,body.skin-obsidian textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent)33!important;outline:none}
 body.skin-obsidian .nn-map-card{border:1px solid var(--border2);border-top:3px solid var(--ca)}
 body.skin-obsidian .nn-map-card:hover{transform:translateY(-2px);box-shadow:0 6px 24px var(--shadow);border-color:var(--border)}
 body.skin-obsidian .nn-map-card:hover .nn-card-actions{opacity:1!important}
@@ -73,10 +72,17 @@ body.skin-obsidian .nn-map-list-row:hover{background:var(--bg3)!important;box-sh
     css:`body.skin-aurora .nn-topbar{backdrop-filter:blur(24px)!important;-webkit-backdrop-filter:blur(24px)!important}
 body.skin-aurora .nn-sidebar{backdrop-filter:blur(20px)!important;-webkit-backdrop-filter:blur(20px)!important}
 body.skin-aurora button:not([disabled]):hover{box-shadow:0 0 16px var(--accent)44!important}
+body.skin-aurora input:focus,body.skin-aurora select:focus,body.skin-aurora textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent)44,0 0 16px var(--accent)22!important;outline:none}
 body.skin-aurora ::-webkit-scrollbar{width:5px}
 body.skin-aurora ::-webkit-scrollbar-thumb{background:var(--accent)44;border-radius:6px}
-body.skin-aurora .nn-map-card{border:1px solid var(--border);border-top:2px solid var(--ca);backdrop-filter:blur(8px)}
-body.skin-aurora .nn-map-card:hover{transform:translateY(-2px);box-shadow:0 8px 32px var(--shadow),0 0 20px var(--ca)22;border-color:var(--ca)44}
+/* Fix: use inset box-shadow for accent stripe — avoids arc on 24px radius corners */
+body.skin-aurora .nn-map-card{
+  border:1px solid var(--border);backdrop-filter:blur(8px);
+  box-shadow:inset 0 2px 0 var(--ca),0 4px 16px var(--shadow)}
+body.skin-aurora .nn-map-card:hover{
+  transform:translateY(-2px);
+  box-shadow:inset 0 2px 0 var(--ca),0 8px 32px var(--shadow),0 0 20px var(--ca)22;
+  border-color:var(--ca)44}
 body.skin-aurora .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-aurora .nn-map-list-row:hover{background:var(--bg3)!important;box-shadow:0 0 12px var(--ca)22}`,
   },
@@ -106,11 +112,11 @@ body.skin-aurora .nn-map-list-row:hover{background:var(--bg3)!important;box-shad
       "--sidebar-bg":"var(--bg2)","--sidebar-border":"3px solid var(--border)",
     },
     bodyClass:"skin-brutalist",
-    css:`body.skin-brutalist button{text-transform:uppercase!important;letter-spacing:0.06em!important;font-weight:700!important;border:2px solid currentColor!important}
-body.skin-brutalist button:not([disabled]):hover{background:var(--accent)!important;color:var(--bg)!important;box-shadow:4px 4px 0 var(--accent)66!important;transform:translate(-2px,-2px)!important}
+    css:`body.skin-brutalist button{text-transform:uppercase!important;letter-spacing:0.06em!important;font-weight:700!important;border:2px solid var(--border)!important}
+body.skin-brutalist button:not([disabled]):hover{background:var(--accent)!important;color:var(--bg)!important;border-color:var(--accent)!important;box-shadow:4px 4px 0 var(--accent)88!important;transform:translate(-2px,-2px)!important}
 body.skin-brutalist button:active{transform:translate(2px,2px)!important;box-shadow:none!important}
-body.skin-brutalist input,body.skin-brutalist select{border:2px solid var(--border)!important;border-radius:0!important}
-body.skin-brutalist input:focus,body.skin-brutalist select:focus{border-color:var(--accent)!important;box-shadow:4px 4px 0 var(--accent)!important;outline:none}
+body.skin-brutalist input,body.skin-brutalist select,body.skin-brutalist textarea{border:2px solid var(--border)!important;border-radius:0!important}
+body.skin-brutalist input:focus,body.skin-brutalist select:focus,body.skin-brutalist textarea:focus{border-color:var(--accent)!important;box-shadow:4px 4px 0 var(--accent)!important;outline:none}
 body.skin-brutalist ::-webkit-scrollbar{width:8px}
 body.skin-brutalist ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:0}
 body.skin-brutalist .nn-map-card{border:3px solid var(--border);box-shadow:4px 4px 0 var(--ca)}
@@ -147,14 +153,15 @@ body.skin-brutalist .nn-map-list-row:hover{background:var(--bg3)!important;box-s
       "--sidebar-bg":"var(--bg)","--sidebar-border":"1px solid var(--border)",
     },
     bodyClass:"skin-neon-tokyo",
-    css:`body.skin-neon-tokyo::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9997;
-  /* Adaptive scanlines — dark lines on light bg, subtle on dark bg */
+    css:`/* Fix: z-index 99 keeps scanlines below modals (z:1000+) */
+body.skin-neon-tokyo::before{content:'';position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:99;
   background:repeating-linear-gradient(0deg,transparent 0px,transparent 3px,color-mix(in srgb,var(--text) 5%,transparent) 3px,color-mix(in srgb,var(--text) 5%,transparent) 4px)}
-body.skin-neon-tokyo .nn-topbar{position:relative}
-body.skin-neon-tokyo .nn-topbar::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),var(--accent),transparent);box-shadow:0 0 12px var(--accent)}
+body.skin-neon-tokyo .nn-topbar{position:relative;overflow:hidden}
+/* Fix: clip to topbar so glow bar doesn't bleed into content */
+body.skin-neon-tokyo .nn-topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),var(--accent),transparent);box-shadow:0 0 12px var(--accent)}
 body.skin-neon-tokyo button{text-transform:uppercase!important;letter-spacing:0.1em!important}
 body.skin-neon-tokyo button:not([disabled]):hover{color:var(--accent)!important;border-color:var(--accent)!important;box-shadow:0 0 12px var(--accent)55!important;text-shadow:0 0 8px var(--accent)!important}
-body.skin-neon-tokyo input:focus,body.skin-neon-tokyo select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 1px var(--accent),0 0 16px var(--accent)44!important;outline:none}
+body.skin-neon-tokyo input:focus,body.skin-neon-tokyo select:focus,body.skin-neon-tokyo textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 1px var(--accent),0 0 16px var(--accent)44!important;outline:none}
 body.skin-neon-tokyo ::-webkit-scrollbar{width:4px}
 body.skin-neon-tokyo ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:2px}
 body.skin-neon-tokyo .nn-map-card{border:1px solid var(--ca)55;box-shadow:0 0 0 1px var(--ca)18,0 2px 8px var(--shadow)}
@@ -181,10 +188,8 @@ body.skin-neon-tokyo .nn-map-list-row:hover{background:var(--bg3)!important;box-
       "--font-node":"'Nunito',system-ui,sans-serif",
       "--font-weight-ui":"700","--font-weight-node":"600",
       "--letter-space":"0em","--line-height":"1.65",
-      // Radius kept moderate — large radius causes border-top to arc dramatically
       "--radius-xs":"8px","--radius-sm":"12px","--radius-md":"16px","--radius-lg":"20px",
       "--radius-node":"16px","--radius-btn":"12px",
-      // shadow-node uses dynamic --neu-dark/light set by body css block below
       "--shadow-node":"8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)",
       "--shadow-node-sel":"6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light),0 0 0 3px var(--accent)44",
       "--transition-all":"all 0.15s ease",
@@ -195,120 +200,43 @@ body.skin-neon-tokyo .nn-map-list-row:hover{background:var(--bg3)!important;box-
     css:`body.skin-neumorphic{background:var(--bg);
   --neu-dark:color-mix(in srgb,var(--bg) 72%,#000);
   --neu-light:color-mix(in srgb,var(--bg) 68%,#fff);
-  /* Global fillet — override all inline borderRadius across the app */
-  --r: 14px;
 }
-
-/* ── Topbar / Sidebar ────────────────────────────────────── */
-body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),0 -1px 0 var(--neu-light)!important;border-bottom:none!important;border-radius:0!important}
-body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-dark)!important;border-right:none!important}
-
-/* ── Buttons — all variants ──────────────────────────────── */
-body.skin-neumorphic button,
-body.skin-neumorphic label[style*="cursor"]{
-  background:var(--bg2)!important;border:none!important;
-  border-radius:var(--r)!important;
-  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;
-  color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
-body.skin-neumorphic button:not([disabled]):hover,
-body.skin-neumorphic label[style*="cursor"]:hover{
-  box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important;
-  transform:translateY(-1px)!important}
-body.skin-neumorphic button:not([disabled]):active{
-  box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;
-  transform:translateY(0)!important}
-
-/* ── Inputs / selects / textareas ────────────────────────── */
-body.skin-neumorphic input,
-body.skin-neumorphic select,
-body.skin-neumorphic textarea{
-  background:var(--bg)!important;border:none!important;
-  border-radius:var(--r)!important;
-  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
-body.skin-neumorphic input:focus,
-body.skin-neumorphic select:focus,
-body.skin-neumorphic textarea:focus{
-  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light),0 0 0 2px var(--accent)44!important;
-  outline:none}
-
-/* ── Cards / panels / modals — any div with a bg color ──── */
-body.skin-neumorphic [style*="borderRadius:14"],
-body.skin-neumorphic [style*="borderRadius: 14"],
-body.skin-neumorphic [style*="borderRadius:12"],
-body.skin-neumorphic [style*="borderRadius: 12"],
-body.skin-neumorphic [style*="borderRadius:10"],
-body.skin-neumorphic [style*="borderRadius: 10"],
+/* ── Topbar / Sidebar ──────────────────────────────────── */
+body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),0 -1px 0 var(--neu-light)!important;border:none!important;border-radius:0!important}
+body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-dark)!important;border:none!important}
+/* ── Buttons ───────────────────────────────────────────── */
+body.skin-neumorphic button{background:var(--bg2)!important;border:none!important;border-radius:12px!important;box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
+body.skin-neumorphic button:not([disabled]):hover{box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important;transform:translateY(-1px)!important}
+body.skin-neumorphic button:not([disabled]):active{box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;transform:translateY(0)!important}
+/* ── Inputs ────────────────────────────────────────────── */
+body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{background:var(--bg)!important;border:none!important;border-radius:12px!important;box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
+body.skin-neumorphic input:focus,body.skin-neumorphic select:focus,body.skin-neumorphic textarea:focus{box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light),0 0 0 2px var(--accent)44!important;outline:none}
+/* ── Fillet hardcoded radii ─────────────────────────────── */
+body.skin-neumorphic [style*="borderRadius:14"],body.skin-neumorphic [style*="borderRadius: 14"],
+body.skin-neumorphic [style*="borderRadius:12"],body.skin-neumorphic [style*="borderRadius: 12"],
+body.skin-neumorphic [style*="borderRadius:10"],body.skin-neumorphic [style*="borderRadius: 10"],
 body.skin-neumorphic [style*="borderRadius:9"],
-body.skin-neumorphic [style*="borderRadius:8"],
-body.skin-neumorphic [style*="borderRadius: 8"]{border-radius:var(--r)!important}
-
-body.skin-neumorphic [style*="borderRadius:7"],
-body.skin-neumorphic [style*="borderRadius:6"],
-body.skin-neumorphic [style*="borderRadius:5"],
-body.skin-neumorphic [style*="borderRadius:4"]{border-radius:10px!important}
-
+body.skin-neumorphic [style*="borderRadius:8"],body.skin-neumorphic [style*="borderRadius: 8"]{border-radius:14px!important}
+body.skin-neumorphic [style*="borderRadius:7"],body.skin-neumorphic [style*="borderRadius:6"],
+body.skin-neumorphic [style*="borderRadius:5"],body.skin-neumorphic [style*="borderRadius:4"]{border-radius:10px!important}
 body.skin-neumorphic [style*="borderRadius:3"]{border-radius:8px!important}
-
-/* ── Modals — give them a clay lift shadow ───────────────── */
+/* ── Modals ─────────────────────────────────────────────── */
 body.skin-neumorphic [style*="boxShadow"][style*="rgba(0,0,0,.5)"],
-body.skin-neumorphic [style*="box-shadow"][style*="rgba(0,0,0,0.5)"]{
-  box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important;
-  border-radius:22px!important;border:none!important}
-
-/* ── Badge / pill / tag spans ────────────────────────────── */
+body.skin-neumorphic [style*="boxShadow"][style*="rgba(0,0,0,0.5)"]{box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important;border-radius:22px!important;border:none!important}
+body.skin-neumorphic [style*="maxWidth:680"]{border-radius:24px!important;border:none!important;box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
+/* ── Badges/pills ───────────────────────────────────────── */
 body.skin-neumorphic span[style*="borderRadius"]{border-radius:10px!important}
-body.skin-neumorphic span[style*="border-radius"]{border-radius:10px!important}
-
-/* ── Admin panel section cards ───────────────────────────── */
-body.skin-neumorphic [style*="borderRadius:12"][style*="padding:18"],
-body.skin-neumorphic [style*="borderRadius:10"][style*="padding:\"12px 16px\""],
-body.skin-neumorphic [style*="borderRadius:10"][style*="padding:\"14px 16px\""]{
-  border-radius:20px!important;
-  box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)!important;
-  border:none!important}
-
-/* ── Scrollbar ───────────────────────────────────────────── */
+/* ── Scrollbar ──────────────────────────────────────────── */
 body.skin-neumorphic ::-webkit-scrollbar{width:8px}
 body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 6px var(--neu-dark);border-radius:8px}
 body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;box-shadow:2px 2px 4px var(--neu-dark)}
-
-/* ── Map cards ───────────────────────────────────────────── */
-body.skin-neumorphic .nn-map-card{
-  background:var(--bg)!important;border:none!important;
-  box-shadow:6px 6px 14px var(--neu-dark),-6px -6px 14px var(--neu-light),inset 0 3px 0 var(--ca)!important}
-body.skin-neumorphic .nn-map-card:hover{
-  transform:translateY(-2px);
-  box-shadow:8px 8px 18px var(--neu-dark),-8px -8px 18px var(--neu-light),inset 0 3px 0 var(--ca)!important}
+/* ── Map cards — inset stripe avoids arc on rounded corners ─ */
+body.skin-neumorphic .nn-map-card{background:var(--bg)!important;border:none!important;box-shadow:6px 6px 14px var(--neu-dark),-6px -6px 14px var(--neu-light),inset 0 3px 0 var(--ca)!important}
+body.skin-neumorphic .nn-map-card:hover{transform:translateY(-2px);box-shadow:8px 8px 18px var(--neu-dark),-8px -8px 18px var(--neu-light),inset 0 3px 0 var(--ca)!important}
 body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-
-/* ── List rows ───────────────────────────────────────────── */
-body.skin-neumorphic .nn-map-list-row{
-  background:var(--bg)!important;border-radius:var(--r)!important;
-  box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light);
-  border-left:3px solid var(--ca)!important;border-top:none!important;
-  border-right:none!important;border-bottom:none!important}
-body.skin-neumorphic .nn-map-list-row:hover{
-  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)}
-
-/* ── ThemePicker modal ────────────────────────────────────── */
-body.skin-neumorphic [style*="maxWidth:680"]{
-  border-radius:24px!important;border:none!important;
-  box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
-
-/* ── Skin preview cards inside ThemePicker ───────────────── */
-body.skin-neumorphic [style*="overflow:\"hidden\""][style*="borderRadius:8"],
-body.skin-neumorphic [style*="overflow:hidden"][style*="borderRadius:8"]{border-radius:14px!important}
-
-/* ── Context menu / dropdowns ─────────────────────────────── */
-body.skin-neumorphic [style*="position:\"absolute\""][style*="background"],
-body.skin-neumorphic [style*="position:absolute"][style*="background:\"var(--bg"]{
-  border-radius:18px!important;
-  box-shadow:8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)!important;
-  border:none!important}
-
-/* ── Toggle switches ──────────────────────────────────────── */
-body.skin-neumorphic [style*="borderRadius:20"],
-body.skin-neumorphic [style*="borderRadius: 20"]{border-radius:20px!important}`,
+/* ── List rows ──────────────────────────────────────────── */
+body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;border-radius:14px!important;box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light);border-left:3px solid var(--ca)!important;border-top:none!important;border-right:none!important;border-bottom:none!important}
+body.skin-neumorphic .nn-map-list-row:hover{box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)}`,
   },
 
   sakura: {
@@ -338,16 +266,17 @@ body.skin-neumorphic [style*="borderRadius: 20"]{border-radius:20px!important}`,
       "--sidebar-bg":"var(--bg)","--sidebar-border":"1px solid var(--border2)",
     },
     bodyClass:"skin-sakura",
-    css:`body.skin-sakura{font-size:15px}
-body.skin-sakura button{font-size:12px!important;border:1px solid var(--border)!important;background:transparent!important;color:var(--text2)!important}
+    css:`/* No global font-size override — avoids overflow in badges/tabs */
+body.skin-sakura button{border:1px solid var(--border)!important;background:transparent!important;color:var(--text2)!important}
 body.skin-sakura button:not([disabled]):hover{border-color:var(--accent)!important;color:var(--accent)!important;background:var(--accent)06!important}
-body.skin-sakura input,body.skin-sakura select{border:1px solid var(--border)!important}
-body.skin-sakura input:focus,body.skin-sakura select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent)20!important;outline:none}
+body.skin-sakura input,body.skin-sakura select,body.skin-sakura textarea{border:1px solid var(--border)!important}
+body.skin-sakura input:focus,body.skin-sakura select:focus,body.skin-sakura textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 2px var(--accent)20!important;outline:none}
 body.skin-sakura ::-webkit-scrollbar{width:4px}
 body.skin-sakura ::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
 body.skin-sakura ::-webkit-scrollbar-thumb:hover{background:var(--accent)}
-body.skin-sakura .nn-map-card{border:1px solid var(--border2);border-top:2px solid var(--ca)}
-body.skin-sakura .nn-map-card:hover{box-shadow:0 4px 20px var(--shadow);border-color:var(--ca)44}
+/* Fix: inset stripe avoids arc on 12px radius cards */
+body.skin-sakura .nn-map-card{border:1px solid var(--border2);box-shadow:inset 0 2px 0 var(--ca),0 2px 12px var(--shadow)}
+body.skin-sakura .nn-map-card:hover{box-shadow:inset 0 2px 0 var(--ca),0 4px 20px var(--shadow);border-color:var(--ca)44}
 body.skin-sakura .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-sakura .nn-map-list-row:hover{background:var(--bg3)!important}`,
   },
@@ -375,20 +304,22 @@ body.skin-sakura .nn-map-list-row:hover{background:var(--bg3)!important}`,
       "--shadow-node":"0 0 0 1px var(--accent)44,0 0 20px var(--accent)22",
       "--shadow-node-sel":"0 0 0 2px var(--accent),0 0 40px var(--accent)55",
       "--transition-all":"all 0.1s",
-      "--topbar-bg":"var(--bg)","--topbar-border":"1px solid var(--accent)44","--topbar-blur":"blur(8px)",
+      // Fix: use semi-transparent bg so blur actually works
+      "--topbar-bg":"color-mix(in srgb,var(--bg) 80%,transparent)",
+      "--topbar-border":"1px solid var(--accent)44","--topbar-blur":"blur(8px)",
       "--sidebar-bg":"var(--bg)","--sidebar-border":"1px solid var(--border)",
     },
     bodyClass:"skin-vapor",
     css:`body.skin-vapor{
-  /* Retro grid — adaptive to any theme bg */
   background-image:
     repeating-linear-gradient(0deg,transparent,transparent 39px,color-mix(in srgb,var(--accent) 18%,transparent) 39px,color-mix(in srgb,var(--accent) 18%,transparent) 40px),
     repeating-linear-gradient(90deg,transparent,transparent 39px,color-mix(in srgb,var(--accent) 18%,transparent) 39px,color-mix(in srgb,var(--accent) 18%,transparent) 40px);
   background-attachment:fixed}
-body.skin-vapor .nn-topbar{position:relative}
-body.skin-vapor .nn-topbar::after{content:'';position:absolute;bottom:-2px;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),var(--accent),transparent);box-shadow:0 0 12px var(--accent)}
+body.skin-vapor .nn-topbar{position:relative;backdrop-filter:blur(8px)!important;-webkit-backdrop-filter:blur(8px)!important}
+body.skin-vapor .nn-topbar::after{content:'';position:absolute;bottom:0;left:0;right:0;height:2px;background:linear-gradient(90deg,transparent,var(--accent),var(--accent2),var(--accent),transparent);box-shadow:0 0 12px var(--accent)}
 body.skin-vapor button{text-transform:uppercase!important;letter-spacing:0.15em!important;font-size:11px!important;border:1px solid var(--accent)55!important}
 body.skin-vapor button:not([disabled]):hover{background:var(--accent)15!important;box-shadow:0 0 12px var(--accent)44!important;color:var(--accent)!important}
+body.skin-vapor input:focus,body.skin-vapor select:focus,body.skin-vapor textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 1px var(--accent),0 0 12px var(--accent)44!important;outline:none}
 body.skin-vapor ::-webkit-scrollbar{width:4px}
 body.skin-vapor ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:0}
 body.skin-vapor .nn-map-card{border:1px solid var(--ca)44;box-shadow:0 0 16px var(--ca)18,0 2px 8px var(--shadow)}
@@ -425,11 +356,13 @@ body.skin-vapor .nn-map-list-row:hover{background:var(--bg3)!important;box-shado
     },
     bodyClass:"skin-newspaper",
     css:`body.skin-newspaper .nn-topbar{box-shadow:0 3px 0 var(--accent2)!important}
-body.skin-newspaper .nn-topbar *{color:#fff!important}
-body.skin-newspaper button{font-style:italic!important;border:1px solid currentColor!important;background:transparent!important}
+/* Fix: only force white on direct text/icon children, not all descendants */
+body.skin-newspaper .nn-topbar>*{color:#fff!important}
+body.skin-newspaper .nn-topbar button{color:#fff!important;border-color:rgba(255,255,255,0.4)!important}
+body.skin-newspaper button{font-style:italic!important;border:1px solid var(--border)!important;background:transparent!important}
 body.skin-newspaper button:not([disabled]):hover{background:var(--text)!important;color:var(--bg)!important}
-body.skin-newspaper input,body.skin-newspaper select{border:1px solid var(--border)!important;border-top:2px solid var(--text)!important;border-radius:0!important}
-body.skin-newspaper input:focus,body.skin-newspaper select:focus{border-top-color:var(--accent)!important;box-shadow:none!important;outline:none}
+body.skin-newspaper input,body.skin-newspaper select,body.skin-newspaper textarea{border:1px solid var(--border)!important;border-top:2px solid var(--text)!important;border-radius:0!important}
+body.skin-newspaper input:focus,body.skin-newspaper select:focus,body.skin-newspaper textarea:focus{border-top-color:var(--accent)!important;box-shadow:none!important;outline:none}
 body.skin-newspaper ::-webkit-scrollbar{width:6px}
 body.skin-newspaper ::-webkit-scrollbar-thumb{background:var(--accent)}
 body.skin-newspaper .nn-map-card{border:1px solid var(--border);border-top:4px solid var(--ca);box-shadow:2px 2px 0 var(--shadow)}
@@ -467,11 +400,12 @@ body.skin-newspaper .nn-map-list-row:hover{background:var(--bg3)!important}`,
     bodyClass:"skin-coral",
     css:`body.skin-coral button:not([disabled]):hover{box-shadow:0 4px 16px var(--accent)44!important;transform:translateY(-2px)!important}
 body.skin-coral button:active{transform:translateY(0)!important}
-body.skin-coral input:focus,body.skin-coral select:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent)22!important;outline:none}
+body.skin-coral input:focus,body.skin-coral select:focus,body.skin-coral textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent)22!important;outline:none}
 body.skin-coral ::-webkit-scrollbar{width:6px}
-body.skin-coral ::-webkit-scrollbar-thumb{background:var(--accent)55;border-radius:3px}
-body.skin-coral .nn-map-card{border:1px solid var(--border2);border-top:3px solid var(--ca)}
-body.skin-coral .nn-map-card:hover{transform:translateY(-4px);box-shadow:0 12px 32px var(--shadow)}
+body.skin-coral ::-webkit-scrollbar-thumb{background:var(--accent)55;border-radius:12px}
+/* Fix: inset stripe avoids arc on 24px radius cards */
+body.skin-coral .nn-map-card{border:1px solid var(--border2);box-shadow:inset 0 3px 0 var(--ca),0 4px 16px var(--shadow)}
+body.skin-coral .nn-map-card:hover{transform:translateY(-4px);box-shadow:inset 0 3px 0 var(--ca),0 12px 32px var(--shadow)}
 body.skin-coral .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-coral .nn-map-list-row:hover{background:var(--bg3)!important;transform:translateX(2px);box-shadow:0 4px 16px var(--shadow)}`,
   },
@@ -504,13 +438,15 @@ body.skin-coral .nn-map-list-row:hover{background:var(--bg3)!important;transform
     },
     bodyClass:"skin-carbon",
     css:`body.skin-carbon{
-  /* Carbon weave - uses currentColor-derived pattern that works on any theme */
   background-image:
     repeating-linear-gradient(45deg,color-mix(in srgb,var(--text) 4%,transparent) 0px,color-mix(in srgb,var(--text) 4%,transparent) 1px,transparent 1px,transparent 4px),
     repeating-linear-gradient(-45deg,color-mix(in srgb,var(--text) 4%,transparent) 0px,color-mix(in srgb,var(--text) 4%,transparent) 1px,transparent 1px,transparent 4px);
   background-attachment:fixed}
-body.skin-carbon button{text-transform:uppercase!important;letter-spacing:0.06em!important;font-size:10px!important;border:1px solid var(--border)!important}
+/* Fix: don't force tiny font-size on icon-dock nav buttons — breaks emoji icons */
+body.skin-carbon button:not(.nn-nav-btn){text-transform:uppercase!important;letter-spacing:0.06em!important;font-size:10px!important;border:1px solid var(--border)!important}
+body.skin-carbon .nn-topbar button{font-size:inherit!important;text-transform:none!important;letter-spacing:normal!important}
 body.skin-carbon button:not([disabled]):hover{border-color:var(--accent)!important;color:var(--accent)!important;box-shadow:0 0 8px var(--accent)33!important}
+body.skin-carbon input:focus,body.skin-carbon select:focus,body.skin-carbon textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 1px var(--accent),0 0 8px var(--accent)33!important;outline:none}
 body.skin-carbon ::-webkit-scrollbar{width:5px}
 body.skin-carbon ::-webkit-scrollbar-thumb{background:var(--accent);border-radius:1px}
 body.skin-carbon .nn-map-card{border:1px solid var(--ca)33;box-shadow:inset 0 1px 0 var(--ca)22,0 2px 8px var(--shadow)}
@@ -537,7 +473,7 @@ body.skin-carbon .nn-map-list-row:hover{background:var(--bg3)!important;border-l
       "--font-node":"'Nunito',system-ui,sans-serif",
       "--font-weight-ui":"800","--font-weight-node":"700",
       "--letter-space":"0em","--line-height":"1.7",
-      "--radius-xs":"12px","--radius-sm":"16px","--radius-md":"22px","--radius-lg":"32px",
+      "--radius-xs":"12px","--radius-sm":"16px","--radius-md":"22px","--radius-lg":"28px",
       "--radius-node":"22px","--radius-btn":"24px",
       "--shadow-node":"0 4px 20px var(--shadow),0 2px 8px var(--shadow)",
       "--shadow-node-sel":"0 0 0 3px var(--accent)55,0 8px 32px var(--shadow)",
@@ -549,10 +485,12 @@ body.skin-carbon .nn-map-list-row:hover{background:var(--bg3)!important;border-l
     css:`body.skin-pastel-pop button{font-weight:800!important;transition:all 0.3s cubic-bezier(0.34,1.56,0.64,1)!important}
 body.skin-pastel-pop button:not([disabled]):hover{transform:translateY(-3px) scale(1.02)!important;box-shadow:0 8px 20px var(--accent)33!important}
 body.skin-pastel-pop button:active{transform:scale(0.96)!important}
+body.skin-pastel-pop input:focus,body.skin-pastel-pop select:focus,body.skin-pastel-pop textarea:focus{border-color:var(--accent)!important;box-shadow:0 0 0 3px var(--accent)33!important;outline:none}
 body.skin-pastel-pop ::-webkit-scrollbar{width:8px}
-body.skin-pastel-pop ::-webkit-scrollbar-thumb{background:var(--accent)55;border-radius:4px}
-body.skin-pastel-pop .nn-map-card{border:2px solid var(--ca)44;border-top:4px solid var(--ca)}
-body.skin-pastel-pop .nn-map-card:hover{transform:translateY(-4px) scale(1.015);box-shadow:0 14px 32px var(--shadow);border-color:var(--ca)88}
+body.skin-pastel-pop ::-webkit-scrollbar-thumb{background:var(--accent)55;border-radius:12px}
+/* Fix: inset stripe avoids severe arc on 28px radius cards */
+body.skin-pastel-pop .nn-map-card{border:2px solid var(--ca)44;box-shadow:inset 0 4px 0 var(--ca),0 4px 16px var(--shadow)}
+body.skin-pastel-pop .nn-map-card:hover{transform:translateY(-4px) scale(1.015);box-shadow:inset 0 4px 0 var(--ca),0 14px 32px var(--shadow);border-color:var(--ca)88}
 body.skin-pastel-pop .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-pastel-pop .nn-map-list-row:hover{background:var(--bg3)!important;transform:translateX(3px)}`,
   },

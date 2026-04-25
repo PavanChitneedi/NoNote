@@ -1,6 +1,22 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.0",date:"Apr 2026",items:[
+    "Comprehensive UI audit across all 11 skins — every element reviewed and fixed",
+    "Fix: Aurora, Coral, Sakura, PastelPop — replaced border-top accent with inset box-shadow on cards (eliminated arc artifact on large-radius corners)",
+    "Fix: NeonTokyo scanlines z-index reduced 9997→99 so they no longer overlay modals and panel dialogs",
+    "Fix: NeonTokyo topbar glow bar clipped to topbar bounds — no longer bleeds 2px into content area",
+    "Fix: Obsidian — removed duplicate defaultAccent keys (only last one was applying)",
+    "Fix: Newspaper — topbar color override scoped to direct children only — no longer clobbers badges, icons, and coloured elements inside topbar",
+    "Fix: Brutalist — button border uses var(--border) instead of currentColor — works correctly with all accent colors",
+    "Fix: Carbon — nav icon-dock buttons exempt from 10px font-size rule — emoji nav icons now render at correct size",
+    "Fix: Sakura — removed global font-size:15px override that caused badge and label overflow",
+    "Fix: Vapor — topbar-bg now semi-transparent (color-mix 80%) so the blur(8px) actually has visible effect",
+    "Fix: All skins — added textarea:focus styles (was missing on most skins)",
+    "Fix: All skins with large radius (24-32px) — card hover states now also carry the inset accent stripe (was dropping it on hover)",
+    "Fix: Coral scrollbar thumb border-radius increased to 12px — matches skin roundness",
+    "Fix: PastelPop scrollbar thumb border-radius 12px — matches pill aesthetic",
+  ]},
   {v:"v5.38.2",date:"Apr 2026",items:[
     "Neumorphic: Global fillet pass — buttons, inputs, modals, badges, admin cards, context menus, list rows, ThemePicker all now have smooth rounded corners throughout",
     "Neumorphic: Modals and overlays get clay lift shadow (12px dual-direction) instead of flat drop shadows",
