@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.39.7",date:"Apr 2026",items:[
+    "Fix: TrueNAS integration JSON parse error -- each API endpoint now safe-parsed individually so one bad response does not break the whole panel",
+    "Fix: Extended endpoints (disks, datasets, interfaces, VMs) are now best-effort and return null on failure rather than crashing the request",
+  ]},
   {v:"v5.39.6",date:"Apr 2026",items:[
     "TrueNAS: Backend now fetches 9 API endpoints in parallel -- disks, datasets, network interfaces, VMs, ZFS snapshots, plus richer pool topology",
     "TrueNAS: Frontend panel now has 5 sub-tabs: Overview, Pools, Disks, Datasets, Network (plus VMs tab when VMs exist)",
