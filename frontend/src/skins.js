@@ -642,7 +642,79 @@ body.skin-neumorphic [style*="pointer-events: none"][style*="white-space: nowrap
 body.skin-neumorphic [style*="z-index: 301"],body.skin-neumorphic [style*="z-index: 300"] {
   background: var(--bg) !important; border: none !important;
   border-radius: 18px !important; box-shadow: var(--nEl) !important;
-}`},
+}
+/* ── SVG EDGES — protect from cascade ───────────────────────── */
+body.skin-neumorphic svg path,
+body.skin-neumorphic svg polyline,
+body.skin-neumorphic svg line,
+body.skin-neumorphic svg circle { box-shadow: none !important; }
+body.skin-neumorphic [style*="position: absolute"][style*="inset: 0"] { background: transparent !important; }
+
+/* ── INLINE NODE POPUP — depth hierarchy ─────────────────────── */
+/* Header: bottom shadow seam */
+body.skin-neumorphic [style*="z-index: 200"] > div:first-child {
+  background: var(--bg) !important;
+  box-shadow: 0 3px 8px var(--neu-shadow) !important;
+}
+/* Description row: flat, no border */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2) {
+  background: var(--bg) !important; border-bottom: none !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2) input {
+  background: transparent !important; box-shadow: none !important; border: none !important;
+}
+/* Tab bar: inset trough */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) {
+  background: var(--bg) !important; border-bottom: none !important;
+  box-shadow: inset 0 2px 6px var(--neu-shadow), inset 0 -1px 3px var(--neu-hilight) !important;
+  padding: 4px 6px !important; gap: 2px !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button {
+  background: transparent !important; box-shadow: none !important;
+  border: none !important; border-radius: 6px !important;
+  color: var(--text3) !important; transform: none !important; border-bottom: none !important;
+  padding: 5px 8px !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button:hover {
+  background: var(--bg) !important; box-shadow: var(--nEx) !important;
+  color: var(--text) !important; transform: none !important;
+}
+/* Active tab: pop from trough */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="color: "][style*="2px solid"] {
+  background: var(--bg) !important; box-shadow: var(--nEs) !important;
+  border-bottom: none !important;
+}
+/* Scroll body */
+body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow"] {
+  background: var(--bg) !important;
+}
+
+/* ── POPUP PROPERTY INPUTS (stronger inset) ──────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] input[style*="background: var(--bg)"] {
+  background: var(--bg) !important; border: none !important;
+  box-shadow: var(--nIm) !important; border-radius: var(--nRm) !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] textarea[style*="background: var(--bg)"] {
+  background: var(--bg) !important; border: none !important;
+  box-shadow: var(--nIm) !important; border-radius: var(--nRm) !important;
+}
+
+/* ── POPUP INNER CARDS ───────────────────────────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="border-radius"] {
+  background: var(--bg) !important; border: none !important; box-shadow: var(--nEs) !important;
+}
+
+/* ── POPUP NOTES TOGGLE ROW (inset pill) ─────────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="padding: 6px 10px"] {
+  background: var(--bg) !important; border: none !important; box-shadow: var(--nIs) !important;
+  border-radius: var(--nRm) !important;
+}
+
+/* ── POPUP CTA BUTTONS ───────────────────────────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] button[style*="background: var(--accent2)"] {
+  background: var(--accent2) !important; box-shadow: var(--nEs) !important;
+}
+`},
 
   sakura: {
     name:"Sakura", icon:"🌸", nav:"icon-dock",

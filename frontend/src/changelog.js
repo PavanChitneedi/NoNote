@@ -1,6 +1,18 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.42.7",date:"Apr 2026",items:[
+    "Fix: SVG edges/arrows protected from neumorphic cascade -- box-shadow:none on svg path/line/circle/polyline",
+    "Fix: Canvas SVG containers (position:absolute inset:0) get transparent background to prevent canvas grid override",
+    "Fix: Node popup tab bar now uses inset trough (inset shadow) matching canvas toolbar row pattern",
+    "Fix: Active popup tab pops out of trough with nEs raised shadow instead of just color change",
+    "Fix: Inactive popup tabs are flat in trough, hover reveals bg surface with nEx shadow",
+    "Fix: Popup description input gets transparent background (no shadow) -- inherits popup surface",
+    "Fix: Popup property inputs get stronger nIm inset shadow for visible well depth vs popup bg",
+    "Fix: Popup inner bg3 cards (storage, metric) get nEs raised shadow",
+    "Fix: Popup notes toggle row gets nIs inset pill treatment",
+    "Fix: Popup CTA buttons (+ ADD NOTE) keep accent2 fill with nEs lift",
+  ]},
   {v:"v5.42.6",date:"Apr 2026",items:[
     "Fix: Hover states were using background: var(--neu-shadow) as surface color, causing gray/washed-out background on hover -- breaks neumorphic illusion",
     "Fix: All hover rules now use background: var(--bg) -- surface color never changes, only shadow/elevation changes on hover",
