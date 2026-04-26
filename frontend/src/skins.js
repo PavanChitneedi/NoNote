@@ -207,110 +207,236 @@ body.skin-neon-tokyo [style*="border-left: 1px solid var(--border)"] { border-le
   background:var(--bg);
   --neu-dark:color-mix(in srgb,var(--bg) 50%,#000);
   --neu-light:color-mix(in srgb,var(--bg) 55%,#fff);
-  --neu-lift:8px 8px 18px var(--neu-dark),-8px -8px 18px var(--neu-light);
-  --neu-lift-sm:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light);
-  --neu-lift-xs:2px 2px 5px var(--neu-dark),-2px -2px 5px var(--neu-light);
-  --neu-inset:inset 4px 4px 9px var(--neu-dark),inset -4px -4px 9px var(--neu-light);
-  --neu-inset-sm:inset 2px 2px 5px var(--neu-dark),inset -2px -2px 5px var(--neu-light);
-  --neu-inset-xs:inset 1px 1px 3px var(--neu-dark),inset -1px -1px 3px var(--neu-light);
 }
-/* 1. GLOBAL — borders become shadows */
-body.skin-neumorphic *{border-color:transparent!important}
-/* 2. FILLET — no sharp corner survives */
+
+/* ── One material: no hard borders anywhere ─────────────── */
+body.skin-neumorphic *{
+  border-color:transparent!important;
+  box-sizing:border-box}
+
+/* ── Topbar: part of the surface, barely a seam ─────────── */
+body.skin-neumorphic .nn-topbar{
+  background:var(--bg)!important;
+  border:none!important;
+  box-shadow:0 2px 6px var(--neu-dark)!important}
+
+/* ── Canvas toolbar rows: shallow inset trough ──────────── */
+body.skin-neumorphic [data-tut="topbar-row1"],
+body.skin-neumorphic [style*="height: 36px"][style*="display: flex"][style*="align-items: center"],
+body.skin-neumorphic [style*="height: 40px"][style*="display: flex"][style*="align-items: center"]{
+  background:var(--bg)!important;
+  border:none!important;
+  box-shadow:inset 0 2px 5px var(--neu-dark),inset 0 -1px 3px var(--neu-light)!important}
+
+/* ── Toolbar dividers: invisible ────────────────────────── */
+body.skin-neumorphic [style*="width: 1px"],
+body.skin-neumorphic [style*="width:1px"]{
+  background:transparent!important}
+
+/* ── Buttons: barely lifted, calm ───────────────────────── */
+body.skin-neumorphic button{
+  background:var(--bg)!important;
+  border:none!important;
+  border-radius:12px!important;
+  box-shadow:3px 3px 6px var(--neu-dark),-2px -2px 5px var(--neu-light)!important;
+  color:var(--text3)!important;
+  font-weight:600!important;
+  transition:box-shadow 0.14s ease,transform 0.14s ease!important}
+body.skin-neumorphic button:not([disabled]):hover{
+  box-shadow:4px 4px 8px var(--neu-dark),-3px -3px 6px var(--neu-light)!important;
+  color:var(--text)!important}
+body.skin-neumorphic button:not([disabled]):active{
+  box-shadow:inset 2px 2px 5px var(--neu-dark),inset -1px -1px 3px var(--neu-light)!important;
+  transform:translateY(0)!important}
+
+/* ── Active/selected toolbar button: pressed in ─────────── */
+body.skin-neumorphic button[style*="background: var(--accent2)"],
+body.skin-neumorphic button[style*="background: var(--success)"]{
+  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -2px -2px 4px var(--neu-light)!important;
+  color:#fff!important;
+  background:var(--bg)!important}
+
+/* Color hint on active button via text/icon tint ────────── */
+body.skin-neumorphic button[style*="background: var(--accent2)"]{color:var(--accent2)!important}
+body.skin-neumorphic button[style*="background: var(--success)"]{color:var(--success)!important}
+
+/* ── Inactive toolbar buttons: almost invisible lift ─────── */
+body.skin-neumorphic button[style*="background: var(--bg3)"],
+body.skin-neumorphic button[style*="background: transparent"],
+body.skin-neumorphic button[style*="background:transparent"]{
+  background:var(--bg)!important;
+  box-shadow:2px 2px 4px var(--neu-dark),-1px -1px 3px var(--neu-light)!important;
+  color:var(--text4)!important}
+
+/* ── Icon-only buttons in topbar: fully flat ────────────── */
+body.skin-neumorphic button[style*="fontSize: 14"],
+body.skin-neumorphic button[style*="fontSize:14"]{
+  box-shadow:none!important;
+  background:transparent!important;
+  color:var(--text4)!important}
+body.skin-neumorphic button[style*="fontSize: 14"]:hover,
+body.skin-neumorphic button[style*="fontSize:14"]:hover{
+  color:var(--accent)!important;
+  box-shadow:2px 2px 4px var(--neu-dark),-1px -1px 3px var(--neu-light)!important}
+
+/* ── RichText tiny toolbar buttons ──────────────────────── */
+body.skin-neumorphic button[style*="height: 22px"]{
+  box-shadow:2px 2px 4px var(--neu-dark),-1px -1px 3px var(--neu-light)!important;
+  border-radius:6px!important;
+  background:var(--bg)!important}
+body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--accent2)"]{
+  box-shadow:inset 2px 2px 4px var(--neu-dark),inset -1px -1px 2px var(--neu-light)!important;
+  color:var(--accent2)!important;
+  background:var(--bg)!important}
+
+/* ── Inputs: shallow inset wells ────────────────────────── */
+body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{
+  background:var(--bg)!important;
+  border:none!important;
+  border-radius:12px!important;
+  box-shadow:inset 2px 2px 5px var(--neu-dark),inset -1px -1px 3px var(--neu-light)!important;
+  color:var(--text)!important}
+body.skin-neumorphic input:focus,body.skin-neumorphic select:focus,body.skin-neumorphic textarea:focus{
+  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -2px -2px 4px var(--neu-light),0 0 0 2px var(--accent)33!important;
+  outline:none!important}
+
+/* ── Sidebar edges: shadow seam only ────────────────────── */
+body.skin-neumorphic .nn-sidebar,
+body.skin-neumorphic [style*="border-right: 1px solid"]{
+  background:var(--bg)!important;
+  border:none!important;
+  box-shadow:4px 0 10px var(--neu-dark)!important}
+body.skin-neumorphic [style*="border-left: 1px solid"]{
+  border:none!important;
+  box-shadow:-4px 0 10px var(--neu-dark)!important}
+body.skin-neumorphic [style*="border-top: 1px solid"]{
+  border-top:none!important;
+  box-shadow:0 -2px 6px var(--neu-dark)!important}
+
+/* ── Node popup: cleanly raised card ────────────────────── */
+body.skin-neumorphic [style*="z-index: 200"]{
+  border-radius:20px!important;
+  background:var(--bg)!important;
+  box-shadow:8px 8px 20px var(--neu-dark),-6px -6px 14px var(--neu-light)!important;
+  border:none!important;
+  overflow:hidden!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:first-child{
+  background:var(--bg)!important;border:none!important;
+  box-shadow:0 2px 5px var(--neu-dark)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2){
+  background:var(--bg)!important;border:none!important}
+/* Tab bar: shallow inset trough */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3){
+  background:var(--bg)!important;border:none!important;
+  padding:5px 8px!important;gap:3px!important;
+  box-shadow:inset 0 2px 4px var(--neu-dark),inset 0 -1px 2px var(--neu-light)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button{
+  box-shadow:none!important;border-radius:10px!important;
+  border:none!important;padding:4px 9px!important;
+  background:transparent!important;color:var(--text4)!important;font-size:11px!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="color: var(--accent)"]{
+  box-shadow:inset 1px 1px 3px var(--neu-dark),inset -1px -1px 2px var(--neu-light)!important;
+  color:var(--accent)!important;background:var(--bg)!important}
+/* Popup scroll body */
+body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow"]{
+  background:var(--bg)!important}
+
+/* ── Modals ──────────────────────────────────────────────── */
+body.skin-neumorphic [style*="maxWidth:680"],body.skin-neumorphic [style*="max-width: 680px"]{
+  background:var(--bg)!important;border:none!important;border-radius:22px!important;
+  box-shadow:10px 10px 24px var(--neu-dark),-8px -8px 16px var(--neu-light)!important}
+body.skin-neumorphic [style*="rgba(0,0,0,.5)"],body.skin-neumorphic [style*="rgba(0,0,0,.7)"],
+body.skin-neumorphic [style*="rgba(0,0,0,.6)"],body.skin-neumorphic [style*="rgba(0,0,0,.65)"]{
+  background:var(--bg)!important;border:none!important;
+  box-shadow:10px 10px 24px var(--neu-dark),-8px -8px 16px var(--neu-light)!important}
+
+/* ── Context menu / dropdowns ────────────────────────────── */
+body.skin-neumorphic [style*="z-index: 601"][style*="background"],
+body.skin-neumorphic [style*="z-index:601"]{
+  background:var(--bg)!important;border:none!important;border-radius:16px!important;
+  box-shadow:8px 8px 18px var(--neu-dark),-5px -5px 12px var(--neu-light)!important;overflow:hidden!important}
+body.skin-neumorphic [style*="z-index: 501"][style*="background"]{
+  background:var(--bg)!important;border:none!important;border-radius:14px!important;
+  box-shadow:7px 7px 16px var(--neu-dark),-4px -4px 10px var(--neu-light)!important;overflow:hidden!important}
+
+/* ── Service/content cards ────────────────────────────────── */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: 7px"]{
+  background:var(--bg)!important;border:none!important;border-radius:14px!important;
+  box-shadow:3px 3px 8px var(--neu-dark),-2px -2px 5px var(--neu-light)!important}
+body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="overflow: hidden"][style*="margin"]{
+  background:var(--bg)!important;border:none!important;border-radius:14px!important;
+  box-shadow:3px 3px 8px var(--neu-dark),-2px -2px 5px var(--neu-light)!important}
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border)"][style*="cursor: pointer"]{
+  border:none!important;box-shadow:0 2px 4px var(--neu-dark)!important}
+body.skin-neumorphic [style*="border-radius: 12px"][style*="padding: 18px"]{
+  background:var(--bg)!important;border:none!important;border-radius:18px!important;
+  box-shadow:5px 5px 12px var(--neu-dark),-4px -4px 8px var(--neu-light)!important}
+body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 12px 16px"]{
+  background:var(--bg)!important;border:none!important;border-radius:14px!important;
+  box-shadow:3px 3px 7px var(--neu-dark),-2px -2px 5px var(--neu-light)!important;margin-bottom:5px!important}
+
+/* ── Toggle / segmented control background ───────────────── */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 6px"],
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 4px"]{
+  background:var(--bg)!important;border:none!important;border-radius:14px!important;
+  box-shadow:inset 2px 2px 5px var(--neu-dark),inset -1px -1px 3px var(--neu-light)!important}
+
+/* ── Rich text editor ────────────────────────────────────── */
+body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="flex-direction: column"][style*="overflow: hidden"]{
+  background:var(--bg)!important;border:none!important;border-radius:14px!important;
+  box-shadow:inset 3px 3px 7px var(--neu-dark),inset -2px -2px 5px var(--neu-light)!important}
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-bottom: 1px solid var(--border2)"]{
+  background:var(--bg)!important;border:none!important;box-shadow:0 2px 4px var(--neu-dark)!important}
+
+/* ── Map cards & list rows ───────────────────────────────── */
+body.skin-neumorphic .nn-map-card{
+  background:var(--bg)!important;border:none!important;
+  box-shadow:5px 5px 12px var(--neu-dark),-4px -4px 8px var(--neu-light),inset 0 3px 0 var(--ca)!important}
+body.skin-neumorphic .nn-map-card:hover{
+  transform:translateY(-2px)!important;
+  box-shadow:7px 7px 16px var(--neu-dark),-5px -5px 10px var(--neu-light),inset 0 3px 0 var(--ca)!important}
+body.skin-neumorphic .nn-map-list-row{
+  background:var(--bg)!important;border:none!important;border-radius:14px!important;
+  box-shadow:3px 3px 7px var(--neu-dark),-2px -2px 5px var(--neu-light)!important;margin-bottom:5px!important}
+
+/* ── Fillet all hardcoded radii ──────────────────────────── */
 body.skin-neumorphic [style*="borderRadius:14"],body.skin-neumorphic [style*="borderRadius: 14"],
 body.skin-neumorphic [style*="borderRadius:12"],body.skin-neumorphic [style*="borderRadius: 12"],
 body.skin-neumorphic [style*="borderRadius:10"],body.skin-neumorphic [style*="borderRadius: 10"],
-body.skin-neumorphic [style*="borderRadius:9"],
-body.skin-neumorphic [style*="borderRadius:8"],body.skin-neumorphic [style*="borderRadius: 8"]{border-radius:16px!important}
-body.skin-neumorphic [style*="borderRadius:7"],body.skin-neumorphic [style*="borderRadius:6"],
-body.skin-neumorphic [style*="borderRadius:5"],body.skin-neumorphic [style*="borderRadius:4"]{border-radius:12px!important}
-body.skin-neumorphic [style*="borderRadius:3"],body.skin-neumorphic [style*="borderRadius:2"],
-body.skin-neumorphic [style*="borderRadius: 2"],body.skin-neumorphic [style*="borderRadius:1"],
-body.skin-neumorphic [style*="borderRadius: 1"],body.skin-neumorphic [style*="borderRadius:0"],
-body.skin-neumorphic [style*="borderRadius: 0"],body.skin-neumorphic div[style*="borderRadius: 0px"]{border-radius:10px!important}
-/* 3. TOPBAR / NAV — inset tray */
-body.skin-neumorphic .nn-topbar{background:var(--bg)!important;box-shadow:0 6px 16px var(--neu-dark),0 -2px 8px var(--neu-light)!important;border:none!important;border-radius:0!important}
-/* 4. CANVAS TOOLBAR ROWS — recessed wells */
-body.skin-neumorphic [data-tut="topbar-row1"]{background:var(--bg)!important;border-bottom:none!important;box-shadow:inset 0 -4px 10px var(--neu-dark),inset 0 3px 8px var(--neu-light),0 3px 0 var(--neu-dark)!important}
-body.skin-neumorphic [style*="height: 36px"][style*="display: flex"][style*="align-items: center"]{background:var(--bg)!important;border-bottom:none!important;box-shadow:inset 0 -3px 8px var(--neu-dark),inset 0 2px 6px var(--neu-light)!important}
-/* 5. BUTTONS — raised pillows, active = inset */
-body.skin-neumorphic button{background:var(--bg)!important;border:none!important;border-radius:14px!important;box-shadow:var(--neu-lift-sm)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
-body.skin-neumorphic button:not([disabled]):hover{box-shadow:6px 6px 14px var(--neu-dark),-6px -6px 14px var(--neu-light)!important;transform:translateY(-1px)!important}
-body.skin-neumorphic button:not([disabled]):active{box-shadow:var(--neu-inset-sm)!important;transform:translateY(0)!important}
-body.skin-neumorphic button[style*="background: var(--accent2)"],
-body.skin-neumorphic button[style*="background: var(--success)"],
-body.skin-neumorphic button[style*="background: rgb"]{box-shadow:inset 3px 3px 7px var(--neu-dark),inset -2px -2px 5px var(--neu-light)!important;color:#fff!important}
-body.skin-neumorphic button[style*="background: var(--bg3)"]{background:var(--bg)!important;box-shadow:var(--neu-lift-xs)!important;color:var(--text3)!important}
-body.skin-neumorphic button[style*="background: transparent"],body.skin-neumorphic button[style*="background:transparent"]{background:var(--bg)!important;box-shadow:var(--neu-lift-xs)!important}
-body.skin-neumorphic button[style*="height: 22px"]{box-shadow:var(--neu-lift-xs)!important;border-radius:8px!important;background:var(--bg)!important}
-body.skin-neumorphic button[style*="height: 22px"]:hover{box-shadow:var(--neu-lift-sm)!important;transform:translateY(-1px)!important}
-body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--accent2)"]{box-shadow:var(--neu-inset-xs)!important}
-body.skin-neumorphic [style*="width: 1px"][style*="background: var(--border)"]{background:transparent!important;width:8px!important}
-/* 6. INPUTS — inset wells */
-body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{background:var(--bg)!important;border:none!important;border-radius:14px!important;box-shadow:var(--neu-inset-sm)!important;color:var(--text)!important}
-body.skin-neumorphic input:focus,body.skin-neumorphic select:focus,body.skin-neumorphic textarea:focus{box-shadow:var(--neu-inset),0 0 0 2px var(--accent)44!important;outline:none!important}
-/* 7. SIDEBAR EDGES */
-body.skin-neumorphic .nn-sidebar,body.skin-neumorphic [style*="border-right: 1px solid var(--border2)"]{background:var(--bg)!important;border:none!important;box-shadow:6px 0 16px var(--neu-dark),-2px 0 6px var(--neu-light)!important}
-body.skin-neumorphic [style*="border-left: 1px solid var(--border2)"],body.skin-neumorphic [style*="border-left: 1px solid var(--border)"]{border:none!important;box-shadow:-6px 0 16px var(--neu-dark)!important}
-/* 8. NODE POPUP */
-body.skin-neumorphic [style*="z-index: 200"]{border-radius:22px!important;background:var(--bg)!important;box-shadow:14px 14px 28px var(--neu-dark),-10px -10px 22px var(--neu-light)!important;border:none!important;overflow:hidden!important}
-body.skin-neumorphic [style*="z-index: 200"] > div:first-child{background:var(--bg)!important;border:none!important;box-shadow:0 3px 8px var(--neu-dark)!important}
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2){background:var(--bg)!important;border:none!important;box-shadow:0 2px 5px var(--neu-dark)!important}
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3){background:var(--bg)!important;border:none!important;padding:6px 10px!important;gap:4px!important;box-shadow:var(--neu-inset-sm)!important}
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button{box-shadow:none!important;border-radius:12px!important;border:none!important;padding:5px 10px!important;background:transparent!important;color:var(--text3)!important}
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="color: var(--accent)"]{box-shadow:var(--neu-inset-xs)!important;background:var(--bg)!important;color:var(--accent)!important}
-body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow"]{background:var(--bg)!important;box-shadow:var(--neu-inset-xs)!important}
-/* 9. MODALS */
-body.skin-neumorphic [style*="maxWidth:680"],body.skin-neumorphic [style*="max-width: 680px"]{background:var(--bg)!important;border:none!important;border-radius:26px!important;box-shadow:18px 18px 36px var(--neu-dark),-14px -14px 28px var(--neu-light)!important}
-body.skin-neumorphic [style*="rgba(0,0,0,.5)"],body.skin-neumorphic [style*="rgba(0,0,0,.7)"],body.skin-neumorphic [style*="rgba(0,0,0,.6)"],body.skin-neumorphic [style*="rgba(0,0,0,.65)"]{background:var(--bg)!important;border:none!important;box-shadow:16px 16px 32px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
-/* 10. CONTEXT MENU / DROPDOWNS */
-body.skin-neumorphic [style*="z-index: 601"][style*="background"],body.skin-neumorphic [style*="z-index:601"]{background:var(--bg)!important;border:none!important;border-radius:20px!important;box-shadow:12px 12px 24px var(--neu-dark),-8px -8px 18px var(--neu-light)!important;overflow:hidden!important}
-body.skin-neumorphic [style*="z-index: 501"][style*="background"]{background:var(--bg)!important;border:none!important;border-radius:18px!important;box-shadow:10px 10px 22px var(--neu-dark),-8px -8px 16px var(--neu-light)!important;overflow:hidden!important}
-body.skin-neumorphic [style*="z-index: 601"] [style*="background: var(--bg3)"]{background:var(--bg)!important;border:none!important;box-shadow:0 2px 6px var(--neu-dark)!important}
-/* 11. CARDS */
-body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: 7px"]{background:var(--bg)!important;border:none!important;border-radius:16px!important;box-shadow:var(--neu-lift-sm)!important}
-body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="border-radius: var(--radius-sm)"][style*="overflow: hidden"][style*="margin"]{background:var(--bg)!important;border:none!important;border-radius:16px!important;box-shadow:var(--neu-lift-sm)!important}
-body.skin-neumorphic [style*="border-bottom: 1px solid var(--border)"][style*="cursor: pointer"]{border:none!important;box-shadow:0 3px 7px var(--neu-dark)!important}
-body.skin-neumorphic [style*="border-radius: 12px"][style*="padding: 18px"]{background:var(--bg)!important;border:none!important;border-radius:20px!important;box-shadow:var(--neu-lift)!important}
-body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 12px 16px"]{background:var(--bg)!important;border:none!important;border-radius:16px!important;box-shadow:var(--neu-lift-sm)!important;margin-bottom:6px!important}
-/* 12. TOGGLE GROUPS */
-body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 6px"],
-body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 4px"]{background:var(--bg)!important;border:none!important;box-shadow:var(--neu-inset-sm)!important;border-radius:16px!important}
-/* 13. RICH TEXT EDITOR */
-body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="flex-direction: column"][style*="overflow: hidden"]{background:var(--bg)!important;border:none!important;box-shadow:var(--neu-inset)!important;border-radius:16px!important}
-body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-bottom: 1px solid var(--border2)"]{background:var(--bg)!important;border:none!important;box-shadow:0 2px 5px var(--neu-dark)!important}
-/* 14. MAP CARDS & LIST ROWS */
-body.skin-neumorphic .nn-map-card{background:var(--bg)!important;border:none!important;box-shadow:var(--neu-lift),inset 0 3px 0 var(--ca)!important}
-body.skin-neumorphic .nn-map-card:hover{transform:translateY(-3px)!important;box-shadow:10px 10px 22px var(--neu-dark),-10px -10px 22px var(--neu-light),inset 0 3px 0 var(--ca)!important}
-body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;border-radius:16px!important;border:none!important;box-shadow:var(--neu-lift-sm)!important;margin-bottom:6px!important}
-body.skin-neumorphic .nn-map-list-row:hover{box-shadow:var(--neu-lift)!important}
-/* 15. BADGES / PILLS */
-body.skin-neumorphic span[style*="borderRadius"],body.skin-neumorphic span[style*="border-radius"]{border-radius:12px!important}
-/* 16. SCROLLBARS */
-body.skin-neumorphic ::-webkit-scrollbar{width:8px;height:8px}
-body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 5px var(--neu-dark);border-radius:10px}
-body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;box-shadow:2px 2px 4px var(--neu-dark)}
-/* 17. TOOLTIPS */
-body.skin-neumorphic [style*="pointer-events: none"][style*="white-space: nowrap"]{background:var(--bg)!important;border:none!important;border-radius:10px!important;box-shadow:var(--neu-lift-sm)!important}
-/* 18. MISC BORDERS → SHADOWS */
-body.skin-neumorphic [style*="border-top: 1px solid"]{border-top:none!important;box-shadow:0 -3px 8px var(--neu-dark)!important}
-body.skin-neumorphic [style*="z-index: 800"]{background:var(--bg)!important;border:none!important;border-radius:20px!important;box-shadow:12px 12px 26px var(--neu-dark),-10px -10px 20px var(--neu-light)!important}
-/* 19. DARK THEME OVERRIDES */
-body.skin-neumorphic[data-theme="dark"],body.skin-neumorphic[data-theme="midnight"],
-body.skin-neumorphic[data-theme="forest"],body.skin-neumorphic[data-theme="ocean"],
-body.skin-neumorphic[data-theme="amber"],body.skin-neumorphic[data-theme="violet"]{
-  --neu-lift:12px 12px 24px var(--neu-dark),-8px -8px 18px var(--neu-light);
-  --neu-lift-sm:6px 6px 14px var(--neu-dark),-4px -4px 10px var(--neu-light);
-  --neu-lift-xs:3px 3px 7px var(--neu-dark),-2px -2px 5px var(--neu-light);
-  --neu-inset:inset 5px 5px 11px var(--neu-dark),inset -4px -4px 9px var(--neu-light);
-  --neu-inset-sm:inset 3px 3px 7px var(--neu-dark),inset -2px -2px 5px var(--neu-light);
-  --neu-inset-xs:inset 2px 2px 4px var(--neu-dark),inset -1px -1px 3px var(--neu-light);}
+body.skin-neumorphic [style*="borderRadius:8"],body.skin-neumorphic [style*="borderRadius: 8"]{border-radius:14px!important}
+body.skin-neumorphic [style*="borderRadius:6"],body.skin-neumorphic [style*="borderRadius:5"],
+body.skin-neumorphic [style*="borderRadius:4"],body.skin-neumorphic [style*="borderRadius:3"],
+body.skin-neumorphic [style*="borderRadius:2"],body.skin-neumorphic [style*="borderRadius:1"],
+body.skin-neumorphic [style*="borderRadius:0"],body.skin-neumorphic [style*="borderRadius: 0"]{border-radius:10px!important}
+
+/* ── Badges / pills ──────────────────────────────────────── */
+body.skin-neumorphic span[style*="borderRadius"],body.skin-neumorphic span[style*="border-radius"]{border-radius:10px!important}
+
+/* ── Scrollbar ───────────────────────────────────────────── */
+body.skin-neumorphic ::-webkit-scrollbar{width:7px;height:7px}
+body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 1px 1px 4px var(--neu-dark);border-radius:8px}
+body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;box-shadow:1px 1px 3px var(--neu-dark)}
+
+/* ── Tooltips ────────────────────────────────────────────── */
+body.skin-neumorphic [style*="pointer-events: none"][style*="white-space: nowrap"]{
+  background:var(--bg)!important;border:none!important;border-radius:8px!important;
+  box-shadow:3px 3px 7px var(--neu-dark),-2px -2px 4px var(--neu-light)!important}
+
+/* ── Dark theme: slightly stronger shadows ───────────────── */
+body.skin-neumorphic[data-theme="dark"] button,
+body.skin-neumorphic[data-theme="midnight"] button,
+body.skin-neumorphic[data-theme="forest"] button,
+body.skin-neumorphic[data-theme="ocean"] button,
+body.skin-neumorphic[data-theme="amber"] button,
+body.skin-neumorphic[data-theme="violet"] button{
+  box-shadow:4px 4px 9px var(--neu-dark),-2px -2px 6px var(--neu-light)!important}
 body.skin-neumorphic[data-theme="dark"] [style*="z-index: 200"],
 body.skin-neumorphic[data-theme="midnight"] [style*="z-index: 200"],
 body.skin-neumorphic[data-theme="forest"] [style*="z-index: 200"],
 body.skin-neumorphic[data-theme="ocean"] [style*="z-index: 200"],
 body.skin-neumorphic[data-theme="amber"] [style*="z-index: 200"],
-body.skin-neumorphic[data-theme="violet"] [style*="z-index: 200"]{box-shadow:18px 18px 36px var(--neu-dark),-12px -12px 26px var(--neu-light)!important}`},
+body.skin-neumorphic[data-theme="violet"] [style*="z-index: 200"]{
+  box-shadow:12px 12px 26px var(--neu-dark),-8px -8px 18px var(--neu-light)!important}`},
 
   sakura: {
     name:"Sakura", icon:"🌸", nav:"icon-dock",

@@ -1,7 +1,16 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.41.4",date:"Apr 2026",items:[
+  {v:"v5.41.5",date:"Apr 2026",items:[
+    "Neumorphic: Complete visual reset -- too-heavy shadows caused clutter; everything is now subtle and calm",
+    "Neumorphic: Button shadow reduced from 8px to 3px -- barely lifted, not fighting for attention",
+    "Neumorphic: Active buttons (Edit/Select/Connect) pressed-in with inset shadow + tinted text color, no color fill",
+    "Neumorphic: Icon-only topbar buttons fully flat (no shadow) -- hover reveals subtle lift",
+    "Neumorphic: Toolbar rows: shallow inset trough (2px inset) instead of aggressive 10px",
+    "Neumorphic: Popup/modal shadows reduced by 40% -- 8px/10px vs 14px/18px",
+    "Neumorphic: All other elements proportionally calmer",
+  ]},
+    {v:"v5.41.4",date:"Apr 2026",items:[
     "Neumorphic: Complete CSS rewrite — 19 sections covering every UI element",
     "Neumorphic: Canvas toolbar rows now recessed inset trays (not flat boxes) — pressed into the surface",
     "Neumorphic: Toolbar dividers (1px lines) removed, replaced with spacing",
