@@ -1,5 +1,5 @@
 // IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiFetch } from '../api/client.js';
 
 // Which integration type to use per node type
@@ -225,16 +225,25 @@ function ProxmoxMetrics({ data }) {
 }
 
 function TrueNASMetrics({ data }) {
-  const info      = data.info       || {};
-  const pools     = data.pools      || [];
-  const services  = data.services   || [];
-  const disks     = data.disks      || [];
-  const datasets  = data.datasets   || [];
-  const ifaces    = data.interfaces || [];
-  const vms       = data.vms        || [];
-  const alerts    = data.alerts     || [];
-  const storage   = data.storage    || {};
+  const info        = data.info        || {};
+  const pools       = data.pools       || [];
+  const services    = data.services    || [];
+  const disks       = data.disks       || [];
+  const datasets    = data.datasets    || [];
+  const ifaces      = data.interfaces  || [];
+  const vms         = data.vms         || [];
+  const alerts      = data.alerts      || [];
+  const storage     = data.storage     || {};
+  const replication = data.replication || [];
+  const cloudsync   = data.cloudsync   || [];
   const [tab, setTab] = useState('overview');
+
+  // Extra system info
+  const totalRam  = info.physmem ? fmt(info.physmem) : null;
+  const loadAvg   = info.loadavg ? info.loadavg.map(v => v.toFixed(2)).join(' / ') : null;
+  const cpuCores  = info.cores   || null;
+  const model     = info.model   || null;
+  const hasTasks  = replication.length > 0 || cloudsync.length > 0;
 
   const uptimeSec = info.uptime_seconds || info.uptimeSeconds; // v2.0 uses snake_case
   const uptime = uptimeSec
@@ -267,6 +276,10 @@ function TrueNASMetrics({ data }) {
         <Stat label="UPTIME"   value={uptime} />
         <Stat label="POOLS"    value={pools.length} />
         <Stat label="DISKS"    value={disks.length} />
+        {totalRam  && <Stat label="RAM"    value={totalRam} />}
+        {cpuCores  && <Stat label="CORES"  value={cpuCores} />}
+        {loadAvg   && <Stat label="LOAD"   value={loadAvg} />}
+        {model     && <Stat label="MODEL"  value={model} />}
       </div>
 
       {/* Total storage bar */}
@@ -308,7 +321,7 @@ function TrueNASMetrics({ data }) {
 
       {/* Sub-tabs */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
-        {['overview','pools','disks','datasets','network',...(vms.length > 0 ? ['vms'] : [])].map(t => (
+        {['overview','pools','disks','datasets','network',...(vms.length > 0 ? ['vms'] : []),...(hasTasks ? ['tasks'] : [])].map(t => (
           <TabBtn key={t} id={t} label={t.charAt(0).toUpperCase() + t.slice(1)} />
         ))}
       </div>
@@ -436,6 +449,54 @@ function TrueNASMetrics({ data }) {
           <span style={{ fontSize: 9, color: v.status === 'RUNNING' ? 'var(--success)' : 'var(--text4)' }}>{v.status}</span>
         </div>
       ))}
+
+      {/* ── Tasks (Replication + Cloud Sync) ── */}
+      {tab === 'tasks' && (
+        <div>
+          {replication.length > 0 && (
+            <div style={{ fontSize: 9, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>REPLICATION</div>
+          )}
+          {replication.map((t, i) => {
+            const ok = t.state === 'FINISHED';
+            const running = t.state === 'RUNNING';
+            const failed  = t.state === 'ERROR' || t.state === 'FAILED';
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                  background: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : running ? 'var(--accent)' : failed ? 'var(--danger)' : 'var(--text4)' }} />
+                <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>{t.direction}</span>
+                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                  background: !t.enabled ? 'var(--bg3)' : ok ? 'var(--success)22' : failed ? 'var(--danger)22' : 'var(--bg3)',
+                  color: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : failed ? 'var(--danger)' : 'var(--text3)' }}>
+                  {!t.enabled ? 'disabled' : t.state || '—'}
+                </span>
+              </div>
+            );
+          })}
+          {cloudsync.length > 0 && (
+            <div style={{ fontSize: 9, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1, margin: '8px 0 4px' }}>CLOUD SYNC</div>
+          )}
+          {cloudsync.map((t, i) => {
+            const ok = t.state === 'SUCCESS' || t.state === 'FINISHED';
+            const failed = t.state === 'FAILED' || t.state === 'ERROR';
+            return (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
+                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                  background: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : failed ? 'var(--danger)' : 'var(--text4)' }} />
+                <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>{t.provider}</span>
+                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3,
+                  background: !t.enabled ? 'var(--bg3)' : ok ? 'var(--success)22' : failed ? 'var(--danger)22' : 'var(--bg3)',
+                  color: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : failed ? 'var(--danger)' : 'var(--text3)' }}>
+                  {!t.enabled ? 'disabled' : t.state || '—'}
+                </span>
+              </div>
+            );
+          })}
+          {!hasTasks && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No tasks configured</div>}
+        </div>
+      )}
     </div>
   );
 }
@@ -492,40 +553,47 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
   const fields  = INT_FIELDS[intType] || INT_FIELDS.probe;
 
   const cfg    = node.properties?._integration || {};
+  const cache  = node.properties?._integration_cache || null;
   const [form, setForm]   = useState({ type: intType, ...cfg });
-  const [data, setData]   = useState(null);
+  const [data, setData]   = useState(cache);          // restore cached data immediately
   const [err,  setErr]    = useState('');
   const [busy, setBusy]   = useState(false);
   const [show, setShow]   = useState(false);
-  const [lastTs, setLastTs] = useState(null);
-  const [countdown, setCountdown] = useState(0);
+  const [lastTs, setLastTs] = useState(cache ? Date.now() : null);
+  const [countdown, setCountdown] = useState(cache ? POLL_MS / 1000 : 0);
   const intervalRef  = useRef(null);
   const countdownRef = useRef(null);
+  const formRef      = useRef(form);                  // always-current form ref (avoids stale closures)
 
-  const doFetch = async (silent = false) => {
+  // Keep formRef in sync
+  useEffect(() => { formRef.current = form; }, [form]);
+
+  const doFetch = useCallback(async (silent = false) => {
+    const f = formRef.current;
     if (!silent) setBusy(true);
     setErr('');
     try {
-      const json = await apiFetch(`/integrations/${form.type}`, {
+      const json = await apiFetch(`/integrations/${f.type}`, {
         method: 'POST',
-        body: JSON.stringify({ ...form }),
+        body: JSON.stringify({ ...f }),
       });
       if (!json.ok) throw new Error(json.error || 'Request failed');
       setData(json);
       setLastTs(Date.now());
       setCountdown(POLL_MS / 1000);
+      // Persist last successful response so panel shows data immediately on reopen
+      onUpdateProp('_integration_cache', json);
     } catch(e) { setErr(e.message); }
     finally { if (!silent) setBusy(false); }
-  };
+  }, [onUpdateProp]);
 
-  // Auto-connect if credentials already saved
+  // Auto-connect on mount if credentials are saved (fires fresh data over cached)
   useEffect(() => {
     const savedCfg = node.properties?._integration;
-    if (savedCfg?.url && fields.every(f => savedCfg[f.key])) {
-      setForm({ type: intType, ...savedCfg });
+    if (savedCfg?.url && fields.every(fi => savedCfg[fi.key])) {
       doFetch(true);
     }
-  }, [node.id]);
+  }, [node.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Polling interval
   useEffect(() => {
@@ -534,7 +602,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
       intervalRef.current = setInterval(() => doFetch(true), POLL_MS);
     }
     return () => clearInterval(intervalRef.current);
-  }, [data, err, form]);
+  }, [data, err, doFetch]);
 
   // Countdown timer
   useEffect(() => {
@@ -545,7 +613,12 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
     return () => clearInterval(countdownRef.current);
   }, [data, err, lastTs]);
 
-  const save = () => { onUpdateProp('_integration', form); };
+  const save = () => {
+    onUpdateProp('_integration', form);
+    // Auto-connect immediately after saving credentials
+    setTimeout(() => doFetch(false), 50);
+    setShow(false);
+  };
 
   const Renderer = METRIC_RENDERERS[form.type] || ProbeMetrics;
   const isConfigured = fields.every(f => form[f.key]);
@@ -602,7 +675,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
               </div>
             ))}
             {canEdit && (
-              <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); setShow(false); }}
+              <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); }}
                 style={{ width: '100%', padding: '6px', background: 'var(--accent2)', border: 'none', borderRadius: 4,
                   color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)', marginTop: 4 }}>
                 Save Configuration

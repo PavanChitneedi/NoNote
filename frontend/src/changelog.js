@@ -1,7 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.39.9",date:"Apr 2026",items:[
+  {v:"v5.40.0",date:"Apr 2026",items:[
+    "Integration: connections now persistent -- last successful response cached in node properties and restored instantly on reopen (no blank panel while reconnecting)",
+    "Integration: Save Configuration now auto-connects immediately -- no need to click Connect separately",
+    "Integration: doFetch rewritten with useCallback + formRef -- eliminates stale closure bug that could cause wrong credentials being used on auto-connect",
+    "TrueNAS: Overview now shows RAM total, CPU core count, load average (1/5/15min), and server model from system/info",
+    "TrueNAS: New Tasks tab -- shows Replication tasks and Cloud Sync tasks with enabled/disabled status and last state (FINISHED/ERROR/RUNNING)",
+    "TrueNAS: Backend now fetches replication/task and cloudsync/task endpoints (best-effort)",
+  ]},
+    {v:"v5.39.9",date:"Apr 2026",items:[
     "Fix: TrueNAS pool storage fields corrected -- API v2.0 returns p.allocated/p.free/p.size as top-level integers, not nested under p.size.* -- storage bars and totals now show real data",
     "Fix: TrueNAS uptime field corrected -- API v2.0 returns uptime_seconds (snake_case), not uptimeSeconds -- uptime stat now shows correctly",
     "Fix: TrueNAS Pools tab compress_ratio now reads .value from the object the API returns -- was showing [object Object] instead of ratio string",

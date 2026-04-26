@@ -132,11 +132,13 @@ router.post('/truenas', async (req, res) => {
     ]);
 
     // Extended endpoints (best-effort — may not exist on all versions)
-    const [disks, datasets, interfaces, vms] = await Promise.all([
+    const [disks, datasets, interfaces, vms, replication, cloudsync] = await Promise.all([
       safe('/api/v2.0/disk'),
       safe('/api/v2.0/pool/dataset?limit=200'),
       safe('/api/v2.0/interface'),
       safe('/api/v2.0/vm'),
+      safe('/api/v2.0/replication/task'),
+      safe('/api/v2.0/cloudsync/task'),
     ]);
 
     // Aggregate storage stats — TrueNAS v2.0 returns p.size (int), p.allocated, p.free at top level
@@ -176,17 +178,35 @@ router.post('/truenas', async (req, res) => {
       name: v.name, status: v.status?.state, vcpus: v.vcpus, memory: v.memory,
     }));
 
+    // Replication tasks summary
+    const replTasks = (replication || []).map(t => ({
+      name: t.name, enabled: t.enabled,
+      direction: t.direction, transport: t.transport,
+      state: t.state?.state, lastRun: t.state?.datetime?.$date || null,
+      error: t.state?.error || null,
+    }));
+
+    // Cloud sync tasks summary
+    const csyncTasks = (cloudsync || []).map(t => ({
+      name: t.description || t.path, enabled: t.enabled,
+      direction: t.direction, provider: t.credentials?.provider || '?',
+      state: t.job?.state || t.state, lastRun: t.job?.time_finished?.$date || null,
+      error: t.job?.error || null,
+    }));
+
     res.json({
       ok: true,
-      info:       info || {},
-      pools:      poolList,
-      alerts:     (alerts || []).filter(a => a.level !== 'INFO'),
-      services:   services || [],
-      disks:      diskSummary,
-      datasets:   rootDatasets,
-      interfaces: netIfaces,
-      vms:        vmSummary,
-      storage:    { totalSize, totalAllocated, totalFree },
+      info:        info || {},
+      pools:       poolList,
+      alerts:      (alerts || []).filter(a => a.level !== 'INFO'),
+      services:    services || [],
+      disks:       diskSummary,
+      datasets:    rootDatasets,
+      interfaces:  netIfaces,
+      vms:         vmSummary,
+      storage:     { totalSize, totalAllocated, totalFree },
+      replication: replTasks,
+      cloudsync:   csyncTasks,
     });
   } catch(e) { res.status(502).json({ error: e.message }); }
 });
