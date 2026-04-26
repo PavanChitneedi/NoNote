@@ -1,15 +1,6 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.42.2",date:"Apr 2026",items:[
-    "Architecture: Neumorphic skin v3.0 -- self-contained shadow system, no longer depends on per-theme --neu-dark/--neu-light values",
-    "Architecture: --neu-shadow and --neu-hilight computed via CSS color-mix() from --bg, so any theme automatically gets correct neumorphic shadows",
-    "Architecture: Light themes: color-mix(bg 84%, black) shadow, color-mix(bg 62%, white) highlight -- adapts to each theme hue automatically",
-    "Architecture: Dark themes: color-mix(bg 78%, black) + color-mix(bg 40%, white) + wider blur radius -- higher contrast for dark surfaces",
-    "Architecture: ThemeContext --neu-dark/--neu-light are now irrelevant to neumorphic skin (kept for BC, unused by skin)",
-    "Architecture: All 6 shadow token vars (--nS, --nSsm, --nSxs, --nI, --nIsm, --nIxs) rebuilt from new skin-owned tokens",
-    "Fix: Warm themes (cream, parchment) now get warm-tinted shadows; cool themes (ice, blush) get cool-tinted shadows automatically",
-  ]},
   {v:"v5.42.1",date:"Apr 2026",items:[
     "Fix: Dark neumorphic themes had near-invisible depth -- --neu-light was only 20-30 RGB units above bg (imperceptible on dark surfaces). Now ~55-80 units above bg with color tint matching theme hue",
     "Fix: Dark theme CSS shadow blur increased from 8/5/3px to 10/6/3px -- wider blur needed because dark neumorphic requires more spread to be visible",
