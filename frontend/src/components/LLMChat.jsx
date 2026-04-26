@@ -84,10 +84,17 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     setMessages(ms => [...ms, { id: tempId, role: "user", content: userMsg, created_at: new Date().toISOString() }]);
 
     try {
+      // Strip empty properties and truncate notes before sending to reduce token usage
       const canvasContext = {
         mapTitle,
-        nodes: nodes.map(n => ({ id: n.id, type: n.type, title: n.title, properties: n.properties, notes: n.notes })),
-        edges: edges.map(e => ({ id: e.id, from: e.from, to: e.to, label: e.label, style: e.style })),
+        nodes: nodes.map(n => ({
+          id: n.id, type: n.type, title: n.title,
+          properties: Object.fromEntries(
+            Object.entries(n.properties || {}).filter(([,v]) => v && !Array.isArray(v) && typeof v !== 'object')
+          ),
+          notes: n.notes ? String(n.notes).slice(0, 150) : undefined,
+        })),
+        edges: edges.map(e => ({ from: e.from, to: e.to, label: e.label || undefined })),
       };
       const d = await sendMessage(activeConvId, { message: userMsg, canvas_context: canvasContext });
       setMessages(ms => [

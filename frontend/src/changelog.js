@@ -1,7 +1,18 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.41.2",date:"Apr 2026",items:[
+  {v:"v5.41.3",date:"Apr 2026",items:[
+    "Fix: Neumorphic + all dark themes (dark/midnight/forest/ocean/amber/violet) now have calibrated --neu-dark/--neu-light values -- shadows were barely visible because color-mix() formula has too little contrast on very dark backgrounds",
+    "Fix: Neumorphic sharp edges -- added borderRadius 0/1/2px selectors to fillet everything to 8px min",
+    "Fix: Neumorphic shadow spread increased (10px/10px) for better clay lift effect",
+    "Fix: Neumorphic dark themes use data-theme attribute selectors for deeper shadows on popups/buttons",
+    "Fix: color-mix() fallback formula changed from 72%/68% to 50%/55% mix for better contrast on unknown themes",
+    "Token optimization: buildSystemPrompt now caps at 30 nodes, 120 chars per note, 6 props per node, strips empty/array values",
+    "Token optimization: Canvas context in LLMChat strips empty properties and truncates notes before sending",
+    "Token optimization: Edge IDs no longer sent; edges are from→to:label only",
+    "Token optimization: Node-level chat system prompt is 4 lines max instead of full paragraph",
+  ]},
+    {v:"v5.41.2",date:"Apr 2026",items:[
     "Fix: AI Chat panel header restored to original NodeCanvas design (💬 AI CHAT + close button)",
     "Fix: LLMChat no longer renders its own header -- NodeCanvas provides it",
     "Feature: Node-level AI Chat -- new AI tab in every node editor, scoped to that node only",

@@ -498,83 +498,59 @@ async function callHuggingFace({ base_url, model, api_key, system, messages }) {
 // (overrides the original simpler function — add OpenRouter/Perplexity specific headers)
 async function callOpenAICompatOld() {} // keep reference
 
-// ── System prompt builder ─────────────────────────────────────
+// ── System prompt builder — token-optimised ──────────────────
+// Target: ~600-900 tokens for canvas context, never >1200
+const MAX_NODES = 30;   // hard cap
+const MAX_NOTES = 120;  // chars per node note
+const MAX_PROPS = 6;    // properties per node
+
 function buildSystemPrompt(ctx) {
-  if (!ctx) {
-    return "You are a helpful assistant integrated with NodeMap, a mind mapping and architecture diagramming tool.";
-  }
-  // Node-level chat: focused on a single node
+  if (!ctx) return "You are a helpful assistant in NoNote, a mind-mapping and architecture tool.";
+
+  // ── Node-level chat (single node context) ──────────────────
   if (ctx.node_context) {
     const n = ctx.node_context;
-    const props = Object.entries(n.properties || {}).filter(([,v]) => v && !String(v).startsWith('['));
-    return `You are an expert assistant helping with a specific node in a NoNote architecture diagram.
-
-## Node Details
-- **Name**: ${n.title || 'Untitled'}
-- **Type**: ${n.type || 'unknown'}
-- **Map**: ${ctx.mapTitle || 'Untitled Map'}
-${props.length ? '- **Properties**: ' + props.map(([k,v]) => `${k}=${v}`).join(', ') : ''}
-${n.notes ? '- **Notes**: ' + n.notes : ''}
-
-You are having a focused conversation about this specific node. Help the user understand, configure, troubleshoot, document, or improve this component. Be concise and practical.`;
+    const props = Object.entries(n.properties || {})
+      .filter(([,v]) => v && !Array.isArray(v) && typeof v !== 'object')
+      .slice(0, MAX_PROPS)
+      .map(([k,v]) => `${k}: ${String(v).slice(0,80)}`).join(', ');
+    const notes = n.notes ? String(n.notes).slice(0, MAX_NOTES) + (n.notes.length > MAX_NOTES ? '…' : '') : '';
+    return `You are an expert assistant for NoNote. Focused discussion about one node.
+Node: ${n.title || 'Untitled'} [${n.type}]${props ? ' | ' + props : ''}${notes ? ' | Notes: ' + notes : ''}
+Map: ${ctx.mapTitle || 'Untitled'}
+Be concise. Troubleshoot, document, or advise on this specific component only.`;
   }
 
-  const { nodes = [], edges = [], mapTitle = "Untitled Map" } = ctx;
+  // ── Full canvas context ─────────────────────────────────────
+  const { nodes = [], edges = [], mapTitle = "Untitled" } = ctx;
+  const capped = nodes.slice(0, MAX_NODES);
+  const extra  = nodes.length - capped.length;
 
-  let prompt = `You are an expert assistant integrated with NodeMap — a mind mapping, architecture, and diagramming tool.
-
-The user is currently working on a map called: "${mapTitle}"
-
-## Current Canvas State
-
-### Nodes (${nodes.length} total)\n`;
-
-  // Group by category
-  const groups = {};
-  nodes.forEach(n => {
-    const cat = n.category || n.type || "general";
-    if (!groups[cat]) groups[cat] = [];
-    groups[cat].push(n);
+  // Build node lines — only non-empty, non-array properties
+  const nodeLines = capped.map(n => {
+    const props = Object.entries(n.properties || {})
+      .filter(([,v]) => v && typeof v === 'string' && v.trim())
+      .slice(0, MAX_PROPS)
+      .map(([k,v]) => `${k}:${v.trim().slice(0,60)}`).join(' ');
+    const notes = n.notes ? ' note:' + String(n.notes).slice(0, MAX_NOTES).replace(/\n/g,' ') : '';
+    return `${n.title}[${n.type}]${props ? ' ' + props : ''}${notes}`;
   });
 
-  Object.entries(groups).forEach(([cat, ns]) => {
-    prompt += `\n**${cat.toUpperCase()}**\n`;
-    ns.forEach(n => {
-      prompt += `- **${n.title}** [${n.type}]`;
-      const props = Object.entries(n.properties || {}).filter(([,v]) => v);
-      if (props.length) {
-        prompt += `: ${props.map(([k,v]) => `${k}=${v}`).join(", ")}`;
-      }
-      if (n.notes) prompt += ` | Notes: ${n.notes}`;
-      prompt += "\n";
-    });
+  // Build edge lines — skip IDs, only named connections or arrows
+  const edgeLines = edges.slice(0, 40).map(e => {
+    const from = capped.find(n => n.id === e.from)?.title || '?';
+    const to   = capped.find(n => n.id === e.to)?.title   || '?';
+    return e.label ? `${from}→${to}:${e.label}` : `${from}→${to}`;
   });
 
-  if (edges.length > 0) {
-    prompt += `\n### Relationships (${edges.length} connections)\n`;
-    edges.forEach(e => {
-      const from = nodes.find(n => n.id === e.from);
-      const to   = nodes.find(n => n.id === e.to);
-      if (from && to) {
-        const rel = e.label ? `"${e.label}"` : e.style === "bidirectional" ? "communicates with" : "connects to";
-        prompt += `- **${from.title}** → **${to.title}**: ${rel}\n`;
-      }
-    });
-  }
+  const lines = [
+    `NoNote assistant. Map: "${mapTitle}" (${nodes.length} nodes${extra ? `, ${extra} omitted` : ''})`,
+    `NODES: ${nodeLines.join(' | ')}`,
+    edgeLines.length ? `EDGES: ${edgeLines.join(', ')}` : '',
+    `Help analyze, improve, document, or extend this architecture. Be specific, concise.`,
+  ].filter(Boolean);
 
-  prompt += `\n## Your Role
-Help the user understand, improve, and extend this architecture/map.
-You can:
-- Analyze the design and identify issues or improvements
-- Suggest missing components or connections
-- Answer questions about specific nodes
-- Generate documentation or explanations
-- Review security, scalability, or best practices
-- Help plan the next steps
-
-Be concise and specific. Reference node names directly when relevant.`;
-
-  return prompt;
+  return lines.join('\n');
 }
 
 // ── POST /api/llm/export-interpret — one-shot LLM call for export ─────

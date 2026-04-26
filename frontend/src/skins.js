@@ -196,16 +196,16 @@ body.skin-neon-tokyo [style*="border-left: 1px solid var(--border)"] { border-le
       "--letter-space":"0em","--line-height":"1.65",
       "--radius-xs":"8px","--radius-sm":"12px","--radius-md":"16px","--radius-lg":"20px",
       "--radius-node":"16px","--radius-btn":"12px",
-      "--shadow-node":"8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)",
-      "--shadow-node-sel":"6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light),0 0 0 3px var(--accent)44",
+      "--shadow-node":"10px 10px 20px var(--neu-dark),-10px -10px 20px var(--neu-light)",
+      "--shadow-node-sel":"8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light),0 0 0 3px var(--accent)55",
       "--transition-all":"all 0.15s ease",
       "--topbar-bg":"var(--bg2)","--topbar-border":"none","--topbar-blur":"none",
       "--sidebar-bg":"var(--bg)","--sidebar-border":"none",
     },
     bodyClass:"skin-neumorphic",
     css:`body.skin-neumorphic{background:var(--bg);
-  --neu-dark:color-mix(in srgb,var(--bg) 72%,#000);
-  --neu-light:color-mix(in srgb,var(--bg) 68%,#fff);
+  --neu-dark:color-mix(in srgb,var(--bg) 50%,#000);
+  --neu-light:color-mix(in srgb,var(--bg) 55%,#fff);
 }
 /* ── Topbar / Sidebar ──────────────────────────────────── */
 body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),0 -1px 0 var(--neu-light)!important;border:none!important;border-radius:0!important}
@@ -226,6 +226,10 @@ body.skin-neumorphic [style*="borderRadius:8"],body.skin-neumorphic [style*="bor
 body.skin-neumorphic [style*="borderRadius:7"],body.skin-neumorphic [style*="borderRadius:6"],
 body.skin-neumorphic [style*="borderRadius:5"],body.skin-neumorphic [style*="borderRadius:4"]{border-radius:10px!important}
 body.skin-neumorphic [style*="borderRadius:3"]{border-radius:8px!important}
+body.skin-neumorphic [style*="borderRadius:2"],body.skin-neumorphic [style*="borderRadius: 2"],
+body.skin-neumorphic [style*="borderRadius:1"],body.skin-neumorphic [style*="borderRadius: 1"],
+body.skin-neumorphic [style*="borderRadius:0"],body.skin-neumorphic [style*="borderRadius: 0"]{border-radius:8px!important}
+body.skin-neumorphic div[style*="border-radius: 0"],body.skin-neumorphic div[style*="borderRadius: 0px"]{border-radius:8px!important}
 /* ── Modals ─────────────────────────────────────────────── */
 body.skin-neumorphic [style*="boxShadow"][style*="rgba(0,0,0,.5)"],
 body.skin-neumorphic [style*="boxShadow"][style*="rgba(0,0,0,0.5)"]{box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important;border-radius:22px!important;border:none!important}
