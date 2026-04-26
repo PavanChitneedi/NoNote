@@ -196,242 +196,121 @@ body.skin-neon-tokyo [style*="border-left: 1px solid var(--border)"] { border-le
       "--letter-space":"0em","--line-height":"1.65",
       "--radius-xs":"8px","--radius-sm":"12px","--radius-md":"16px","--radius-lg":"20px",
       "--radius-node":"16px","--radius-btn":"12px",
-      "--shadow-node":"10px 10px 20px var(--neu-dark),-10px -10px 20px var(--neu-light)",
-      "--shadow-node-sel":"8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light),0 0 0 3px var(--accent)55",
+      "--shadow-node":"8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)",
+      "--shadow-node-sel":"6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light),0 0 0 3px var(--accent)44",
       "--transition-all":"all 0.15s ease",
       "--topbar-bg":"var(--bg2)","--topbar-border":"none","--topbar-blur":"none",
       "--sidebar-bg":"var(--bg)","--sidebar-border":"none",
     },
     bodyClass:"skin-neumorphic",
-    css:`body.skin-neumorphic{background:var(--bg);
+    css:`body.skin-neumorphic{
+  background:var(--bg);
   --neu-dark:color-mix(in srgb,var(--bg) 50%,#000);
   --neu-light:color-mix(in srgb,var(--bg) 55%,#fff);
+  --neu-lift:8px 8px 18px var(--neu-dark),-8px -8px 18px var(--neu-light);
+  --neu-lift-sm:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light);
+  --neu-lift-xs:2px 2px 5px var(--neu-dark),-2px -2px 5px var(--neu-light);
+  --neu-inset:inset 4px 4px 9px var(--neu-dark),inset -4px -4px 9px var(--neu-light);
+  --neu-inset-sm:inset 2px 2px 5px var(--neu-dark),inset -2px -2px 5px var(--neu-light);
+  --neu-inset-xs:inset 1px 1px 3px var(--neu-dark),inset -1px -1px 3px var(--neu-light);
 }
-/* ── Topbar / Sidebar ──────────────────────────────────── */
-body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-dark),0 -1px 0 var(--neu-light)!important;border:none!important;border-radius:0!important}
-body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-dark)!important;border:none!important}
-/* ── Buttons ───────────────────────────────────────────── */
-body.skin-neumorphic button{background:var(--bg2)!important;border:none!important;border-radius:12px!important;box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
-body.skin-neumorphic button:not([disabled]):hover{box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important;transform:translateY(-1px)!important}
-body.skin-neumorphic button:not([disabled]):active{box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;transform:translateY(0)!important}
-/* ── Inputs ────────────────────────────────────────────── */
-body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{background:var(--bg)!important;border:none!important;border-radius:12px!important;box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
-body.skin-neumorphic input:focus,body.skin-neumorphic select:focus,body.skin-neumorphic textarea:focus{box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light),0 0 0 2px var(--accent)44!important;outline:none}
-/* ── Fillet hardcoded radii ─────────────────────────────── */
+/* 1. GLOBAL — borders become shadows */
+body.skin-neumorphic *{border-color:transparent!important}
+/* 2. FILLET — no sharp corner survives */
 body.skin-neumorphic [style*="borderRadius:14"],body.skin-neumorphic [style*="borderRadius: 14"],
 body.skin-neumorphic [style*="borderRadius:12"],body.skin-neumorphic [style*="borderRadius: 12"],
 body.skin-neumorphic [style*="borderRadius:10"],body.skin-neumorphic [style*="borderRadius: 10"],
 body.skin-neumorphic [style*="borderRadius:9"],
-body.skin-neumorphic [style*="borderRadius:8"],body.skin-neumorphic [style*="borderRadius: 8"]{border-radius:14px!important}
+body.skin-neumorphic [style*="borderRadius:8"],body.skin-neumorphic [style*="borderRadius: 8"]{border-radius:16px!important}
 body.skin-neumorphic [style*="borderRadius:7"],body.skin-neumorphic [style*="borderRadius:6"],
-body.skin-neumorphic [style*="borderRadius:5"],body.skin-neumorphic [style*="borderRadius:4"]{border-radius:10px!important}
-body.skin-neumorphic [style*="borderRadius:3"]{border-radius:8px!important}
-body.skin-neumorphic [style*="borderRadius:2"],body.skin-neumorphic [style*="borderRadius: 2"],
-body.skin-neumorphic [style*="borderRadius:1"],body.skin-neumorphic [style*="borderRadius: 1"],
-body.skin-neumorphic [style*="borderRadius:0"],body.skin-neumorphic [style*="borderRadius: 0"]{border-radius:8px!important}
-body.skin-neumorphic div[style*="border-radius: 0"],body.skin-neumorphic div[style*="borderRadius: 0px"]{border-radius:8px!important}
-/* ── Modals ─────────────────────────────────────────────── */
-body.skin-neumorphic [style*="boxShadow"][style*="rgba(0,0,0,.5)"],
-body.skin-neumorphic [style*="boxShadow"][style*="rgba(0,0,0,0.5)"]{box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important;border-radius:22px!important;border:none!important}
-body.skin-neumorphic [style*="maxWidth:680"]{border-radius:24px!important;border:none!important;box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
-/* ── Badges/pills ───────────────────────────────────────── */
-body.skin-neumorphic span[style*="borderRadius"]{border-radius:10px!important}
-/* ── Scrollbar ──────────────────────────────────────────── */
-body.skin-neumorphic ::-webkit-scrollbar{width:8px}
-body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 6px var(--neu-dark);border-radius:8px}
-body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px;box-shadow:2px 2px 4px var(--neu-dark)}
-/* ── Map cards — inset stripe avoids arc on rounded corners ─ */
-body.skin-neumorphic .nn-map-card{background:var(--bg)!important;border:none!important;box-shadow:6px 6px 14px var(--neu-dark),-6px -6px 14px var(--neu-light),inset 0 3px 0 var(--ca)!important}
-body.skin-neumorphic .nn-map-card:hover{transform:translateY(-2px);box-shadow:8px 8px 18px var(--neu-dark),-8px -8px 18px var(--neu-light),inset 0 3px 0 var(--ca)!important}
-body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-/* ── List rows ──────────────────────────────────────────── */
-body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;border-radius:14px!important;box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light);border-left:3px solid var(--ca)!important;border-top:none!important;border-right:none!important;border-bottom:none!important}
-body.skin-neumorphic .nn-map-list-row:hover{box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)}
-body.skin-neumorphic [style*="rgba(0,0,0,.7)"],body.skin-neumorphic [style*="rgba(0,0,0,.65)"],body.skin-neumorphic [style*="rgba(0,0,0,.6)"],body.skin-neumorphic [style*="rgba(0,0,0,.55)"],body.skin-neumorphic [style*="rgba(0,0,0,.5)"],body.skin-neumorphic [style*="rgba(0,0,0,.4)"]{box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important;border:none!important}
-body.skin-neumorphic [style*="border-left: 1px solid"]{border-left:none!important;box-shadow:-4px 0 8px var(--neu-dark)!important}
-body.skin-neumorphic [style*="border-right: 1px solid"]{border-right:none!important;box-shadow:4px 0 8px var(--neu-dark)!important}
-/* LLMChat — replace panel borders with shadows */
-body.skin-neumorphic [style*="border-left: 1px solid var(--border)"] { border-left: none !important; box-shadow: -3px 0 8px var(--neu-dark) !important; }
-body.skin-neumorphic [style*="border-top: 1px solid var(--border)"] { border-top: none !important; box-shadow: 0 -3px 8px var(--neu-dark) !important; }
-/* ════════════════════════════════════════════════════════════
-   NEUMORPHIC — COMPREHENSIVE UI ELEMENT TREATMENT
-   ════════════════════════════════════════════════════════════ */
-
-/* ── InlineNodeEditor popup (z-index: 200) ── */
-body.skin-neumorphic [style*="z-index: 200"]{
-  border-radius:20px!important;
-  box-shadow:16px 16px 32px var(--neu-dark),-16px -16px 32px var(--neu-light)!important;
-  overflow:hidden!important}
-
-/* ── Tab bar — inset groove look ── */
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3){
-  background:var(--bg)!important;
-  border-bottom:none!important;
-  padding:6px 8px!important;
-  gap:3px!important;
-  box-shadow:inset 2px 2px 5px var(--neu-dark),inset -2px -2px 5px var(--neu-light)!important}
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button{
-  box-shadow:none!important;
-  border-radius:10px!important;
-  border:none!important;
-  padding:5px 8px!important;
-  flex:none!important}
-/* Active tab — pressed-in inset */
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="background: var(--bg)"]:not([style*="background: var(--bg2)"]){
-  box-shadow:inset 2px 2px 5px var(--neu-dark),inset -1px -1px 3px var(--neu-light)!important;
-  background:var(--bg)!important}
-
-/* ── Popup header row ── */
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(1){
-  border-bottom:none!important;
-  box-shadow:0 2px 6px var(--neu-dark)!important}
-
-/* ── Popup description row ── */
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2){
-  border-bottom:none!important;
-  box-shadow:0 1px 3px var(--neu-dark)!important}
-
-/* ── Popup content scroll area — subtle inset ── */
-body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow: auto"]{
-  background:var(--bg)!important;
-  box-shadow:inset 2px 2px 6px var(--neu-dark),inset -2px -2px 6px var(--neu-light)!important}
-
-/* ── RichTextEditor — toolbar buttons (tiny, 22px) ── */
-body.skin-neumorphic button[style*="height: 22px"]{
-  box-shadow:2px 2px 4px var(--neu-dark),-2px -2px 4px var(--neu-light)!important;
-  border-radius:6px!important;
-  background:var(--bg2)!important;
-  margin:1px!important}
-body.skin-neumorphic button[style*="height: 22px"]:hover{
-  box-shadow:3px 3px 6px var(--neu-dark),-3px -3px 6px var(--neu-light)!important;
-  transform:translateY(-1px)!important}
-body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--accent2)"]{
-  box-shadow:inset 2px 2px 4px var(--neu-dark),inset -1px -1px 3px var(--neu-light)!important}
-
-/* ── RichTextEditor outer container — inset groove ── */
-body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="flex-direction: column"][style*="overflow: hidden"]{
-  border:none!important;
-  box-shadow:inset 4px 4px 8px var(--neu-dark),inset -4px -4px 8px var(--neu-light)!important;
-  border-radius:14px!important}
-
-/* ── RichTextEditor toolbar rows — no hard border ── */
-body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-bottom: 1px solid var(--border2)"]{
-  border-bottom:none!important;
-  box-shadow:0 2px 4px var(--neu-dark)!important}
-
-/* ── NoteCard outer — replace border with shadow ── */
-body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="border-radius: var(--radius-sm)"][style*="overflow: hidden"][style*="margin"]{
-  border:none!important;
-  box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)!important;
-  border-radius:14px!important}
-
-/* ── NoteCard header — no hard separator ── */
-body.skin-neumorphic [style*="border-bottom: 1px solid var(--border)"][style*="cursor: pointer"]{
-  border-bottom:none!important;
-  box-shadow:0 2px 6px var(--neu-dark)!important}
-
-/* ── Toggle row container ── */
-body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 6px"]{
-  background:var(--bg)!important;
-  box-shadow:inset 3px 3px 6px var(--neu-dark),inset -3px -3px 6px var(--neu-light)!important}
-
-/* ── Services/Properties small inline inputs & selects (inside popup) ── */
-body.skin-neumorphic [style*="z-index: 200"] input[style*="border: 1px solid var(--border)"],
-body.skin-neumorphic [style*="z-index: 200"] select[style*="border: 1px solid var(--border)"]{
-  border:none!important;
-  border-radius:10px!important;
-  box-shadow:inset 2px 2px 4px var(--neu-dark),inset -2px -2px 4px var(--neu-light)!important;
-  padding-left:8px!important}
-
-/* ── Services section cards ── */
-body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: 7px"]{
-  background:var(--bg)!important;
-  border:none!important;
-  border-radius:14px!important;
-  box-shadow:5px 5px 10px var(--neu-dark),-5px -5px 10px var(--neu-light)!important}
-
-/* ── Context menu ── */
-body.skin-neumorphic [style*="z-index: 601"][style*="background: var(--bg2)"]{
-  border:none!important;
-  border-radius:18px!important;
-  box-shadow:10px 10px 20px var(--neu-dark),-10px -10px 20px var(--neu-light)!important;
-  overflow:hidden!important}
-body.skin-neumorphic [style*="z-index: 601"] [style*="background: var(--bg3)"][style*="display: flex"]{
-  border-bottom:none!important;
-  box-shadow:0 2px 6px var(--neu-dark)!important}
-
-/* ── Canvas toolbar dropdowns ── */
-body.skin-neumorphic [style*="z-index: 501"][style*="background: var(--bg2)"]{
-  border:none!important;
-  border-radius:16px!important;
-  box-shadow:10px 10px 20px var(--neu-dark),-10px -10px 20px var(--neu-light)!important;
-  overflow:hidden!important}
-
-/* ── Props Panel (right side panel mode) ── */
-body.skin-neumorphic [style*="border-left: 1px solid var(--border2)"]{
-  border-left:none!important;
-  box-shadow:-6px 0 12px var(--neu-dark)!important}
-
-/* ── NodeSidebar (left) ── */
-body.skin-neumorphic [style*="border-right: 1px solid var(--border2)"]{
-  border-right:none!important;
-  box-shadow:6px 0 12px var(--neu-dark)!important}
-
-/* ── Admin panel section cards (borderRadius:12 + padding:18) ── */
-body.skin-neumorphic [style*="border-radius: 12px"][style*="padding: 18px"],
-body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 12px 16px"]{
-  border:none!important;
-  border-radius:18px!important;
-  box-shadow:8px 8px 16px var(--neu-dark),-8px -8px 16px var(--neu-light)!important}
-
-/* ── Admin user list rows ── */
-body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 12px 16px"][style*="align-items: center"]{
-  border:none!important;
-  border-radius:16px!important;
-  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;
-  margin-bottom:6px!important}
-
-/* ── Canvas toolbar rows (topbar) — remove hard borders ── */
-body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"][style*="height: 40px"],
-body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"][style*="padding: 0 8px"]{
-  border-bottom:none!important;
-  box-shadow:0 2px 6px var(--neu-dark)!important}
-
-/* ── Tooltip/hover labels on canvas ── */
-body.skin-neumorphic [style*="pointer-events: none"][style*="white-space: nowrap"][style*="border-radius"]{
-  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important;
-  border:none!important}
-
-/* ── ThemePicker modal (maxWidth 680) ── */
-body.skin-neumorphic [style*="max-width: 680px"]{
-  border:none!important;
-  border-radius:24px!important;
-  box-shadow:16px 16px 32px var(--neu-dark),-16px -16px 32px var(--neu-light)!important}
-
-/* ── Skin preview mini-cards inside ThemePicker ── */
-body.skin-neumorphic [style*="overflow: hidden"][style*="border-radius: 8px"][style*="cursor: pointer"]{
-  border-radius:14px!important;
-  box-shadow:4px 4px 8px var(--neu-dark),-4px -4px 8px var(--neu-light)!important}
-
-/* ── Collab change log panel ── */
-body.skin-neumorphic [style*="top: 76px"][style*="right: 8px"][style*="z-index: 800"]{
-  border:none!important;
-  border-radius:18px!important;
-  box-shadow:12px 12px 24px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
-
-/* ── Command palette ── */
-body.skin-neumorphic [style*="top: 12%"][style*="z-index: 601"],
-body.skin-neumorphic [style*="top: 12%"][style*="z-index: 600"]{
-  border:none!important;
-  border-radius:20px!important;
-  box-shadow:16px 16px 32px var(--neu-dark),-16px -16px 32px var(--neu-light)!important}
-
-/* ── LiveDashboard integration cards ── */
-body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 14px 16px"]{
-  border:none!important;
-  border-radius:16px!important;
-  box-shadow:6px 6px 12px var(--neu-dark),-6px -6px 12px var(--neu-light)!important}`,
-  },
+body.skin-neumorphic [style*="borderRadius:5"],body.skin-neumorphic [style*="borderRadius:4"]{border-radius:12px!important}
+body.skin-neumorphic [style*="borderRadius:3"],body.skin-neumorphic [style*="borderRadius:2"],
+body.skin-neumorphic [style*="borderRadius: 2"],body.skin-neumorphic [style*="borderRadius:1"],
+body.skin-neumorphic [style*="borderRadius: 1"],body.skin-neumorphic [style*="borderRadius:0"],
+body.skin-neumorphic [style*="borderRadius: 0"],body.skin-neumorphic div[style*="borderRadius: 0px"]{border-radius:10px!important}
+/* 3. TOPBAR / NAV — inset tray */
+body.skin-neumorphic .nn-topbar{background:var(--bg)!important;box-shadow:0 6px 16px var(--neu-dark),0 -2px 8px var(--neu-light)!important;border:none!important;border-radius:0!important}
+/* 4. CANVAS TOOLBAR ROWS — recessed wells */
+body.skin-neumorphic [data-tut="topbar-row1"]{background:var(--bg)!important;border-bottom:none!important;box-shadow:inset 0 -4px 10px var(--neu-dark),inset 0 3px 8px var(--neu-light),0 3px 0 var(--neu-dark)!important}
+body.skin-neumorphic [style*="height: 36px"][style*="display: flex"][style*="align-items: center"]{background:var(--bg)!important;border-bottom:none!important;box-shadow:inset 0 -3px 8px var(--neu-dark),inset 0 2px 6px var(--neu-light)!important}
+/* 5. BUTTONS — raised pillows, active = inset */
+body.skin-neumorphic button{background:var(--bg)!important;border:none!important;border-radius:14px!important;box-shadow:var(--neu-lift-sm)!important;color:var(--text2)!important;font-weight:700!important;transition:all 0.15s ease!important}
+body.skin-neumorphic button:not([disabled]):hover{box-shadow:6px 6px 14px var(--neu-dark),-6px -6px 14px var(--neu-light)!important;transform:translateY(-1px)!important}
+body.skin-neumorphic button:not([disabled]):active{box-shadow:var(--neu-inset-sm)!important;transform:translateY(0)!important}
+body.skin-neumorphic button[style*="background: var(--accent2)"],
+body.skin-neumorphic button[style*="background: var(--success)"],
+body.skin-neumorphic button[style*="background: rgb"]{box-shadow:inset 3px 3px 7px var(--neu-dark),inset -2px -2px 5px var(--neu-light)!important;color:#fff!important}
+body.skin-neumorphic button[style*="background: var(--bg3)"]{background:var(--bg)!important;box-shadow:var(--neu-lift-xs)!important;color:var(--text3)!important}
+body.skin-neumorphic button[style*="background: transparent"],body.skin-neumorphic button[style*="background:transparent"]{background:var(--bg)!important;box-shadow:var(--neu-lift-xs)!important}
+body.skin-neumorphic button[style*="height: 22px"]{box-shadow:var(--neu-lift-xs)!important;border-radius:8px!important;background:var(--bg)!important}
+body.skin-neumorphic button[style*="height: 22px"]:hover{box-shadow:var(--neu-lift-sm)!important;transform:translateY(-1px)!important}
+body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--accent2)"]{box-shadow:var(--neu-inset-xs)!important}
+body.skin-neumorphic [style*="width: 1px"][style*="background: var(--border)"]{background:transparent!important;width:8px!important}
+/* 6. INPUTS — inset wells */
+body.skin-neumorphic input,body.skin-neumorphic select,body.skin-neumorphic textarea{background:var(--bg)!important;border:none!important;border-radius:14px!important;box-shadow:var(--neu-inset-sm)!important;color:var(--text)!important}
+body.skin-neumorphic input:focus,body.skin-neumorphic select:focus,body.skin-neumorphic textarea:focus{box-shadow:var(--neu-inset),0 0 0 2px var(--accent)44!important;outline:none!important}
+/* 7. SIDEBAR EDGES */
+body.skin-neumorphic .nn-sidebar,body.skin-neumorphic [style*="border-right: 1px solid var(--border2)"]{background:var(--bg)!important;border:none!important;box-shadow:6px 0 16px var(--neu-dark),-2px 0 6px var(--neu-light)!important}
+body.skin-neumorphic [style*="border-left: 1px solid var(--border2)"],body.skin-neumorphic [style*="border-left: 1px solid var(--border)"]{border:none!important;box-shadow:-6px 0 16px var(--neu-dark)!important}
+/* 8. NODE POPUP */
+body.skin-neumorphic [style*="z-index: 200"]{border-radius:22px!important;background:var(--bg)!important;box-shadow:14px 14px 28px var(--neu-dark),-10px -10px 22px var(--neu-light)!important;border:none!important;overflow:hidden!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:first-child{background:var(--bg)!important;border:none!important;box-shadow:0 3px 8px var(--neu-dark)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2){background:var(--bg)!important;border:none!important;box-shadow:0 2px 5px var(--neu-dark)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3){background:var(--bg)!important;border:none!important;padding:6px 10px!important;gap:4px!important;box-shadow:var(--neu-inset-sm)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button{box-shadow:none!important;border-radius:12px!important;border:none!important;padding:5px 10px!important;background:transparent!important;color:var(--text3)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="color: var(--accent)"]{box-shadow:var(--neu-inset-xs)!important;background:var(--bg)!important;color:var(--accent)!important}
+body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow"]{background:var(--bg)!important;box-shadow:var(--neu-inset-xs)!important}
+/* 9. MODALS */
+body.skin-neumorphic [style*="maxWidth:680"],body.skin-neumorphic [style*="max-width: 680px"]{background:var(--bg)!important;border:none!important;border-radius:26px!important;box-shadow:18px 18px 36px var(--neu-dark),-14px -14px 28px var(--neu-light)!important}
+body.skin-neumorphic [style*="rgba(0,0,0,.5)"],body.skin-neumorphic [style*="rgba(0,0,0,.7)"],body.skin-neumorphic [style*="rgba(0,0,0,.6)"],body.skin-neumorphic [style*="rgba(0,0,0,.65)"]{background:var(--bg)!important;border:none!important;box-shadow:16px 16px 32px var(--neu-dark),-12px -12px 24px var(--neu-light)!important}
+/* 10. CONTEXT MENU / DROPDOWNS */
+body.skin-neumorphic [style*="z-index: 601"][style*="background"],body.skin-neumorphic [style*="z-index:601"]{background:var(--bg)!important;border:none!important;border-radius:20px!important;box-shadow:12px 12px 24px var(--neu-dark),-8px -8px 18px var(--neu-light)!important;overflow:hidden!important}
+body.skin-neumorphic [style*="z-index: 501"][style*="background"]{background:var(--bg)!important;border:none!important;border-radius:18px!important;box-shadow:10px 10px 22px var(--neu-dark),-8px -8px 16px var(--neu-light)!important;overflow:hidden!important}
+body.skin-neumorphic [style*="z-index: 601"] [style*="background: var(--bg3)"]{background:var(--bg)!important;border:none!important;box-shadow:0 2px 6px var(--neu-dark)!important}
+/* 11. CARDS */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: 7px"]{background:var(--bg)!important;border:none!important;border-radius:16px!important;box-shadow:var(--neu-lift-sm)!important}
+body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="border-radius: var(--radius-sm)"][style*="overflow: hidden"][style*="margin"]{background:var(--bg)!important;border:none!important;border-radius:16px!important;box-shadow:var(--neu-lift-sm)!important}
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border)"][style*="cursor: pointer"]{border:none!important;box-shadow:0 3px 7px var(--neu-dark)!important}
+body.skin-neumorphic [style*="border-radius: 12px"][style*="padding: 18px"]{background:var(--bg)!important;border:none!important;border-radius:20px!important;box-shadow:var(--neu-lift)!important}
+body.skin-neumorphic [style*="border-radius: 10px"][style*="padding: 12px 16px"]{background:var(--bg)!important;border:none!important;border-radius:16px!important;box-shadow:var(--neu-lift-sm)!important;margin-bottom:6px!important}
+/* 12. TOGGLE GROUPS */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 6px"],
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"][style*="padding: 4px"]{background:var(--bg)!important;border:none!important;box-shadow:var(--neu-inset-sm)!important;border-radius:16px!important}
+/* 13. RICH TEXT EDITOR */
+body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="flex-direction: column"][style*="overflow: hidden"]{background:var(--bg)!important;border:none!important;box-shadow:var(--neu-inset)!important;border-radius:16px!important}
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-bottom: 1px solid var(--border2)"]{background:var(--bg)!important;border:none!important;box-shadow:0 2px 5px var(--neu-dark)!important}
+/* 14. MAP CARDS & LIST ROWS */
+body.skin-neumorphic .nn-map-card{background:var(--bg)!important;border:none!important;box-shadow:var(--neu-lift),inset 0 3px 0 var(--ca)!important}
+body.skin-neumorphic .nn-map-card:hover{transform:translateY(-3px)!important;box-shadow:10px 10px 22px var(--neu-dark),-10px -10px 22px var(--neu-light),inset 0 3px 0 var(--ca)!important}
+body.skin-neumorphic .nn-map-list-row{background:var(--bg)!important;border-radius:16px!important;border:none!important;box-shadow:var(--neu-lift-sm)!important;margin-bottom:6px!important}
+body.skin-neumorphic .nn-map-list-row:hover{box-shadow:var(--neu-lift)!important}
+/* 15. BADGES / PILLS */
+body.skin-neumorphic span[style*="borderRadius"],body.skin-neumorphic span[style*="border-radius"]{border-radius:12px!important}
+/* 16. SCROLLBARS */
+body.skin-neumorphic ::-webkit-scrollbar{width:8px;height:8px}
+body.skin-neumorphic ::-webkit-scrollbar-track{background:var(--bg);box-shadow:inset 2px 2px 5px var(--neu-dark);border-radius:10px}
+body.skin-neumorphic ::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;box-shadow:2px 2px 4px var(--neu-dark)}
+/* 17. TOOLTIPS */
+body.skin-neumorphic [style*="pointer-events: none"][style*="white-space: nowrap"]{background:var(--bg)!important;border:none!important;border-radius:10px!important;box-shadow:var(--neu-lift-sm)!important}
+/* 18. MISC BORDERS → SHADOWS */
+body.skin-neumorphic [style*="border-top: 1px solid"]{border-top:none!important;box-shadow:0 -3px 8px var(--neu-dark)!important}
+body.skin-neumorphic [style*="z-index: 800"]{background:var(--bg)!important;border:none!important;border-radius:20px!important;box-shadow:12px 12px 26px var(--neu-dark),-10px -10px 20px var(--neu-light)!important}
+/* 19. DARK THEME OVERRIDES */
+body.skin-neumorphic[data-theme="dark"],body.skin-neumorphic[data-theme="midnight"],
+body.skin-neumorphic[data-theme="forest"],body.skin-neumorphic[data-theme="ocean"],
+body.skin-neumorphic[data-theme="amber"],body.skin-neumorphic[data-theme="violet"]{
+  --neu-lift:12px 12px 24px var(--neu-dark),-8px -8px 18px var(--neu-light);
+  --neu-lift-sm:6px 6px 14px var(--neu-dark),-4px -4px 10px var(--neu-light);
+  --neu-lift-xs:3px 3px 7px var(--neu-dark),-2px -2px 5px var(--neu-light);
+  --neu-inset:inset 5px 5px 11px var(--neu-dark),inset -4px -4px 9px var(--neu-light);
+  --neu-inset-sm:inset 3px 3px 7px var(--neu-dark),inset -2px -2px 5px var(--neu-light);
+  --neu-inset-xs:inset 2px 2px 4px var(--neu-dark),inset -1px -1px 3px var(--neu-light);}
+body.skin-neumorphic[data-theme="dark"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="midnight"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="forest"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="ocean"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="amber"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="violet"] [style*="z-index: 200"]{box-shadow:18px 18px 36px var(--neu-dark),-12px -12px 26px var(--neu-light)!important}`},
 
   sakura: {
     name:"Sakura", icon:"🌸", nav:"icon-dock",

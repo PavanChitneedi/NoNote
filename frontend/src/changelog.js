@@ -1,7 +1,19 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.41.3",date:"Apr 2026",items:[
+  {v:"v5.41.4",date:"Apr 2026",items:[
+    "Neumorphic: Complete CSS rewrite — 19 sections covering every UI element",
+    "Neumorphic: Canvas toolbar rows now recessed inset trays (not flat boxes) — pressed into the surface",
+    "Neumorphic: Toolbar dividers (1px lines) removed, replaced with spacing",
+    "Neumorphic: Active buttons (Edit/Select/Connect) use inset shadow — clearly pressed in",
+    "Neumorphic: Global border-color:transparent removes all hard lines everywhere",
+    "Neumorphic: CSS variables --neu-lift, --neu-lift-sm, --neu-lift-xs, --neu-inset, --neu-inset-sm, --neu-inset-xs for consistent depth system",
+    "Neumorphic: Dark themes (dark/midnight/forest/ocean/amber/violet) get stronger shadow values via data-theme selectors",
+    "Neumorphic: All 13 themes have explicit --neu-dark/--neu-light values (no more color-mix() guessing)",
+    "Neumorphic: Inputs/textareas/selects are clearly inset wells, buttons clearly raised pillows",
+    "Fix: skins.js restored to clean single-copy-per-skin from original v5.39.8 base",
+  ]},
+    {v:"v5.41.3",date:"Apr 2026",items:[
     "Fix: Neumorphic + all dark themes (dark/midnight/forest/ocean/amber/violet) now have calibrated --neu-dark/--neu-light values -- shadows were barely visible because color-mix() formula has too little contrast on very dark backgrounds",
     "Fix: Neumorphic sharp edges -- added borderRadius 0/1/2px selectors to fillet everything to 8px min",
     "Fix: Neumorphic shadow spread increased (10px/10px) for better clay lift effect",
