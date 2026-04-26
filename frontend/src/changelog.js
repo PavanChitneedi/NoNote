@@ -2,6 +2,11 @@
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
   {v:"v5.42.0",date:"Apr 2026",items:[
+    "Fix: Canvas dotted grid now protected in neumorphic skin -- CSS rule explicitly reconstructs radial-gradient with canvas-dot variable, preventing any bg override from killing the pattern",
+    "Fix: Canvas dot size increased from 1px to 1.2px in neumorphic for better visibility on soft backgrounds",
+    "Fix: --canvas-dot values darkened for all 6 light themes (clay, cream, parchment, blush, ice, mint) -- were too close to bg color to see",
+  ]},
+  {v:"v5.42.0",date:"Apr 2026",items:[
     "Fix: Canvas dotted grid missing across ALL skins -- root cause: --canvas-bg CSS variable was never defined anywhere (not in ThemeContext, skins, or global CSS); when an undefined var() appears in a CSS background shorthand, the ENTIRE background property (including the radial-gradient) becomes invalid per CSS spec -- dots silently disappeared",
     "Fix: NodeCanvas.jsx and MobileCanvas.jsx -- replaced var(--canvas-bg) with var(--bg) which is always defined by every theme",
   ]},

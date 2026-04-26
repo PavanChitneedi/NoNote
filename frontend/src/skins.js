@@ -235,6 +235,13 @@ body.skin-neumorphic [style*="background: var(--bg3)"],
 body.skin-neumorphic [style*="background:var(--bg3)"] { background: var(--bg) !important; }
 /* Keep node-bg for actual node cards */
 body.skin-neumorphic .nn-node > div:first-child { background: var(--node-bg) !important; }
+/* PROTECT canvas grid — never override the radial-gradient background */
+body.skin-neumorphic [style*="radial-gradient"] {
+  background-color: var(--bg) !important;
+  background-image: radial-gradient(circle, var(--canvas-dot) 1.2px, transparent 1.2px) !important;
+  background-size: 28px 28px !important;
+  background-position: center !important;
+}
 
 /* ── C. FILLET ALL HARDCODED RADII ───────────────────────────── */
 body.skin-neumorphic [style*="borderRadius:20"],
