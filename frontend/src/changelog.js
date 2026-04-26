@@ -1,7 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.40.0",date:"Apr 2026",items:[
+  {v:"v5.40.1",date:"Apr 2026",items:[
+    "TrueNAS: Full UI redesign to match Proxmox card layout -- system card with health dot/uptime/load/RAM/storage bars, pools section, alerts strip, services strip, and SHOW filter pills (Disks/Datasets/Network/Services/VMs/Tasks)",
+    "TrueNAS: Disk cards now 2-column grid with model, size, type, temperature",
+    "TrueNAS: Datasets now inline bars showing usage %",
+    "TrueNAS: Network/Services/VMs/Tasks all in unified filter-pill section",
+    "Fix: Proxmox storage NaN% -- API returns st.used not st.disk_used",
+    "Fix: TaskRow moved outside TrueNASMetrics (was inside render -- Red Line violation causing remount bugs)",
+  ]},
+    {v:"v5.40.0",date:"Apr 2026",items:[
     "Integration: connections now persistent -- last successful response cached in node properties and restored instantly on reopen (no blank panel while reconnecting)",
     "Integration: Save Configuration now auto-connects immediately -- no need to click Connect separately",
     "Integration: doFetch rewritten with useCallback + formRef -- eliminates stale closure bug that could cause wrong credentials being used on auto-connect",

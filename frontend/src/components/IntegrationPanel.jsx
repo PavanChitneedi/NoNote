@@ -177,7 +177,7 @@ function ProxmoxMetrics({ data }) {
                 <div style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginBottom:6}}>STORAGE</div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:6}}>
                   {activeStorage.map(st=>{
-                    const sp=pct(st.disk_used,st.total);
+                    const sp=pct(st.used||st.disk_used,st.total);
                     return(
                       <div key={st.storage} style={{background:'var(--bg)',borderRadius:6,padding:'6px 8px',border:'1px solid var(--border2)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
@@ -185,7 +185,7 @@ function ProxmoxMetrics({ data }) {
                           <span style={{fontSize:9,fontWeight:700,color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
                         </div>
                         <MiniBar v={sp} h={4}/>
-                        <div style={{fontSize:8,color:'var(--text4)',marginTop:3}}>{fmt(st.disk_used)} / {fmt(st.total)}</div>
+                        <div style={{fontSize:8,color:'var(--text4)',marginTop:3}}>{fmt(st.used||st.disk_used)} / {fmt(st.total)}</div>
                       </div>
                     );
                   })}
@@ -224,6 +224,22 @@ function ProxmoxMetrics({ data }) {
   );
 }
 
+function TaskRow({t, ok, failed}) {
+  return (
+    <div style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderBottom:'1px solid var(--border2)',fontSize:10}}>
+      <span style={{width:7,height:7,borderRadius:'50%',flexShrink:0,
+        background:!t.enabled?'var(--text4)':ok?'var(--success)':failed?'var(--danger)':'var(--accent)'}}/>
+      <span style={{fontWeight:600,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.name}</span>
+      <span style={{fontSize:9,color:'var(--text4)'}}>{t.direction||t.provider}</span>
+      <span style={{fontSize:9,padding:'1px 5px',borderRadius:3,
+        background:!t.enabled?'var(--bg3)':ok?'var(--success)22':failed?'var(--danger)22':'var(--bg3)',
+        color:!t.enabled?'var(--text4)':ok?'var(--success)':failed?'var(--danger)':'var(--text3)'}}>
+        {!t.enabled?'disabled':t.state||'—'}
+      </span>
+    </div>
+  );
+}
+
 function TrueNASMetrics({ data }) {
   const info        = data.info        || {};
   const pools       = data.pools       || [];
@@ -236,267 +252,251 @@ function TrueNASMetrics({ data }) {
   const storage     = data.storage     || {};
   const replication = data.replication || [];
   const cloudsync   = data.cloudsync   || [];
-  const [tab, setTab] = useState('overview');
+  const [filter, setFilter] = useState('disks');
 
-  // Extra system info
-  const totalRam  = info.physmem ? fmt(info.physmem) : null;
-  const loadAvg   = info.loadavg ? info.loadavg.map(v => v.toFixed(2)).join(' / ') : null;
-  const cpuCores  = info.cores   || null;
-  const model     = info.model   || null;
-  const hasTasks  = replication.length > 0 || cloudsync.length > 0;
+  const uptimeSec  = info.uptime_seconds || info.uptimeSeconds;
+  const healthy    = pools.length > 0 && pools.every(p => p.healthy);
+  const cpuCores   = info.cores || 1;
+  const loadAvg    = info.loadavg || [];
+  const load1      = loadAvg[0] != null ? loadAvg[0].toFixed(2) : null;
+  const load5      = loadAvg[1] != null ? loadAvg[1].toFixed(2) : null;
+  const load15     = loadAvg[2] != null ? loadAvg[2].toFixed(2) : null;
+  const loadPct    = load1 != null ? Math.min(Math.round(loadAvg[0] / cpuCores * 100), 100) : 0;
+  const onlinePools = pools.filter(p => p.status === 'ONLINE').length;
+  const runningVMs = vms.filter(v => v.status === 'RUNNING').length;
+  const hasTasks   = replication.length > 0 || cloudsync.length > 0;
+  const borderCol  = healthy ? 'var(--success)55' : pools.length === 0 ? 'var(--border)' : 'var(--danger)55';
 
-  const uptimeSec = info.uptime_seconds || info.uptimeSeconds; // v2.0 uses snake_case
-  const uptime = uptimeSec
-    ? (() => {
-        const d = Math.floor(uptimeSec / 86400);
-        const h = Math.floor((uptimeSec % 86400) / 3600);
-        const m = Math.floor((uptimeSec % 3600) / 60);
-        return d > 0 ? `${d}d ${h}h` : h > 0 ? `${h}h ${m}m` : `${m}m`;
-      })()
-    : '—';
-
-  const TabBtn = ({ id, label }) => (
-    <button
-      onMouseDown={e => e.stopPropagation()}
-      onClick={e => { e.stopPropagation(); setTab(id); }}
-      style={{
-        fontSize: 9, padding: '2px 8px', borderRadius: 4, border: 'none',
-        background: tab === id ? 'var(--accent2)' : 'var(--bg3)',
-        color: tab === id ? '#fff' : 'var(--text3)',
-        cursor: 'pointer', fontFamily: 'var(--font-ui)', fontWeight: 600,
-      }}>{label}</button>
-  );
+  const filterTabs = [
+    ['disks','Disks',disks.length],
+    ['datasets','Datasets',datasets.length],
+    ['network','Network',ifaces.length],
+    ['services','Services',services.length],
+    ...(vms.length   > 0 ? [['vms','VMs',vms.length]] : []),
+    ...(hasTasks         ? [['tasks','Tasks',replication.length+cloudsync.length]] : []),
+  ];
 
   return (
     <div>
-      {/* Header stats */}
-      <div style={{ display: 'flex', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-        <Stat label="HOSTNAME" value={info.hostname || '—'} />
-        <Stat label="VERSION"  value={(info.version || '').split('-')[0] || '—'} />
-        <Stat label="UPTIME"   value={uptime} />
-        <Stat label="POOLS"    value={pools.length} />
-        <Stat label="DISKS"    value={disks.length} />
-        {totalRam  && <Stat label="RAM"    value={totalRam} />}
-        {cpuCores  && <Stat label="CORES"  value={cpuCores} />}
-        {loadAvg   && <Stat label="LOAD"   value={loadAvg} />}
-        {model     && <Stat label="MODEL"  value={model} />}
+      {/* ── Header ── */}
+      <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:12}}>
+        <span style={{fontSize:11,fontWeight:700,color:'var(--text)'}}>TrueNAS {(info.version||'').split('-')[0]||''}</span>
+        <span style={{fontSize:9,color:'var(--text4)',marginLeft:'auto'}}>{onlinePools}/{pools.length} pools online</span>
       </div>
 
-      {/* Total storage bar */}
-      {storage.totalSize > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: 'var(--text4)', marginBottom: 2 }}>
-            <span>TOTAL STORAGE</span>
-            <span>{fmt(storage.totalAllocated)} used / {fmt(storage.totalSize)}</span>
+      {/* ── System card (like Proxmox node header) ── */}
+      <div style={{background:'var(--bg3)',borderRadius:'10px 10px 0 0',padding:'12px 14px',
+        border:`1px solid ${borderCol}`,borderBottom:'none'}}>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:10}}>
+          <span style={{width:9,height:9,borderRadius:'50%',
+            background:healthy?'var(--success)':'var(--danger)',
+            boxShadow:healthy?'0 0 6px var(--success)':'none',flexShrink:0}}/>
+          <span style={{fontWeight:800,fontSize:13,color:'var(--text)'}}>{info.hostname||'—'}</span>
+          <span style={{fontSize:9,color:'var(--text4)'}}>up {uptime(uptimeSec)}</span>
+          <span style={{marginLeft:'auto',fontSize:9,background:'var(--bg)',
+            padding:'2px 8px',borderRadius:10,border:'1px solid var(--border)',color:'var(--text4)'}}>
+            {disks.length} disk{disks.length!==1?'s':''}
+            {vms.length>0?` · ${runningVMs}/${vms.length} VM`:''}
+          </span>
+        </div>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
+          {[
+            {label:`Load · ${cpuCores}c`,v:loadPct,sub:load1?`${load1} / ${load5} / ${load15}`:'—'},
+            {label:'RAM',v:info.physmem?pct(storage.totalAllocated||0,info.physmem):0,
+              sub:info.physmem?`${fmt(storage.totalAllocated||0)} / ${fmt(info.physmem)}`:'—'},
+            {label:'Storage',v:pct(storage.totalAllocated,storage.totalSize),
+              sub:`${fmt(storage.totalAllocated||0)} / ${fmt(storage.totalSize||0)}`},
+          ].map(({label,v,sub})=>(
+            <div key={label}>
+              <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+                <span style={{fontSize:9,color:'var(--text4)'}}>{label}</span>
+                <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'var(--text)'}}>{v}%</span>
+              </div>
+              <MiniBar v={v} h={5}/>
+              <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{sub}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Pools (like Proxmox storage section) ── */}
+      {pools.length>0&&(
+        <div style={{background:'var(--bg3)',padding:'8px 14px',
+          borderLeft:`1px solid ${borderCol}`,borderRight:`1px solid ${borderCol}`}}>
+          <div style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginBottom:6}}>POOLS</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(120px,1fr))',gap:6}}>
+            {pools.map(p=>{
+              const sp=pct(p.allocated,p.size);
+              return(
+                <div key={p.name} style={{background:'var(--bg)',borderRadius:6,padding:'6px 8px',
+                  border:`1px solid ${p.healthy?'var(--success)33':'var(--danger)33'}`}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
+                    <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',
+                      textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{p.name}</span>
+                    <span style={{fontSize:9,fontWeight:700,
+                      color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
+                  </div>
+                  <MiniBar v={sp} h={4}/>
+                  <div style={{fontSize:8,color:'var(--text4)',marginTop:3,display:'flex',justifyContent:'space-between'}}>
+                    <span style={{color:p.healthy?'var(--success)':'var(--danger)',fontWeight:700}}>{p.status}</span>
+                    <span>{fmt(p.allocated)} / {fmt(p.size)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
-          <Bar pct={pct(storage.totalAllocated, storage.totalSize)} />
         </div>
       )}
 
-      {/* Service pills */}
-      <div style={{ display: 'flex', gap: 3, marginBottom: 8, flexWrap: 'wrap' }}>
-        {services.map(s => (
-          <span key={s.service} style={{
-            fontSize: 9, padding: '1px 6px', borderRadius: 3,
-            background: s.state === 'RUNNING' ? 'var(--success)22' : 'var(--bg)',
-            color: s.state === 'RUNNING' ? 'var(--success)' : 'var(--text4)',
-            border: `1px solid ${s.state === 'RUNNING' ? 'var(--success)44' : 'var(--border)'}`,
-            fontWeight: s.state === 'RUNNING' ? 700 : 400,
-          }}>{s.service}</span>
+      {/* ── Alerts strip ── */}
+      {alerts.length>0&&(
+        <div style={{background:'var(--bg3)',padding:'4px 14px',
+          borderLeft:`1px solid ${borderCol}`,borderRight:`1px solid ${borderCol}`}}>
+          {alerts.map((a,i)=>(
+            <div key={i} style={{fontSize:10,color:'var(--danger)',padding:'3px 0',
+              borderBottom:i<alerts.length-1?'1px solid var(--border2)':undefined}}>
+              ⚠ {a.formatted||a.text}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── Services strip ── */}
+      {services.length>0&&(
+        <div style={{background:'var(--bg3)',padding:'6px 14px',display:'flex',gap:4,flexWrap:'wrap',
+          borderLeft:`1px solid ${borderCol}`,borderRight:`1px solid ${borderCol}`}}>
+          {services.map(s=>(
+            <span key={s.service} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
+              background:s.state==='RUNNING'?'var(--success)22':'var(--bg)',
+              color:s.state==='RUNNING'?'var(--success)':'var(--text4)',
+              border:`1px solid ${s.state==='RUNNING'?'var(--success)44':'var(--border)'}`,
+              fontWeight:s.state==='RUNNING'?700:400}}>{s.service}</span>
+          ))}
+        </div>
+      )}
+
+      {/* ── Items section (Disks / Datasets / Network / Services / VMs / Tasks) ── */}
+      <div style={{background:'var(--bg3)',borderRadius:'0 0 10px 10px',padding:'10px 14px',
+        border:`1px solid ${borderCol}`,borderTop:'1px solid var(--border2)'}}>
+        {/* Filter pills */}
+        <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
+          <span style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginRight:4}}>SHOW</span>
+          {filterTabs.map(([v,l,count])=>(
+            <button key={v} onMouseDown={e=>e.stopPropagation()}
+              onClick={e=>{e.stopPropagation();setFilter(v);}}
+              style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
+                fontFamily:'var(--font-ui)',fontWeight:600,
+                background:filter===v?'var(--accent2)':'var(--bg)',
+                color:filter===v?'#fff':'var(--text4)'}}>
+              {l} ({count})
+            </button>
+          ))}
+        </div>
+
+        {/* Disks */}
+        {filter==='disks'&&(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+            {disks.length===0&&<div style={{fontSize:10,color:'var(--text4)',fontStyle:'italic',gridColumn:'1/-1'}}>No disk data</div>}
+            {disks.map((d,i)=>(
+              <div key={i} style={{background:'var(--bg)',borderRadius:7,padding:'8px 10px',border:'1px solid var(--border2)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                  <span style={{fontSize:11,fontWeight:700,color:'var(--text)',flex:1}}>{d.name}</span>
+                  {d.temp!=null&&<span style={{fontSize:9,fontWeight:700,
+                    color:d.temp>50?'#f44336':d.temp>40?'#ff9800':'var(--success)'}}>{d.temp}°C</span>}
+                </div>
+                <div style={{fontSize:9,color:'var(--text4)',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.model||'—'}</div>
+                <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text3)'}}>
+                  <span>{fmt(d.size)}</span>
+                  <span style={{padding:'1px 5px',borderRadius:3,background:'var(--bg3)',color:'var(--text4)'}}>{d.type||'—'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Datasets */}
+        {filter==='datasets'&&(
+          <div>
+            {datasets.length===0&&<div style={{fontSize:10,color:'var(--text4)',fontStyle:'italic'}}>No dataset data</div>}
+            {datasets.map((d,i)=>{
+              const sp=pct(d.used,d.used+d.available);
+              return(
+                <div key={i} style={{marginBottom:6}}>
+                  <div style={{display:'flex',justifyContent:'space-between',marginBottom:2,fontSize:10}}>
+                    <span style={{fontWeight:600,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',flex:1,marginRight:8}}>{d.id}</span>
+                    <span style={{fontSize:9,color:'var(--text4)',flexShrink:0}}>{sp}% · {fmt(d.used+d.available)}</span>
+                  </div>
+                  <MiniBar v={sp} h={4}/>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Network */}
+        {filter==='network'&&(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+            {ifaces.length===0&&<div style={{fontSize:10,color:'var(--text4)',fontStyle:'italic',gridColumn:'1/-1'}}>No interface data</div>}
+            {ifaces.map((iface,i)=>(
+              <div key={i} style={{background:'var(--bg)',borderRadius:7,padding:'8px 10px',border:'1px solid var(--border2)'}}>
+                <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                  <span style={{width:7,height:7,borderRadius:'50%',background:iface.up?'var(--success)':'var(--danger)',flexShrink:0}}/>
+                  <span style={{fontWeight:700,fontSize:11,flex:1}}>{iface.name}</span>
+                  {iface.speed&&<span style={{fontSize:9,color:'var(--text4)'}}>{iface.speed>=1000?iface.speed/1000+'G':iface.speed+'M'}</span>}
+                </div>
+                <div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>{iface.type}</div>
+                {(iface.aliases||[]).map((a,ai)=><div key={ai} style={{fontSize:9,color:'var(--text3)'}}>{a}</div>)}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Services */}
+        {filter==='services'&&(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+            {services.map(s=>(
+              <div key={s.service} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',
+                background:'var(--bg)',borderRadius:6,
+                border:`1px solid ${s.state==='RUNNING'?'var(--success)33':'var(--border2)'}`}}>
+                <span style={{width:7,height:7,borderRadius:'50%',
+                  background:s.state==='RUNNING'?'var(--success)':'var(--text4)',flexShrink:0}}/>
+                <span style={{fontSize:10,fontWeight:s.state==='RUNNING'?700:400,flex:1,
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{s.service}</span>
+                <span style={{fontSize:9,color:s.state==='RUNNING'?'var(--success)':'var(--text4)'}}>{s.state}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* VMs */}
+        {filter==='vms'&&vms.map((v,i)=>(
+          <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',
+            borderBottom:'1px solid var(--border2)',fontSize:10}}>
+            <span style={{width:7,height:7,borderRadius:'50%',
+              background:v.status==='RUNNING'?'var(--success)':'var(--text4)',flexShrink:0}}/>
+            <span style={{fontWeight:600,flex:1}}>{v.name}</span>
+            <span style={{color:'var(--text4)'}}>{v.vcpus} vCPU</span>
+            <span style={{color:'var(--text4)'}}>{gb(v.memory*1024*1024)}</span>
+            <span style={{fontSize:9,color:v.status==='RUNNING'?'var(--success)':'var(--text4)'}}>{v.status}</span>
+          </div>
         ))}
+
+        {/* Tasks */}
+        {filter==='tasks'&&(
+          <div>
+            {replication.length>0&&<div style={{fontSize:9,color:'var(--text4)',fontWeight:700,letterSpacing:1,marginBottom:4}}>REPLICATION</div>}
+            {replication.map((t,i)=>{
+              const ok=t.state==='FINISHED',failed=t.state==='ERROR'||t.state==='FAILED';
+              return <TaskRow key={i} t={t} ok={ok} failed={failed}/>;
+            })}
+            {cloudsync.length>0&&<div style={{fontSize:9,color:'var(--text4)',fontWeight:700,letterSpacing:1,margin:'8px 0 4px'}}>CLOUD SYNC</div>}
+            {cloudsync.map((t,i)=>{
+              const ok=t.state==='SUCCESS'||t.state==='FINISHED',failed=t.state==='FAILED'||t.state==='ERROR';
+              return <TaskRow key={i} t={t} ok={ok} failed={failed}/>;
+            })}
+          </div>
+        )}
       </div>
-
-      {/* Alerts */}
-      {alerts.length > 0 && (
-        <div style={{ marginBottom: 8 }}>
-          {alerts.map((a, i) => (
-            <div key={i} style={{
-              fontSize: 10, color: 'var(--danger)',
-              padding: '3px 7px', background: 'var(--danger)11', borderRadius: 4, marginBottom: 3,
-              border: '1px solid var(--danger)22',
-            }}>⚠ {a.formatted || a.text}</div>
-          ))}
-        </div>
-      )}
-
-      {/* Sub-tabs */}
-      <div style={{ display: 'flex', gap: 4, marginBottom: 8, flexWrap: 'wrap' }}>
-        {['overview','pools','disks','datasets','network',...(vms.length > 0 ? ['vms'] : []),...(hasTasks ? ['tasks'] : [])].map(t => (
-          <TabBtn key={t} id={t} label={t.charAt(0).toUpperCase() + t.slice(1)} />
-        ))}
-      </div>
-
-      {/* ── Overview ── */}
-      {tab === 'overview' && pools.map(p => {
-        const used = p.allocated || 0;
-        const total = p.size || 0;
-        return (
-          <div key={p.name} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '8px 10px', marginBottom: 6,
-            border: `1px solid ${p.healthy ? 'var(--success)44' : 'var(--danger)44'}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-              <span style={{ fontWeight: 700, fontSize: 11 }}>{p.name}</span>
-              <span style={{ fontSize: 9, fontWeight: 700, color: p.healthy ? 'var(--success)' : 'var(--danger)' }}>{p.status}</span>
-              <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{fmt(used)} / {fmt(total)}</span>
-            </div>
-            <Bar pct={pct(used, total)} />
-            <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 3 }}>
-              {p.topology?.data?.[0]?.type && `RAID: ${p.topology.data[0].type}`}
-              {p.autotrim?.value === 'on' && ' · AutoTRIM'}
-            </div>
-          </div>
-        );
-      })}
-
-      {/* ── Pools ── */}
-      {tab === 'pools' && pools.map(p => (
-        <div key={p.name} style={{ background: 'var(--bg3)', borderRadius: 8, padding: '10px 12px', marginBottom: 8,
-          border: `1px solid ${p.healthy ? 'var(--success)33' : 'var(--danger)33'}` }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-            <span style={{ fontWeight: 700, fontSize: 12 }}>{p.name}</span>
-            <span style={{ fontSize: 10, color: p.healthy ? 'var(--success)' : 'var(--danger)', fontWeight: 700 }}>{p.status}</span>
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3px 10px', fontSize: 10, marginBottom: 6 }}>
-            {[['Used', fmt(p.allocated||0)],['Free', fmt(p.free||0)],
-              ['Total', fmt(p.size||0)],['Fragmentation', (p.fragmentation??'—')+'%'],
-              ['Dedup', p.dedup?.value??'—'],['Compress ratio', p.compress_ratio?.value??'—']
-            ].map(([k,v]) => [
-              <span key={k+'k'} style={{ color: 'var(--text4)' }}>{k}</span>,
-              <span key={k+'v'}>{v}</span>
-            ])}
-          </div>
-          <Bar pct={pct(p.allocated, p.size)} />
-          {(p.topology?.data||[]).map((vdev, vi) => (
-            <div key={vi} style={{ marginTop: 6, fontSize: 9, color: 'var(--text3)' }}>
-              <span style={{ fontWeight: 700, color: 'var(--text2)' }}>{vdev.type||'DISK'}</span>
-              {(vdev.children||[]).map((c,ci) => (
-                <span key={ci} style={{ marginLeft: 6, color: c.stats?.state==='ONLINE'?'var(--success)':'var(--danger)' }}>
-                  {c.disk||c.name}
-                </span>
-              ))}
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {/* ── Disks ── */}
-      {tab === 'disks' && (
-        <div>
-          {disks.length === 0 && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No disk data</div>}
-          {disks.map((d, i) => (
-            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
-              <span style={{ fontWeight: 700, color: 'var(--text)', minWidth: 40 }}>{d.name}</span>
-              <span style={{ color: 'var(--text3)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{d.model||'—'}</span>
-              <span style={{ color: 'var(--text4)', minWidth: 42, textAlign: 'right' }}>{fmt(d.size)}</span>
-              <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3, background: 'var(--bg3)', color: 'var(--text4)' }}>{d.type||'—'}</span>
-              {d.temp != null && (
-                <span style={{ fontSize: 9, color: d.temp > 50 ? 'var(--danger)' : d.temp > 40 ? '#f59e0b' : 'var(--success)', minWidth: 32, textAlign: 'right' }}>
-                  {d.temp}°C
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Datasets ── */}
-      {tab === 'datasets' && (
-        <div>
-          {datasets.length === 0 && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No dataset data</div>}
-          {datasets.map((d, i) => (
-            <div key={i} style={{ padding: '5px 8px', borderBottom: '1px solid var(--border2)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, marginBottom: 2 }}>
-                <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{d.id}</span>
-                <span style={{ color: 'var(--text4)', flexShrink: 0, marginLeft: 6 }}>{fmt(d.used)} / {fmt(d.used + d.available)}</span>
-              </div>
-              <Bar pct={pct(d.used, d.used + d.available)} />
-              <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
-                {d.compression && <span style={{ fontSize: 8, color: 'var(--text4)' }}>comp:{d.compression}</span>}
-                {d.encrypted   && <span style={{ fontSize: 8, color: 'var(--accent)' }}>🔒 enc</span>}
-                {d.mountpoint  && <span style={{ fontSize: 8, color: 'var(--text4)' }}>{d.mountpoint}</span>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Network ── */}
-      {tab === 'network' && (
-        <div>
-          {ifaces.length === 0 && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No interface data</div>}
-          {ifaces.map((iface, i) => (
-            <div key={i} style={{ padding: '6px 8px', borderBottom: '1px solid var(--border2)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: iface.up ? 'var(--success)' : 'var(--danger)', flexShrink: 0 }} />
-                <span style={{ fontWeight: 700, fontSize: 11 }}>{iface.name}</span>
-                <span style={{ fontSize: 9, color: 'var(--text4)' }}>{iface.type}</span>
-                {iface.speed && <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{iface.speed >= 1000 ? iface.speed/1000+'G' : iface.speed+'M'}</span>}
-              </div>
-              {iface.aliases.map((a, ai) => (
-                <div key={ai} style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 14 }}>{a}</div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── VMs ── */}
-      {tab === 'vms' && vms.map((v, i) => (
-        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
-          <span style={{ width: 7, height: 7, borderRadius: '50%', background: v.status === 'RUNNING' ? 'var(--success)' : 'var(--text4)', flexShrink: 0 }} />
-          <span style={{ fontWeight: 600, flex: 1 }}>{v.name}</span>
-          <span style={{ color: 'var(--text4)' }}>{v.vcpus} vCPU</span>
-          <span style={{ color: 'var(--text4)' }}>{gb(v.memory * 1024 * 1024)}</span>
-          <span style={{ fontSize: 9, color: v.status === 'RUNNING' ? 'var(--success)' : 'var(--text4)' }}>{v.status}</span>
-        </div>
-      ))}
-
-      {/* ── Tasks (Replication + Cloud Sync) ── */}
-      {tab === 'tasks' && (
-        <div>
-          {replication.length > 0 && (
-            <div style={{ fontSize: 9, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1, marginBottom: 4 }}>REPLICATION</div>
-          )}
-          {replication.map((t, i) => {
-            const ok = t.state === 'FINISHED';
-            const running = t.state === 'RUNNING';
-            const failed  = t.state === 'ERROR' || t.state === 'FAILED';
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                  background: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : running ? 'var(--accent)' : failed ? 'var(--danger)' : 'var(--text4)' }} />
-                <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-                <span style={{ fontSize: 9, color: 'var(--text4)' }}>{t.direction}</span>
-                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                  background: !t.enabled ? 'var(--bg3)' : ok ? 'var(--success)22' : failed ? 'var(--danger)22' : 'var(--bg3)',
-                  color: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : failed ? 'var(--danger)' : 'var(--text3)' }}>
-                  {!t.enabled ? 'disabled' : t.state || '—'}
-                </span>
-              </div>
-            );
-          })}
-          {cloudsync.length > 0 && (
-            <div style={{ fontSize: 9, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1, margin: '8px 0 4px' }}>CLOUD SYNC</div>
-          )}
-          {cloudsync.map((t, i) => {
-            const ok = t.state === 'SUCCESS' || t.state === 'FINISHED';
-            const failed = t.state === 'FAILED' || t.state === 'ERROR';
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 8px', borderBottom: '1px solid var(--border2)', fontSize: 10 }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                  background: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : failed ? 'var(--danger)' : 'var(--text4)' }} />
-                <span style={{ fontWeight: 600, flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{t.name}</span>
-                <span style={{ fontSize: 9, color: 'var(--text4)' }}>{t.provider}</span>
-                <span style={{ fontSize: 9, padding: '1px 5px', borderRadius: 3,
-                  background: !t.enabled ? 'var(--bg3)' : ok ? 'var(--success)22' : failed ? 'var(--danger)22' : 'var(--bg3)',
-                  color: !t.enabled ? 'var(--text4)' : ok ? 'var(--success)' : failed ? 'var(--danger)' : 'var(--text3)' }}>
-                  {!t.enabled ? 'disabled' : t.state || '—'}
-                </span>
-              </div>
-            );
-          })}
-          {!hasTasks && <div style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>No tasks configured</div>}
-        </div>
-      )}
     </div>
   );
 }
