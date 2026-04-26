@@ -1,7 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.40.2",date:"Apr 2026",items:[
+  {v:"v5.40.3",date:"Apr 2026",items:[
+    "Fix: Build error -- IntegrationPanel load sub-label had invalid JS ternary (load1?:'—' -- missing consequence)",
+    "Fix: Build error -- NodeCanvas keyboard shortcut span had duplicate title attribute",
+  ]},
+    {v:"v5.40.2",date:"Apr 2026",items:[
     "Fix: TrueNAS RAM showing 57502% -- was dividing ZFS storage allocated by physmem (total wrong units) -- RAM column now shows total RAM only (TrueNAS API does not expose RAM used over REST)",
   ]},
     {v:"v5.40.1",date:"Apr 2026",items:[

@@ -3279,8 +3279,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               data-tut="find" title="Find in map (Ctrl+F)">🔍</button>
 
             {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View\nF2  Rename\nN  Note\nV  History\nC  Connect\nG  Group\nSpace  Quick capture"}
-              style={{fontSize:12,color:"var(--text4)",cursor:"help",padding:"0 4px",lineHeight:1}}
-              title="Keyboard shortcuts">⌨</span>}
+              style={{fontSize:12,color:"var(--text4)",cursor:"help",padding:"0 4px",lineHeight:1}}>⌨</span>}
 
             <button onClick={()=>setShowHelp(true)} style={tbtn(false)} title="Help & Documentation">❓</button>
             <button onClick={()=>setShowTutorial(true)} style={tbtn(false,"var(--accent)")} title="Interactive Tutorial">🎓</button>

@@ -307,7 +307,7 @@ function TrueNASMetrics({ data }) {
               <span style={{fontSize:10,fontWeight:700,color:loadPct>=90?'#f44336':loadPct>=75?'#ff9800':'var(--text)'}}>{loadPct}%</span>
             </div>
             <MiniBar v={loadPct} h={5}/>
-            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{load1?:'—'}</div>
+            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{load1 ? `${load1} / ${load5} / ${load15}` : '—'}</div>
           </div>
           {/* RAM — API only gives total, no used */}
           <div>
