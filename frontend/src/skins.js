@@ -715,7 +715,39 @@ body.skin-neumorphic .nn-map-list-row {
   transition: box-shadow .15s ease !important;
 }
 body.skin-neumorphic .nn-map-list-row:hover { box-shadow: var(--nSsm) !important; }
-body.skin-neumorphic .nn-card-actions button { box-shadow: none !important; background: transparent !important; }
+/* ── Q2. MAP CARD ACTIONS — show on hover, neumorphic raised ── */
+body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
+body.skin-neumorphic .nn-card-actions{position:relative;z-index:2}
+body.skin-neumorphic .nn-card-actions button{
+  background:var(--bg)!important;
+  box-shadow:var(--nSxs)!important;
+  border-radius:var(--nRsm)!important;
+  color:var(--text2)!important;
+  border:none!important;
+  transition:box-shadow .12s ease,transform .1s ease!important;
+}
+body.skin-neumorphic .nn-card-actions button:hover{
+  box-shadow:var(--nSsm)!important;
+  color:var(--text)!important;
+  transform:translateY(-1px)!important;
+}
+body.skin-neumorphic .nn-card-actions button:active{
+  box-shadow:var(--nIxs)!important;
+  transform:translateY(0)!important;
+}
+/* List row action buttons always visible, same style */
+body.skin-neumorphic .nn-map-list-row button{
+  background:var(--bg)!important;
+  box-shadow:var(--nSxs)!important;
+  border-radius:var(--nRxs)!important;
+  color:var(--text2)!important;
+  border:none!important;
+}
+body.skin-neumorphic .nn-map-list-row button:hover{
+  box-shadow:var(--nSsm)!important;
+  color:var(--text)!important;
+  transform:translateY(-1px)!important;
+}
 
 /* ── R. LOGIN PAGE ───────────────────────────────────────────── */
 /* Login card */

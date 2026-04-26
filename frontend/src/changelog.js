@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.41.9",date:"Apr 2026",items:[
+    "Fix: Neumorphic dashboard card hover action buttons (✎ Customize, ⋮ Options) were invisible -- missing .nn-map-card:hover .nn-card-actions{opacity:1} rule that every other skin had",
+    "Fix: Neumorphic card action buttons now fully styled -- raised (nSxs) default, more raised (nSsm) on hover, inset on active",
+    "Fix: List row action buttons also get neumorphic raised styling",
+  ]},
   {v:"v5.41.8",date:"Apr 2026",items:["Fix: skins.js missing closing },  after neumorphic block caused build failure (Unexpected identifier sakura)"]},
   {v:"v5.41.7",date:"Apr 2026",items:[
     "Neumorphic: Full production rewrite — 26 sections (A-Z) covering 100% of UI",
