@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.42.0",date:"Apr 2026",items:[
+    "Fix: Canvas dotted grid missing across ALL skins -- root cause: --canvas-bg CSS variable was never defined anywhere (not in ThemeContext, skins, or global CSS); when an undefined var() appears in a CSS background shorthand, the ENTIRE background property (including the radial-gradient) becomes invalid per CSS spec -- dots silently disappeared",
+    "Fix: NodeCanvas.jsx and MobileCanvas.jsx -- replaced var(--canvas-bg) with var(--bg) which is always defined by every theme",
+  ]},
   {v:"v5.41.9",date:"Apr 2026",items:[
     "Fix: Neumorphic dashboard card hover action buttons (✎ Customize, ⋮ Options) were invisible -- missing .nn-map-card:hover .nn-card-actions{opacity:1} rule that every other skin had",
     "Fix: Neumorphic card action buttons now fully styled -- raised (nSxs) default, more raised (nSsm) on hover, inset on active",

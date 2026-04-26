@@ -378,7 +378,7 @@ export default function MobileCanvas({ mapId, onBack }) {
       {/* ─── CANVAS ────────────────────────────────────────── */}
       <div ref={canvasRef}
         style={{flex:1,position:"relative",overflow:"hidden",
-          background:"radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--canvas-bg)"}}
+          background:"radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--bg)"}}
         onPointerDown={onCvDown} onPointerMove={onCvMove}
         onPointerUp={onCvUp} onPointerCancel={onCvUp}>
 

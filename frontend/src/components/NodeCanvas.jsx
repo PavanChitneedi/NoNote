@@ -2442,7 +2442,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // Build inline canvas background style (overrides CSS vars when a canvas theme is set)
   const canvasBgStyle = canvasBg
     ? `radial-gradient(circle,${canvasDot} 1px,transparent 1px) center/28px 28px ${canvasBg}`
-    : "radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--canvas-bg)";
+    : "radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--bg)";
 
   // ── Search hit IDs for canvas highlight ──────────────────────
   const searchHitIds = useMemo(()=>new Set(searchResults.map(r=>r.node.id)),[searchResults]);
