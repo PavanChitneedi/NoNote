@@ -1,7 +1,17 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.41.5",date:"Apr 2026",items:[
+  {v:"v5.41.6",date:"Apr 2026",items:[
+    "Neumorphic: Toolbar buttons are now FLAT inside the trough — zero individual shadow inside toolbar rows",
+    "Neumorphic: Active mode buttons (Edit/Select) shown via inset shadow + tinted text color — no color fill",
+    "Neumorphic: Two toolbar rows form ONE seamless trough (row1 top-inset, row2 bottom-inset, no mid seam)",
+    "Neumorphic: Button radius reduced from 12px to 8px — no more pill shapes on short text buttons",
+    "Neumorphic: All button text uses var(--text2) — fully readable in all themes",
+    "Neumorphic: App topbar icon buttons are flat with hover reveal only",
+    "Neumorphic: Disabled buttons at 45% opacity",
+    "Neumorphic: Rebuilt from clean base — no duplicate skin entries",
+  ]},
+    {v:"v5.41.5",date:"Apr 2026",items:[
     "Neumorphic: Complete visual reset -- too-heavy shadows caused clutter; everything is now subtle and calm",
     "Neumorphic: Button shadow reduced from 8px to 3px -- barely lifted, not fighting for attention",
     "Neumorphic: Active buttons (Edit/Select/Connect) pressed-in with inset shadow + tinted text color, no color fill",
