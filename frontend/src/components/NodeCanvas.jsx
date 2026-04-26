@@ -3945,13 +3945,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         )}
 
         {showChat&&(
-          <div style={{width:320,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
-            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
-              <span style={{fontSize:13}}>💬</span>
-              <span style={{fontSize:11,fontWeight:700,color:"#6C63FF",flex:1}}>AI CHAT</span>
-              <button onClick={()=>setShowChat(false)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
-            </div>
-            <LLMChat nodes={nodes} edges={edges} mapTitle={mapMeta?.title}/>
+          <div style={{width:440,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
+            <LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onClose={()=>setShowChat(false)}/>
           </div>
         )}
 

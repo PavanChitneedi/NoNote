@@ -1,7 +1,20 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.41.0",date:"Apr 2026",items:[
+  {v:"v5.41.1",date:"Apr 2026",items:[
+    "AI Chat: Complete redesign -- no more broken sidebar layout inside 320px panel",
+    "AI Chat: Sidebar replaced with horizontal scrollable conversation pills (compact, works at any width)",
+    "AI Chat: Panel widened to 440px in NodeCanvas",
+    "AI Chat: mapId now correctly passed -- conversations were never loading before",
+    "AI Chat: Full CSS variable compliance -- bg, text, border, accent, radius, font-ui all use vars",
+    "AI Chat: Header shows active conversation title and provider/model info",
+    "AI Chat: Input focused state uses var(--accent) border",
+    "AI Chat: Suggested prompts now vertical list (fits narrow layout better)",
+    "AI Chat: Context badge moved to input area showing nodes/edges count",
+    "AI Chat: Typing indicator uses llmPulse animation with CSS var accent color",
+    "AI Chat: MessageBubble uses var(--radius-md/xs) and CSS var colors throughout",
+  ]},
+    {v:"v5.41.0",date:"Apr 2026",items:[
     "TrueNAS: WebSocket bridge (DDP + JSON-RPC 2.0) fetches realtime CPU% and RAM used/total -- fixes RAM N/A and improves CPU accuracy",
     "TrueNAS: CPU temperature shown in header bar when available from WS realtime data",
     "TrueNAS: RAM bar now shows live used/total with % when WS connects; falls back to physmem total gracefully",

@@ -10,35 +10,38 @@ const PROVIDER_ICONS = {
   groq: "⚡", mistral: "🌀", ollama: "🦙", custom: "🔧",
 };
 
+const SUGGESTED = [
+  "Review this architecture for security issues",
+  "What components am I missing?",
+  "How does data flow through this system?",
+  "Suggest scalability improvements",
+  "Generate documentation for this map",
+];
+
 export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
-  const [providers, setProviders]       = useState([]);
+  const [providers, setProviders]         = useState([]);
   const [conversations, setConversations] = useState([]);
-  const [activeConvId, setActiveConvId] = useState(null);
-  const [messages, setMessages]         = useState([]);
-  const [input, setInput]               = useState("");
-  const [sending, setSending]           = useState(false);
-  const [loading, setLoading]           = useState(true);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showSidebar, setShowSidebar]   = useState(true);
-  const [error, setError]               = useState("");
+  const [activeConvId, setActiveConvId]   = useState(null);
+  const [messages, setMessages]           = useState([]);
+  const [input, setInput]                 = useState("");
+  const [sending, setSending]             = useState(false);
+  const [loading, setLoading]             = useState(true);
+  const [showSettings, setShowSettings]   = useState(false);
+  const [error, setError]                 = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
+  const convListRef    = useRef(null);
 
-  // Load providers + conversations on mount
   useEffect(() => {
-    Promise.all([
-      getLLMProviders(),
-      getConversations(mapId),
-    ])
+    if (!mapId) return;
+    Promise.all([getLLMProviders(), getConversations(mapId)])
       .then(([pData, cData]) => {
-        setProviders(pData.providers);
-        setConversations(cData.conversations);
-        const def = pData.providers.find(p => p.is_default) || pData.providers[0];
+        setProviders(pData.providers || []);
+        setConversations(cData.conversations || []);
+        const def = (pData.providers || []).find(p => p.is_default) || (pData.providers || [])[0];
         if (def) setSelectedProvider(def.id);
-        if (cData.conversations.length > 0) {
-          openConversation(cData.conversations[0].id);
-        }
+        if ((cData.conversations || []).length > 0) openConversation(cData.conversations[0].id);
       })
       .catch(e => setError(e.message))
       .finally(() => setLoading(false));
@@ -53,10 +56,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     setMessages([]);
     try {
       const d = await getMessages(id);
-      setMessages(d.messages);
-    } catch (e) {
-      setError(e.message);
-    }
+      setMessages(d.messages || []);
+    } catch (e) { setError(e.message); }
   };
 
   const startNewChat = async () => {
@@ -67,9 +68,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
       setConversations(cs => [d.conversation, ...cs]);
       setActiveConvId(d.conversation.id);
       setMessages([]);
-    } catch (e) {
-      setError(e.message);
-    }
+      setTimeout(() => convListRef.current?.scrollTo({ left: 0, behavior: "smooth" }), 50);
+    } catch (e) { setError(e.message); }
   };
 
   const handleSend = async () => {
@@ -78,34 +78,26 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     setInput("");
     setSending(true);
     setError("");
+    if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
 
-    // Optimistic append
     const tempId = `temp_${Date.now()}`;
     setMessages(ms => [...ms, { id: tempId, role: "user", content: userMsg, created_at: new Date().toISOString() }]);
 
     try {
-      // Build canvas context for system prompt
       const canvasContext = {
         mapTitle,
-        nodes: nodes.map(n => ({
-          id: n.id, type: n.type, title: n.title,
-          properties: n.properties, notes: n.notes,
-        })),
+        nodes: nodes.map(n => ({ id: n.id, type: n.type, title: n.title, properties: n.properties, notes: n.notes })),
         edges: edges.map(e => ({ id: e.id, from: e.from, to: e.to, label: e.label, style: e.style })),
       };
-
       const d = await sendMessage(activeConvId, { message: userMsg, canvas_context: canvasContext });
-
       setMessages(ms => [
         ...ms.filter(m => m.id !== tempId),
-        { id: `u_${Date.now()}`, role: "user",      content: userMsg, created_at: new Date().toISOString() },
-        { id: `a_${Date.now()}`, role: "assistant", content: d.content, tokens_used: d.tokens, created_at: new Date().toISOString() },
+        { id: `u_${Date.now()}`,   role: "user",      content: userMsg,    created_at: new Date().toISOString() },
+        { id: `a_${Date.now()}`,   role: "assistant", content: d.content,  tokens_used: d.tokens, created_at: new Date().toISOString() },
       ]);
-
-      // Update conversation title in sidebar
       setConversations(cs => cs.map(c =>
         c.id === activeConvId && c.title === "New Chat"
-          ? { ...c, title: userMsg.slice(0, 50), updated_at: new Date().toISOString() }
+          ? { ...c, title: userMsg.slice(0, 48), updated_at: new Date().toISOString() }
           : c
       ));
     } catch (e) {
@@ -129,203 +121,219 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   };
 
   const activeConv = conversations.find(c => c.id === activeConvId);
-  const isMobile = window.innerWidth < 768;
+
+  // ── Shared styles using CSS vars ──────────────────────────────
+  const iconBtn = {
+    background: "none", border: "none", color: "var(--text4)", cursor: "pointer",
+    fontSize: 16, lineHeight: 1, padding: "4px 6px", borderRadius: "var(--radius-sm)",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    transition: "color .15s, background .15s",
+  };
 
   return (
     <>
-      <div style={{
-        width: 360, height: "100%",
-        display: "flex", background: "var(--bg)",
-        borderLeft: "1px solid var(--border)",
-        flexShrink: 0, overflow: "hidden",
-      }}>
-        {/* Sidebar */}
-        {(showSidebar || !isMobile) && (
-          <div style={{
-            width: isMobile ? "100%" : 240,
-            background: "var(--bg2)",
-            borderRight: "1px solid var(--border)",
-            display: "flex", flexDirection: "column",
-            flexShrink: 0,
-            ...(isMobile ? { position: "absolute", inset: 0, zIndex: 10 } : {}),
-          }}>
-            {/* Sidebar header */}
-            <div style={{ padding: "8px 14px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 8 }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: "var(--accent)", flex: 1, letterSpacing: 0.5 }}>CONVERSATIONS</span>
-              <button onClick={() => setShowSettings(true)} title="Manage providers"
-                style={{ background: "none", border: "none", color: "var(--text4)", cursor: "pointer", fontSize: 14 }}>⚙</button>
-            </div>
+      <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }}>
 
-            {/* Provider selector */}
-            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border)" }}>
-              <div style={{ fontSize: 9, color: "var(--text4)", fontWeight: 700, letterSpacing: 2, marginBottom: 5 }}>PROVIDER</div>
-              {providers.length === 0 ? (
-                <button onClick={() => setShowSettings(true)}
-                  style={{ width: "100%", padding: "8px 10px", background: "var(--accent2)22", border: "1px dashed var(--accent2)", borderRadius: 7, color: "var(--accent)", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}>
-                  + Add a provider
-                </button>
-              ) : (
-                <select
-                  value={selectedProvider}
-                  onChange={e => setSelectedProvider(e.target.value)}
-                  style={{ width: "100%", background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 7, padding: "7px 9px", color: "var(--text)", fontSize: 11, fontFamily: "inherit", outline: "none" }}
-                >
-                  {providers.map(p => (
-                    <option key={p.id} value={p.id}>
-                      {PROVIDER_ICONS[p.provider] || "🔌"} {p.name} ({p.model})
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button onClick={startNewChat} disabled={!selectedProvider}
-                style={{ marginTop: 8, width: "100%", padding: "7px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)", border: "none", borderRadius: 7, color: selectedProvider ? "#fff" : "var(--text4)", fontSize: 10, fontWeight: 700, letterSpacing: 1, cursor: selectedProvider ? "pointer" : "default", fontFamily: "inherit" }}>
-                + NEW CHAT
-              </button>
-            </div>
-
-            {/* Conversation list */}
-            <div style={{ flex: 1, overflow: "auto" }}>
-              {conversations.length === 0 ? (
-                <div style={{ padding: "20px 14px", fontSize: 11, color: "var(--text4)", textAlign: "center", lineHeight: 1.7 }}>
-                  Start a chat to discuss<br/>your architecture with AI
-                </div>
-              ) : conversations.map(c => (
-                <div key={c.id}
-                  onClick={() => { openConversation(c.id); if (isMobile) setShowSidebar(false); }}
-                  style={{
-                    padding: "10px 14px", cursor: "pointer",
-                    background: activeConvId === c.id ? "var(--accent2)15" : "transparent",
-                    borderLeft: `3px solid ${activeConvId === c.id ? "var(--accent2)" : "transparent"}`,
-                    transition: "all 0.12s",
-                    display: "flex", alignItems: "flex-start", gap: 8,
-                  }}
-                  onMouseEnter={e => { if (activeConvId !== c.id) e.currentTarget.style.background = "var(--bg3)"; }}
-                  onMouseLeave={e => { if (activeConvId !== c.id) e.currentTarget.style.background = "transparent"; }}
-                >
-                  <span style={{ fontSize: 13, flexShrink: 0, marginTop: 1 }}>{PROVIDER_ICONS[c.provider] || "💬"}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 11, color: "var(--text2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: activeConvId === c.id ? 700 : 400 }}>
-                      {c.title}
-                    </div>
-                    <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 2 }}>
-                      {c.provider_name} · {new Date(c.updated_at).toLocaleDateString()}
-                    </div>
-                  </div>
-                  <button onClick={e => handleDeleteConv(c.id, e)}
-                    style={{ background: "none", border: "none", color: "var(--text4)", cursor: "pointer", fontSize: 14, flexShrink: 0, padding: "0 2px" }}
-                    onMouseEnter={e => e.currentTarget.style.color = "var(--danger)"}
-                    onMouseLeave={e => e.currentTarget.style.color = "var(--text4)"}
-                  >×</button>
-                </div>
-              ))}
-            </div>
-
-            {/* Canvas context badge */}
-            <div style={{ padding: "10px 14px", borderTop: "1px solid var(--border)", fontSize: 9, color: "var(--text4)", lineHeight: 1.6 }}>
-              📌 Canvas context: {nodes.length} nodes, {edges.length} connections
-            </div>
-          </div>
-        )}
-
-        {/* Main chat area */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
-          {/* Chat header */}
-          <div style={{ height: 48, background: "var(--bg2)", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 10, padding: "0 16px", flexShrink: 0 }}>
-            {isMobile && (
-              <button onClick={() => setShowSidebar(true)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 18 }}>☰</button>
-            )}
-            <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {activeConv ? activeConv.title : "Select or start a chat"}
+        {/* ── Header ── */}
+        <div style={{
+          display: "flex", alignItems: "center", gap: 8,
+          padding: "0 14px", height: 44, flexShrink: 0,
+          background: "var(--bg3)", borderBottom: "1px solid var(--border2)",
+        }}>
+          <span style={{ fontSize: 11, fontWeight: 800, color: "var(--accent)", letterSpacing: 1, flex: 1,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {activeConv ? activeConv.title : "AI CHAT"}
+          </span>
+          {activeConv && (
+            <span style={{ fontSize: 9, color: "var(--text4)", flexShrink: 0 }}>
+              {PROVIDER_ICONS[activeConv.provider]} {activeConv.model}
             </span>
-            {activeConv && (
-              <span style={{ fontSize: 9, color: "var(--text4)" }}>
-                {PROVIDER_ICONS[activeConv.provider]} {activeConv.provider_name} · {activeConv.model}
-              </span>
+          )}
+          <button
+            onClick={() => setShowSettings(true)}
+            title="Manage providers"
+            style={iconBtn}
+            onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg)"; }}
+            onMouseLeave={e => { e.currentTarget.style.color = "var(--text4)"; e.currentTarget.style.background = "none"; }}
+          >⚙</button>
+          {onClose && (
+            <button onClick={onClose} title="Close" style={{ ...iconBtn, fontSize: 20 }}
+              onMouseEnter={e => { e.currentTarget.style.color = "var(--danger)"; }}
+              onMouseLeave={e => { e.currentTarget.style.color = "var(--text4)"; }}
+            >×</button>
+          )}
+        </div>
+
+        {/* ── Controls bar ── */}
+        <div style={{
+          padding: "8px 12px", borderBottom: "1px solid var(--border2)",
+          background: "var(--bg2)", flexShrink: 0, display: "flex", flexDirection: "column", gap: 7,
+        }}>
+          {/* Provider + New Chat */}
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            {providers.length === 0 ? (
+              <button onClick={() => setShowSettings(true)} style={{
+                flex: 1, padding: "7px 10px", background: "var(--accent2)11",
+                border: "1px dashed var(--accent2)", borderRadius: "var(--radius-sm)",
+                color: "var(--accent)", cursor: "pointer", fontSize: 11, fontFamily: "var(--font-ui)",
+              }}>+ Add LLM Provider</button>
+            ) : (
+              <select value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)} style={{
+                flex: 1, background: "var(--bg)", border: "1px solid var(--border)",
+                borderRadius: "var(--radius-sm)", padding: "6px 8px", color: "var(--text)",
+                fontSize: 11, fontFamily: "var(--font-ui)", outline: "none", cursor: "pointer",
+              }}>
+                {providers.map(p => (
+                  <option key={p.id} value={p.id}>
+                    {PROVIDER_ICONS[p.provider] || "🔌"} {p.name} · {p.model}
+                  </option>
+                ))}
+              </select>
             )}
-            {!isMobile && (
-              <button onClick={onClose} style={{ background: "none", border: "none", color: "var(--text4)", cursor: "pointer", fontSize: 20 }}>×</button>
-            )}
+            <button onClick={startNewChat} disabled={!selectedProvider} style={{
+              padding: "6px 12px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)",
+              border: "none", borderRadius: "var(--radius-sm)", color: selectedProvider ? "#fff" : "var(--text4)",
+              fontSize: 10, fontWeight: 700, letterSpacing: 0.5, cursor: selectedProvider ? "pointer" : "default",
+              fontFamily: "var(--font-ui)", flexShrink: 0, transition: "all .15s",
+            }}>+ NEW</button>
           </div>
 
-          {/* Messages */}
-          <div style={{ flex: 1, overflow: "auto", padding: "16px", display: "flex", flexDirection: "column", gap: 14 }}>
-            {error && (
-              <div style={{ background: "var(--danger)18", border: "1px solid #f7816640", borderRadius: 8, padding: "9px 12px", fontSize: 12, color: "var(--danger)" }}>{error}</div>
-            )}
+          {/* Conversation pills — horizontal scroll */}
+          {conversations.length > 0 && (
+            <div ref={convListRef} style={{
+              display: "flex", gap: 5, overflowX: "auto", paddingBottom: 1,
+              scrollbarWidth: "none", msOverflowStyle: "none",
+            }}>
+              {conversations.map(c => {
+                const active = c.id === activeConvId;
+                return (
+                  <div key={c.id}
+                    onClick={() => openConversation(c.id)}
+                    title={c.title}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
+                      padding: "3px 6px 3px 8px", borderRadius: 20, cursor: "pointer",
+                      fontSize: 10, fontFamily: "var(--font-ui)", fontWeight: active ? 700 : 400,
+                      background: active ? "var(--accent2)" : "var(--bg3)",
+                      color: active ? "#fff" : "var(--text3)",
+                      border: `1px solid ${active ? "var(--accent2)" : "var(--border)"}`,
+                      maxWidth: 150, transition: "all .12s",
+                    }}
+                  >
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {PROVIDER_ICONS[c.provider] || "💬"} {c.title}
+                    </span>
+                    <span
+                      onClick={e => handleDeleteConv(c.id, e)}
+                      style={{ color: active ? "#ffffff88" : "var(--text4)", fontSize: 14, lineHeight: 1, flexShrink: 0, cursor: "pointer" }}
+                    >×</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
-            {!activeConvId ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, color: "var(--text4)", textAlign: "center" }}>
-                <div style={{ fontSize: 48 }}>💬</div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: "var(--text3)" }}>Chat with your architecture</div>
-                <div style={{ fontSize: 12, maxWidth: 360, lineHeight: 1.7 }}>
-                  Select a provider and start a new chat. The AI will have full context of your <strong style={{ color: "var(--accent)" }}>{mapTitle}</strong> canvas — {nodes.length} nodes and {edges.length} connections.
+        {/* ── Messages area ── */}
+        <div style={{ flex: 1, overflowY: "auto", padding: "14px 12px", display: "flex", flexDirection: "column", gap: 12 }}>
+
+          {error && (
+            <div style={{
+              background: "var(--danger)18", border: "1px solid var(--danger)33",
+              borderRadius: "var(--radius-sm)", padding: "8px 12px", fontSize: 11, color: "var(--danger)",
+            }}>{error}</div>
+          )}
+
+          {!activeConvId ? (
+            /* Empty state */
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, textAlign: "center", padding: "0 8px" }}>
+              <div style={{ fontSize: 36 }}>💬</div>
+              <div>
+                <div style={{ fontSize: 13, fontWeight: 700, color: "var(--text)", marginBottom: 6 }}>Chat with your architecture</div>
+                <div style={{ fontSize: 11, color: "var(--text4)", lineHeight: 1.7, maxWidth: 300 }}>
+                  The AI will have full context of your <strong style={{ color: "var(--accent)" }}>{mapTitle || "canvas"}</strong> — {nodes.length} nodes and {edges.length} connections.
                 </div>
-                {providers.length === 0 && (
-                  <button onClick={() => setShowSettings(true)}
-                    style={{ padding: "10px 20px", background: "var(--accent2)", border: "none", borderRadius: 8, color: "#fff", fontSize: 11, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-                    + Add your first LLM provider
-                  </button>
-                )}
               </div>
-            ) : messages.length === 0 && !loading ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--text4)" }}>
-                <div style={{ fontSize: 32 }}>✨</div>
-                <div style={{ fontSize: 12, textAlign: "center", lineHeight: 1.7, maxWidth: 340 }}>
-                  New conversation started. Ask anything about your architecture — the AI knows your full canvas.
-                </div>
-                {/* Suggested prompts */}
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", marginTop: 8 }}>
-                  {[
-                    "Review this architecture for security issues",
-                    "What components am I missing?",
-                    "Explain how data flows through this system",
-                    "Suggest scalability improvements",
-                    "Generate documentation for this map",
-                  ].map(prompt => (
-                    <button key={prompt} onClick={() => { setInput(prompt); textareaRef.current?.focus(); }}
-                      style={{ padding: "6px 12px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: 20, color: "var(--text3)", cursor: "pointer", fontSize: 11, fontFamily: "inherit" }}
-                      onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                      onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text3)"; }}
-                    >
-                      {prompt}
-                    </button>
+              {providers.length === 0 ? (
+                <button onClick={() => setShowSettings(true)} style={{
+                  padding: "9px 18px", background: "var(--accent2)", border: "none",
+                  borderRadius: "var(--radius-md)", color: "#fff", fontSize: 11, fontWeight: 700,
+                  cursor: "pointer", fontFamily: "var(--font-ui)",
+                }}>+ Add your first LLM provider</button>
+              ) : (
+                <button onClick={startNewChat} disabled={!selectedProvider} style={{
+                  padding: "9px 18px", background: "var(--accent2)", border: "none",
+                  borderRadius: "var(--radius-md)", color: "#fff", fontSize: 11, fontWeight: 700,
+                  cursor: "pointer", fontFamily: "var(--font-ui)",
+                }}>Start a chat</button>
+              )}
+            </div>
+          ) : messages.length === 0 && !loading ? (
+            /* New conversation — suggested prompts */
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 28 }}>✨</div>
+              <div style={{ fontSize: 11, color: "var(--text4)", lineHeight: 1.7, maxWidth: 300 }}>
+                New conversation. Ask anything about your architecture.
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
+                {SUGGESTED.map(p => (
+                  <button key={p}
+                    onClick={() => { setInput(p); textareaRef.current?.focus(); }}
+                    style={{
+                      padding: "8px 12px", background: "var(--bg3)", border: "1px solid var(--border)",
+                      borderRadius: "var(--radius-sm)", color: "var(--text3)", cursor: "pointer",
+                      fontSize: 11, fontFamily: "var(--font-ui)", textAlign: "left",
+                      transition: "border-color .12s, color .12s",
+                    }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text3)"; }}
+                  >{p}</button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            messages.map(msg => <MessageBubble key={msg.id} message={msg} />)
+          )}
+
+          {/* Typing indicator */}
+          {sending && (
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start" }}>
+              <div style={{ width: 26, height: 26, borderRadius: "50%", background: "var(--accent)18", border: "1px solid var(--accent)33", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, flexShrink: 0 }}>🤖</div>
+              <div style={{ background: "var(--bg3)", borderRadius: "3px var(--radius-md) var(--radius-md) var(--radius-md)", padding: "10px 14px", border: "1px solid var(--border)" }}>
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  {[0, 0.18, 0.36].map(d => (
+                    <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", animation: `llmPulse 1.1s ${d}s infinite` }} />
                   ))}
                 </div>
               </div>
-            ) : (
-              messages.map(msg => <MessageBubble key={msg.id} message={msg} />)
-            )}
+            </div>
+          )}
+          <div ref={messagesEndRef} />
+        </div>
 
-            {sending && (
-              <div style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-                <div style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent)22", border: "1px solid #6C63FF40", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>🤖</div>
-                <div style={{ background: "var(--bg3)", borderRadius: "4px 12px 12px 12px", padding: "10px 14px" }}>
-                  <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
-                    {[0, 0.2, 0.4].map(d => (
-                      <div key={d} style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", animation: `pulse 1s ${d}s infinite` }} />
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div style={{ padding: "12px 16px", background: "var(--bg2)", borderTop: "1px solid var(--border)", display: "flex", gap: 10, alignItems: "flex-end" }}>
+        {/* ── Input ── */}
+        <div style={{
+          padding: "10px 12px 12px", background: "var(--bg2)",
+          borderTop: "1px solid var(--border2)", flexShrink: 0,
+        }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
             <textarea
               ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={!activeConvId || sending}
-              placeholder={activeConvId ? "Ask about your architecture… (Enter to send, Shift+Enter for newline)" : "Start a new chat first"}
+              placeholder={activeConvId ? "Ask about your architecture… (Enter ↵ to send)" : "Start a new chat first"}
               rows={1}
               style={{
-                flex: 1, background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 10,
-                padding: "10px 12px", color: "var(--text)", fontSize: 13, fontFamily: "inherit",
-                resize: "none", outline: "none", lineHeight: 1.5, maxHeight: 120, overflowY: "auto",
+                flex: 1, background: "var(--bg)", border: "1px solid var(--border)",
+                borderRadius: "var(--radius-md)", padding: "9px 12px",
+                color: "var(--text)", fontSize: 12, fontFamily: "var(--font-ui)",
+                resize: "none", outline: "none", lineHeight: 1.5,
+                maxHeight: 120, overflowY: "auto", transition: "border-color .15s",
               }}
+              onFocus={e => { e.target.style.borderColor = "var(--accent)"; }}
+              onBlur={e => { e.target.style.borderColor = "var(--border)"; }}
               onInput={e => {
                 e.target.style.height = "auto";
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
@@ -335,34 +343,37 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               onClick={handleSend}
               disabled={!activeConvId || !input.trim() || sending}
               style={{
-                width: 40, height: 40, borderRadius: 10, border: "none", flexShrink: 0,
+                width: 38, height: 38, borderRadius: "var(--radius-md)", border: "none", flexShrink: 0,
                 background: (activeConvId && input.trim() && !sending) ? "var(--accent2)" : "var(--bg3)",
                 color: (activeConvId && input.trim() && !sending) ? "#fff" : "var(--text4)",
                 cursor: (activeConvId && input.trim() && !sending) ? "pointer" : "default",
-                fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all 0.15s",
+                fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all .15s",
               }}
             >↑</button>
+          </div>
+          <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 5 }}>
+            📌 {nodes.length} nodes · {edges.length} connections in context · Shift+Enter for newline
           </div>
         </div>
       </div>
 
       {showSettings && (
-        <LLMSettings
-          onClose={() => {
-            setShowSettings(false);
-            // Reload providers
-            getLLMProviders().then(d => {
-              setProviders(d.providers);
-              if (!selectedProvider && d.providers.length > 0) {
-                setSelectedProvider(d.providers.find(p => p.is_default)?.id || d.providers[0].id);
-              }
-            }).catch(() => {});
-          }}
-        />
+        <LLMSettings onClose={() => {
+          setShowSettings(false);
+          getLLMProviders().then(d => {
+            setProviders(d.providers || []);
+            if (!selectedProvider && (d.providers || []).length > 0) {
+              setSelectedProvider((d.providers.find(p => p.is_default) || d.providers[0]).id);
+            }
+          }).catch(() => {});
+        }} />
       )}
 
-      <style>{`@keyframes pulse { 0%,100%{opacity:.2} 50%{opacity:1} }`}</style>
+      <style>{`
+        @keyframes llmPulse { 0%,100%{opacity:.2;transform:scale(.8)} 50%{opacity:1;transform:scale(1)} }
+        div[style*="overflowX: auto"]::-webkit-scrollbar { display: none; }
+      `}</style>
     </>
   );
 }
@@ -370,35 +381,37 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
 function MessageBubble({ message }) {
   const isUser = message.role === "user";
   return (
-    <div style={{ display: "flex", gap: 10, alignItems: "flex-start", flexDirection: isUser ? "row-reverse" : "row" }}>
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexDirection: isUser ? "row-reverse" : "row" }}>
+      {/* Avatar */}
       <div style={{
-        width: 28, height: 28, borderRadius: "50%", flexShrink: 0,
-        background: isUser ? "var(--accent2)22" : "var(--accent)22",
-        border: `1px solid ${isUser ? "var(--accent2)40" : "var(--accent)40"}`,
-        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13,
-      }}>
-        {isUser ? "👤" : "🤖"}
-      </div>
-      <div style={{ maxWidth: "75%", display: "flex", flexDirection: "column", gap: 4, alignItems: isUser ? "flex-end" : "flex-start" }}>
+        width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+        background: isUser ? "var(--accent2)22" : "var(--accent)18",
+        border: `1px solid ${isUser ? "var(--accent2)44" : "var(--accent)33"}`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
+      }}>{isUser ? "👤" : "🤖"}</div>
+
+      {/* Bubble */}
+      <div style={{ maxWidth: "82%", display: "flex", flexDirection: "column", gap: 3, alignItems: isUser ? "flex-end" : "flex-start" }}>
         <div style={{
-          background: isUser ? "var(--accent2)22" : "var(--bg3)",
-          border: `1px solid ${isUser ? "var(--accent2)30" : "var(--border)"}`,
-          borderRadius: isUser ? "var(--radius-md) var(--radius-xs) var(--radius-md) var(--radius-md)" : "var(--radius-xs) var(--radius-md) var(--radius-md) var(--radius-md)",
-          padding: "10px 14px", fontSize: 13, color: "var(--text)", lineHeight: 1.65,
-          whiteSpace: "pre-wrap", wordBreak: "break-word",
+          background: isUser ? "var(--accent2)18" : "var(--bg3)",
+          border: `1px solid ${isUser ? "var(--accent2)33" : "var(--border)"}`,
+          borderRadius: isUser
+            ? "var(--radius-md) 3px var(--radius-md) var(--radius-md)"
+            : "3px var(--radius-md) var(--radius-md) var(--radius-md)",
+          padding: "9px 13px", fontSize: 12, color: "var(--text)",
+          lineHeight: 1.65, wordBreak: "break-word",
         }}>
           <FormattedContent content={message.content} />
         </div>
-        <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 4 }}>
+        <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 2, paddingRight: 2 }}>
           {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          {message.tokens_used && ` · ${message.tokens_used} tokens`}
+          {message.tokens_used && ` · ${message.tokens_used} tok`}
         </div>
       </div>
     </div>
   );
 }
 
-// Simple markdown-ish renderer for code blocks and bold
 function FormattedContent({ content }) {
   if (!content) return null;
   const parts = content.split(/(```[\s\S]*?```|`[^`]+`|\*\*[^*]+\*\*)/g);
@@ -406,19 +419,22 @@ function FormattedContent({ content }) {
     <>
       {parts.map((part, i) => {
         if (part.startsWith("```") && part.endsWith("```")) {
-          const code = part.slice(3, -3).replace(/^[a-z]+\n/, "");
+          const inner = part.slice(3, -3);
+          const langMatch = inner.match(/^[a-z]+\n/);
+          const code = langMatch ? inner.slice(langMatch[0].length) : inner;
           return (
-            <pre key={i} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 6, padding: "10px 12px", fontSize: 11, overflowX: "auto", margin: "6px 0", fontFamily: "monospace", color: "var(--accent)" }}>
-              {code}
-            </pre>
+            <pre key={i} style={{
+              background: "var(--bg)", border: "1px solid var(--border2)",
+              borderRadius: "var(--radius-sm)", padding: "9px 11px", fontSize: 11,
+              overflowX: "auto", margin: "6px 0", fontFamily: "monospace",
+              color: "var(--accent)", lineHeight: 1.5,
+            }}>{code}</pre>
           );
         }
-        if (part.startsWith("`") && part.endsWith("`")) {
-          return <code key={i} style={{ background: "var(--bg)", border: "1px solid var(--border)", borderRadius: 4, padding: "1px 5px", fontSize: 11, color: "var(--accent)" }}>{part.slice(1, -1)}</code>;
-        }
-        if (part.startsWith("**") && part.endsWith("**")) {
-          return <strong key={i} style={{ color: "var(--text)" }}>{part.slice(2, -2)}</strong>;
-        }
+        if (part.startsWith("`") && part.endsWith("`"))
+          return <code key={i} style={{ background: "var(--bg)", border: "1px solid var(--border2)", borderRadius: "var(--radius-xs)", padding: "1px 5px", fontSize: 11, color: "var(--accent)", fontFamily: "monospace" }}>{part.slice(1, -1)}</code>;
+        if (part.startsWith("**") && part.endsWith("**"))
+          return <strong key={i} style={{ color: "var(--text)", fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
         return <span key={i}>{part}</span>;
       })}
     </>
