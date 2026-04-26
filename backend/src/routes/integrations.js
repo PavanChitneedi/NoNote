@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { authenticate } from '../middleware/auth.js';
 import https from 'https';
 import http from 'http';
+import { WebSocket } from 'ws';
 
 const router = Router();
 router.use(authenticate);
@@ -78,6 +79,114 @@ function go(url, opts = {}, timeout = 8000) {
   });
 }
 
+
+// ── TrueNAS WebSocket realtime bridge ────────────────────────
+// Tries DDP protocol (/websocket) then JSON-RPC 2.0 (/api/current)
+// Returns { cpuPct, cpuTemp, memUsed, memTotal } or null on failure
+function truenasRealtime(baseUrl, token) {
+  const toWs = u => u.replace(/^http/, u.startsWith('https') ? 'wss' : 'ws');
+  const base  = baseUrl.replace(/\/$/, '');
+  const paths = [`${toWs(base)}/websocket`, `${toWs(base)}/api/current`];
+
+  const tryPath = (wsUrl, isDDP) => new Promise(resolve => {
+    let done = false;
+    const finish = v => { if (!done) { done = true; try { ws.close(); } catch {} resolve(v); } };
+    const timer  = setTimeout(() => finish(null), 5000);
+
+    let ws;
+    try { ws = new WebSocket(wsUrl, { rejectUnauthorized: false }); }
+    catch { clearTimeout(timer); resolve(null); return; }
+
+    ws.on('error', () => { clearTimeout(timer); finish(null); });
+
+    const parse = raw => { try { return JSON.parse(raw.toString()); } catch { return null; } };
+
+    const extract = fields => {
+      if (!fields) return null;
+      const cpu  = fields.cpu;
+      const mem  = fields.memory?.physical || fields.memory;
+      return {
+        cpuPct:   cpu?.average?.percent != null ? Math.round(cpu.average.percent) : null,
+        cpuTemp:  cpu?.temperature?.average ?? cpu?.temperature ?? null,
+        memUsed:  mem?.used   ?? (mem?.total != null && mem?.available != null ? mem.total - mem.available : null),
+        memTotal: mem?.total  ?? null,
+        memFree:  mem?.free   ?? mem?.available ?? null,
+      };
+    };
+
+    if (isDDP) {
+      // Old DDP/Meteor protocol
+      ws.on('open', () => ws.send(JSON.stringify({ id: '1', msg: 'connect', version: '1', support: ['1'] })));
+      ws.on('message', raw => {
+        const m = parse(raw); if (!m) return;
+        if (m.msg === 'connected')
+          ws.send(JSON.stringify({ id: '2', msg: 'method', method: 'auth.login_with_api_key', params: [token] }));
+        else if (m.id === '2' && m.result != null)
+          ws.send(JSON.stringify({ id: '3', msg: 'sub', name: 'reporting.realtime', params: [] }));
+        else if (m.msg === 'added' && m.collection === 'reporting.realtime') {
+          clearTimeout(timer); finish(extract(m.fields));
+        } else if (m.id === '2' && m.error)
+          finish(null); // auth failed
+      });
+    } else {
+      // JSON-RPC 2.0 (SCALE 25.04+)
+      let authDone = false;
+      ws.on('open', () => ws.send(JSON.stringify({
+        jsonrpc: '2.0', method: 'auth.login_with_api_key', id: 1, params: [token]
+      })));
+      ws.on('message', raw => {
+        const m = parse(raw); if (!m) return;
+        if (!authDone && m.id === 1) {
+          if (m.error) return finish(null);
+          authDone = true;
+          ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'reporting.realtime', id: 2, params: [{ interval: 2 }] }));
+        } else if (authDone && (m.id === 2 || m.method === 'reporting.realtime')) {
+          const fields = m.result ?? m.params?.result ?? m.params;
+          const r = extract(fields);
+          if (r?.cpuPct != null || r?.memTotal != null) { clearTimeout(timer); finish(r); }
+        }
+      });
+    }
+  });
+
+  return (async () => {
+    for (let i = 0; i < paths.length; i++) {
+      const r = await tryPath(paths[i], i === 0);
+      if (r && (r.cpuPct != null || r.memTotal != null)) return r;
+    }
+    return null;
+  })();
+}
+
+// ── Proxmox SMART temperatures ────────────────────────────────
+// Returns { node: { diskPath: tempC } } across all nodes (best-effort, parallel)
+async function proxmoxDiskTemps(base, h, nodes) {
+  const result = {};
+  await Promise.all(nodes.map(async node => {
+    try {
+      const r = await go(`${base}/api2/json/nodes/${node}/disks/list`, { headers: h }, 6000);
+      if (!r.ok) return;
+      const list = (await r.json()).data || [];
+      const temps = {};
+      await Promise.all(list.slice(0, 8).map(async d => {
+        if (!d.devpath) return;
+        try {
+          const sr = await go(`${base}/api2/json/nodes/${node}/disks/smart?disk=${encodeURIComponent(d.devpath)}`, { headers: h }, 5000);
+          if (!sr.ok) return;
+          const smart = (await sr.json()).data || {};
+          // Temperature is in SMART attribute 190 or 194
+          const tempAttr = (smart.attributes || []).find(a => a.name === 'Temperature_Celsius' || a.id === 194 || a.id === 190);
+          if (tempAttr) temps[d.devpath] = parseInt(tempAttr.raw?.split(' ')[0] || tempAttr.value);
+          // Or direct field
+          else if (smart.temperature != null) temps[d.devpath] = smart.temperature;
+        } catch {}
+      }));
+      result[node] = temps;
+    } catch {}
+  }));
+  return result;
+}
+
 // ── Proxmox VE ───────────────────────────────────────────────
 router.post('/proxmox', async (req, res) => {
   const { url, token } = req.body;
@@ -92,7 +201,8 @@ router.post('/proxmox', async (req, res) => {
       go(`${base}/api2/json/version`, { headers: h }),
     ]);
     const [nJ, vJ] = await Promise.all([nR.json(), vR.json()]);
-    const details = await Promise.all((nJ.data || []).slice(0, 6).map(async n => {
+    const nodeList = (nJ.data || []).slice(0, 6);
+    const details = await Promise.all(nodeList.map(async n => {
       const [sR, vmR, lxR, stR] = await Promise.all([
         go(`${base}/api2/json/nodes/${n.node}/status`,  { headers: h }),
         go(`${base}/api2/json/nodes/${n.node}/qemu`,    { headers: h }),
@@ -100,9 +210,14 @@ router.post('/proxmox', async (req, res) => {
         go(`${base}/api2/json/nodes/${n.node}/storage`, { headers: h }),
       ]);
       const [s, vms, lxc, storage] = await Promise.all([sR.json(), vmR.json(), lxR.json(), stR.json()]);
-      return { node: n.node, online: n.status === 'online', status: s.data, vms: vms.data || [], lxc: lxc.data || [], storage: storage.data || [] };
+      // CPU temp from node status (available on some Proxmox installs)
+      const cpuTemp = s.data?.cputemp ?? null;
+      return { node: n.node, online: n.status === 'online', status: s.data, cpuTemp, vms: vms.data || [], lxc: lxc.data || [], storage: storage.data || [] };
     }));
-    res.json({ ok: true, version: vJ.data?.version, nodes: details });
+    // Disk temps via SMART (parallel, best-effort)
+    const diskTemps = await proxmoxDiskTemps(base, h, nodeList.map(n => n.node));
+    const nodesWithTemps = details.map(n => ({ ...n, diskTemps: diskTemps[n.node] || {} }));
+    res.json({ ok: true, version: vJ.data?.version, nodes: nodesWithTemps });
   } catch(e) { res.status(502).json({ error: e.message }); }
 });
 
@@ -156,11 +271,14 @@ router.post('/truenas', async (req, res) => {
       safe('/api/v2.0/smart/test/results?limit=10'), // recent SMART results
     ]);
 
-    // Batch 3: disk temperatures (requires disk names from batch 2)
+    // Batch 3: disk temps + WS realtime (run in parallel)
     const diskNames = (disks || []).map(d => d.name).filter(Boolean);
-    const diskTemps = diskNames.length > 0
-      ? await safePost('/api/v2.0/disk/temperature_agg', { names: diskNames, powermode: 'NEVER' })
-      : null;
+    const [diskTemps, realtime] = await Promise.all([
+      diskNames.length > 0
+        ? safePost('/api/v2.0/disk/temperature_agg', { names: diskNames, powermode: 'NEVER' })
+        : Promise.resolve(null),
+      truenasRealtime(base, token),
+    ]);
 
     // ── Process pools ──
     const poolList = pools || [];
@@ -261,6 +379,7 @@ router.post('/truenas', async (req, res) => {
 
     res.json({
       ok:          true,
+      realtime:    realtime || null,   // { cpuPct, cpuTemp, memUsed, memTotal } from WS
       info:        info || {},
       pools:       poolList,
       alerts:      (alerts || []).filter(a => a.level !== 'INFO'),
@@ -286,7 +405,7 @@ router.post('/unraid', async (req, res) => {
   if (!isValidToken(token)) return res.status(400).json({ error: 'Invalid token format' });
   if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
   const base = url.replace(/\/$/, '');
-  const gql = `{ info { os { platform version } } system { cpu { usage } memory { total free } } docker { containers { names status state cpu memory } } vms { domain { name state } } }`;
+  const gql = `{ info { os { platform version } } system { cpu { usage temp } memory { total free } disks { disk { name size temp status } } } docker { containers { names status state cpu memory } } vms { domain { name state } } }`;
   try {
     const r = await go(`${base}/graphql`, {
       method: 'POST',

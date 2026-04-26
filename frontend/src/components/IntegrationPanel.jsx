@@ -155,7 +155,7 @@ function ProxmoxMetrics({ data }) {
               {/* Metric bars */}
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
                 {[
-                  {label:`CPU · ${s.cpuinfo?.cores||'?'}c`,v:cpuPct,sub:`${cpuPct}%`},
+                  {label:`CPU · ${s.cpuinfo?.cores||'?'}c${n.cpuTemp!=null?` · ${Math.round(n.cpuTemp)}°C`:''}`,v:cpuPct,sub:`${cpuPct}%`},
                   {label:'RAM',v:memPct,sub:`${gb(s.memory?.used)} / ${gb(s.memory?.total)}`},
                   {label:'Root Disk',v:diskPct,sub:`${fmt(s.rootfs?.used)} / ${fmt(s.rootfs?.total)}`},
                 ].map(({label,v,sub})=>(
@@ -190,6 +190,21 @@ function ProxmoxMetrics({ data }) {
                     );
                   })}
                 </div>
+              </div>
+            )}
+            {/* Disk temps from SMART */}
+            {Object.keys(n.diskTemps||{}).length>0&&(
+              <div style={{background:'var(--bg3)',padding:'6px 14px',display:'flex',gap:4,flexWrap:'wrap',
+                borderLeft:`1px solid ${n.online?'var(--success)55':'var(--danger)55'}`,
+                borderRight:`1px solid ${n.online?'var(--success)55':'var(--danger)55'}`}}>
+                <span style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginRight:4}}>DISK TEMPS</span>
+                {Object.entries(n.diskTemps).map(([path,temp])=>(
+                  <span key={path} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
+                    background:'var(--bg)',border:'1px solid var(--border2)',
+                    color:temp>50?'#f44336':temp>40?'#ff9800':'var(--text4)'}}>
+                    {path.replace('/dev/','').split('/')[0]} {temp}°C
+                  </span>
+                ))}
               </div>
             )}
             {/* Guests */}
@@ -257,6 +272,7 @@ function TrueNASMetrics({ data }) {
   const smartAlerts = data.smartAlerts || [];
   const [filter, setFilter] = useState('disks');
 
+  const rt         = data.realtime || null;  // WS realtime: { cpuPct, cpuTemp, memUsed, memTotal }
   const uptimeSec  = info.uptime_seconds || info.uptimeSeconds;
   const healthy    = pools.length > 0 && pools.every(p => p.healthy);
   const cpuCores   = info.cores || 1;
@@ -265,6 +281,12 @@ function TrueNASMetrics({ data }) {
   const load5      = loadAvg[1] != null ? loadAvg[1].toFixed(2) : null;
   const load15     = loadAvg[2] != null ? loadAvg[2].toFixed(2) : null;
   const loadPct    = load1 != null ? Math.min(Math.round(loadAvg[0] / cpuCores * 100), 100) : 0;
+  // Prefer WS realtime over loadavg
+  const cpuPct     = rt?.cpuPct  ?? loadPct;
+  const cpuTemp    = rt?.cpuTemp ?? null;
+  const memUsed    = rt?.memUsed  ?? null;
+  const memTotal   = rt?.memTotal ?? info.physmem ?? null;
+  const memPct     = memUsed && memTotal ? pct(memUsed, memTotal) : null;
   const onlinePools = pools.filter(p => p.status === 'ONLINE').length;
   const runningVMs = vms.filter(v => v.status === 'RUNNING').length;
   const hasTasks   = replication.length > 0 || cloudsync.length > 0;
@@ -304,23 +326,27 @@ function TrueNASMetrics({ data }) {
           </span>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
-          {/* Load */}
+          {/* CPU */}
           <div>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-              <span style={{fontSize:9,color:'var(--text4)'}}>Load · {cpuCores}c</span>
-              <span style={{fontSize:10,fontWeight:700,color:loadPct>=90?'#f44336':loadPct>=75?'#ff9800':'var(--text)'}}>{loadPct}%</span>
+              <span style={{fontSize:9,color:'var(--text4)'}}>CPU · {cpuCores}c{cpuTemp!=null?` · ${Math.round(cpuTemp)}°C`:''}</span>
+              <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'#f44336':cpuPct>=75?'#ff9800':'var(--text)'}}>{cpuPct}%</span>
             </div>
-            <MiniBar v={loadPct} h={5}/>
-            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{load1 ? `${load1} / ${load5} / ${load15}` : '—'}</div>
+            <MiniBar v={cpuPct} h={5}/>
+            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{load1 ? `load ${load1} / ${load5} / ${load15}` : '—'}</div>
           </div>
-          {/* RAM — API only gives total, no used */}
+          {/* RAM */}
           <div>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
               <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
-              <span style={{fontSize:10,fontWeight:700,color:'var(--text)'}}>{info.physmem?fmt(info.physmem):'—'}</span>
+              <span style={{fontSize:10,fontWeight:700,color:memPct!=null?(memPct>=90?'#f44336':memPct>=75?'#ff9800':'var(--text)'):'var(--text4)'}}>
+                {memPct!=null?`${memPct}%`:memTotal?fmt(memTotal):'—'}
+              </span>
             </div>
-            <div style={{height:5,background:'var(--border2)',borderRadius:5}}/>
-            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>total · usage N/A</div>
+            {memPct!=null ? <MiniBar v={memPct} h={5}/> : <div style={{height:5,background:'var(--border2)',borderRadius:5}}/>}
+            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>
+              {memUsed&&memTotal ? `${fmt(memUsed)} / ${fmt(memTotal)}` : memTotal ? `${fmt(memTotal)} total` : 'N/A via WS'}
+            </div>
           </div>
           {/* Storage */}
           {(()=>{const v=pct(storage.totalAllocated,storage.totalSize);return(
@@ -557,26 +583,55 @@ function TrueNASMetrics({ data }) {
 }
 
 function UnraidMetrics({ data }) {
-  const sys = data.data?.system || {};
-  const mem = sys.memory || {};
-  const memPct = pct(mem.total - mem.free, mem.total);
-  const cpuPct = Math.round((sys.cpu?.usage || 0));
+  const sys        = data.data?.system || {};
+  const mem        = sys.memory        || {};
+  const cpuPct     = Math.round(sys.cpu?.usage || 0);
+  const cpuTemp    = sys.cpu?.temp     ?? null;
+  const memPct     = pct(mem.total - mem.free, mem.total);
   const containers = data.data?.docker?.containers || [];
+  const disks      = sys.disks?.disk   || [];
   return (
     <div>
-      <div style={{ display: 'flex', gap: 16, marginBottom: 8 }}>
-        <Stat label="CPU" value={`${cpuPct}%`} />
-        <Stat label="RAM" value={`${memPct}%`} sub={`${gb(mem.total - mem.free)} / ${gb(mem.total)}`} />
-        <Stat label="CONTAINERS" value={containers.length} />
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:8}}>
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+            <span style={{fontSize:9,color:'var(--text4)'}}>CPU{cpuTemp!=null?` · ${Math.round(cpuTemp)}°C`:''}</span>
+            <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'#f44336':cpuPct>=75?'#ff9800':'var(--text)'}}>{cpuPct}%</span>
+          </div>
+          <MiniBar v={cpuPct} h={5}/>
+        </div>
+        <div>
+          <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+            <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
+            <span style={{fontSize:10,fontWeight:700,color:memPct>=90?'#f44336':memPct>=75?'#ff9800':'var(--text)'}}>{memPct}%</span>
+          </div>
+          <MiniBar v={memPct} h={5}/>
+          <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{gb(mem.total-mem.free)} / {gb(mem.total)}</div>
+        </div>
+        <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignItems:'center'}}>
+          <span style={{fontSize:16,fontWeight:700,color:'var(--text)'}}>{containers.filter(c=>c.state==='running').length}</span>
+          <span style={{fontSize:9,color:'var(--text4)'}}>containers</span>
+        </div>
       </div>
-      <Bar pct={cpuPct} /><Bar pct={memPct} />
-      <div style={{ marginTop: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
-        {containers.slice(0, 10).map((c, i) => (
-          <span key={i} style={{ fontSize: 9, padding: '1px 6px', borderRadius: 3,
-            background: c.state === 'running' ? 'var(--success)22' : 'var(--bg)',
-            color: c.state === 'running' ? 'var(--success)' : 'var(--text4)',
-            border: '1px solid var(--border)' }}>
-            {(c.names || ['?'])[0].replace(/^\//, '')}
+      {/* Disk temps */}
+      {disks.length>0&&(
+        <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:8}}>
+          {disks.filter(d=>d.temp!=null).map((d,i)=>(
+            <span key={i} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
+              background:'var(--bg3)',border:'1px solid var(--border2)',
+              color:d.temp>50?'#f44336':d.temp>40?'#ff9800':'var(--text4)'}}>
+              {d.name} {d.temp}°C
+            </span>
+          ))}
+        </div>
+      )}
+      <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
+        {containers.slice(0,12).map((c,i)=>(
+          <span key={i} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
+            background:c.state==='running'?'var(--success)22':'var(--bg)',
+            color:c.state==='running'?'var(--success)':'var(--text4)',
+            border:'1px solid var(--border)'}}>
+            {(c.names||['?'])[0].replace(/^\//, '')}
           </span>
         ))}
       </div>

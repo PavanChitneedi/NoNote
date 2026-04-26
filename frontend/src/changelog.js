@@ -1,7 +1,17 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.40.4",date:"Apr 2026",items:[
+  {v:"v5.41.0",date:"Apr 2026",items:[
+    "TrueNAS: WebSocket bridge (DDP + JSON-RPC 2.0) fetches realtime CPU% and RAM used/total -- fixes RAM N/A and improves CPU accuracy",
+    "TrueNAS: CPU temperature shown in header bar when available from WS realtime data",
+    "TrueNAS: RAM bar now shows live used/total with % when WS connects; falls back to physmem total gracefully",
+    "Proxmox: CPU temperature shown in CPU bar label when available from node status",
+    "Proxmox: Disk temperatures fetched via SMART per-disk query, shown as strip between Storage and Guests",
+    "Unraid: GraphQL query updated to include cpu.temp and disks array with per-disk temperatures",
+    "Unraid: Redesigned to 3-column metric grid matching Proxmox/TrueNAS style",
+    "Unraid: Disk temp pills shown when temperature data is available",
+  ]},
+    {v:"v5.40.4",date:"Apr 2026",items:[
     "TrueNAS: Disk temperatures now fetched via POST disk/temperature_agg -- correct endpoint that returns actual temps per disk name",
     "TrueNAS: SCALE Apps (Docker-based, 24+) now shown in new Apps tab with running state, version, train",
     "TrueNAS: Boot pool health shown in alerts strip with fix hint if DEGRADED",
