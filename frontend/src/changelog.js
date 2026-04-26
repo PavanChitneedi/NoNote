@@ -1,7 +1,22 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.41.6",date:"Apr 2026",items:[
+  {v:"v5.41.7",date:"Apr 2026",items:[
+    "Neumorphic: Full production rewrite — 26 sections (A-Z) covering 100% of UI",
+    "Neumorphic: Centralized design token system — --nS, --nSsm, --nSxs, --nI, --nIsm, --nIxs, --nR, --nRsm, --nRxs",
+    "Neumorphic: Button state machine — raised(default), more-raised(hover), inset(active/selected), flat(disabled), tinted-inset(accent-active)",
+    "Neumorphic: Toolbar — flat buttons inside unified inset trough (no individual lift), active state = inset+tinted text",
+    "Neumorphic: Full page coverage — Login, Admin, Dashboard, ThemePicker, HelpGuide, Tutorial, LLMChat, IntegrationPanel, NodePopup, Modals, Dropdowns",
+    "Neumorphic: All dark themes (6) use boosted shadow values via data-theme selectors",
+    "Neumorphic: Inputs are inset wells with accessible focus ring",
+    "Neumorphic: Checkboxes/radios/ranges styled neumorphically",
+    "Neumorphic: Scrollbars match the material",
+    "Neumorphic: All borders erased globally (border-color: transparent), replaced by shadows",
+    "Neumorphic: bg2/bg3 backgrounds normalized to var(--bg) to maintain single-material look",
+    "Neumorphic: Card hover states use transform + shadow lift",
+    "Neumorphic: radius-btn reduced to 8px — no more pill-shaped toolbar buttons",
+  ]},
+    {v:"v5.41.6",date:"Apr 2026",items:[
     "Neumorphic: Toolbar buttons are now FLAT inside the trough — zero individual shadow inside toolbar rows",
     "Neumorphic: Active mode buttons (Edit/Select) shown via inset shadow + tinted text color — no color fill",
     "Neumorphic: Two toolbar rows form ONE seamless trough (row1 top-inset, row2 bottom-inset, no mid seam)",
