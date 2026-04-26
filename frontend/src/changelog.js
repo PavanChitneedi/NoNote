@@ -1,7 +1,18 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.40.3",date:"Apr 2026",items:[
+  {v:"v5.40.4",date:"Apr 2026",items:[
+    "TrueNAS: Disk temperatures now fetched via POST disk/temperature_agg -- correct endpoint that returns actual temps per disk name",
+    "TrueNAS: SCALE Apps (Docker-based, 24+) now shown in new Apps tab with running state, version, train",
+    "TrueNAS: Boot pool health shown in alerts strip with fix hint if DEGRADED",
+    "TrueNAS: SMART test failures/warnings shown as alerts",
+    "TrueNAS: Dataset dedup field now included",
+    "TrueNAS: Disk cards now show rotation rate (rpm) for HDDs",
+    "TrueNAS: RAM usage clarified -- REST API v2.0 on SCALE 25.x has no RAM used endpoint (WebSocket-only); reporting/get_data returns 400 on 25.x",
+    "Backend: go() now accepts timeout parameter; POST requests include Content-Length header",
+    "Backend: safePost() helper added for POST endpoints",
+  ]},
+    {v:"v5.40.3",date:"Apr 2026",items:[
     "Fix: Build error -- IntegrationPanel load sub-label had invalid JS ternary (load1?:'—' -- missing consequence)",
     "Fix: Build error -- NodeCanvas keyboard shortcut span had duplicate title attribute",
   ]},

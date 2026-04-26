@@ -41,9 +41,9 @@ function isValidToken(t) {
 const selfSignedAgent = new https.Agent({ rejectUnauthorized: false });
 
 // ── HTTP wrapper using https.request — correctly applies 'agent' unlike native fetch ──
-function go(url, opts = {}) {
+function go(url, opts = {}, timeout = 8000) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Request timeout')), 8000);
+    const timer = setTimeout(() => reject(new Error('Request timeout')), timeout);
     const parsed = new URL(url);
     const isHttps = parsed.protocol === 'https:';
     const lib = isHttps ? https : http;
@@ -55,6 +55,9 @@ function go(url, opts = {}) {
       headers: opts.headers || {},
       ...(isHttps ? { agent: selfSignedAgent } : {}),
     };
+    if (opts.body) {
+      reqOpts.headers['Content-Length'] = Buffer.byteLength(opts.body);
+    }
     const req = lib.request(reqOpts, (res) => {
       clearTimeout(timer);
       const chunks = [];
@@ -112,18 +115,27 @@ router.post('/truenas', async (req, res) => {
   const base = url.replace(/\/$/, '');
   const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-  // Safe fetch — returns parsed JSON or null on any failure
-  const safe = async (endpoint) => {
+  // Safe GET — returns parsed JSON or null
+  const safe = async (endpoint, timeout = 8000) => {
     try {
-      const r = await go(`${base}${endpoint}`, { headers: h });
+      const r = await go(`${base}${endpoint}`, { headers: h }, timeout);
       if (!r.ok) return null;
-      const text = await r.text();
-      return JSON.parse(text);
+      return JSON.parse(await r.text());
+    } catch { return null; }
+  };
+
+  // Safe POST — returns parsed JSON or null
+  const safePost = async (endpoint, body, timeout = 10000) => {
+    try {
+      const bodyStr = JSON.stringify(body);
+      const r = await go(`${base}${endpoint}`, { method: 'POST', headers: h, body: bodyStr }, timeout);
+      if (!r.ok) return null;
+      return JSON.parse(await r.text());
     } catch { return null; }
   };
 
   try {
-    // Core endpoints (always needed)
+    // Batch 1: core (always needed)
     const [info, pools, alerts, services] = await Promise.all([
       safe('/api/v2.0/system/info'),
       safe('/api/v2.0/pool'),
@@ -131,71 +143,124 @@ router.post('/truenas', async (req, res) => {
       safe('/api/v2.0/service'),
     ]);
 
-    // Extended endpoints (best-effort — may not exist on all versions)
-    const [disks, datasets, interfaces, vms, replication, cloudsync] = await Promise.all([
+    // Batch 2: extended (best-effort, parallel)
+    const [disks, datasets, interfaces, vms, replication, cloudsync, apps, bootState, smartResults] = await Promise.all([
       safe('/api/v2.0/disk'),
-      safe('/api/v2.0/pool/dataset?limit=200'),
+      safe('/api/v2.0/pool/dataset?limit=100'),
       safe('/api/v2.0/interface'),
       safe('/api/v2.0/vm'),
       safe('/api/v2.0/replication/task'),
       safe('/api/v2.0/cloudsync/task'),
+      safe('/api/v2.0/app'),                        // SCALE 24+ apps (Docker-based)
+      safe('/api/v2.0/boot/get_state'),              // boot pool health
+      safe('/api/v2.0/smart/test/results?limit=10'), // recent SMART results
     ]);
 
-    // Aggregate storage stats — TrueNAS v2.0 returns p.size (int), p.allocated, p.free at top level
+    // Batch 3: disk temperatures (requires disk names from batch 2)
+    const diskNames = (disks || []).map(d => d.name).filter(Boolean);
+    const diskTemps = diskNames.length > 0
+      ? await safePost('/api/v2.0/disk/temperature_agg', { names: diskNames, powermode: 'NEVER' })
+      : null;
+
+    // ── Process pools ──
     const poolList = pools || [];
     const totalSize      = poolList.reduce((a, p) => a + (p.size      || 0), 0);
     const totalAllocated = poolList.reduce((a, p) => a + (p.allocated || 0), 0);
     const totalFree      = poolList.reduce((a, p) => a + (p.free      || 0), 0);
 
-    // Disk summary
+    // ── Process disks (merge in temperatures) ──
     const diskSummary = (disks || []).map(d => ({
-      name: d.name, size: d.size, model: d.model,
-      serial: d.serial, type: d.type, temp: d.temperature,
+      name:   d.name,
+      size:   d.size,
+      model:  d.model,
+      serial: d.serial,
+      type:   d.type,
+      rotationrate: d.rotationrate,
+      temp:   diskTemps?.[d.name] ?? d.temperature ?? null,
     }));
 
-    // Root datasets only
+    // ── Root datasets ──
     const rootDatasets = (datasets || [])
       .filter(d => !d.id.includes('/') || d.id.split('/').length <= 2)
-      .slice(0, 20)
+      .slice(0, 30)
       .map(d => ({
-        id: d.id, used: d.used?.parsed || 0, available: d.available?.parsed || 0,
-        compression: d.compression?.value, type: d.type,
-        mountpoint: d.mountpoint, encrypted: !!d.encrypted,
+        id:          d.id,
+        used:        d.used?.parsed       || 0,
+        available:   d.available?.parsed  || 0,
+        compression: d.compression?.value,
+        type:        d.type,
+        mountpoint:  d.mountpoint,
+        encrypted:   !!d.encrypted,
+        dedup:       d.dedup?.value,
       }));
 
-    // Network interfaces
+    // ── Network interfaces ──
     const netIfaces = (interfaces || [])
       .filter(i => !i.fake)
       .map(i => ({
-        name: i.name, type: i.type,
-        up: i.state?.link_state === 'LINK_STATE_UP',
-        speed: i.state?.speed,
+        name:    i.name,
+        type:    i.type,
+        up:      i.state?.link_state === 'LINK_STATE_UP',
+        speed:   i.state?.speed,
+        mtu:     i.mtu,
         aliases: (i.aliases || []).filter(a => a.type === 'INET' || a.type === 'INET6').map(a => a.address),
       }));
 
-    // VMs
+    // ── VMs ──
     const vmSummary = (vms || []).map(v => ({
-      name: v.name, status: v.status?.state, vcpus: v.vcpus, memory: v.memory,
+      name:   v.name,
+      status: v.status?.state,
+      vcpus:  v.vcpus,
+      memory: v.memory,
+      description: v.description,
     }));
 
-    // Replication tasks summary
+    // ── Apps (SCALE 24+) ──
+    const appSummary = (apps || []).map(a => ({
+      name:    a.name,
+      state:   a.state,
+      version: a.human_version || a.metadata?.app_version,
+      train:   a.metadata?.train,
+      containers: a.active_workloads?.containers || 0,
+    }));
+
+    // ── Replication tasks ──
     const replTasks = (replication || []).map(t => ({
-      name: t.name, enabled: t.enabled,
-      direction: t.direction, transport: t.transport,
-      state: t.state?.state, lastRun: t.state?.datetime?.$date || null,
-      error: t.state?.error || null,
+      name:      t.name,
+      enabled:   t.enabled,
+      direction: t.direction,
+      transport: t.transport,
+      state:     t.state?.state,
+      error:     t.state?.error || null,
     }));
 
-    // Cloud sync tasks summary
+    // ── Cloud sync tasks ──
     const csyncTasks = (cloudsync || []).map(t => ({
-      name: t.description || t.path, enabled: t.enabled,
-      direction: t.direction, provider: t.credentials?.provider || '?',
-      state: t.job?.state || t.state, lastRun: t.job?.time_finished?.$date || null,
-      error: t.job?.error || null,
+      name:      t.description || t.path,
+      enabled:   t.enabled,
+      direction: t.direction,
+      provider:  t.credentials?.provider || '?',
+      state:     t.job?.state || t.state,
+      error:     t.job?.error || null,
     }));
+
+    // ── Boot pool ──
+    const bootPool = bootState ? {
+      name:    bootState.name,
+      status:  bootState.status,
+      healthy: bootState.healthy,
+      size:    bootState.size,
+      allocated: bootState.allocated,
+    } : null;
+
+    // ── SMART results (recent failures/warnings only) ──
+    const smartAlerts = (smartResults || [])
+      .filter(r => r.status !== 'SUCCESS' && r.status !== 'RUNNING')
+      .slice(0, 5)
+      .map(r => ({ disk: r.disk, type: r.type, status: r.status, description: r.description }));
 
     res.json({
-      ok: true,
+      ok:          true,
       info:        info || {},
       pools:       poolList,
       alerts:      (alerts || []).filter(a => a.level !== 'INFO'),
@@ -204,9 +269,12 @@ router.post('/truenas', async (req, res) => {
       datasets:    rootDatasets,
       interfaces:  netIfaces,
       vms:         vmSummary,
+      apps:        appSummary,
       storage:     { totalSize, totalAllocated, totalFree },
       replication: replTasks,
       cloudsync:   csyncTasks,
+      bootPool,
+      smartAlerts,
     });
   } catch(e) { res.status(502).json({ error: e.message }); }
 });

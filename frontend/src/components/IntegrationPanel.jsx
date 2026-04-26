@@ -252,6 +252,9 @@ function TrueNASMetrics({ data }) {
   const storage     = data.storage     || {};
   const replication = data.replication || [];
   const cloudsync   = data.cloudsync   || [];
+  const apps        = data.apps        || [];
+  const bootPool    = data.bootPool    || null;
+  const smartAlerts = data.smartAlerts || [];
   const [filter, setFilter] = useState('disks');
 
   const uptimeSec  = info.uptime_seconds || info.uptimeSeconds;
@@ -272,6 +275,7 @@ function TrueNASMetrics({ data }) {
     ['datasets','Datasets',datasets.length],
     ['network','Network',ifaces.length],
     ['services','Services',services.length],
+    ...(apps.length  > 0 ? [['apps','Apps',apps.length]] : []),
     ...(vms.length   > 0 ? [['vms','VMs',vms.length]] : []),
     ...(hasTasks         ? [['tasks','Tasks',replication.length+cloudsync.length]] : []),
   ];
@@ -361,14 +365,25 @@ function TrueNASMetrics({ data }) {
         </div>
       )}
 
-      {/* ── Alerts strip ── */}
-      {alerts.length>0&&(
+      {/* ── Alerts + boot pool + SMART ── */}
+      {(alerts.length>0||bootPool?.healthy===false||smartAlerts.length>0)&&(
         <div style={{background:'var(--bg3)',padding:'4px 14px',
           borderLeft:`1px solid ${borderCol}`,borderRight:`1px solid ${borderCol}`}}>
+          {bootPool?.healthy===false&&(
+            <div style={{fontSize:10,color:'#ff9800',padding:'3px 0',borderBottom:'1px solid var(--border2)'}}>
+              ⚠ Boot pool {bootPool.status} — run: zpool detach boot-pool &lt;device&gt;
+            </div>
+          )}
           {alerts.map((a,i)=>(
             <div key={i} style={{fontSize:10,color:'var(--danger)',padding:'3px 0',
-              borderBottom:i<alerts.length-1?'1px solid var(--border2)':undefined}}>
+              borderBottom:i<alerts.length-1||smartAlerts.length>0?'1px solid var(--border2)':undefined}}>
               ⚠ {a.formatted||a.text}
+            </div>
+          ))}
+          {smartAlerts.map((s,i)=>(
+            <div key={i} style={{fontSize:10,color:'var(--danger)',padding:'3px 0',
+              borderBottom:i<smartAlerts.length-1?'1px solid var(--border2)':undefined}}>
+              🔴 SMART {s.status}: {s.disk} ({s.type})
             </div>
           ))}
         </div>
@@ -420,7 +435,10 @@ function TrueNASMetrics({ data }) {
                 <div style={{fontSize:9,color:'var(--text4)',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.model||'—'}</div>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text3)'}}>
                   <span>{fmt(d.size)}</span>
-                  <span style={{padding:'1px 5px',borderRadius:3,background:'var(--bg3)',color:'var(--text4)'}}>{d.type||'—'}</span>
+                  <div style={{display:'flex',gap:4}}>
+                    {d.rotationrate>0&&<span style={{padding:'1px 5px',borderRadius:3,background:'var(--bg3)',color:'var(--text4)'}}>{d.rotationrate}rpm</span>}
+                    <span style={{padding:'1px 5px',borderRadius:3,background:'var(--bg3)',color:'var(--text4)'}}>{d.type||'—'}</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -478,6 +496,30 @@ function TrueNASMetrics({ data }) {
                 <span style={{fontSize:9,color:s.state==='RUNNING'?'var(--success)':'var(--text4)'}}>{s.state}</span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Apps (SCALE) */}
+        {filter==='apps'&&(
+          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
+            {apps.length===0&&<div style={{fontSize:10,color:'var(--text4)',fontStyle:'italic',gridColumn:'1/-1'}}>No apps</div>}
+            {apps.map((a,i)=>{
+              const running=a.state==='RUNNING';
+              return(
+                <div key={i} style={{background:'var(--bg)',borderRadius:7,padding:'8px 10px',
+                  border:`1px solid ${running?'var(--success)33':'var(--border2)'}`}}>
+                  <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                    <span style={{width:7,height:7,borderRadius:'50%',background:running?'var(--success)':'var(--text4)',flexShrink:0}}/>
+                    <span style={{fontSize:11,fontWeight:700,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</span>
+                  </div>
+                  <div style={{fontSize:9,color:'var(--text4)',marginBottom:2}}>{a.version||'—'}</div>
+                  <div style={{display:'flex',justifyContent:'space-between',fontSize:9}}>
+                    <span style={{color:'var(--text4)'}}>{a.train||''}</span>
+                    <span style={{color:running?'var(--success)':'var(--text4)',fontWeight:running?700:400}}>{a.state}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
 
