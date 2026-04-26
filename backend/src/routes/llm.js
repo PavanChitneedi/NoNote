@@ -53,6 +53,34 @@ router.get("/presets", authenticate, (req, res) => {
   res.json({ presets: Object.keys(PROVIDER_PRESETS) });
 });
 
+// ── GET /api/llm/probe-models — discover models from a local/remote provider
+// Used for Ollama auto-discovery. Query: ?base_url=http://localhost:11434
+router.get("/probe-models", authenticate, async (req, res) => {
+  const { base_url } = req.query;
+  if (!base_url) return res.status(400).json({ error: "base_url required" });
+  try {
+    // Ollama: GET /api/tags
+    const ollamaUrl = base_url.replace(/\/v1\/?$/, "") + "/api/tags";
+    const resp = await fetch(ollamaUrl, { signal: AbortSignal.timeout(5000) });
+    if (!resp.ok) throw new Error("Ollama not reachable");
+    const data = await resp.json();
+    const models = (data.models || []).map(m => m.name || m.model).filter(Boolean);
+    return res.json({ models, source: "ollama" });
+  } catch {
+    try {
+      // OpenAI-compatible: GET /models
+      const openaiUrl = base_url.replace(/\/?$/, "") + "/models";
+      const resp = await fetch(openaiUrl, { signal: AbortSignal.timeout(5000) });
+      if (!resp.ok) throw new Error("Models endpoint not reachable");
+      const data = await resp.json();
+      const models = (data.data || data.models || []).map(m => m.id || m.name).filter(Boolean);
+      return res.json({ models, source: "openai" });
+    } catch {
+      return res.status(503).json({ error: "Provider unreachable or does not expose model list" });
+    }
+  }
+});
+
 // ── GET /api/llm/providers ────────────────────────────────────
 router.get("/providers", authenticate, async (req, res) => {
   try {

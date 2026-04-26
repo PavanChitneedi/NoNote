@@ -111,6 +111,7 @@ export const getAudit   = ()         => apiFetch("/users/audit");
 // LLM Providers
 export const getLLMPresets    = ()         => apiFetch("/llm/presets");
 export const getLLMProviders  = ()         => apiFetch("/llm/providers");
+export const probeLLMModels    = (base_url)  => apiFetch(`/llm/probe-models?base_url=${encodeURIComponent(base_url)}`);
 export const createLLMProvider= (d)        => apiFetch("/llm/providers", { method:"POST", body:JSON.stringify(d) });
 export const updateLLMProvider= (id,d)     => apiFetch(`/llm/providers/${id}`, { method:"PATCH", body:JSON.stringify(d) });
 export const deleteLLMProvider= (id)       => apiFetch(`/llm/providers/${id}`, { method:"DELETE" });

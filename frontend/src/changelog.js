@@ -1,6 +1,19 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.0",date:"Apr 2026",items:[
+    "Fix: LLM provider EDIT button now always visible -- provider list no longer hidden when add form is open",
+    "Fix: editId state uses null/new/uuid instead of boolean showAdd -- providers and form are independent",
+    "Fix: Clicking EDIT on a provider while another is being edited now switches form correctly",
+    "Feature: Ollama (and LM Studio) auto-discover models on URL change via debounced /probe-models API call",
+    "Feature: Backend GET /api/llm/probe-models?base_url=... -- tries Ollama /api/tags then OpenAI /models",
+    "Feature: First discovered model auto-selected when none is set",
+    "Feature: Detect models manual trigger button when auto-detect finds nothing",
+    "Feature: Edit form also auto-discovers models for auto-discover provider types",
+    "Fix: Save shows loading state, errors surface properly, success message clears form",
+    "Fix: Delete also clears edit form if editing the deleted provider",
+    "Fix: Model pills show discovered live models, not just static preset list for Ollama",
+  ]},
   {v:"v5.42.7",date:"Apr 2026",items:[
     "Fix: SVG edges/arrows protected from neumorphic cascade -- box-shadow:none on svg path/line/circle/polyline",
     "Fix: Canvas SVG containers (position:absolute inset:0) get transparent background to prevent canvas grid override",
