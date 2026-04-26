@@ -1,12 +1,6 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.42.5",date:"Apr 2026",items:[
-    "Fix: Dark neumorphic glow fixed -- highlight was color-mix(38% bg, 62% white) giving near-white #a3a5a7 on dark navy bg, creating a glowing border effect",
-    "Fix: Dark theme highlight changed to color-mix(78% bg, 22% white) → gives #42454a on dark theme (delta +53 from bg, same hue family, no glow)",
-    "Fix: Dark theme shadow/highlight now stay within bg hue family -- proper depth not neon glow",
-    "Fix: Wider blur radius for dark themes (26px for nEl) compensates for lower absolute contrast",
-  ]},
   {v:"v5.42.4",date:"Apr 2026",items:[
     "Fix: Neumorphic highlight was washed out -- color-mix(62% bg, 38% white) gave #eaeef4 vs original #f4faff. Changed to color-mix(35% bg, 65% white) which gives #f3f6f9 (matches original near-white highlight)",
     "Fix: Shadow offsets restored to 8-9px (was 5-6px) -- original had 8px offset for strong visible depth",

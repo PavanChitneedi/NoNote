@@ -238,9 +238,7 @@ body.skin-neumorphic {
 }
 
 /* DARK THEME OVERRIDE ─────────────────────────────────────────── */
-/* Dark neumorphic principle: highlight must stay CLOSE to bg hue  */
-/* color-mix(85% bg, 15% white) → +35 RGB above bg (subtle depth) */
-/* NOT 38% bg — that gives near-white gray that glows unnaturally  */
+/* Dark bg: more black, more white needed for visible contrast     */
 body.skin-neumorphic[data-theme="dark"],
 body.skin-neumorphic[data-theme="midnight"],
 body.skin-neumorphic[data-theme="forest"],
@@ -248,16 +246,15 @@ body.skin-neumorphic[data-theme="ocean"],
 body.skin-neumorphic[data-theme="amber"],
 body.skin-neumorphic[data-theme="violet"] {
   --neu-shadow:  color-mix(in srgb, var(--bg) 72%, black);
-  --neu-hilight: color-mix(in srgb, var(--bg) 78%, white);  /* stay close to bg, subtle lift */
-  /* Wider blur compensates for lower contrast on dark surfaces */
-  --nEl:  10px 10px 26px var(--neu-shadow), -7px -7px 20px var(--neu-hilight);
-  --nEm:   7px  7px 18px var(--neu-shadow), -5px -5px 13px var(--neu-hilight);
-  --nEs:   4px  4px 11px var(--neu-shadow), -3px -3px  8px var(--neu-hilight);
-  --nEx:   2px  2px  6px var(--neu-shadow), -2px -2px  4px var(--neu-hilight);
-  --nIl:  inset 5px 5px 14px var(--neu-shadow), inset -4px -4px 10px var(--neu-hilight);
+  --neu-hilight: color-mix(in srgb, var(--bg) 38%, white);
+  --nEl:  12px 12px 28px var(--neu-shadow), -8px -8px 18px var(--neu-hilight);
+  --nEm:   8px  8px 18px var(--neu-shadow), -5px -5px 12px var(--neu-hilight);
+  --nEs:   5px  5px 12px var(--neu-shadow), -3px -3px  8px var(--neu-hilight);
+  --nEx:   3px  3px  7px var(--neu-shadow), -2px -2px  5px var(--neu-hilight);
+  --nIl:  inset 6px 6px 15px var(--neu-shadow), inset -4px -4px 10px var(--neu-hilight);
   --nIm:  inset 4px 4px 10px var(--neu-shadow), inset -3px -3px  7px var(--neu-hilight);
-  --nIs:  inset 2px 2px  7px var(--neu-shadow), inset -2px -2px  5px var(--neu-hilight);
-  --nIx:  inset 1px 1px  4px var(--neu-shadow), inset -1px -1px  3px var(--neu-hilight);
+  --nIs:  inset 3px 3px  7px var(--neu-shadow), inset -2px -2px  5px var(--neu-hilight);
+  --nIx:  inset 2px 2px  5px var(--neu-shadow), inset -1px -1px  3px var(--neu-hilight);
 }
 
 /* ── GLOBAL RESET ─────────────────────────────────────────────── */
