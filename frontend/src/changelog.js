@@ -1,6 +1,21 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.1",date:"Apr 2026",items:[
+    "Feature: NEUMORPHIC_CATALOGUE.md -- full UI design catalogue documenting all components, states, and token usage",
+    "Fix: Node internal buttons (pencil/comment/collapse/add-note) now transparent default, bg+nEx hover, nIx active",
+    "Fix: Toolbar dropdown panels (connection picker, layout chooser) -- bg3 surfaces replaced with bg+nEl elevation",
+    "Fix: Dropdown section headers -- bg3 replaced with bg + shadow seam",
+    "Fix: JS-set hover backgrounds (onMouseEnter bg3) overridden at CSS level for neumorphic consistency",
+    "Fix: KBD elements now nEs raised chips instead of bg3 flat badges",
+    "Fix: Quick-capture/search overlay -- bg2+rgba shadow replaced with bg+nEl",
+    "Fix: Version history / collab log panels -- now use shadow seam instead of border",
+    "Fix: Edge color swatches -- nEx raised circles instead of border",
+    "Fix: Collab/share panel header/footer rows -- bg3+border replaced with shadow seams",
+    "Fix: Group box overlays -- border replaced with nEs shadow",
+    "Fix: Quick-capture floating input -- bg2+hardcoded border replaced with bg+nEl",
+    "Enforcement: Catalogue rules documented to prevent future regressions",
+  ]},
   {v:"v5.43.0",date:"Apr 2026",items:[
     "Fix: LLM provider EDIT button now always visible -- provider list no longer hidden when add form is open",
     "Fix: editId state uses null/new/uuid instead of boolean showAdd -- providers and form are independent",

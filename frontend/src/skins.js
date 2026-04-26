@@ -714,6 +714,188 @@ body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][s
 body.skin-neumorphic [style*="z-index: 200"] button[style*="background: var(--accent2)"] {
   background: var(--accent2) !important; box-shadow: var(--nEs) !important;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   COVERAGE PASS — elements not previously captured
+   Catalogue ref: NEUMORPHIC_CATALOGUE.md
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── NODE INTERNAL BUTTONS (pencil, comment, collapse, add-note) ─ */
+body.skin-neumorphic .nn-pencil-btn,
+body.skin-neumorphic .nn-comment-btn,
+body.skin-neumorphic .nn-collapse-btn,
+body.skin-neumorphic .nn-addnote-btn {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: var(--text4) !important;
+  border-radius: var(--nRx) !important;
+}
+body.skin-neumorphic .nn-pencil-btn:hover,
+body.skin-neumorphic .nn-comment-btn:hover,
+body.skin-neumorphic .nn-collapse-btn:hover,
+body.skin-neumorphic .nn-addnote-btn:hover {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  color: var(--text2) !important;
+  transform: none !important;
+}
+body.skin-neumorphic .nn-pencil-btn:active,
+body.skin-neumorphic .nn-comment-btn:active { box-shadow: var(--nIx) !important; }
+
+/* ── TOOLBAR DROPDOWN PANELS (connection type, layout chooser) ─── */
+/* These use zIndex:501 with bg2 and rgba boxShadow — override */
+body.skin-neumorphic [style*="z-index: 501"][style*="background: var(--bg2)"],
+body.skin-neumorphic [style*="z-index:501"][style*="background:var(--bg2)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Section headers inside those dropdowns (bg3) */
+body.skin-neumorphic [style*="z-index: 501"] [style*="background: var(--bg3)"][style*="letterSpacing"],
+body.skin-neumorphic [style*="z-index: 501"] [style*="background: var(--bg3)"][style*="border-bottom"] {
+  background: var(--bg) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 5px var(--neu-shadow) !important;
+}
+/* Footer row in connection picker (bg3 + border-top) */
+body.skin-neumorphic [style*="z-index: 501"] [style*="background: var(--bg3)"][style*="border-top"] {
+  background: var(--bg) !important;
+  border-top: none !important;
+  box-shadow: 0 -2px 5px var(--neu-shadow) !important;
+}
+/* Layout direction items hover — JS sets bg3, override at CSS level */
+body.skin-neumorphic [style*="z-index: 501"] [style*="cursor: pointer"][style*="border-radius"] {
+  background: var(--bg) !important;
+  transition: box-shadow .12s ease !important;
+}
+body.skin-neumorphic [style*="z-index: 501"] [style*="cursor: pointer"][style*="border-radius"]:hover {
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── QUICK CAPTURE / SEARCH OVERLAY ─────────────────────────────── */
+/* The floating search box (bg2, heavy rgba shadow) */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="z-index"][style*="border-radius"][style*="boxShadow"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Search result rows with hover */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="cursor: pointer"][style*="border-radius: var(--radius-sm)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEs) !important;
+  border: none !important;
+}
+
+/* ── CONNECTION ANCHOR DOTS (midpoint/endpoint handles) ──────────── */
+body.skin-neumorphic .nn-mid-handle circle,
+body.skin-neumorphic [style*="cursor: crosshair"] circle { box-shadow: none !important; }
+/* Anchor indicator dots on node edges */
+body.skin-neumorphic [style*="z-index: 10"][style*="background: var(--accent)"][style*="opacity"] {
+  box-shadow: none !important;
+}
+
+/* ── KBD / KEYBOARD SHORTCUT CHIPS ──────────────────────────────── */
+body.skin-neumorphic kbd {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+  border-radius: var(--nRx) !important;
+  color: var(--text3) !important;
+}
+
+/* ── NODE COLLAB HEADER (bg3 search row) ─────────────────────────── */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-bottom: 1px solid var(--border2)"][style*="display: flex"][style*="align-items: center"] {
+  background: var(--bg) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 5px var(--neu-shadow) !important;
+}
+
+/* ── VERSION HISTORY / COLLAB LOG PANELS ─────────────────────────── */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-left: 1px solid"][style*="flexShrink: 0"],
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="borderLeft: 1px solid"][style*="flexShrink: 0"] {
+  background: var(--bg) !important;
+  border-left: none !important;
+  box-shadow: -5px 0 14px var(--neu-shadow) !important;
+}
+/* Row items in version history (hover bg3) */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-left"] [style*="cursor: pointer"][style*="border-bottom"] {
+  border-bottom: none !important;
+  box-shadow: 0 1px 3px var(--neu-shadow) !important;
+}
+
+/* ── GROUP BOX OVERLAYS ──────────────────────────────────────────── */
+body.skin-neumorphic [style*="position: absolute"][style*="border: 2px solid"] {
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+}
+
+/* ── QUICK CAPTURE / FLOATING INPUT ─────────────────────────────── */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border: 2px solid #6C63FF"] {
+  background: var(--bg) !important;
+  border: none !important;
+  border-radius: var(--nRm) !important;
+  box-shadow: var(--nEl) !important;
+}
+
+/* ── LOGO / TOPBAR BRAND AREA ────────────────────────────────────── */
+/* App topbar brand badge (bg3, borderRadius) */
+body.skin-neumorphic .nn-topbar [style*="background: var(--bg3)"][style*="borderRadius"],
+body.skin-neumorphic .nn-topbar [style*="background:var(--bg3)"][style*="borderRadius"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+}
+
+/* ── OVERRIDES: JS-SET HOVER BACKGROUNDS (neutralize) ───────────── */
+/* These elements use onMouseEnter to set style.background = bg3   */
+/* The CSS specificity approach: we force the neumorphic bg on them */
+/* Runtime JS still runs but our !important wins on the background  */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="cursor: pointer"]:not([style*="borderLeft"]):not([style*="border-left"]):not(.nn-map-card) {
+  background: var(--bg) !important;
+}
+
+/* ── COLLAB / SHARE PANEL HEADERS ────────────────────────────────── */
+body.skin-neumorphic [style*="borderBottom: 1px solid var(--border2)"][style*="background: var(--bg3)"],
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"][style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 5px var(--neu-shadow) !important;
+}
+body.skin-neumorphic [style*="borderTop: 1px solid var(--border2)"][style*="background: var(--bg3)"],
+body.skin-neumorphic [style*="border-top: 1px solid var(--border2)"][style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  border-top: none !important;
+  box-shadow: 0 -2px 5px var(--neu-shadow) !important;
+}
+
+/* ── FOOTER INFO ROWS ────────────────────────────────────────────── */
+body.skin-neumorphic [style*="border-top: 1px solid var(--border)"][style*="fontSize: 9"],
+body.skin-neumorphic [style*="borderTop: 1px solid var(--border)"][style*="fontSize: 9"] {
+  border-top: none !important;
+  box-shadow: 0 -2px 6px var(--neu-shadow) !important;
+}
+
+/* ── EDGE/CONNECTION COLOR SWATCHES ──────────────────────────────── */
+body.skin-neumorphic [style*="borderRadius: 50%"][style*="border: 2px solid var(--border)"][style*="cursor: pointer"] {
+  border: none !important;
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── MISC INLINE Z-INDEX 200 BUTTONS (standard raised) ──────────── */
+/* Any button inside popup not caught by tab-specific rules */
+body.skin-neumorphic [style*="z-index: 200"] button[style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  border: none !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] button[style*="borderRadius: 50%"],
+body.skin-neumorphic [style*="z-index: 200"] button[style*="border-radius: 50%"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  border: none !important;
+  border-radius: 50% !important;
+}
 `},
 
   sakura: {
