@@ -1,6 +1,7 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.41.8",date:"Apr 2026",items:["Fix: skins.js missing closing },  after neumorphic block caused build failure (Unexpected identifier sakura)"]},
   {v:"v5.41.7",date:"Apr 2026",items:[
     "Neumorphic: Full production rewrite — 26 sections (A-Z) covering 100% of UI",
     "Neumorphic: Centralized design token system — --nS, --nSsm, --nSxs, --nI, --nIsm, --nIxs, --nR, --nRsm, --nRxs",

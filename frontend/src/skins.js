@@ -901,6 +901,8 @@ body.skin-neumorphic[data-theme="violet"] [data-tut="topbar-row1"] + div button 
   box-shadow: none !important;
   color: var(--text2) !important;
 }`
+  },
+
   sakura: {
     name:"Sakura", icon:"🌸", nav:"icon-dock",
     concept:"Ma — the art of negative space. Beauty in what is absent.",
