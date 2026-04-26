@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.42.4",date:"Apr 2026",items:[
+    "Fix: Neumorphic highlight was washed out -- color-mix(62% bg, 38% white) gave #eaeef4 vs original #f4faff. Changed to color-mix(35% bg, 65% white) which gives #f3f6f9 (matches original near-white highlight)",
+    "Fix: Shadow offsets restored to 8-9px (was 5-6px) -- original had 8px offset for strong visible depth",
+    "Fix: Clay theme --node-bg updated to #f4f7ff (near-white) for clear card surface contrast against #dde4ef canvas",
+    "Fix: Shadow blur radius increased (22px for nEl, 14px for nEm) to match original soft depth spread",
+    "Architecture: All 6 dark themes use stronger percentages (72% shadow, 38% white) with wider blur",
+    "Architecture: --shadow-node now uses --nEl token directly in CSS body rule (not in vars object)",
+  ]},
   {v:"v5.42.3",date:"Apr 2026",items:[
     "Architecture v4.0: Fixed critical cascade bug -- --shadow-node was in skin VARS object (applied to :root via setProperty) which resolved var(--neu-shadow) at :root scope where it was undefined",
     "Architecture: --neu-shadow and --neu-hilight now defined in skin CSS on body.skin-neumorphic so color-mix() resolves --bg correctly from :root inheritance",

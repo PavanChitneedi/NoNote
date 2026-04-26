@@ -145,7 +145,7 @@ export const THEMES = {
       "--text":"#2d3a4e","--text2":"#3d4f68","--text3":"#7888a0","--text4":"#a8b8cc",
       "--accent":"#5b8dee","--accent2":"#2563eb",
       "--success":"#27ae60","--danger":"#e74c3c",
-      "--canvas-dot":"#c8d0e0","--node-bg":"#e8edf5","--shadow":"rgba(190,199,216,0.8)",
+      "--canvas-dot":"#b0bdd0","--node-bg":"#f4f7ff","--shadow":"rgba(190,199,216,0.8)",
     },
   },
     parchment: {
