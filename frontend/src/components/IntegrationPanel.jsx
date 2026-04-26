@@ -300,22 +300,35 @@ function TrueNASMetrics({ data }) {
           </span>
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10}}>
-          {[
-            {label:`Load · ${cpuCores}c`,v:loadPct,sub:load1?`${load1} / ${load5} / ${load15}`:'—'},
-            {label:'RAM',v:info.physmem?pct(storage.totalAllocated||0,info.physmem):0,
-              sub:info.physmem?`${fmt(storage.totalAllocated||0)} / ${fmt(info.physmem)}`:'—'},
-            {label:'Storage',v:pct(storage.totalAllocated,storage.totalSize),
-              sub:`${fmt(storage.totalAllocated||0)} / ${fmt(storage.totalSize||0)}`},
-          ].map(({label,v,sub})=>(
-            <div key={label}>
+          {/* Load */}
+          <div>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+              <span style={{fontSize:9,color:'var(--text4)'}}>Load · {cpuCores}c</span>
+              <span style={{fontSize:10,fontWeight:700,color:loadPct>=90?'#f44336':loadPct>=75?'#ff9800':'var(--text)'}}>{loadPct}%</span>
+            </div>
+            <MiniBar v={loadPct} h={5}/>
+            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{load1?:'—'}</div>
+          </div>
+          {/* RAM — API only gives total, no used */}
+          <div>
+            <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
+              <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
+              <span style={{fontSize:10,fontWeight:700,color:'var(--text)'}}>{info.physmem?fmt(info.physmem):'—'}</span>
+            </div>
+            <div style={{height:5,background:'var(--border2)',borderRadius:5}}/>
+            <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>total · usage N/A</div>
+          </div>
+          {/* Storage */}
+          {(()=>{const v=pct(storage.totalAllocated,storage.totalSize);return(
+            <div>
               <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
-                <span style={{fontSize:9,color:'var(--text4)'}}>{label}</span>
+                <span style={{fontSize:9,color:'var(--text4)'}}>Storage</span>
                 <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'var(--text)'}}>{v}%</span>
               </div>
               <MiniBar v={v} h={5}/>
-              <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{sub}</div>
+              <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{fmt(storage.totalAllocated||0)} / {fmt(storage.totalSize||0)}</div>
             </div>
-          ))}
+          );})()}
         </div>
       </div>
 

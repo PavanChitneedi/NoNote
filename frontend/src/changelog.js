@@ -1,7 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.40.1",date:"Apr 2026",items:[
+  {v:"v5.40.2",date:"Apr 2026",items:[
+    "Fix: TrueNAS RAM showing 57502% -- was dividing ZFS storage allocated by physmem (total wrong units) -- RAM column now shows total RAM only (TrueNAS API does not expose RAM used over REST)",
+  ]},
+    {v:"v5.40.1",date:"Apr 2026",items:[
     "TrueNAS: Full UI redesign to match Proxmox card layout -- system card with health dot/uptime/load/RAM/storage bars, pools section, alerts strip, services strip, and SHOW filter pills (Disks/Datasets/Network/Services/VMs/Tasks)",
     "TrueNAS: Disk cards now 2-column grid with model, size, type, temperature",
     "TrueNAS: Datasets now inline bars showing usage %",
