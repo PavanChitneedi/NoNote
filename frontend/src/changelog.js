@@ -1,6 +1,16 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.42.3",date:"Apr 2026",items:[
+    "Architecture v4.0: Fixed critical cascade bug -- --shadow-node was in skin VARS object (applied to :root via setProperty) which resolved var(--neu-shadow) at :root scope where it was undefined",
+    "Architecture: --neu-shadow and --neu-hilight now defined in skin CSS on body.skin-neumorphic so color-mix() resolves --bg correctly from :root inheritance",
+    "Architecture: Renamed elevation tokens (--nS/--nSsm/etc → --nEl/--nEm/--nEs/--nEx, --nI/etc → --nIl/--nIm/--nIs/--nIx) for semantic clarity",
+    "Architecture: Removed --neu-dark and --neu-light from ALL ThemeContext theme vars -- skin computes its own via color-mix(), theme layer is now pure color-only",
+    "Architecture: --shadow-node and --shadow-node-sel now defined inside skin CSS body rule so they correctly inherit from skin tokens",
+    "Architecture: Skin = complete design system. Theme = --bg --text --accent colors only. Zero cross-contamination.",
+    "Fix: All components consistently use elevation token vars (nEl/nEm/nEs/nEx for raised, nIl/nIm/nIs/nIx for inset)",
+    "Fix: state machine enforced: raised(default) hover(+1 level) active(inset) disabled(flat) for all interactive elements",
+  ]},
   {v:"v5.42.2",date:"Apr 2026",items:[
     "Architecture: Neumorphic skin v3.0 -- self-contained shadow system, no longer depends on per-theme --neu-dark/--neu-light values",
     "Architecture: --neu-shadow and --neu-hilight computed via CSS color-mix() from --bg, so any theme automatically gets correct neumorphic shadows",
