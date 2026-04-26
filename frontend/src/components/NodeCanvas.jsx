@@ -3,6 +3,7 @@ import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab, getAcc
 import { useAuth } from "../context/AuthContext.jsx";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
+import NodeAIChat     from "./NodeAIChat.jsx";
 import Tutorial       from "./Tutorial.jsx";
 import HelpGuide      from "./HelpGuide.jsx";
 import DocExportModal  from "./DocExportModal.jsx";
@@ -3867,6 +3868,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 return(
                   <InlineNodeEditor
                     key={pn.id} node={pn} x={px} y={py}
+                    mapId={mapId} mapTitle={mapMeta?.title}
                     tab={nodePopup.tab} nodes={nodes} edges={edges}
                     canEdit={canEdit&&editMode}
                     onTabChange={tab=>setNodePopup({nodeId:pn.id,tab})}
@@ -3946,7 +3948,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
         {showChat&&(
           <div style={{width:440,flexShrink:0,display:"flex",flexDirection:"column",background:"var(--bg2)",borderLeft:"1px solid var(--border2)",overflow:"hidden"}}>
-            <LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onClose={()=>setShowChat(false)}/>
+            <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
+              <span style={{fontSize:13}}>💬</span>
+              <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",flex:1}}>AI CHAT</span>
+              <button onClick={()=>setShowChat(false)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+            </div>
+            <LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title}/>
           </div>
         )}
 
@@ -5457,7 +5464,7 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
 const NODE_INT_TYPES = new Set(['proxmox','unraid','truenas','freenas','esxi','hyperv','nas','server','appserver','router','switch','firewall','desktop','laptop','rpi']);
 
 // ── Inline Node Editor — tabbed popup at node ────────────────────
-function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
+function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTitle,
   onTabChange, onClose, onUpdate, onUpdateNotes, onChangeType,
   onUpdateCustom, onDeleteCustom, onAddCustom, onRenameCustom }) {
   // onUpdateProp for Services/Ports tabs
@@ -5477,6 +5484,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
     ...(hasServices ? [{ id: 'services', label: `🔧 Services (${node.properties.Services.length})` }] : []),
     ...(hasPorts    ? [{ id: 'ports',    label: `🔌 Ports (${node.properties.Ports.length})`       }] : []),
     ...(hasIntegration ? [{ id: 'live',  label: '📡 Live' }] : []),
+    { id: 'ai',       label: '🤖 AI'          },
     { id: 'type',     label: '🏷 Type'        },
     { id: 'conns',    label: `🔗 Links (${nodeEdges.length})` },
   ];
@@ -5868,6 +5876,14 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit,
               </div>
             )}
           </div>
+        )}
+
+        {/* ── AI TAB ── */}
+        {tab === 'ai' && mapId && (
+          <NodeAIChat node={node} mapId={mapId} mapTitle={mapTitle} />
+        )}
+        {tab === 'ai' && !mapId && (
+          <div style={{ padding: 16, fontSize: 11, color: 'var(--text4)', textAlign: 'center' }}>Map ID not available</div>
         )}
 
         {/* ── CONNECTIONS TAB ── */}

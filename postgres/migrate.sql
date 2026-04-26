@@ -22,3 +22,7 @@ CREATE TABLE IF NOT EXISTS map_changelog (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, created_at DESC);
+
+-- v5.41.2: node-level AI chat conversations
+ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS node_id TEXT DEFAULT NULL;
+CREATE INDEX IF NOT EXISTS idx_llm_conversations_node_id ON llm_conversations(node_id) WHERE node_id IS NOT NULL;

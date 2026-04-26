@@ -171,14 +171,16 @@ router.delete("/providers/:id", authenticate, async (req, res) => {
 // ── GET /api/llm/maps/:mapId/conversations ────────────────────
 router.get("/maps/:mapId/conversations", authenticate, async (req, res) => {
   try {
+    const { node_id } = req.query;
     const { rows } = await query(
-      `SELECT c.id, c.title, c.created_at, c.updated_at,
+      `SELECT c.id, c.title, c.created_at, c.updated_at, c.node_id,
               p.name as provider_name, p.model, p.provider
        FROM llm_conversations c
        JOIN llm_providers p ON p.id = c.provider_id
        WHERE c.map_id=$1 AND c.user_id=$2
+         AND ($3::text IS NULL OR c.node_id = $3)
        ORDER BY c.updated_at DESC`,
-      [req.params.mapId, req.user.id]
+      [req.params.mapId, req.user.id, node_id || null]
     );
     res.json({ conversations: rows });
   } catch (err) {
@@ -189,7 +191,7 @@ router.get("/maps/:mapId/conversations", authenticate, async (req, res) => {
 // ── POST /api/llm/maps/:mapId/conversations ───────────────────
 router.post("/maps/:mapId/conversations", authenticate, async (req, res) => {
   try {
-    const { provider_id, title = "New Chat" } = req.body;
+    const { provider_id, title = "New Chat", node_id = null } = req.body;
     // Verify provider belongs to user
     const p = await query(
       "SELECT id FROM llm_providers WHERE id=$1 AND user_id=$2",
@@ -198,9 +200,9 @@ router.post("/maps/:mapId/conversations", authenticate, async (req, res) => {
     if (!p.rows[0]) return res.status(404).json({ error: "Provider not found" });
 
     const { rows } = await query(
-      `INSERT INTO llm_conversations (map_id, user_id, provider_id, title)
-       VALUES ($1,$2,$3,$4) RETURNING *`,
-      [req.params.mapId, req.user.id, provider_id, title]
+      `INSERT INTO llm_conversations (map_id, user_id, provider_id, title, node_id)
+       VALUES ($1,$2,$3,$4,$5) RETURNING *`,
+      [req.params.mapId, req.user.id, provider_id, title, node_id]
     );
     res.status(201).json({ conversation: rows[0] });
   } catch (err) {
@@ -231,7 +233,7 @@ router.get("/conversations/:id/messages", authenticate, async (req, res) => {
 // ── POST /api/llm/conversations/:id/chat ──────────────────────
 // The key endpoint — proxies to the LLM, stores history
 router.post("/conversations/:id/chat", authenticate, async (req, res) => {
-  const { message, canvas_context } = req.body;
+  const { message, canvas_context, node_context } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: "Message required" });
 
   try {
@@ -255,7 +257,7 @@ router.post("/conversations/:id/chat", authenticate, async (req, res) => {
     );
 
     // Build system prompt with canvas context
-    const systemPrompt = buildSystemPrompt(canvas_context);
+    const systemPrompt = buildSystemPrompt(node_context ? { node_context, mapTitle: canvas_context?.mapTitle } : canvas_context);
 
     // ── Token budget: keep total under ~6000 words (~8k tokens) ──
     // Rough heuristic: 1 token ≈ 0.75 words. Reserve 2048 for response.
@@ -500,6 +502,21 @@ async function callOpenAICompatOld() {} // keep reference
 function buildSystemPrompt(ctx) {
   if (!ctx) {
     return "You are a helpful assistant integrated with NodeMap, a mind mapping and architecture diagramming tool.";
+  }
+  // Node-level chat: focused on a single node
+  if (ctx.node_context) {
+    const n = ctx.node_context;
+    const props = Object.entries(n.properties || {}).filter(([,v]) => v && !String(v).startsWith('['));
+    return `You are an expert assistant helping with a specific node in a NoNote architecture diagram.
+
+## Node Details
+- **Name**: ${n.title || 'Untitled'}
+- **Type**: ${n.type || 'unknown'}
+- **Map**: ${ctx.mapTitle || 'Untitled Map'}
+${props.length ? '- **Properties**: ' + props.map(([k,v]) => `${k}=${v}`).join(', ') : ''}
+${n.notes ? '- **Notes**: ' + n.notes : ''}
+
+You are having a focused conversation about this specific node. Help the user understand, configure, troubleshoot, document, or improve this component. Be concise and practical.`;
   }
 
   const { nodes = [], edges = [], mapTitle = "Untitled Map" } = ctx;

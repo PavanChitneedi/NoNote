@@ -116,7 +116,7 @@ export const updateLLMProvider= (id,d)     => apiFetch(`/llm/providers/${id}`, {
 export const deleteLLMProvider= (id)       => apiFetch(`/llm/providers/${id}`, { method:"DELETE" });
 
 // LLM Conversations
-export const getConversations = (mapId)    => apiFetch(`/llm/maps/${mapId}/conversations`);
+export const getConversations = (mapId, nodeId) => apiFetch(`/llm/maps/${mapId}/conversations${nodeId ? '?node_id='+nodeId : ''}`);
 export const createConversation=(mapId,d)  => apiFetch(`/llm/maps/${mapId}/conversations`, { method:"POST", body:JSON.stringify(d) });
 export const deleteConversation=(id)       => apiFetch(`/llm/conversations/${id}`, { method:"DELETE" });
 export const getMessages      = (convId)   => apiFetch(`/llm/conversations/${convId}/messages`);

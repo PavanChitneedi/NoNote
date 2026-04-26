@@ -1,7 +1,20 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.41.1",date:"Apr 2026",items:[
+  {v:"v5.41.2",date:"Apr 2026",items:[
+    "Fix: AI Chat panel header restored to original NodeCanvas design (💬 AI CHAT + close button)",
+    "Fix: LLMChat no longer renders its own header -- NodeCanvas provides it",
+    "Feature: Node-level AI Chat -- new AI tab in every node editor, scoped to that node only",
+    "Feature: Node AI chat uses focused system prompt (node title, type, properties, notes -- no full canvas bloat)",
+    "Feature: Node AI conversations stored separately via node_id filter in DB",
+    "Feature: Node suggested prompts: security, failure modes, monitoring, documentation",
+    "Backend: GET /conversations now accepts ?node_id= query param for filtering",
+    "Backend: POST /conversations now accepts node_id in body",
+    "Backend: buildSystemPrompt handles node_context for node-focused replies",
+    "DB: ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS node_id TEXT",
+    "API client: getConversations(mapId, nodeId) -- nodeId is optional",
+  ]},
+    {v:"v5.41.1",date:"Apr 2026",items:[
     "AI Chat: Complete redesign -- no more broken sidebar layout inside 320px panel",
     "AI Chat: Sidebar replaced with horizontal scrollable conversation pills (compact, works at any width)",
     "AI Chat: Panel widened to 440px in NodeCanvas",

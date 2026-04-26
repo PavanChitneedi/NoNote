@@ -134,36 +134,6 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     <>
       <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }}>
 
-        {/* ── Header ── */}
-        <div style={{
-          display: "flex", alignItems: "center", gap: 8,
-          padding: "0 14px", height: 44, flexShrink: 0,
-          background: "var(--bg3)", borderBottom: "1px solid var(--border2)",
-        }}>
-          <span style={{ fontSize: 11, fontWeight: 800, color: "var(--accent)", letterSpacing: 1, flex: 1,
-            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {activeConv ? activeConv.title : "AI CHAT"}
-          </span>
-          {activeConv && (
-            <span style={{ fontSize: 9, color: "var(--text4)", flexShrink: 0 }}>
-              {PROVIDER_ICONS[activeConv.provider]} {activeConv.model}
-            </span>
-          )}
-          <button
-            onClick={() => setShowSettings(true)}
-            title="Manage providers"
-            style={iconBtn}
-            onMouseEnter={e => { e.currentTarget.style.color = "var(--text)"; e.currentTarget.style.background = "var(--bg)"; }}
-            onMouseLeave={e => { e.currentTarget.style.color = "var(--text4)"; e.currentTarget.style.background = "none"; }}
-          >⚙</button>
-          {onClose && (
-            <button onClick={onClose} title="Close" style={{ ...iconBtn, fontSize: 20 }}
-              onMouseEnter={e => { e.currentTarget.style.color = "var(--danger)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "var(--text4)"; }}
-            >×</button>
-          )}
-        </div>
-
         {/* ── Controls bar ── */}
         <div style={{
           padding: "8px 12px", borderBottom: "1px solid var(--border2)",
