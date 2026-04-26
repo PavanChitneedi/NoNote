@@ -406,7 +406,7 @@ body.skin-neumorphic .nn-topbar button {
   box-shadow: none !important;
   background: transparent !important;
   color: var(--text3) !important;
-  border-radius: var(--nRxs) !important;
+  border-radius: 6px !important;
 }
 body.skin-neumorphic .nn-topbar button:hover {
   background: color-mix(in srgb, var(--bg) 82%, var(--neu-dark)) !important;
@@ -427,14 +427,15 @@ body.skin-neumorphic [data-tut="topbar-row1"] + div {
   border: none !important;
   box-shadow: inset 0 -3px 8px var(--neu-dark) !important;
 }
-/* Toolbar buttons: FLAT inside the trough, no individual elevation */
+/* Toolbar buttons: FLAT inside the trough, fixed 6px radius (never pill) */
 body.skin-neumorphic [data-tut="topbar-row1"] button,
 body.skin-neumorphic [data-tut="topbar-row1"] + div button {
   box-shadow: none !important;
   background: transparent !important;
-  border-radius: var(--nRxs) !important;
+  border-radius: 6px !important;
   color: var(--text2) !important;
   transform: none !important;
+  font-size: 11px !important;
 }
 body.skin-neumorphic [data-tut="topbar-row1"] button:hover,
 body.skin-neumorphic [data-tut="topbar-row1"] + div button:hover {
@@ -908,8 +909,10 @@ body.skin-neumorphic ::-webkit-scrollbar-thumb:hover {
 }
 
 /* ══ DARK THEME SECTION ══════════════════════════════════════
-   All 6 dark themes get boosted shadow depth (darker backgrounds
-   need more contrast to show the effect)
+   Dark backgrounds need MUCH stronger highlight (neu-light) and
+   wider blur radius — perceived brightness is logarithmic in dark.
+   ThemeContext now sets neu-light ~55 units above bg instead of 20.
+   CSS uses larger blur to compensate for lower absolute contrast.
    ═════════════════════════════════════════════════════════════ */
 body.skin-neumorphic[data-theme="dark"],
 body.skin-neumorphic[data-theme="midnight"],
@@ -917,12 +920,42 @@ body.skin-neumorphic[data-theme="forest"],
 body.skin-neumorphic[data-theme="ocean"],
 body.skin-neumorphic[data-theme="amber"],
 body.skin-neumorphic[data-theme="violet"] {
-  --nS:   8px 8px 18px var(--neu-dark), -5px -5px 12px var(--neu-light);
-  --nSsm: 5px 5px 10px var(--neu-dark), -3px -3px 7px var(--neu-light);
-  --nSxs: 3px 3px 6px  var(--neu-dark), -2px -2px 4px var(--neu-light);
-  --nI:   inset 4px 4px 9px  var(--neu-dark), inset -3px -3px 6px var(--neu-light);
-  --nIsm: inset 3px 3px 6px  var(--neu-dark), inset -2px -2px 4px var(--neu-light);
-  --nIxs: inset 2px 2px 4px  var(--neu-dark), inset -1px -1px 2px var(--neu-light);
+  /* Larger blur + stronger offsets for dark surface visibility */
+  --nS:   10px 10px 22px var(--neu-dark), -7px -7px 16px var(--neu-light);
+  --nSsm: 6px  6px  14px var(--neu-dark), -4px -4px 10px var(--neu-light);
+  --nSxs: 3px  3px  8px  var(--neu-dark), -2px -2px 6px  var(--neu-light);
+  --nI:   inset 5px 5px 12px var(--neu-dark), inset -4px -4px 8px var(--neu-light);
+  --nIsm: inset 3px 3px 8px  var(--neu-dark), inset -2px -2px 5px var(--neu-light);
+  --nIxs: inset 2px 2px 5px  var(--neu-dark), inset -1px -1px 3px var(--neu-light);
+}
+/* Node cards: use node-bg (slightly lighter surface) to lift above bg */
+body.skin-neumorphic[data-theme="dark"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="midnight"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="forest"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="ocean"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="amber"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="violet"] .nn-node > div:first-child {
+  background: var(--node-bg) !important;
+  box-shadow: var(--nS) !important;
+}
+/* Popup cards: slightly lighter surface on dark */
+body.skin-neumorphic[data-theme="dark"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="midnight"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="forest"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="ocean"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="amber"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="violet"] [style*="z-index: 200"] {
+  background: var(--node-bg) !important;
+  box-shadow: 12px 12px 28px var(--neu-dark), -8px -8px 18px var(--neu-light) !important;
+}
+/* Sidebar: dark mode uses node-bg surface */
+body.skin-neumorphic[data-theme="dark"] .nn-sidebar,
+body.skin-neumorphic[data-theme="midnight"] .nn-sidebar,
+body.skin-neumorphic[data-theme="forest"] .nn-sidebar,
+body.skin-neumorphic[data-theme="ocean"] .nn-sidebar,
+body.skin-neumorphic[data-theme="amber"] .nn-sidebar,
+body.skin-neumorphic[data-theme="violet"] .nn-sidebar {
+  background: var(--node-bg) !important;
 }
 /* Toolbar buttons: keep flat in dark themes too */
 body.skin-neumorphic[data-theme="dark"] [data-tut="topbar-row1"] button,

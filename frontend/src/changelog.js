@@ -1,6 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.42.1",date:"Apr 2026",items:[
+    "Fix: Dark neumorphic themes had near-invisible depth -- --neu-light was only 20-30 RGB units above bg (imperceptible on dark surfaces). Now ~55-80 units above bg with color tint matching theme hue",
+    "Fix: Dark theme CSS shadow blur increased from 8/5/3px to 10/6/3px -- wider blur needed because dark neumorphic requires more spread to be visible",
+    "Fix: Dark theme node cards and popups use --node-bg surface (slightly lighter) to lift above --bg canvas",
+    "Fix: Dark theme sidebar uses --node-bg for same reason",
+    "Fix: Toolbar buttons locked to 6px radius (not var(--nRxs)) -- prevents any cascade from making them pill-shaped",
+    "Fix: App topbar icon buttons locked to 6px radius",
+    "All 6 dark themes recalibrated: dark, midnight, forest, ocean, amber, violet",
+  ]},
   {v:"v5.42.0",date:"Apr 2026",items:[
     "Fix: Canvas dotted grid now protected in neumorphic skin -- CSS rule explicitly reconstructs radial-gradient with canvas-dot variable, preventing any bg override from killing the pattern",
     "Fix: Canvas dot size increased from 1px to 1.2px in neumorphic for better visibility on soft backgrounds",
