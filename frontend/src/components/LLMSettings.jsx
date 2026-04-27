@@ -196,7 +196,7 @@ export default function LLMSettings({ onClose }) {
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex",
+    <div style={{ data-ui="llm-settings" data-component="LLMSettings" data-page="global" data-role="modal" position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16,

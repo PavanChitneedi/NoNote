@@ -147,7 +147,7 @@ export default function Tutorial({ page, onClose }) {
     <>
       {/* Full-screen dim — rendered only when NO spotlight so centered steps have a backdrop */}
       {!spotRect && (
-        <div onClick={onClose} style={{position:"fixed",inset:0,zIndex:9990,background:"rgba(0,0,0,0.72)"}}/>
+        <div onClick={onClose} style={{data-ui="tutorial" data-component="Tutorial" data-page="global" data-role="overlay" position:"fixed",inset:0,zIndex:9990,background:"rgba(0,0,0,0.72)"}}/>
       )}
 
       {/* Spotlight: box-shadow creates the dark surround WITHOUT a separate overlay div.

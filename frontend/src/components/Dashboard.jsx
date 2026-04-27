@@ -345,7 +345,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
     <div style={{ display:"flex", minHeight:"calc(100vh - var(--topbar-h))", background:"var(--bg)" }}>
 
       {/* ── Left Sidebar ── */}
-      {skinNav==="top" && <div className="nn-sidebar" style={{ width:"var(--sidebar-w,220px)", flexShrink:0,
+      {skinNav==="top" && <div className="nn-sidebar" data-ui="dashboard-sidebar" data-component="DashboardSidebar" data-page="dashboard" data-role="sidebar" style={{ width:"var(--sidebar-w,220px)", flexShrink:0,
         background:"var(--sidebar-bg,var(--bg2))",
         borderRight:"var(--sidebar-border,1px solid var(--border2))",
         backdropFilter:"var(--sidebar-blur,none)",
@@ -642,7 +642,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                 {/* ── Toolbar ── */}
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
                   {/* Search */}
-                  <input value={mapSearch} onChange={e=>setMapSearch(e.target.value)} placeholder="Search maps…"
+                  <input value={mapSearch} onChange={e=>setMapSearch(e.target.value)} placeholder="Search maps…" data-ui="dashboard-search" data-component="Dashboard" data-page="dashboard" data-role="search-input"
                     style={{flex:"0 0 200px",padding:"6px 10px",background:"var(--bg3)",border:"1px solid var(--border)",
                       borderRadius:"var(--radius-sm)",color:"var(--text)",fontSize:11,outline:"none",fontFamily:"var(--font-ui)"}}/>
                   {/* Group pills */}
@@ -746,7 +746,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         const accent=mapColor(map.id,maps.indexOf(map));
                         const icon=mapIcon(map.id);
                         return <div key={map.id}
-                          className="nn-map-card"
+                          className="nn-map-card" data-ui={`mapcard-${m.id}`} data-component="MapCard" data-page="dashboard" data-role="card"
                           data-tut={maps.indexOf(map)===0?"map-card":undefined}
                           onClick={()=>onOpenMap(map.id)}
                           onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
@@ -797,7 +797,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         const accent=mapColor(map.id,maps.indexOf(map));
                         const icon=mapIcon(map.id);
                         return <div key={map.id}
-                          className="nn-map-list-row"
+                          className="nn-map-list-row" data-ui={`maprow-${m.id}`} data-component="MapListRow" data-page="dashboard" data-role="list-item"
                           onClick={()=>onOpenMap(map.id)}
                           onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
                           style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",

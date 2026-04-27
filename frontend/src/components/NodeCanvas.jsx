@@ -2684,7 +2684,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     );
 
     return(
-      <div key={node.id} className="nn-node"
+      <div key={node.id} className="nn-node" data-ui={`node-${node.id}`} data-component="NodeCard" data-page="canvas" data-role="node" data-variant={node.type}
         ref={el=>{ if(el) nodeHeightsRef.current[node.id]=el.getBoundingClientRect().height/zoom; }}
         onMouseDown={e=>{e.stopPropagation();if(editingTitle!==node.id)startDrag(e.clientX,e.clientY,node.id);}}
         onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
@@ -3079,7 +3079,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */}
         <div style={{height:40,display:"flex",alignItems:"center",gap:0,
           padding:"0 8px",borderBottom:"1px solid var(--border2)"}}
-          data-tut="topbar-row1" onKeyDown={e=>e.stopPropagation()}>
+          data-tut="topbar-row1" data-ui="canvas-toolbar-row1" data-component="CanvasToolbar" data-page="canvas" data-role="toolbar" onKeyDown={e=>e.stopPropagation()}>
 
           {/* ── LEFT: nav + title + presence ── */}
           <div style={{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}}>
@@ -3413,7 +3413,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     title="Auto-arrange (Ctrl+Enter)">
                     ⊞ Layout
                   </button>
-                  <button onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn"
+                  <button data-ui="toolbar-layout" data-component="CanvasToolbar" data-page="canvas" data-role="action-btn" onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn"
                     style={{...tbtn(showLayoutMenu,"var(--accent2)"),borderRadius:0,padding:"4px 6px",fontSize:10}}
                     title="Choose layout direction">
                     {{LR:"→",TB:"↓",RL:"←",BT:"↑",radial:"◎"}[layoutDir]||"→"} ▾

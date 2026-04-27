@@ -110,7 +110,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
       display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:"var(--bg2)",
         border:"1px solid var(--border)",borderRadius:14,width:"min(540px,94vw)",
-        maxHeight:"88vh",overflow:"auto",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+        maxHeight:"88vh",data-ui="admin-panel" data-component="AdminPanel" data-page="admin" data-role="modal" id="admin-panel-root" overflow:"auto",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
         padding:26,display:"flex",flexDirection:"column",gap:16}}>
 
         <div style={{display:"flex",alignItems:"center",gap:12}}>

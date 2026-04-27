@@ -1,6 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.4",date:"Apr 2026",items:[
+    "Feature: Dev Mode -- toggle via DEV button in topbar, ?devMode=true URL param, or Ctrl+Shift+D",
+    "Feature: Dev Mode inspector -- hover any element shows cyan outline + tooltip (id, component, page, role, state, variant)",
+    "Feature: Dev Mode click-to-copy -- click any element copies [UI_ELEMENT] block to clipboard",
+    "Feature: data-ui metadata on 40+ elements across all components (canvas toolbar buttons, sidebar, node cards, map cards, topbar buttons, modal containers)",
+    "Feature: DevModeContext.jsx -- persisted to localStorage, URL param support, keyboard shortcut",
+    "Docs: /docs/ui-system.md -- 196 lines defining metadata schema, role taxonomy, enforcement rules, component registry",
+    "Docs: Metadata contract defined as mandatory for all new UI elements",
+  ]},
   {v:"v5.43.3",date:"Apr 2026",items:[
     "Fix: ALL JS onMouseEnter bg3 overrides removed from source -- now use boxShadow token strings instead of color change (9 in NodeCanvas, 4 in Dashboard, 1 in VersionHistory)",
     "Fix: ALL hardcoded rgba(0,0,0) box-shadows replaced with --nEl/nEm/nEs/nEx token vars (14 in NodeCanvas, 5 in Dashboard, 2 in AdminPanel, 1 each in DocExport/HelpGuide/Tutorial/UserProfile/LiveDashboard/MobileCanvas/ThemePicker)",

@@ -402,7 +402,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, zIndex:900,
+    <div style={{ data-ui="doc-export" data-component="DocExportModal" data-page="canvas" data-role="modal" position:"fixed", inset:0, zIndex:900,
       background:"rgba(0,0,0,.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
       onClick={onClose}>
       <div onClick={e=>e.stopPropagation()}

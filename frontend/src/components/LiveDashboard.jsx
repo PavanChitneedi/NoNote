@@ -240,7 +240,7 @@ export default function LiveDashboard({maps}){
   useEffect(()=>{ clearInterval(timerRef.current); if(nodes.length>0) timerRef.current=setInterval(()=>refresh(true),REFRESH_MS); return()=>clearInterval(timerRef.current); },[refresh]);
   useEffect(()=>{ clearInterval(cdRef.current); if(lastRefresh) cdRef.current=setInterval(()=>setCountdown(c=>Math.max(0,c-1)),1000); return()=>clearInterval(cdRef.current); },[lastRefresh]);
 
-  if(loading) return <div style={{padding:'60px 0',textAlign:'center',color:'var(--text4)'}}><div style={{fontSize:28,marginBottom:8}}>⏳</div>Loading integrations…</div>;
+  if(loading) return <div data-ui="live-dashboard" data-component="LiveDashboard" data-page="dashboard" data-role="panel" style={{padding:'60px 0',textAlign:'center',color:'var(--text4)'}}><div style={{fontSize:28,marginBottom:8}}>⏳</div>Loading integrations…</div>;
   if(nodes.length===0) return <div style={{padding:'60px 0',textAlign:'center',color:'var(--text4)'}}>
     <div style={{fontSize:40,marginBottom:12}}>🔌</div>
     <div style={{fontSize:14,fontWeight:700,color:'var(--text)',marginBottom:6}}>No live integrations yet</div>

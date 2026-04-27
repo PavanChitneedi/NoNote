@@ -51,7 +51,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
   };
 
   return (
-    <div style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
+    <div style={{ data-ui="version-history" data-component="VersionHistory" data-page="canvas" data-role="panel" position:"fixed", inset:0, background:"rgba(0,0,0,.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16, width:"100%", maxWidth:680, maxHeight:"88vh", display:"flex", flexDirection:"column", overflow:"hidden" }}
         onClick={e => e.stopPropagation()}>

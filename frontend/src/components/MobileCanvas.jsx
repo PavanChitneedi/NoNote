@@ -327,7 +327,7 @@ export default function MobileCanvas({ mapId, onBack }) {
   };
 
   if(loading) return(
-    <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
+    <div data-ui="mobile-canvas" data-component="MobileCanvas" data-page="canvas" data-role="page" style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16}}>
       <div style={{fontSize:36}}>⬡</div>
       <div style={{fontSize:12,color:"var(--text4)",letterSpacing:2}}>LOADING…</div>
     </div>

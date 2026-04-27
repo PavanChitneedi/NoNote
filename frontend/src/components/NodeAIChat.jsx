@@ -108,7 +108,7 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
   if (!loaded) return <div style={{ padding: 16, fontSize: 11, color: "var(--text4)" }}>Loading…</div>;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: 420, userSelect: "text", pointerEvents: "all" }}>
+    <div data-ui="node-ai-chat" data-component="NodeAIChat" data-page="canvas" data-role="panel" style={{ display: "flex", flexDirection: "column", height: 420, userSelect: "text", pointerEvents: "all" }}>
 
       {/* ── Top bar: provider + new ── */}
       <div style={{ display: "flex", gap: 6, alignItems: "center", padding: "8px 12px", borderBottom: "1px solid var(--border2)", flexShrink: 0 }}>

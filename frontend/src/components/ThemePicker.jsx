@@ -76,7 +76,7 @@ export default function ThemePicker({
     <div
       // Only close on clicking the ACTUAL backdrop div, not bubbled events from children
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
+      style={{ data-ui="theme-picker" data-component="ThemePicker" data-page="global" data-role="modal" position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
       <div
         onClick={e => e.stopPropagation()}
         style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:12, width:"100%", maxWidth:680, height:"88vh", maxHeight:680, display:"flex", flexDirection:"column", overflow:"hidden" }}>

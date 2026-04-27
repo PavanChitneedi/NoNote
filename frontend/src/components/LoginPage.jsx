@@ -19,7 +19,7 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center",
+    <div data-ui="login-page" data-component="LoginPage" data-page="login" data-role="page" style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center",
       backgroundImage:"radial-gradient(circle at 30% 40%, var(--accent2)10 0%, transparent 60%), radial-gradient(circle at 80% 70%, #2196F310 0%, transparent 50%)",
       padding:20 }}>
       <div style={{ width:"100%", maxWidth:380 }}>

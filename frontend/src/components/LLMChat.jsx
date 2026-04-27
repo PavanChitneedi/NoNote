@@ -184,7 +184,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               {conversations.map(c => {
                 const active = c.id === activeConvId;
                 return (
-                  <div key={c.id}
+                  <div data-ui="llm-chat" data-component="LLMChat" data-page="canvas" data-role="panel" key={c.id}
                     onClick={() => openConversation(c.id)}
                     title={c.title}
                     style={{
