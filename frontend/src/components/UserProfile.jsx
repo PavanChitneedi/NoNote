@@ -124,7 +124,7 @@ export default function UserProfile({ onClose }) {
   );
 
   return (
-    <div style={{ data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex",
+    <div data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:14,

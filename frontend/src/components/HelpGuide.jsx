@@ -209,7 +209,7 @@ export default function HelpGuide({ onClose }) {
     : SECTIONS;
 
   const S = {
-    overlay:{ data-ui="help-guide" data-component="HelpGuide" data-page="global" data-role="modal" position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.75)",
+    overlay:{ position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.75)",
       display:"flex",alignItems:"center",justifyContent:"center" },
     modal:{ background:"var(--bg2)",border:"1.5px solid var(--border)",
       borderRadius:16,width:"min(860px,96vw)",height:"min(640px,92vh)",
