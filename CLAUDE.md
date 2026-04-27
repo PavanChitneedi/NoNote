@@ -2,7 +2,7 @@
 > **NEW SESSION?** Read this file first, then `INSTRUCTIONS.md`.
 > This is the source of truth for any Claude working on this project.
 
-## Current Version: v5.43.1
+## Current Version: v5.43.3
 ## Last Updated: Apr 2026
 
 Self-hosted mind-mapping / network diagram app for homelabbers and sysadmins.

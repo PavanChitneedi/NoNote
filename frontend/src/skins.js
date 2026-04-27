@@ -896,6 +896,257 @@ body.skin-neumorphic [style*="z-index: 200"] button[style*="border-radius: 50%"]
   border: none !important;
   border-radius: 50% !important;
 }
+
+/* ════════════════════════════════════════════════════════════════
+   CATALOGUE PASS v2 — complete coverage from ui-catalogue.md
+   All 66 components mapped. Rules enforced.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── RULE: box-shadow rgba → neu tokens ─────────────────────────
+   All elements with hardcoded rgba box-shadow get token versions.
+   Selectors based on audit output.                               */
+
+/* Search/find overlay (L3192, L3246) */
+body.skin-neumorphic [style*="z-index"][style*="background: var(--bg2)"][style*="border-radius: var(--radius-md)"][style*="box"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Any remaining bg2 panel with explicit border */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border: 1px solid var(--border)"][style*="border-radius"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+}
+
+/* Floating / absolute panels that have rgba shadows */
+body.skin-neumorphic [style*="position: absolute"][style*="background: var(--bg2)"][style*="border-radius"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+}
+
+/* ── VERSION HISTORY ROW HOVER ───────────────────────────────────
+   VersionHistory.jsx L102: onMouseEnter bg3 override          */
+body.skin-neumorphic [style*="cursor: pointer"][style*="padding"][style*="border-bottom"] {
+  border-bottom: none !important;
+  box-shadow: 0 1px 3px var(--neu-shadow) !important;
+  transition: box-shadow .12s ease !important;
+}
+body.skin-neumorphic [style*="cursor: pointer"][style*="padding"][style*="border-bottom"]:hover {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── THEME PICKER SWATCHES ───────────────────────────────────────
+   ThemePicker.jsx L131: accent shadow + rgba shadow            */
+body.skin-neumorphic [style*="cursor: pointer"][style*="border-radius"][style*="transition"][style*="box-shadow: 0"] {
+  box-shadow: var(--nEx) !important;
+  border: none !important;
+}
+body.skin-neumorphic [style*="cursor: pointer"][style*="border-radius"][style*="box-shadow: 0 4px 20px var(--accent)"] {
+  box-shadow: var(--nIs) !important;
+  border: 2px solid var(--accent) !important;
+}
+
+/* ── ADMIN PANEL ─────────────────────────────────────────────────
+   AdminPanel.jsx L113: modal card rgba shadow                  */
+body.skin-neumorphic [style*="max-height: 88vh"][style*="border-radius"],
+body.skin-neumorphic [style*="maxHeight: 88vh"][style*="borderRadius"] {
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+  background: var(--bg) !important;
+}
+/* Admin toggle thumb (L614: rgba drop shadow) */
+body.skin-neumorphic [style*="border-radius: 50%"][style*="position: absolute"][style*="box-shadow"] {
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── DOC EXPORT MODAL ────────────────────────────────────────────
+   DocExportModal.jsx L410: rgba modal shadow                   */
+body.skin-neumorphic [style*="border-radius: 14"][style*="max-height"][style*="overflow"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── HELP GUIDE / TUTORIAL MODALS ───────────────────────────────
+   HelpGuide.jsx L217, Tutorial.jsx L122                        */
+body.skin-neumorphic [style*="border-radius: 14"][style*="font-family: var(--font-ui)"],
+body.skin-neumorphic [style*="borderRadius: 14"][style*="fontFamily"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── USER PROFILE MODAL ──────────────────────────────────────────
+   UserProfile.jsx L132                                         */
+body.skin-neumorphic [style*="overflow: hidden"][style*="border-radius"][style*="max-height: 80vh"],
+body.skin-neumorphic [style*="overflow: hidden"][style*="borderRadius"][style*="maxHeight: 80vh"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── DASHBOARD MODALS (new map, collab invite) ───────────────────
+   Dashboard.jsx L458, L585, L604                              */
+body.skin-neumorphic [style*="min-width: 340px"][style*="border-radius"],
+body.skin-neumorphic [style*="minWidth: 340"][style*="borderRadius"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Dashboard confirm/invite dialog (L60: rgba shadow) */
+body.skin-neumorphic [style*="padding: 26px"][style*="border-radius"],
+body.skin-neumorphic [style*="padding:26"][style*="borderRadius"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── CANVAS LARGE MODALS (help, history, collab log) ────────────
+   NodeCanvas.jsx L4018, L4068, L4207                          */
+body.skin-neumorphic [style*="width: 440px"][style*="max-width"][style*="border-radius"],
+body.skin-neumorphic [style*="width: 560px"][style*="max-width"][style*="border-radius"],
+body.skin-neumorphic [style*="width: 640"][style*="max-width"][style*="border-radius"],
+body.skin-neumorphic [style*="width: 700"][style*="max-width"][style*="border-radius"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── TOOLTIP / FLOATING LABELS ───────────────────────────────────
+   NodeCanvas.jsx L4549: pointer-events none floating labels   */
+body.skin-neumorphic [style*="pointer-events: none"][style*="border-radius"][style*="box-shadow"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEs) !important;
+  border: none !important;
+}
+
+/* ── AUTOCOMPLETE / MODEL PICKER DROPDOWN ────────────────────────
+   NodeCanvas.jsx L4103, LLMSettings: small dropdown list      */
+body.skin-neumorphic [style*="max-height: 140px"][style*="overflow-y"],
+body.skin-neumorphic [style*="maxHeight: 140"][style*="overflowY"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEm) !important;
+  border: none !important;
+}
+
+/* ── NODE TYPE PICKER (inline popup) ─────────────────────────────
+   NodeCanvas.jsx L5164: bg2 + rgba shadow                     */
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="overflow: hidden"][style*="display: flex"][style*="flex-direction: column"][style*="gap"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── INLINE NODE EDITOR (L5506 - outer popup card) ──────────────
+   The popup card itself: bg2 + accent border + rgba shadow    */
+body.skin-neumorphic [style*="z-index: 200"][style*="border: 2px solid"],
+body.skin-neumorphic [style*="zIndex: 200"][style*="border: 2px solid"] {
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+  background: var(--bg) !important;
+}
+
+/* ── RICH TEXT EDITOR FORMAT BUTTONS — ACTIVE STATE ─────────────
+   Bold/Italic/etc when active MUST show pressed-in (inset)    */
+body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+}
+/* The actual active (toggled-on) format buttons                 */
+body.skin-neumorphic button[style*="height: 22px"][style*="fontWeight: 700"][style*="color: var(--text)"] {
+  box-shadow: var(--nIx) !important;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+/* ── COLLAB PANEL / AI CHAT PANEL HEADERS ───────────────────────
+   NodeCanvas.jsx L3908, L3931, L3951: bg3 header rows        */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="padding: 10px 14px"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: 0 3px 7px var(--neu-shadow) !important;
+}
+
+/* ── NOTE ROW IN POPUP (with sensitivity lock icon) ─────────────
+   The note row container with bg3 background                  */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── SEARCH HIGHLIGHT OVERLAY (Tutorial spotlight) ───────────────
+   Tutorial.jsx L166: only the overlay, not the target         */
+/* Leave tutorial spotlight rgba intact — it IS the overlay background */
+
+/* ── AI CHAT MESSAGE BUBBLES ─────────────────────────────────────
+   LLMChat user/assistant bubbles                              */
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="padding: 9px 13px"],
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="padding: 7px 10px"] {
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+}
+/* User bubble (accent tinted) */
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="background: var(--accent2)18"],
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="background:var(--accent2)18"] {
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+  background: color-mix(in srgb, var(--accent2) 12%, var(--bg)) !important;
+}
+
+/* ── INTEGRATION PANEL FILTER PILLS ─────────────────────────────
+   Live tab filter buttons (All, Disks, etc.)                 */
+body.skin-neumorphic button[style*="border-radius: 10px"][style*="border: 1px solid"] {
+  border: none !important;
+  box-shadow: var(--nEx) !important;
+}
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="border-radius: 10px"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+  color: var(--accent2) !important;
+}
+
+/* ── QUICK CAPTURE FLOATING INPUT (L3891) ────────────────────────
+   bg2 + hardcoded border #6C63FF + rgba shadow                */
+body.skin-neumorphic [style*="border: 2px solid #6C63FF"],
+body.skin-neumorphic [style*="border:2px solid #6C63FF"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+  outline: 2px solid var(--accent2) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── NODE INLINE EDIT INPUT (L2727) ─────────────────────────────
+   The blue accent border input inside node                    */
+body.skin-neumorphic .nn-node input[style*="border: 1px solid"] {
+  border: none !important;
+  box-shadow: none !important;
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 1px !important;
+  border-radius: var(--nRx) !important;
+}
+
+/* ── NOTE TITLE INPUT IN POPUP (bg3 background) ─────────────────
+   L2971: note title with bg3                                  */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="padding: 4px 8px"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nIs) !important;
+  border-radius: var(--nRx) !important;
+}
+
+/* ── DROP SUGGESTION LIST (node type while typing) ───────────────
+   The floating suggestion list on canvas                      */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border: 1px solid var(--accent)"][style*="border-radius: var(--radius-md)"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+  outline: 2px solid var(--accent) !important;
+}
 `},
 
   sakura: {

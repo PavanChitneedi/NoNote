@@ -57,7 +57,7 @@ function ShareModal({ map, onClose }) {
     <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
       <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,
-        width:"min(460px,94vw)",boxShadow:"0 24px 64px rgba(0,0,0,.7)",padding:26,
+        width:"min(460px,94vw)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",padding:26,
         display:"flex",flexDirection:"column",gap:16}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:18}}>👥</span>
@@ -82,12 +82,12 @@ function ShareModal({ map, onClose }) {
           {search.length>0&&(
             <div style={{position:"absolute",top:"100%",left:0,right:80,zIndex:10,marginTop:4,
               background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,
-              boxShadow:"0 8px 24px rgba(0,0,0,.5)"}}>
+              boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none"}}>
               {search.map(u=>(
                 <div key={u.id} onClick={()=>addUser(u.id)} style={{padding:"9px 12px",cursor:"pointer",
                   fontSize:12,color:"var(--text2)"}}
-                  onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  onMouseEnter={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
+                  onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
                   {u.display_name} <span style={{color:"var(--text4)"}}>{u.email}</span>
                 </div>
               ))}
@@ -455,7 +455,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
           <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
             onClick={()=>setShowChangelog(false)}>
             <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:12,
-              boxShadow:"0 24px 64px rgba(0,0,0,.7)",width:540,maxWidth:"94vw",maxHeight:"80vh",
+              boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",width:540,maxWidth:"94vw",maxHeight:"80vh",
               display:"flex",flexDirection:"column",overflow:"hidden"}}
               onClick={e=>e.stopPropagation()}>
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",
@@ -582,7 +582,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             {renaming&&(
               <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center"}}
                 onClick={()=>setRenaming(null)}>
-                <div style={{background:"var(--bg2)",borderRadius:10,padding:20,minWidth:340,boxShadow:"0 8px 32px rgba(0,0,0,.5)"}}
+                <div style={{background:"var(--bg2)",borderRadius:10,padding:20,minWidth:340,boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}
                   onClick={e=>e.stopPropagation()}>
                   <div style={{fontSize:13,fontWeight:700,color:"var(--text)",marginBottom:10}}>Rename Map</div>
                   <input autoFocus value={renaming.title}
@@ -601,7 +601,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               <>
                 <div style={{position:"fixed",inset:0,zIndex:699}} onClick={()=>setMenuMap(null)}/>
                 <div style={{position:"fixed",left:menuMap.x,top:menuMap.y,zIndex:700,background:"var(--bg2)",
-                  border:"1px solid var(--border2)",borderRadius:9,boxShadow:"0 8px 28px rgba(0,0,0,.5)",
+                  border:"none",borderRadius:9,boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
                   minWidth:170,overflow:"hidden"}}>
                   {[
                     {icon:"↗",label:"Open",action:()=>{onOpenMap(menuMap.id);setMenuMap(null);}},
@@ -614,8 +614,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     <div key={label} onClick={action}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",
                         fontSize:12,color:color||"var(--text2)",transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      onMouseEnter={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
+                      onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
                       <span style={{width:16,textAlign:"center",opacity:.7}}>{icon}</span>{label}
                     </div>
                   ))}
@@ -675,7 +675,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                   const meta=getMapMeta(editingMeta);
                   return <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center"}}
                     onClick={()=>setEditingMeta(null)}>
-                    <div style={{background:"var(--bg2)",borderRadius:12,padding:20,width:380,border:"1px solid var(--border)",boxShadow:"0 16px 48px rgba(0,0,0,.6)"}}
+                    <div style={{background:"var(--bg)",borderRadius:12,padding:20,width:380,border:"none",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}
                       onClick={e=>e.stopPropagation()}>
                       <div style={{fontSize:13,fontWeight:700,color:"var(--text)",marginBottom:14}}>Customize Map</div>
                       {/* Group input */}

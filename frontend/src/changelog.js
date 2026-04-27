@@ -1,6 +1,38 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.3",date:"Apr 2026",items:[
+    "Fix: ALL JS onMouseEnter bg3 overrides removed from source -- now use boxShadow token strings instead of color change (9 in NodeCanvas, 4 in Dashboard, 1 in VersionHistory)",
+    "Fix: ALL hardcoded rgba(0,0,0) box-shadows replaced with --nEl/nEm/nEs/nEx token vars (14 in NodeCanvas, 5 in Dashboard, 2 in AdminPanel, 1 each in DocExport/HelpGuide/Tutorial/UserProfile/LiveDashboard/MobileCanvas/ThemePicker)",
+    "Fix: Hover interactions now depth-only -- surface bg never changes, only shadow elevation changes",
+    "Fix: MobileCanvas node cards use --nEs/--nEl shadow tokens",
+    "Fix: ThemePicker swatches use nIs inset (active) / nEx raised (inactive)",
+    "Fix: Tutorial/HelpGuide/UserProfile modals now nEl raised cards",
+    "Fix: LiveDashboard integration compact cards now nEx raised",
+    "Audit: 0 bg3 hover overrides remain. 0 hardcoded rgba box-shadows remain across entire codebase.",
+  ]},
+  {v:"v5.43.2",date:"Apr 2026",items:[
+    "Feature: /docs/ui-catalogue.md -- 383-line catalogue covering all 66 UI components with states and token mappings",
+    "Fix: All 39 audit issues resolved (9 JS hover bg3 overrides, 14 NodeCanvas rgba shadows, 16 other components)",
+    "Fix: Search/find overlay -- bg2+rgba replaced with bg+nEl",
+    "Fix: VersionHistory rows -- JS hover bg3 neutralized, depth-only hover",
+    "Fix: ThemePicker swatches -- rgba shadow replaced with nEx/nIs tokens",
+    "Fix: AdminPanel modal + toggle thumb -- rgba shadows replaced",
+    "Fix: DocExportModal, HelpGuide, Tutorial, UserProfile modals -- all nEl",
+    "Fix: Dashboard invite/confirm dialogs -- bg+nEl",
+    "Fix: Canvas large modals (440px/560px/640px) -- bg+nEl",
+    "Fix: Tooltip floating labels -- nEs raised",
+    "Fix: Autocomplete/model picker -- bg+nEm",
+    "Fix: Node type picker -- bg+nEl",
+    "Fix: Inline popup outer card border (2px accent) -- replaced with nEl+outline",
+    "Fix: RTE format buttons active state -- now nIx inset (pressed in)",
+    "Fix: Collab/AI panel headers (bg3 rows) -- bg+shadow seam",
+    "Fix: Note title input in popup -- nIs inset well",
+    "Fix: Quick-capture floating input -- bg+nEl+accent outline",
+    "Fix: AI chat message bubbles -- border removed, nEs shadow",
+    "Fix: Integration panel filter pills -- nEx/nIs tokens",
+    "Fix: Node inline-edit input border -- outline2px instead of border",
+  ]},
   {v:"v5.43.1",date:"Apr 2026",items:[
     "Feature: NEUMORPHIC_CATALOGUE.md -- full UI design catalogue documenting all components, states, and token usage",
     "Fix: Node internal buttons (pencil/comment/collapse/add-note) now transparent default, bg+nEx hover, nIx active",

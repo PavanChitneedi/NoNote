@@ -129,7 +129,7 @@ export default function UserProfile({ onClose }) {
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:14,
         width:"100%", maxWidth:520, maxHeight:"88vh", display:"flex", flexDirection:"column",
-        overflow:"hidden", boxShadow:"0 24px 72px rgba(0,0,0,.7)" }}
+        overflow:"hidden", boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none" }}
         onClick={e=>e.stopPropagation()}>
 
         {/* Header */}

@@ -448,7 +448,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                   width:node.w||DEF_W,minHeight:node.h||DEF_H,zIndex:2,
                   background:"var(--bg2)",border:`2px solid ${border}`,
                   borderRadius:10,touchAction:"none",cursor:"grab",
-                  boxShadow:isSel?`0 0 0 3px ${ACCENT}44,0 8px 24px rgba(0,0,0,.55)`:"0 2px 8px rgba(0,0,0,.4)",
+                  boxShadow:isSel?`var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight)),0 0 0 2px ${ACCENT}55`:"var(--nEs,4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))",
                   transition:"border-color .12s,box-shadow .12s"}}>
                 {/* Header */}
                 <div style={{padding:"10px 12px 6px",background:`${t.color}18`,
@@ -654,7 +654,7 @@ function Sht({title,onClose,children,foot,h="60vh"}){
   return(
     <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:30,
       background:"var(--bg2)",borderTop:"1.5px solid var(--border)",
-      borderRadius:"16px 16px 0 0",boxShadow:"0 -10px 48px rgba(0,0,0,.55)",
+      borderRadius:"16px 16px 0 0",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
       display:"flex",flexDirection:"column",
       maxHeight:h,height:h==="auto"?undefined:h}}>
       <div style={{display:"flex",justifyContent:"center",padding:"10px 0 2px"}}>

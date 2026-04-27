@@ -268,7 +268,7 @@ export default function LiveDashboard({maps}){
         const cfg=node.properties._integration, result=results[node.id];
         const type=cfg.type||NODE_INT_MAP[node.type]||'probe', Renderer=RENDERERS[type];
         const color=TYPE_COLOR[type]||'var(--accent2)', isOnline=result?.ok;
-        return <div key={node.id} style={{background:'var(--bg2)',borderRadius:8,overflow:'hidden',border:`1px solid ${isOnline?color+'44':result?'var(--danger)33':'var(--border)'}`,borderLeft:`3px solid ${isOnline?color:result?'var(--danger)':'var(--border)'}`,boxShadow:'0 1px 8px rgba(0,0,0,.1)'}}>
+        return <div key={node.id} style={{background:'var(--bg2)',borderRadius:8,overflow:'hidden',border:`1px solid ${isOnline?color+'44':result?'var(--danger)33':'var(--border)'}`,borderLeft:`3px solid ${isOnline?color:result?'var(--danger)':'var(--border)'}`,boxShadow:'var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))'}}>
           {/* Compact header */}
           <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderBottom:'1px solid var(--border2)'}}>
             <span style={{width:7,height:7,borderRadius:'50%',flexShrink:0,background:isOnline?'var(--success)':result?'var(--danger)':'var(--text4)',boxShadow:isOnline?'0 0 5px var(--success)':'none'}}/>

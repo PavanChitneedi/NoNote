@@ -119,7 +119,7 @@ export default function Tutorial({ page, onClose }) {
   let ts = {
     position:"fixed", zIndex:10000, width:TW,
     background:"var(--bg2)", border:`1.5px solid ${ACCENT}`,
-    borderRadius:14, boxShadow:"0 20px 60px rgba(0,0,0,.85)",
+    borderRadius:14, boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
     padding:"20px 22px 16px", fontFamily:"var(--font-ui)",
   };
 

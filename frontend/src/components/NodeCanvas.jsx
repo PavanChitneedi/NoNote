@@ -2977,7 +2977,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                                 <div style={{display:"flex",gap:1,padding:"1px 3px",
                                   background:"var(--bg2)",border:"1px solid var(--border)",
                                   borderRadius:3,position:"absolute",top:-22,left:0,zIndex:10,
-                                  boxShadow:"0 2px 8px rgba(0,0,0,.4)"}}>
+                                  boxShadow:"var(--shadow-node, 4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))"}}>
                                   {[["B","bold"],["I","italic"],["U","underline"],["S","strikethrough"],["—","insertHorizontalRule"]].map(([lbl,cmd])=>(
                                     <button key={cmd}
                                       onMouseDown={e=>{
@@ -3189,7 +3189,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
                 <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
                   background:"var(--bg2)",border:"1px solid var(--border)",
-                  borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",
+                  borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
                   minWidth:180,overflow:"hidden"}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
                   {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],
@@ -3212,8 +3212,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       else if(i===10){setDocExportMode("ai-pdf");setShowDocExport(true);}
                       else setShowExport(true);}}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"8px 14px",cursor:"pointer"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      onMouseEnter={e=>e.currentTarget.style.boxShadow="var(--shadow-node-xs,2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight))"}
+                      onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
                       <span style={{fontSize:15,minWidth:20,textAlign:"center"}}>{ic}</span>
                       <div>
                         <div style={{fontSize:11,fontWeight:600,color:"var(--text)"}}>{lbl}</div>
@@ -3243,14 +3243,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
                 <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
                   background:"var(--bg2)",border:"1px solid var(--border)",
-                  borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",
+                  borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
                   padding:6,minWidth:160}}>
                   {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
                     <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
                       style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",
                         cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      onMouseEnter={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
+                      onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
                       {ic} {lbl}
                     </div>
                   ))}
@@ -3369,7 +3369,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   </button>
                   {showConnDropdown&&(<>
                     <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
-                    <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--accent)",borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.5)",width:292,overflow:"hidden"}}>
+                    <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg)",border:"none",outline:"2px solid var(--accent)44",borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:292,overflow:"hidden"}}>
                       {EDGE_SECTIONS.map(section=>{
                         const ss=Object.entries(EDGE_STYLES).filter(([,s])=>s.section===section);
                         return(<div key={section}>
@@ -3379,8 +3379,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                               <div key={key} title={`${style.label} — ${style.desc}`}
                                 onClick={()=>{setEdgeStyle(key);setShowConnDropdown(false);}}
                                 style={{width:80,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"6px 4px",borderRadius:"var(--radius-sm)",cursor:"pointer",border:`1.5px solid ${edgeStyle===key?"var(--accent)":"transparent"}`,background:edgeStyle===key?"var(--accent)14":"transparent",transition:"all .1s"}}
-                                onMouseEnter={e=>{if(edgeStyle!==key)e.currentTarget.style.background="var(--bg3)";}}
-                                onMouseLeave={e=>{if(edgeStyle!==key)e.currentTarget.style.background="transparent";}}>
+                                onMouseEnter={e=>{if(edgeStyle!==key)e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)";}}
+                                onMouseLeave={e=>{if(edgeStyle!==key)e.currentTarget.style.boxShadow="";}}>
                                 <EdgeIcon styleKey={key} size={56} active={edgeStyle===key} color={edgeStyle===key?"var(--accent)":"var(--text3)"}/>
                                 <span style={{fontSize:9,color:edgeStyle===key?"var(--accent)":"var(--text4)",textAlign:"center",lineHeight:1.2,maxWidth:76,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{style.label}</span>
                               </div>
@@ -3422,7 +3422,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 {showLayoutMenu&&(<>
                   <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowLayoutMenu(false)}/>
                   <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",
-                    borderRadius:"var(--radius-md)",boxShadow:"0 8px 28px rgba(0,0,0,.5)",
+                    borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
                     padding:6,minWidth:190,overflow:"hidden"}}>
                     <div style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:1,padding:"4px 8px 6px"}}>LAYOUT DIRECTION</div>
                     {[
@@ -3439,8 +3439,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                           background:layoutDir===dir?"var(--accent2)20":"transparent",
                           border:layoutDir===dir?"1px solid var(--accent2)":"1px solid transparent",
                           marginBottom:2}}
-                        onMouseEnter={e=>e.currentTarget.style.background=layoutDir===dir?"var(--accent2)30":"var(--bg3)"}
-                        onMouseLeave={e=>e.currentTarget.style.background=layoutDir===dir?"var(--accent2)20":"transparent"}>
+                        onMouseEnter={e=>{if(layoutDir!==dir)e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}}
+                        onMouseLeave={e=>{if(layoutDir!==dir)e.currentTarget.style.boxShadow=""}}>
                         <NodeIcon icon={icon} size={16} />
                         <div>
                           <div style={{fontSize:11,fontWeight:700,color:layoutDir===dir?"var(--accent2)":"var(--text)"}}>{label}</div>
@@ -3500,7 +3500,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             background:"var(--bg2)",
             border:"1.5px solid var(--accent)",
             borderRadius:"var(--radius-lg)",
-            boxShadow:"0 24px 64px rgba(0,0,0,.7)",
+            boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
             overflow:"hidden",
           }} onKeyDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}>
 
@@ -3589,10 +3589,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       }}
                       style={{display:"flex",alignItems:"center",gap:12,padding:"11px 16px",
                         borderBottom:"1px solid var(--border2)",cursor:"pointer",outline:"none",transition:"background .1s"}}
-                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}
-                      onFocus={e=>e.currentTarget.style.background="var(--bg3)"}
-                      onBlur={e=>e.currentTarget.style.background="transparent"}>
+                      onMouseEnter={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
+                      onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}
+                      onFocus={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
+                      onBlur={e=>e.currentTarget.style.boxShadow="none"}>
                       <div style={{width:36,height:36,borderRadius:"50%",flexShrink:0,
                         background:`${t.color}22`,border:`1.5px solid ${t.color}60`,
                         display:"flex",alignItems:"center",justifyContent:"center",fontSize:18}}>
@@ -3829,7 +3829,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         fontSize:9, fontWeight:700, lineHeight:"16px",
                         padding:"0 5px", borderRadius:3,
                         whiteSpace:"nowrap", fontFamily:"var(--font-ui)",
-                        boxShadow:"0 1px 4px rgba(0,0,0,.4)",
+                        boxShadow:"var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))",
                         display:"flex", alignItems:"center", gap:4,
                       }}>
                         <span style={{
@@ -3888,7 +3888,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {quickPos&&canEdit&&editMode&&(
                 <div style={{position:"absolute",left:quickPos.x,top:quickPos.y-64,zIndex:100,display:"flex",flexDirection:"column",gap:5}} onClick={e=>e.stopPropagation()}>
                   <div style={{background:"#6C63FF",color:"#fff",fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"3px 9px",borderRadius:"var(--radius-xs)",alignSelf:"flex-start"}}>⚡ QUICK CAPTURE</div>
-                  <div style={{background:"var(--bg2)",border:"2px solid #6C63FF",borderRadius:"var(--radius-md)",padding:"8px 10px",boxShadow:"0 8px 24px rgba(0,0,0,.5)",display:"flex",gap:6}}>
+                  <div style={{background:"var(--bg)",border:"none",borderRadius:"var(--radius-md)",padding:"8px 10px",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",outline:"2px solid var(--accent2)",display:"flex",gap:6}}>
                     <input ref={quickInpRef} value={quickText} onChange={e=>setQuickText(e.target.value)}
                       onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")commitCapture();if(e.key==="Escape"){setQuickPos(null);setQuickText("");}}}
                       placeholder="Type a thought, hit Enter…"
@@ -4015,7 +4015,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showCollabLog&&(
         <div style={{position:"fixed",top:76,right:8,zIndex:800,width:320,maxHeight:"70vh",
           background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
-          boxShadow:"0 12px 40px rgba(0,0,0,.6)",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",display:"flex",flexDirection:"column",overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",padding:"10px 14px",
             borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
             <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>📋 Map Changes</span>
@@ -4065,7 +4065,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>{setShowShare(false);setShareStatus(null);setShareEmail("");}}>
           <div style={{background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
-            boxShadow:"0 24px 64px rgba(0,0,0,.7)",width:440,maxWidth:"94vw",
+            boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",width:440,maxWidth:"94vw",
             display:"flex",flexDirection:"column",overflow:"hidden"}}
             onClick={e=>e.stopPropagation()}>
             {/* Header */}
@@ -4100,12 +4100,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   {shareSearch.length>0&&(
                     <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,
                       background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
-                      boxShadow:"0 4px 16px rgba(0,0,0,.4)",marginTop:2,maxHeight:140,overflowY:"auto"}}>
+                      boxShadow:"var(--nEm,6px 6px 14px var(--neu-shadow),-5px -5px 10px var(--neu-hilight))",border:"none",marginTop:2,maxHeight:140,overflowY:"auto"}}>
                       {shareSearch.map(u=>(
                         <div key={u.id} onClick={()=>{setShareEmail(u.email);setShareSearch([]);}}
                           style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",cursor:"pointer",fontSize:11}}
-                          onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-                          onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                          onMouseEnter={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
+                          onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
                           <div style={{width:24,height:24,borderRadius:"50%",background:"var(--accent)",
                             display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,
                             color:"#fff",fontWeight:700,flexShrink:0}}>
@@ -4204,7 +4204,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>setShowChangelog(false)}>
           <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:"var(--radius-lg)",
-            boxShadow:"0 24px 64px rgba(0,0,0,.7)",width:560,maxWidth:"94vw",maxHeight:"80vh",
+            boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",width:560,maxWidth:"94vw",maxHeight:"80vh",
             display:"flex",flexDirection:"column",overflow:"hidden"}}
             onClick={e=>e.stopPropagation()}>
             {/* Header */}
@@ -4507,11 +4507,11 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                           transition:"background .1s,border-color .1s",
                           border:"1.5px solid transparent"}}
                         onMouseOver={e=>{
-                          e.currentTarget.style.background="var(--bg3)";
+                          e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)";
                           e.currentTarget.style.borderColor=t.color+"70";
                         }}
                         onMouseOut={e=>{
-                          e.currentTarget.style.background="transparent";
+                          e.currentTarget.style.boxShadow="";
                           e.currentTarget.style.borderColor="transparent";
                         }}>
                         <NodeIcon icon={t.icon} size={16} color={t.color} />
@@ -4525,8 +4525,8 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                       style={{display:"flex",alignItems:"center",gap:8,padding:"5px 10px",
                         cursor:canEdit?"pointer":"default",
                         borderLeft:"3px solid transparent",transition:"background .1s,border-color .1s"}}
-                      onMouseEnter={e=>{if(canEdit){e.currentTarget.style.background="var(--bg3)";e.currentTarget.style.borderLeftColor=t.color;}}}
-                      onMouseLeave={e=>{e.currentTarget.style.background="transparent";e.currentTarget.style.borderLeftColor="transparent";}}>
+                      onMouseEnter={e=>{if(canEdit){e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)";e.currentTarget.style.borderLeftColor=t.color;}}}
+                      onMouseLeave={e=>{e.currentTarget.style.boxShadow="";e.currentTarget.style.borderLeftColor="transparent";}}>
                       <NodeIcon icon={t.icon} size={15} color={t.color} />
                       <span style={{color:"var(--text2)",flex:1,overflow:"hidden",textOverflow:"ellipsis",
                         whiteSpace:"nowrap",fontSize:11}}>{t.label}</span>
@@ -4546,7 +4546,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
           background:"var(--bg2)",border:`1.5px solid ${tooltip.color}`,
           borderRadius:"var(--radius-sm)",padding:"3px 9px",fontSize:11,
           fontWeight:700,color:tooltip.color,
-          boxShadow:"0 4px 16px rgba(0,0,0,.4)",pointerEvents:"none",whiteSpace:"nowrap"}}>
+          boxShadow:"var(--nEs,4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))",border:"none",pointerEvents:"none",whiteSpace:"nowrap"}}>
           {tooltip.label}
         </div>
       )}
@@ -5145,8 +5145,8 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
       style={{display:"flex",alignItems:"center",gap:9,padding:"7px 13px",cursor:disabled?"default":"pointer",
         opacity:disabled?.4:1,transition:"background .1s",
         color:danger?"var(--danger)":"var(--text)"}}
-      onMouseEnter={e=>{if(!disabled)e.currentTarget.style.background="var(--bg3)";}}
-      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+      onMouseEnter={e=>{if(!disabled)e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)";}}
+      onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
       <NodeIcon icon={icon} size={14} />
       <div style={{flex:1}}>
         <div style={{fontSize:12,fontWeight:600}}>{label}</div>
@@ -5161,7 +5161,7 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
     <div style={{
       position:"absolute",left:x,top:y,zIndex:601,
       background:"var(--bg2)",border:"1px solid var(--border)",
-      borderRadius:"var(--radius-md)",boxShadow:"0 8px 32px rgba(0,0,0,.55)",
+      borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
       width:menuW,overflow:"hidden",userSelect:"none",
     }} onClick={e=>e.stopPropagation()}>
       {/* Header */}
@@ -5419,8 +5419,8 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
               style={{padding:"10px 12px",borderBottom:"1px solid var(--border2)",cursor:"pointer",
                 background:isActive?"var(--bg3)":"transparent",
                 borderLeft:`3px solid ${isActive?t.color:"transparent"}`,transition:"background .1s"}}
-              onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
-              onMouseLeave={e=>{if(!isActive)e.currentTarget.style.background="transparent";}}>
+              onMouseEnter={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
+              onMouseLeave={e=>{e.currentTarget.style.boxShadow="";}}>
 
               {/* Node title row */}
               <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
@@ -5503,7 +5503,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
       style={{
         position: 'absolute', left: x, top: y, width: 520, zIndex: 200,
         background: 'var(--bg2)', border: `2px solid ${t.color}`,
-        borderRadius: 'var(--radius-lg)', boxShadow: '0 16px 48px rgba(0,0,0,.65)',
+        borderRadius: 'var(--radius-lg)', boxShadow: 'var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))', border: 'none',
         display: 'flex', flexDirection: 'column', maxHeight: '80vh',
         userSelect: 'none',
       }}>

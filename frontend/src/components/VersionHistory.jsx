@@ -99,7 +99,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
                   background: preview?.id===ver.id ? "var(--accent2)15" : "transparent",
                   borderBottom:"1px solid var(--border2)", transition:"all .12s",
                 }}
-                onMouseEnter={e => { if(preview?.id!==ver.id) e.currentTarget.style.background="var(--bg3)"; }}
+                onMouseEnter={e => { if(preview?.id!==ver.id) e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"; }}
                 onMouseLeave={e => { if(preview?.id!==ver.id) e.currentTarget.style.background="transparent"; }}
               >
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>

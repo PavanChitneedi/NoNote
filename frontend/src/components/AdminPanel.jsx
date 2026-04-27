@@ -110,7 +110,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
       display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
       <div onClick={e=>e.stopPropagation()} style={{background:"var(--bg2)",
         border:"1px solid var(--border)",borderRadius:14,width:"min(540px,94vw)",
-        maxHeight:"88vh",overflow:"auto",boxShadow:"0 24px 72px rgba(0,0,0,.7)",
+        maxHeight:"88vh",overflow:"auto",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
         padding:26,display:"flex",flexDirection:"column",gap:16}}>
 
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -611,7 +611,7 @@ export default function AdminPanel({ onBack }) {
                               position:"relative",transition:"background .2s"}}>
                             <div style={{width:20,height:20,borderRadius:"50%",background:"#fff",
                               position:"absolute",top:3,transition:"left .2s",
-                              left:val==="true"?22:3,boxShadow:"0 1px 4px rgba(0,0,0,.3)"}}/>
+                              left:val==="true"?22:3,boxShadow:"var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))"}}/>
                           </div>
                         ):(
                           <input type="number" value={val||"0"}

@@ -407,7 +407,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
       onClick={onClose}>
       <div onClick={e=>e.stopPropagation()}
         style={{ background:"var(--bg2)", border:"1.5px solid var(--border)",
-          borderRadius:14, boxShadow:"0 24px 72px rgba(0,0,0,.7)",
+          borderRadius:14, boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
           width:"min(480px,94vw)", padding:28, display:"flex", flexDirection:"column", gap:18 }}>
 
         {/* Header */}

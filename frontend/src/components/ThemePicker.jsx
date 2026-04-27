@@ -128,7 +128,7 @@ export default function ThemePicker({
                         background: bg1,
                         transition:"transform 0.14s, border-color 0.14s, box-shadow 0.14s",
                         userSelect:"none",
-                        boxShadow: active ? "0 4px 20px var(--accent)44" : "0 2px 8px rgba(0,0,0,0.3)",
+                        boxShadow: active ? "var(--nIs,inset 2px 2px 6px var(--neu-shadow),-2px -2px 4px var(--neu-hilight))" : "var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))",
                       }}
                       onMouseEnter={e => { if(!active){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor="var(--accent)";}}}
                       onMouseLeave={e => { if(!active){e.currentTarget.style.transform="";e.currentTarget.style.borderColor="rgba(128,128,128,0.25)";}}}

@@ -214,7 +214,7 @@ export default function HelpGuide({ onClose }) {
     modal:{ background:"var(--bg2)",border:"1.5px solid var(--border)",
       borderRadius:16,width:"min(860px,96vw)",height:"min(640px,92vh)",
       display:"flex",flexDirection:"column",overflow:"hidden",
-      boxShadow:"0 24px 80px rgba(0,0,0,.8)",fontFamily:"var(--font-ui)" },
+      boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",fontFamily:"var(--font-ui)" },
     header:{ display:"flex",alignItems:"center",gap:12,padding:"16px 20px",
       borderBottom:"1px solid var(--border)",flexShrink:0 },
     body:{ display:"flex",flex:1,overflow:"hidden" },
