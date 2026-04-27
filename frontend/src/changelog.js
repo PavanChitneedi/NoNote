@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.7",date:"Apr 2026",items:[
+    "Fix: Blank homepage -- DevModeContext started with devMode=true from localStorage, registering capture-mode click listener with e.preventDefault() that blocked ALL clicks (login, buttons, everything)",
+    "Fix: DevMode now initializes to false, reads localStorage/URL param only after mount (client-side only)",
+    "Fix: DevMode click interception now only fires on elements with a DIRECT data-ui attribute (not inherited from parent) -- regular buttons and inputs without data-ui work normally",
+    "Fix: DevMode uses non-capture event listeners -- no longer intercepts before React handlers",
+    "Fix: DEV badge in overlay now acts as exit button (click to disable dev mode)",
+    "Fix: DevMode overlay uses data-devmode-ui instead of data-devmode-overlay for self-exclusion",
+  ]},
   {v:"v5.43.6",date:"Apr 2026",items:["Fix: Duplicate border key in 16 style objects across NodeCanvas/Dashboard/AdminPanel/Tutorial/HelpGuide/UserProfile -- appended border:none after existing border: property. Removed the duplicate, keeping shadow-based border removal.","Fix: data-ui still injected inside style={{}} in DocExportModal -- moved to sibling JSX prop."]},
   {v:"v5.43.5",date:"Apr 2026",items:["Fix: data-ui attributes were injected inside style={{}} objects in 6 components (AdminPanel, VersionHistory, ThemePicker, LLMSettings, UserProfile, Tutorial, HelpGuide) causing build error: Expected } but found -. Moved to correct JSX prop position."]},
   {v:"v5.43.4",date:"Apr 2026",items:[
