@@ -1,6 +1,7 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.6",date:"Apr 2026",items:["Fix: Duplicate border key in 16 style objects across NodeCanvas/Dashboard/AdminPanel/Tutorial/HelpGuide/UserProfile -- appended border:none after existing border: property. Removed the duplicate, keeping shadow-based border removal.","Fix: data-ui still injected inside style={{}} in DocExportModal -- moved to sibling JSX prop."]},
   {v:"v5.43.5",date:"Apr 2026",items:["Fix: data-ui attributes were injected inside style={{}} objects in 6 components (AdminPanel, VersionHistory, ThemePicker, LLMSettings, UserProfile, Tutorial, HelpGuide) causing build error: Expected } but found -. Moved to correct JSX prop position."]},
   {v:"v5.43.4",date:"Apr 2026",items:[
     "Feature: Dev Mode -- toggle via DEV button in topbar, ?devMode=true URL param, or Ctrl+Shift+D",

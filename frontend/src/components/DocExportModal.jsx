@@ -402,12 +402,12 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
   };
 
   return (
-    <div style={{ data-ui="doc-export" data-component="DocExportModal" data-page="canvas" data-role="modal" position:"fixed", inset:0, zIndex:900,
+    <div data-ui="doc-export" data-component="DocExportModal" data-page="canvas" data-role="modal" style={{ position:"fixed", inset:0, zIndex:900,
       background:"rgba(0,0,0,.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
       onClick={onClose}>
       <div onClick={e=>e.stopPropagation()}
-        style={{ background:"var(--bg2)", border:"1.5px solid var(--border)",
-          borderRadius:14, boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+        style={{ background:"var(--bg2)", 
+          borderRadius:14, boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
           width:"min(480px,94vw)", padding:28, display:"flex", flexDirection:"column", gap:18 }}>
 
         {/* Header */}
@@ -480,7 +480,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
         {/* Actions */}
         <div style={{ display:"flex", gap:10 }}>
           <button onClick={onClose}
-            style={{ padding:"10px 18px", background:"var(--bg3)", border:"1px solid var(--border)",
+            style={{ padding:"10px 18px", background:"var(--bg3)", 
               borderRadius:8, color:"var(--text3)", cursor:"pointer", fontSize:13,
               fontFamily:"var(--font-ui)", fontWeight:600 }}>
             {status==="done" ? "Close" : "Cancel"}

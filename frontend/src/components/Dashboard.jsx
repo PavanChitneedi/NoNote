@@ -56,8 +56,8 @@ function ShareModal({ map, onClose }) {
   return (
     <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
-      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:14,
-        width:"min(460px,94vw)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",padding:26,
+      <div style={{background:"var(--bg2)",borderRadius:14,
+        width:"min(460px,94vw)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",padding:26,
         display:"flex",flexDirection:"column",gap:16}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",alignItems:"center",gap:10}}>
           <span style={{fontSize:18}}>👥</span>
@@ -71,18 +71,18 @@ function ShareModal({ map, onClose }) {
         {/* Add user */}
         <div style={{display:"flex",gap:8,position:"relative"}}>
           <input value={email} onChange={e=>doSearch(e.target.value)} placeholder="Search by name or email…"
-            style={{flex:1,background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,
+            style={{flex:1,background:"var(--bg)",borderRadius:8,
               padding:"9px 12px",color:"var(--text)",fontSize:13,fontFamily:"inherit",outline:"none"}}/>
           <select value={perm} onChange={e=>setPerm(e.target.value)}
-            style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,
+            style={{background:"var(--bg)",borderRadius:8,
               padding:"9px 10px",color:"var(--text)",fontSize:12,fontFamily:"inherit",outline:"none"}}>
             <option value="viewer">Viewer</option>
             <option value="editor">Editor</option>
           </select>
           {search.length>0&&(
             <div style={{position:"absolute",top:"100%",left:0,right:80,zIndex:10,marginTop:4,
-              background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:8,
-              boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none"}}>
+              background:"var(--bg2)",borderRadius:8,
+              boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}>
               {search.map(u=>(
                 <div key={u.id} onClick={()=>addUser(u.id)} style={{padding:"9px 12px",cursor:"pointer",
                   fontSize:12,color:"var(--text2)"}}
@@ -397,7 +397,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
         <div style={{ padding:"0 12px", borderTop:"1px solid var(--border2)", paddingTop:12 }}>
           <button onClick={()=>setShowChangelog(true)}
             style={{ width:"100%", padding:"7px 10px", background:"none",
-              border:"1px solid var(--border)", borderRadius:7, color:"var(--text4)",
+               borderRadius:7, color:"var(--text4)",
               fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"var(--font-ui)", textAlign:"left" }}>
             {CURRENT_VERSION} ✦ What's new
           </button>
@@ -442,7 +442,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             </div>
             <div style={{ flex:1 }}/>
             <button onClick={()=>setShowChangelog(true)}
-              style={{ background:"none", border:"1px solid var(--border)", borderRadius:"var(--radius-btn)",
+              style={{ background:"none",  borderRadius:"var(--radius-btn)",
                 padding:"4px 10px", color:"var(--text4)", fontSize:10, cursor:"pointer",
                 fontFamily:"var(--font-ui)", fontWeight:600 }}>
               {CURRENT_VERSION} ✦ What's new
@@ -455,7 +455,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
           <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
             onClick={()=>setShowChangelog(false)}>
             <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:12,
-              boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",width:540,maxWidth:"94vw",maxHeight:"80vh",
+              boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:540,maxWidth:"94vw",maxHeight:"80vh",
               display:"flex",flexDirection:"column",overflow:"hidden"}}
               onClick={e=>e.stopPropagation()}>
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",
@@ -488,7 +488,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
         )}
 
         {error && (
-          <div style={{ background:"var(--danger)18", border:`1px solid var(--danger)40`, borderRadius:8, padding:"10px 14px", fontSize:12, color:"var(--danger)", marginBottom:16 }}>
+          <div style={{ background:"var(--danger)18",  borderRadius:8, padding:"10px 14px", fontSize:12, color:"var(--danger)", marginBottom:16 }}>
             {error}
           </div>
         )}
@@ -508,7 +508,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
         {/* Import conflict modal */}
         {importConflict && (
           <div style={{ position:"fixed", inset:0, background:"#000a", zIndex:10000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ background:"var(--bg2)", border:"1px solid var(--border2)", borderRadius:14, padding:"28px 32px", maxWidth:420, width:"90%", boxShadow:"0 8px 40px #000a" }}>
+            <div style={{ background:"var(--bg2)",  borderRadius:14, padding:"28px 32px", maxWidth:420, width:"90%", boxShadow:"0 8px 40px #000a" }}>
               <div style={{ fontSize:15, fontWeight:700, color:"var(--text1)", marginBottom:10 }}>Map already exists</div>
               <div style={{ fontSize:13, color:"var(--text3)", marginBottom:24 }}>
                 A map named <strong style={{color:"var(--text1)"}}>"{importConflict.title}"</strong> already exists.<br/>What would you like to do?
@@ -523,7 +523,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                   ⊕ Save as copy
                 </button>
                 <button onClick={()=>handleImportConflictResolve("cancel")}
-                  style={{ padding:"9px 16px", background:"var(--bg3)", border:"1px solid var(--border2)", borderRadius:8, color:"var(--text3)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+                  style={{ padding:"9px 16px", background:"var(--bg3)",  borderRadius:8, color:"var(--text3)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
                   Cancel
                 </button>
               </div>
@@ -545,7 +545,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             showNew ? (
               <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
                 <input autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Map title…"
-                  style={{ flex:1, background:"var(--bg2)", border:`1px solid var(--accent)`, borderRadius:8, padding:"9px 14px", color:"var(--text)", fontSize:13, outline:"none" }}/>
+                  style={{ flex:1, background:"var(--bg2)",  borderRadius:8, padding:"9px 14px", color:"var(--text)", fontSize:13, outline:"none" }}/>
                 <button type="submit" disabled={creating} style={{ padding:"9px 16px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                   {creating?"…":"CREATE"}
                 </button>
@@ -560,7 +560,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             )
           )}
           {/* Import .nonote */}
-          <label data-tut="import" style={{ padding:"9px 15px", background:"var(--bg2)", border:"1px solid var(--border2)", borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
+          <label data-tut="import" style={{ padding:"9px 15px", background:"var(--bg2)",  borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
             ↙ Import .nonote
             <input type="file" accept=".nonote,.json" style={{ display:"none" }} onChange={handleImportFile}/>
           </label>
@@ -643,7 +643,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
                   {/* Search */}
                   <input value={mapSearch} onChange={e=>setMapSearch(e.target.value)} placeholder="Search maps…" data-ui="dashboard-search" data-component="Dashboard" data-page="dashboard" data-role="search-input"
-                    style={{flex:"0 0 200px",padding:"6px 10px",background:"var(--bg3)",border:"1px solid var(--border)",
+                    style={{flex:"0 0 200px",padding:"6px 10px",background:"var(--bg3)",
                       borderRadius:"var(--radius-sm)",color:"var(--text)",fontSize:11,outline:"none",fontFamily:"var(--font-ui)"}}/>
                   {/* Group pills */}
                   <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:1}}>
@@ -684,7 +684,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
                           {DEFAULT_GROUPS.map(g=>(
                             <button key={g} onClick={()=>{setMapMeta(editingMeta,{...meta,group:g});forceUpdate(n=>n+1);}}
-                              style={{fontSize:10,padding:"3px 9px",border:`1px solid ${meta.group===g?"var(--accent2)":"var(--border)"}`,
+                              style={{fontSize:10,padding:"3px 9px",
                                 borderRadius:6,cursor:"pointer",background:meta.group===g?"var(--accent2)":"var(--bg3)",
                                 color:meta.group===g?"#fff":"var(--text3)",fontFamily:"var(--font-ui)"}}>
                               {g}
@@ -694,7 +694,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         <input value={meta.group||""} onChange={e=>{setMapMeta(editingMeta,{...meta,group:e.target.value});forceUpdate(n=>n+1);}}
                           placeholder="Custom group name…"
                           style={{width:"100%",boxSizing:"border-box",padding:"6px 10px",background:"var(--bg3)",
-                            border:"1px solid var(--border)",borderRadius:7,color:"var(--text)",fontSize:11,outline:"none"}}/>
+                            borderRadius:7,color:"var(--text)",fontSize:11,outline:"none"}}/>
                       </div>
                       {/* Icon picker */}
                       <div style={{marginBottom:12}}>
@@ -702,7 +702,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                           {MAP_ICON_OPTIONS.map(ic=>(
                             <button key={ic} onClick={()=>{setMapMeta(editingMeta,{...meta,icon:ic});forceUpdate(n=>n+1);}}
-                              style={{fontSize:18,padding:"4px 8px",border:`2px solid ${meta.icon===ic?"var(--accent2)":"var(--border)"}`,
+                              style={{fontSize:18,padding:"4px 8px",
                                 borderRadius:7,cursor:"pointer",background:meta.icon===ic?"var(--accent2)22":"var(--bg3)"}}>
                               {ic}
                             </button>

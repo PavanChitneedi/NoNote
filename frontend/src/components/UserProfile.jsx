@@ -3,7 +3,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../api/client.js";
 
 const inp = {
-  width:"100%", background:"var(--bg)", border:"1px solid var(--border)",
+  width:"100%", background:"var(--bg)", 
   borderRadius:8, padding:"10px 12px", color:"var(--text)", fontSize:13,
   fontFamily:"inherit", outline:"none", boxSizing:"border-box",
 };
@@ -127,9 +127,9 @@ export default function UserProfile({ onClose }) {
     <div data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
-      <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:14,
+      <div style={{ background:"var(--bg2)",  borderRadius:14,
         width:"100%", maxWidth:520, maxHeight:"88vh", display:"flex", flexDirection:"column",
-        overflow:"hidden", boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none" }}
+        overflow:"hidden", boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))" }}
         onClick={e=>e.stopPropagation()}>
 
         {/* Header */}

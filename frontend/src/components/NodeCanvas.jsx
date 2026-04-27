@@ -1006,7 +1006,7 @@ const iBtn=(active,ac="var(--accent2)")=>({
   minWidth:28,lineHeight:1,
 });
 const inp=()=>({
-  width:"100%",background:"var(--bg)",border:`1px solid var(--border)`,
+  width:"100%",background:"var(--bg)",
   borderRadius:"var(--radius-sm)",padding:"7px 9px",color:"var(--text)",
   fontSize:"inherit",fontFamily:"inherit",marginTop:3,
   boxSizing:"border-box",outline:"none",
@@ -2567,7 +2567,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   />
                   <select value={edge.edgeType||"data"} onClick={e=>e.stopPropagation()}
                     onChange={e=>{e.stopPropagation();applyEdges(es=>es.map(ex=>ex.id===edge.id?{...ex,edgeType:e.target.value}:ex));}}
-                    style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:4,padding:"2px 5px",color:"var(--text3)",fontSize:9,fontFamily:"var(--font-ui)",outline:"none",width:"100%",boxSizing:"border-box"}}>
+                    style={{background:"var(--bg2)",borderRadius:4,padding:"2px 5px",color:"var(--text3)",fontSize:9,fontFamily:"var(--font-ui)",outline:"none",width:"100%",boxSizing:"border-box"}}>
                     <option value="data">Data flow</option><option value="method">Method call</option>
                     <option value="network">Network</option><option value="dependency">Dependency</option>
                     <option value="trigger">Trigger</option><option value="other">Other</option>
@@ -2724,7 +2724,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   onMouseDown={e=>e.stopPropagation()}
                   onBlur={()=>setEditingTitle(null)}
                   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"||e.key==="Escape")setEditingTitle(null);}}
-                  style={{width:"100%",background:"var(--bg)",border:`1px solid ${t.color}`,borderRadius:"var(--radius-xs)",
+                  style={{width:"100%",background:"var(--bg)",borderRadius:"var(--radius-xs)",
                     padding:"1px 5px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700,boxSizing:"border-box"}}
                 />
               ):(
@@ -2772,7 +2772,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 onMouseDown={e=>e.stopPropagation()}
                 onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
                 title={node.collapsed?"Expand node":"Collapse node"}
-                style={{background:"none",border:`1px solid ${t.color}50`,borderRadius:3,
+                style={{background:"none",borderRadius:3,
                   color:t.color,cursor:"pointer",fontSize:9,width:15,height:15,flexShrink:0,
                   display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
                   opacity:0,transition:"opacity .15s"}}>
@@ -2840,7 +2840,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
                 <button onMouseDown={e=>e.stopPropagation()}
                   onClick={e=>{e.stopPropagation();updateNode(node.id,{showNotes:!node.showNotes});}}
-                  style={{display:"flex",alignItems:"center",gap:3,background:"none",border:`1px solid ${t.color}40`,
+                  style={{display:"flex",alignItems:"center",gap:3,background:"none",
                     borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
                     color:node.showNotes?t.color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0}}>
                   {node.showNotes?"▲":"▼"} {(Array.isArray(node.notes)?node.notes:[]).length} note{(Array.isArray(node.notes)?node.notes:[]).length!==1?"s":""}
@@ -2861,7 +2861,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     setTimeout(()=>setInlineEditField({noteId:newNote.id,field:'noteTitle'}),60);
                   }}
                   title="Add note (opens editor)"
-                  style={{display:"flex",alignItems:"center",gap:2,background:"none",border:`1px solid ${t.color}40`,
+                  style={{display:"flex",alignItems:"center",gap:2,background:"none",
                     borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
                     color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0,opacity:0,transition:"opacity .15s"}}
                   className="nn-addnote-btn">
@@ -2886,7 +2886,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         const newSet=allExpanded?new Set():new Set(noteArr.map(n=>n.id));
                         updateNode(node.id,{expandedNoteIds:[...newSet]});
                       }}
-                      style={{fontSize:8,background:"none",border:`1px solid ${t.color}30`,borderRadius:3,
+                      style={{fontSize:8,background:"none",borderRadius:3,
                         color:"var(--text4)",cursor:"pointer",padding:"0 5px",fontFamily:"var(--font-ui)"}}>
                       {allExpanded?"▲ Collapse all":"▼ Expand all"}
                     </button>
@@ -2975,7 +2975,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                                 />
                                 {/* Mini format bar */}
                                 <div style={{display:"flex",gap:1,padding:"1px 3px",
-                                  background:"var(--bg2)",border:"1px solid var(--border)",
+                                  background:"var(--bg2)",
                                   borderRadius:3,position:"absolute",top:-22,left:0,zIndex:10,
                                   boxShadow:"var(--shadow-node, 4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))"}}>
                                   {[["B","bold"],["I","italic"],["U","underline"],["S","strikethrough"],["—","insertHorizontalRule"]].map(([lbl,cmd])=>(
@@ -3188,8 +3188,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {showExportMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
                 <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
-                  background:"var(--bg2)",border:"1px solid var(--border)",
-                  borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+                  background:"var(--bg2)",
+                  borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
                   minWidth:180,overflow:"hidden"}}>
                   <div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"8px 12px 4px"}}>EXPORT AS</div>
                   {[["🤖","LLM Text","For AI context"],["{}","JSON","Raw data backup"],
@@ -3242,8 +3242,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {showAppMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
                 <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
-                  background:"var(--bg2)",border:"1px solid var(--border)",
-                  borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+                  background:"var(--bg2)",
+                  borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
                   padding:6,minWidth:160}}>
                   {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
                     <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
@@ -3261,7 +3261,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
             {/* ── Zoom control ── */}
-            <div style={{display:"flex",alignItems:"center",border:"1px solid var(--border)",
+            <div style={{display:"flex",alignItems:"center",
               borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
               <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))}
                 style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>−</button>
@@ -3316,7 +3316,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </button>
             )}
             {/* POPUP / PANEL — how you open node details */}
-            <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",border:"1.5px solid var(--border)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
+            <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
               title="How to view node details">
               <button onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
                 style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",border:"none",cursor:"pointer",
@@ -3396,7 +3396,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         {["#58a6ff","#3fb950","#f78166","#d2a8ff","#ffa657","#ffffff"].map(c=>(
                           <div key={c} onClick={()=>setEdgeColor(c)} style={{width:16,height:16,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,border:(edgeColor===c||edgeColor==="var(--accent)"&&c==="#58a6ff")?"2px solid #fff":"2px solid transparent"}}/>
                         ))}
-                        <button onClick={()=>setEdgeColor("var(--accent)")} style={{marginLeft:"auto",fontSize:9,background:"none",border:"1px solid var(--border)",borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
+                        <button onClick={()=>setEdgeColor("var(--accent)")} style={{marginLeft:"auto",fontSize:9,background:"none",borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
                       </div>
                     </div>
                   </>)}
@@ -3408,7 +3408,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
               {/* Layout with direction picker */}
               <div style={{position:"relative",flexShrink:0}}>
-                <div style={{display:"flex",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",overflow:"hidden"}}>
+                <div style={{display:"flex",borderRadius:"var(--radius-sm)",overflow:"hidden"}}>
                   <button onClick={()=>handleAutoLayout()} style={{...tbtn(false),borderRadius:0,padding:"4px 9px",fontSize:11,borderRight:"1px solid var(--border)"}}
                     title="Auto-arrange (Ctrl+Enter)">
                     ⊞ Layout
@@ -3421,8 +3421,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </div>
                 {showLayoutMenu&&(<>
                   <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowLayoutMenu(false)}/>
-                  <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg2)",border:"1px solid var(--border)",
-                    borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+                  <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg2)",
+                    borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
                     padding:6,minWidth:190,overflow:"hidden"}}>
                     <div style={{fontSize:9,fontWeight:700,color:"var(--text4)",letterSpacing:1,padding:"4px 8px 6px"}}>LAYOUT DIRECTION</div>
                     {[
@@ -3521,9 +3521,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               />
               {searchQuery&&(
                 <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
-                  style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text4)",cursor:"pointer",fontSize:13,flexShrink:0}}>×</button>
+                  style={{background:"var(--bg3)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text4)",cursor:"pointer",fontSize:13,flexShrink:0}}>×</button>
               )}
-              <kbd style={{fontSize:10,color:"var(--text4)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:4,padding:"2px 7px",flexShrink:0,fontFamily:"var(--font-ui)",whiteSpace:"nowrap"}}>ESC to close</kbd>
+              <kbd style={{fontSize:10,color:"var(--text4)",background:"var(--bg3)",borderRadius:4,padding:"2px 7px",flexShrink:0,fontFamily:"var(--font-ui)",whiteSpace:"nowrap"}}>ESC to close</kbd>
             </div>
 
             {/* Filter chips */}
@@ -3725,7 +3725,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     setDraggingGB({id:gb.id,startMX:mx,startMY:my,origX:gb.x,origY:gb.y});
                   }}
                   style={{position:"absolute",left:gb.x,top:gb.y,width:gb.w,height:gb.h,
-                    border:`2px ${gb.lineStyle||"solid"} ${gb.color||"var(--accent)"}`,
+                    
                     borderRadius:6,
                     background:gb.bgColor&&gb.bgColor!=="transparent"?gb.bgColor+"22":"transparent",
                     pointerEvents:"all",cursor:"move",boxSizing:"border-box"}}>
@@ -3815,7 +3815,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       position:"absolute",
                       left:node.x-3, top:node.y-3,
                       width:nw+6, height:nh+6,
-                      border:`2px solid ${rs.color}`,
+                      
                       borderRadius:10,
                       pointerEvents:"none",
                       zIndex:50,
@@ -4014,13 +4014,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {/* ── Collab Change Log Panel ── */}
       {showCollabLog&&(
         <div style={{position:"fixed",top:76,right:8,zIndex:800,width:320,maxHeight:"70vh",
-          background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
-          boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",display:"flex",flexDirection:"column",overflow:"hidden"}}>
+          background:"var(--bg2)",borderRadius:"var(--radius-lg)",
+          boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",display:"flex",flexDirection:"column",overflow:"hidden"}}>
           <div style={{display:"flex",alignItems:"center",padding:"10px 14px",
             borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
             <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>📋 Map Changes</span>
             <button onClick={()=>apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{})}
-              style={{background:"none",border:"1px solid var(--border)",borderRadius:4,
+              style={{background:"none",borderRadius:4,
                 color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"2px 6px",marginRight:6}}>↺</button>
             <button onClick={()=>setShowCollabLog(false)}
               style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
@@ -4064,8 +4064,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showShare&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>{setShowShare(false);setShareStatus(null);setShareEmail("");}}>
-          <div style={{background:"var(--bg2)",border:"1.5px solid var(--border2)",borderRadius:"var(--radius-lg)",
-            boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",width:440,maxWidth:"94vw",
+          <div style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",
+            boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:440,maxWidth:"94vw",
             display:"flex",flexDirection:"column",overflow:"hidden"}}
             onClick={e=>e.stopPropagation()}>
             {/* Header */}
@@ -4094,13 +4094,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     }}
                     placeholder="Search by name or email…"
                     onKeyDown={e=>{if(e.key==="Enter"){const btn=document.getElementById('nn-share-invite-btn');btn&&btn.click();}}}
-                    style={{width:"100%",boxSizing:"border-box",background:"var(--bg3)",border:"1px solid var(--border)",
+                    style={{width:"100%",boxSizing:"border-box",background:"var(--bg3)",
                       borderRadius:"var(--radius-sm)",padding:"6px 10px",color:"var(--text)",fontSize:12,
                       fontFamily:"var(--font-ui)",outline:"none"}}/>
                   {shareSearch.length>0&&(
                     <div style={{position:"absolute",top:"100%",left:0,right:0,zIndex:10,
-                      background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
-                      boxShadow:"var(--nEm,6px 6px 14px var(--neu-shadow),-5px -5px 10px var(--neu-hilight))",border:"none",marginTop:2,maxHeight:140,overflowY:"auto"}}>
+                      background:"var(--bg2)",borderRadius:"var(--radius-sm)",
+                      boxShadow:"var(--nEm,6px 6px 14px var(--neu-shadow),-5px -5px 10px var(--neu-hilight))",marginTop:2,maxHeight:140,overflowY:"auto"}}>
                       {shareSearch.map(u=>(
                         <div key={u.id} onClick={()=>{setShareEmail(u.email);setShareSearch([]);}}
                           style={{display:"flex",alignItems:"center",gap:8,padding:"7px 10px",cursor:"pointer",fontSize:11}}
@@ -4121,7 +4121,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   )}
                 </div>
                 <select value={sharePerm} onChange={e=>setSharePerm(e.target.value)}
-                  style={{background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                  style={{background:"var(--bg3)",borderRadius:"var(--radius-sm)",
                     padding:"6px 8px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none"}}>
                   <option value="viewer">Viewer</option>
                   <option value="editor">Editor</option>
@@ -4204,7 +4204,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>setShowChangelog(false)}>
           <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:"var(--radius-lg)",
-            boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",width:560,maxWidth:"94vw",maxHeight:"80vh",
+            boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:560,maxWidth:"94vw",maxHeight:"80vh",
             display:"flex",flexDirection:"column",overflow:"hidden"}}
             onClick={e=>e.stopPropagation()}>
             {/* Header */}
@@ -4323,7 +4323,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
       {canEdit&&(
         <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onToggleCollapse(e);}}
           title="Expand node (⊞)"
-          style={{position:"absolute",top:2,right:2,background:"none",border:`1px solid ${t.color}60`,borderRadius:3,color:t.color,cursor:"pointer",fontSize:11,width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>
+          style={{position:"absolute",top:2,right:2,background:"none",borderRadius:3,color:t.color,cursor:"pointer",fontSize:11,width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>
           ⊞
         </button>
       )}
@@ -4338,7 +4338,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
       {hovered&&(propEntries.length>0||node.notes)&&(
         <div style={{
           position:"absolute",bottom:"calc(100% + 8px)",left:"50%",transform:"translateX(-50%)",
-          background:"var(--bg2)",border:`1px solid ${t.color}40`,borderRadius:"var(--radius-md)",
+          background:"var(--bg2)",borderRadius:"var(--radius-md)",
           padding:"10px 12px",minWidth:180,maxWidth:260,
           boxShadow:"0 8px 28px var(--shadow)",zIndex:100,
           pointerEvents:"none",
@@ -4391,7 +4391,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
       <div style={{width:28,flexShrink:0,background:"var(--bg2)",borderRight:"1px solid var(--border2)",
         display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,gap:6,overflow:"hidden"}}>
         <button onClick={onToggleCollapse}
-          style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+          style={{background:"none",borderRadius:"var(--radius-sm)",
             color:"var(--text4)",cursor:"pointer",fontSize:13,width:20,height:20,display:"flex",
             alignItems:"center",justifyContent:"center",lineHeight:1}}>›</button>
         <div style={{writingMode:"vertical-rl",fontSize:9,fontWeight:700,color:"var(--text4)",
@@ -4416,14 +4416,14 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
           {/* Mode cycle button */}
           <button onClick={onCycleMode}
             title={iconOnly?"Switch to full mode":dense?"Switch to icons only":"Switch to compact mode"}
-            style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",
+            style={{background:"none",borderRadius:"var(--radius-xs)",
               color:dense||iconOnly?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:8,
               padding:"1px 4px",height:15,display:"flex",alignItems:"center",
               lineHeight:1,flexShrink:0,whiteSpace:"nowrap",gap:2}}>
             {iconOnly?"⊞ Full":dense?"⊡ Icons":"⊟ Compact"}
           </button>
           <button onClick={onToggleCollapse} title="Collapse"
-            style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",
+            style={{background:"none",borderRadius:"var(--radius-xs)",
               color:"var(--text4)",cursor:"pointer",fontSize:10,width:15,height:15,
               display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,flexShrink:0}}>‹</button>
         </div>
@@ -4436,7 +4436,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder={dense?"Search…":"Search types…"}
               style={{width:"100%",boxSizing:"border-box",paddingLeft:20,paddingRight:search?18:5,
-                paddingTop:3,paddingBottom:3,background:"var(--bg3)",border:"1px solid var(--border)",
+                paddingTop:3,paddingBottom:3,background:"var(--bg3)",
                 borderRadius:"var(--radius-sm)",color:"var(--text)",fontSize:dense?9:11,
                 fontFamily:"var(--font-ui)",outline:"none"}}/>
             {search&&<span onClick={()=>setSearch("")}
@@ -4543,10 +4543,10 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
       {/* Tooltip for icon/compact modes */}
       {(iconOnly||dense)&&tooltip&&(
         <div style={{position:"fixed",left:tooltip.x,top:tooltip.y-14,zIndex:999,
-          background:"var(--bg2)",border:`1.5px solid ${tooltip.color}`,
+          background:"var(--bg2)",
           borderRadius:"var(--radius-sm)",padding:"3px 9px",fontSize:11,
           fontWeight:700,color:tooltip.color,
-          boxShadow:"var(--nEs,4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))",border:"none",pointerEvents:"none",whiteSpace:"nowrap"}}>
+          boxShadow:"var(--nEs,4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))",pointerEvents:"none",whiteSpace:"nowrap"}}>
           {tooltip.label}
         </div>
       )}
@@ -4622,7 +4622,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         <NodeIcon icon={t.icon} size={16} color={t.color} />
         <span style={{fontSize:11,color:t.color,fontWeight:700,flex:1}}>{t.label.toUpperCase()}</span>
         <button onClick={onToggleCollapse} title={node.collapsed?"Expand node":"Collapse node"}
-          style={{background:node.collapsed?"var(--success)18":"var(--bg3)",border:`1px solid ${node.collapsed?"var(--success)":"var(--border)"}`,borderRadius:5,color:node.collapsed?"var(--success)":"var(--text3)",cursor:"pointer",fontSize:10,padding:"3px 9px",fontFamily:"inherit",fontWeight:700}}>
+          style={{background:node.collapsed?"var(--success)18":"var(--bg3)",borderRadius:5,color:node.collapsed?"var(--success)":"var(--text3)",cursor:"pointer",fontSize:10,padding:"3px 9px",fontFamily:"inherit",fontWeight:700}}>
           {node.collapsed?"▶ EXPAND":"◀ COLLAPSE"}
         </button>
         <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
@@ -4638,7 +4638,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
             <label style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>SIZE</label>
-            {canEdit&&<button onClick={onResetSize} style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",fontSize:10,padding:"2px 8px",fontFamily:"inherit"}}>⊡ RESET</button>}
+            {canEdit&&<button onClick={onResetSize} style={{background:"none",borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",fontSize:10,padding:"2px 8px",fontFamily:"inherit"}}>⊡ RESET</button>}
           </div>
           <div style={{display:"flex",gap:6}}>
             {["w","h"].map(dim=>(
@@ -4676,7 +4676,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
                 const ports=[...(node.properties.Ports||[]),
                   {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:"Ethernet",connected:"",ip:"",vlan:""}];
                 onUpdateProp(node.id,"Ports",ports);
-              }} style={{fontSize:10,background:"none",border:"1px solid var(--border)",
+              }} style={{fontSize:10,background:"none",
                 borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",
                 padding:"2px 8px",fontFamily:"inherit"}}>+ Port</button>}
             </div>
@@ -4750,7 +4750,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
                 const svcs=[...(node.properties.Services||[]),
                   {id:Math.random().toString(36).slice(2,7),name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}];
                 onUpdateProp(node.id,"Services",svcs);
-              }} style={{fontSize:10,background:"none",border:"1px solid var(--border)",
+              }} style={{fontSize:10,background:"none",
                 borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",
                 padding:"2px 8px",fontFamily:"inherit"}}>+ Add</button>}
             </div>
@@ -4832,7 +4832,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>CUSTOM PROPERTIES</span>
-            {canEdit&&<button onClick={onAddCustom} style={{background:"none",border:"1px solid var(--border)",borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",fontSize:10,padding:"2px 8px",fontFamily:"inherit"}}>+ ADD</button>}
+            {canEdit&&<button onClick={onAddCustom} style={{background:"none",borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",fontSize:10,padding:"2px 8px",fontFamily:"inherit"}}>+ ADD</button>}
           </div>
           {Object.entries(node.customProps||{}).map(([k,v])=>(
             <div key={k} style={{display:"flex",gap:4,marginBottom:5,alignItems:"flex-start"}}>
@@ -5160,8 +5160,8 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
   return(
     <div style={{
       position:"absolute",left:x,top:y,zIndex:601,
-      background:"var(--bg2)",border:"1px solid var(--border)",
-      borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+      background:"var(--bg2)",
+      borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
       width:menuW,overflow:"hidden",userSelect:"none",
     }} onClick={e=>e.stopPropagation()}>
       {/* Header */}
@@ -5236,7 +5236,7 @@ function MarkdownNote({ text, color }) {
       const codeLines = [];
       i++;
       while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
-      elems.push(<pre key={i} style={{background:'var(--bg)',border:`1px solid ${color}30`,borderRadius:4,
+      elems.push(<pre key={i} style={{background:'var(--bg)',borderRadius:4,
         padding:'4px 6px',fontSize:10,fontFamily:'monospace',color:'var(--text3)',
         margin:'2px 0',overflow:'auto',whiteSpace:'pre-wrap'}}>{codeLines.join("\n")}</pre>);
     }
@@ -5262,7 +5262,7 @@ function inlineFormat(text) {
     if (p.startsWith('*') && p.endsWith('*'))
       return <em key={i} style={{color:'var(--text2)'}}>{p.slice(1,-1)}</em>;
     if (p.startsWith('`') && p.endsWith('`'))
-      return <code key={i} style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:3,
+      return <code key={i} style={{background:'var(--bg)',borderRadius:3,
         padding:'0 3px',fontSize:10,fontFamily:'monospace',color:'#79c0ff'}}>{p.slice(1,-1)}</code>;
     return p;
   });
@@ -5664,7 +5664,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                 const svcs=[...(node.properties.Services||[]),
                   {id:Math.random().toString(36).slice(2,7),name:'',type:'Docker',ip:'',port:'',status:'Running',image:'',os:'',memory:'',cpu:'',notes:''}];
                 onUpdateProp('Services',svcs);
-              }} style={{fontSize:10,background:'none',border:'1px solid var(--border)',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Add</button>}
+              }} style={{fontSize:10,background:'none',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Add</button>}
             </div>
             {(node.properties.Services||[]).map((svc,si)=>{
               const isAuto=nodes.some(n=>n.id===svc.id);
@@ -5675,16 +5675,16 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                 <div style={{display:'grid',gridTemplateColumns:'1fr 80px 70px auto',gap:4,marginBottom:4,alignItems:'center'}}>
                   <input value={svc.name||''} placeholder='Service name…' disabled={!canEdit}
                     onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],name:e.target.value};onUpdateProp('Services',s);}}
-                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none',fontWeight:600}}/>
+                    style={{background:'var(--bg)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none',fontWeight:600}}/>
                   <select value={svc.type||'Docker'} disabled={!canEdit}
                     onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],type:e.target.value};onUpdateProp('Services',s);}}
-                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 4px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}>
+                    style={{background:'var(--bg)',borderRadius:4,padding:'3px 4px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}>
                     <option>Docker</option><option>VM</option><option>LXC</option><option>App</option>
                     <option>Service</option><option>Daemon</option><option>Web App</option><option>Database</option><option>API</option><option>Other</option>
                   </select>
                   <select value={svc.status||'Running'} disabled={!canEdit}
                     onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],status:e.target.value};onUpdateProp('Services',s);}}
-                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 4px',
+                    style={{background:'var(--bg)',borderRadius:4,padding:'3px 4px',
                       color:svc.status==='Running'?'var(--success)':svc.status==='Stopped'||svc.status==='Error'?'var(--danger)':'var(--text)',
                       fontSize:10,fontFamily:'var(--font-ui)',outline:'none',fontWeight:700}}>
                     <option>Running</option><option>Stopped</option><option>Paused</option><option>Error</option><option>Starting</option>
@@ -5695,13 +5695,13 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                 <div style={{display:'grid',gridTemplateColumns:'1fr 60px 1fr',gap:4}}>
                   <input value={svc.ip||''} placeholder='IP' disabled={!canEdit}
                     onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],ip:e.target.value};onUpdateProp('Services',s);}}
-                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                    style={{background:'var(--bg)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
                   <input value={svc.port||''} placeholder='Port' disabled={!canEdit}
                     onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],port:e.target.value};onUpdateProp('Services',s);}}
-                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                    style={{background:'var(--bg)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
                   <input value={svc.image||svc.os||''} placeholder='Image / OS' disabled={!canEdit}
                     onChange={e=>{const s=[...node.properties.Services];s[si]={...s[si],image:e.target.value,os:e.target.value};onUpdateProp('Services',s);}}
-                    style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                    style={{background:'var(--bg)',borderRadius:4,padding:'3px 6px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
                 </div>
               </div>
               );
@@ -5732,7 +5732,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                 const ports=[...(node.properties.Ports||[]),
                   {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:'Ethernet',connected:'',ip:'',vlan:''}];
                 onUpdateProp('Ports',ports);
-              }} style={{fontSize:10,background:'none',border:'1px solid var(--border)',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Port</button>}
+              }} style={{fontSize:10,background:'none',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Port</button>}
             </div>
             {canvasConn.length>0&&(
               <div style={{fontSize:10,color:'var(--text4)',background:'var(--bg3)',borderRadius:5,padding:'4px 8px',display:'flex',flexWrap:'wrap',gap:4,alignItems:'center'}}>
@@ -5755,10 +5755,10 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                 border:port.connected?'1px solid var(--success)44':'1px solid var(--border2)'}}>
                 <input value={port.label||''} placeholder='eth0' disabled={!canEdit}
                   onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],label:e.target.value};onUpdateProp('Ports',p);}}
-                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 5px',color:'var(--text)',fontSize:10,fontFamily:'monospace',outline:'none'}}/>
+                  style={{background:'var(--bg)',borderRadius:4,padding:'3px 5px',color:'var(--text)',fontSize:10,fontFamily:'monospace',outline:'none'}}/>
                 <select value={port.type||'Ethernet'} disabled={!canEdit}
                   onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],type:e.target.value};onUpdateProp('Ports',p);}}
-                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 4px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}>
+                  style={{background:'var(--bg)',borderRadius:4,padding:'3px 4px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}>
                   <optgroup label="Network"><option>Ethernet</option><option>WAN</option><option>LAN</option>
                     <option>uplink</option><option>access</option><option>trunk</option><option>PoE</option><option>SFP+</option></optgroup>
                   <optgroup label="USB"><option>USB 3.0</option><option>USB 2.0</option><option>USB-C</option></optgroup>
@@ -5769,11 +5769,11 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                 </select>
                 <input value={port.connected||''} placeholder='Connected to…' list={`popportconn-${node.id}`} disabled={!canEdit}
                   onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],connected:e.target.value};onUpdateProp('Ports',p);}}
-                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 5px',
+                  style={{background:'var(--bg)',borderRadius:4,padding:'3px 5px',
                     color:port.connected?'var(--success)':'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
                 <input value={port.ip||port.vlan||''} placeholder='IP / VLAN' disabled={!canEdit}
                   onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],ip:e.target.value,vlan:e.target.value};onUpdateProp('Ports',p);}}
-                  style={{background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'3px 5px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
+                  style={{background:'var(--bg)',borderRadius:4,padding:'3px 5px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
                 {canEdit&&<button onClick={()=>{const p=(node.properties.Ports||[]).filter((_,i)=>i!==pi);onUpdateProp('Ports',p);}}
                   style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1}}>×</button>}
               </div>
@@ -6043,7 +6043,7 @@ function TemplateLibrary({onInsert}){
           onMouseLeave={()=>setHovered(null)}
           style={{
             background:hovered===tpl.id?"var(--bg3)":"var(--bg)",
-            border:`1.5px solid ${hovered===tpl.id?tpl.color:"var(--border)"}`,
+            
             borderRadius:"var(--radius-md)",padding:"12px 14px",cursor:"pointer",
             transition:"all .15s",
           }}>
@@ -6145,7 +6145,7 @@ function CommentsPanel({comments,nodes,commentNode,setCommentNode,draft,setDraft
               onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();addComment();}}}
               placeholder="Write a comment… (Enter to send)"
               rows={2}
-              style={{flex:1,background:"var(--bg)",border:"1px solid var(--border)",
+              style={{flex:1,background:"var(--bg)",
                 borderRadius:"var(--radius-sm)",padding:"6px 8px",color:"var(--text)",
                 fontSize:11,fontFamily:"var(--font-ui)",resize:"none",outline:"none"}}/>
             <button onClick={addComment}
@@ -6174,7 +6174,7 @@ function ExportModal({nodes,edges,mapTitle,exportLLM,onClose}){
   const tbS=(active,color="var(--accent2)")=>({padding:"8px 16px",border:"none",borderRadius:"var(--radius-sm)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"var(--font-ui)",background:active?color:"var(--bg3)",color:active?"#fff":"var(--text3)"});
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.76)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16}} onClick={onClose}>
-      <div style={{background:"var(--bg2)",border:"1px solid var(--border)",borderRadius:"var(--radius-lg)",padding:20,width:"100%",maxWidth:600,maxHeight:"84vh",display:"flex",flexDirection:"column",gap:14}} onClick={e=>e.stopPropagation()}>
+      <div style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",padding:20,width:"100%",maxWidth:600,maxHeight:"84vh",display:"flex",flexDirection:"column",gap:14}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontWeight:700,fontSize:14,color:"var(--accent)"}}>↗ EXPORT</span>
           <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:22}}>×</button>
@@ -6187,8 +6187,8 @@ function ExportModal({nodes,edges,mapTitle,exportLLM,onClose}){
           <div style={{flex:1}}/>
           <button onClick={copy} style={tbS(copied,"var(--success)")}>{copied?"✓ COPIED":"📋 COPY"}</button>
         </div>
-        {tab==="llm"&&<div style={{fontSize:12,color:"var(--text3)",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",padding:"8px 12px",lineHeight:1.6}}>Grouped by category · Arrows as sentences · Paste into any LLM</div>}
-        <pre style={{background:"var(--bg)",border:"1px solid var(--border)",borderRadius:"var(--radius-md)",padding:16,fontSize:12,overflow:"auto",flex:1,margin:0,color:"var(--text)",lineHeight:1.65,whiteSpace:"pre-wrap"}}>{content}</pre>
+        {tab==="llm"&&<div style={{fontSize:12,color:"var(--text3)",background:"var(--bg3)",borderRadius:"var(--radius-sm)",padding:"8px 12px",lineHeight:1.6}}>Grouped by category · Arrows as sentences · Paste into any LLM</div>}
+        <pre style={{background:"var(--bg)",borderRadius:"var(--radius-md)",padding:16,fontSize:12,overflow:"auto",flex:1,margin:0,color:"var(--text)",lineHeight:1.65,whiteSpace:"pre-wrap"}}>{content}</pre>
       </div>
     </div>
   );

@@ -47,7 +47,7 @@ const GLOBAL_SETTINGS = [
 ];
 
 // ── Style helpers ────────────────────────────────────────────────────────
-const inp = {width:"100%",background:"var(--bg)",border:"1px solid var(--border)",borderRadius:8,
+const inp = {width:"100%",background:"var(--bg)",borderRadius:8,
   padding:"9px 12px",color:"var(--text)",fontSize:13,fontFamily:"inherit",outline:"none",boxSizing:"border-box"};
 const btn = (primary, danger) => ({
   padding:"8px 16px",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,
@@ -57,7 +57,7 @@ const btn = (primary, danger) => ({
 });
 
 function Alert({color,children}){
-  return <div style={{background:`${color}18`,border:`1px solid ${color}40`,borderRadius:8,
+  return <div style={{background:`${color}18`,borderRadius:8,
     padding:"9px 14px",fontSize:12,color,lineHeight:1.5,marginBottom:12}}>{children}</div>;
 }
 function Tab({label,active,onClick,badge}){
@@ -110,8 +110,8 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
       display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
       <div data-ui="admin-panel" data-component="AdminPanel" data-page="admin" data-role="modal"
         onClick={e=>e.stopPropagation()} style={{background:"var(--bg2)",
-        border:"1px solid var(--border)",borderRadius:14,width:"min(540px,94vw)",
-        maxHeight:"88vh",overflow:"auto",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+        borderRadius:14,width:"min(540px,94vw)",
+        maxHeight:"88vh",overflow:"auto",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
         padding:26,display:"flex",flexDirection:"column",gap:16}}>
 
         <div style={{display:"flex",alignItems:"center",gap:12}}>
@@ -352,7 +352,7 @@ export default function AdminPanel({ onBack }) {
             {[["owner","Full control"],["admin","Manage users & settings"],["editor","Create & edit maps"],
               ["viewer","View shared maps"],["restricted","View-only"]].map(([r,desc])=>(
               <span key={r} style={{fontSize:9,background:`${RC[r]}18`,color:RC[r],
-                border:`1px solid ${RC[r]}40`,borderRadius:4,padding:"2px 8px",fontWeight:700}}>
+                borderRadius:4,padding:"2px 8px",fontWeight:700}}>
                 {r.toUpperCase()} — {desc}
               </span>
             ))}
@@ -360,7 +360,7 @@ export default function AdminPanel({ onBack }) {
 
           {/* Create form */}
           {showCreate&&(
-            <form onSubmit={handleCreateUser} style={{background:"var(--bg2)",border:"1px solid var(--border)",
+            <form onSubmit={handleCreateUser} style={{background:"var(--bg2)",
               borderRadius:12,padding:18,marginBottom:16,display:"flex",flexDirection:"column",gap:10}}>
               <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>NEW USER</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -396,7 +396,7 @@ export default function AdminPanel({ onBack }) {
               {filtered.map(u=>{
                 const col=RC[u.role]||"var(--text3)";
                 return(
-                  <div key={u.id} style={{background:"var(--bg2)",border:"1px solid var(--border2)",
+                  <div key={u.id} style={{background:"var(--bg2)",
                     borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,opacity:u.is_active?1:.5}}>
                     <div style={{width:38,height:38,borderRadius:"50%",background:u.avatar_color||"#6C63FF",
                       display:"flex",alignItems:"center",justifyContent:"center",
@@ -414,7 +414,7 @@ export default function AdminPanel({ onBack }) {
                         <div style={{display:"flex",gap:4,marginTop:4,flexWrap:"wrap"}}>
                           {u.groups.filter(g=>g?.id).map(g=>(
                             <span key={g.id} style={{fontSize:9,background:`${g.color}22`,color:g.color,
-                              border:`1px solid ${g.color}40`,borderRadius:4,padding:"1px 6px",fontWeight:700}}>{g.name}</span>
+                              borderRadius:4,padding:"1px 6px",fontWeight:700}}>{g.name}</span>
                           ))}
                         </div>
                       )}
@@ -449,7 +449,7 @@ export default function AdminPanel({ onBack }) {
           </div>
 
           {showCG&&(
-            <form onSubmit={handleCreateGroup} style={{background:"var(--bg2)",border:"1px solid var(--border)",
+            <form onSubmit={handleCreateGroup} style={{background:"var(--bg2)",
               borderRadius:12,padding:18,marginBottom:16,display:"flex",flexDirection:"column",gap:12}}>
               <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>NEW GROUP</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
@@ -646,7 +646,7 @@ export default function AdminPanel({ onBack }) {
               {["all","info","warn","error"].map(l=><option key={l} value={l}>{l.toUpperCase()}</option>)}
             </select>
             <div style={{display:"flex",alignItems:"center",gap:6,background:"var(--bg2)",
-              border:"1px solid var(--border)",borderRadius:8,padding:"4px 10px"}}>
+              borderRadius:8,padding:"4px 10px"}}>
               <span style={{fontSize:10,color:"var(--text4)"}}>Retention:</span>
               <input type="number" value={logRetInput} onChange={e=>setLogRetInput(e.target.value)}
                 style={{width:46,background:"transparent",border:"none",color:"var(--text)",

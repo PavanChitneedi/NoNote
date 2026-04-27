@@ -118,8 +118,8 @@ export default function Tutorial({ page, onClose }) {
   const PAD = 16; const TW = 360; const TH = 240;
   let ts = {
     position:"fixed", zIndex:10000, width:TW,
-    background:"var(--bg2)", border:`1.5px solid ${ACCENT}`,
-    borderRadius:14, boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",border:"none",
+    background:"var(--bg2)", 
+    borderRadius:14, boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
     padding:"20px 22px 16px", fontFamily:"var(--font-ui)",
   };
 
@@ -191,7 +191,7 @@ export default function Tutorial({ page, onClose }) {
             Skip tour
           </button>
           {stepIdx > 0 && (
-            <button onClick={prev} style={{background:"var(--bg3)",border:"1px solid var(--border)",
+            <button onClick={prev} style={{background:"var(--bg3)",
               borderRadius:6,padding:"6px 14px",color:"var(--text3)",cursor:"pointer",
               fontSize:11,fontFamily:"var(--font-ui)",fontWeight:700}}>← Back</button>
           )}
