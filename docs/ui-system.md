@@ -1,6 +1,15 @@
-# NoNote UI System — Metadata & Dev Mode Contract
-**Version:** v5.43.4 | **Status:** Enforced  
+# NoNote UI System — Metadata & Skin Contract
+**Version:** v5.44.0 | **Status:** Enforced  
 **Rule:** Every UI element MUST have `data-ui`. Every PR touching UI MUST update this doc.
+
+---
+
+## Skin-Only Contract
+
+- Runtime color ownership is in `SkinContext` via `getSkinPalettes()` from `skins.js`.
+- UI must consume semantic CSS tokens (`--bg`, `--text*`, `--accent*`, state tokens), never hardcoded literals.
+- Theme tab is removed; palette variants are selected inside the active skin.
+- Guardrail script: `npm run lint:ui-colors` checks core components for hardcoded color literals.
 
 ---
 

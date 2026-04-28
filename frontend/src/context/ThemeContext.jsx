@@ -171,33 +171,12 @@ export function ThemeProvider({ children }) {
     () => parseInt(localStorage.getItem("nm_fontscale") || "100", 10)
   );
 
-  const theme = THEMES[themeName] || THEMES.dark;
-
-  // Listen for skin-driven theme switches
+  // Compatibility shim only: skin context owns runtime palette application.
   useEffect(() => {
-    const h = (e) => { if (THEMES[e.detail]) setThemeName(e.detail); };
-    window.addEventListener("nn-set-theme", h);
-    return () => window.removeEventListener("nn-set-theme", h);
-  }, []);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
-    // Shared semantic state tokens used by all components/skins.
-    root.style.setProperty("--on-accent", "#ffffff");
-    root.style.setProperty("--overlay-scrim-1", "rgba(0,0,0,0.45)");
-    root.style.setProperty("--overlay-scrim-2", "rgba(0,0,0,0.62)");
-    root.style.setProperty("--state-hover-bg", "color-mix(in srgb, var(--accent) 10%, var(--bg))");
-    root.style.setProperty("--state-active-bg", "color-mix(in srgb, var(--accent) 18%, var(--bg))");
-    root.style.setProperty("--state-selected-bg", "color-mix(in srgb, var(--accent2) 22%, var(--bg))");
-    root.style.setProperty("--state-focus-ring", "0 0 0 2px var(--accent)55");
-    root.style.setProperty("--state-disabled-opacity", "0.45");
-    root.style.setProperty("--state-soft-danger-bg", "color-mix(in srgb, var(--danger) 14%, var(--bg))");
-    root.style.setProperty("--state-soft-success-bg", "color-mix(in srgb, var(--success) 14%, var(--bg))");
-    document.body.dataset.theme = themeName;
-    localStorage.setItem("nm_theme", themeName);
-    window.dispatchEvent(new CustomEvent("nn-theme-changed", { detail: themeName }));
-  }, [theme, themeName]);
+    const safe = THEMES[themeName] ? themeName : "dark";
+    setThemeName(safe);
+    localStorage.setItem("nm_theme", safe);
+  }, [themeName]);
 
   const setFontScale = (v) => {
     setFontScaleRaw(v);

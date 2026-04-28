@@ -2,6 +2,11 @@
 *Single source of truth for the neumorphic skin system.*
 *Version: v5.43.1 | Updated: Apr 2026*
 
+## Variant Model (Skin-Only)
+- `neumorphic-clay`: light clay baseline.
+- `neumorphic-dark`: dark raised surfaces with tuned shadow/highlight balance.
+- Both variants share the same state contract (`hover/active/focus/disabled/selected`) and component behaviors; only token values differ.
+
 ## Design Tokens (body.skin-neumorphic)
 
 ### Shadow Scale

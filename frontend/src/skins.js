@@ -1416,7 +1416,7 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
 
 export const SKIN_KEYS = Object.keys(SKINS);
 
-// Strict compatibility matrix: only approved skin/theme pairings.
+// Skin palette bundles (skin-owned, no free global cross-mixing).
 export const SKIN_THEME_MATRIX = {
   obsidian:   ["dark", "midnight", "ocean"],
   aurora:     ["midnight", "violet", "softblue"],
@@ -1431,12 +1431,57 @@ export const SKIN_THEME_MATRIX = {
   pastelPop:  ["rose", "mint", "softblue"],
 };
 
-export function getAllowedThemesForSkin(skinName) {
-  const allowed = SKIN_THEME_MATRIX[skinName];
-  if (Array.isArray(allowed) && allowed.length > 0) return allowed;
-  const fallback = SKINS[skinName]?.defaultTheme;
-  return fallback ? [fallback] : ["dark"];
+const PALETTE_PRESETS = {
+  dark:      {"--bg":"#0d1117","--bg2":"#161b22","--bg3":"#21262d","--border":"#30363d","--border2":"#21262d","--text":"#e6edf3","--text2":"#c9d1d9","--text3":"#7d8590","--text4":"#484f58","--accent":"#58a6ff","--accent2":"#1f6feb","--success":"#3fb950","--danger":"#f85149","--canvas-dot":"#21262d","--node-bg":"#161b22","--shadow":"rgba(0,0,0,0.5)"},
+  midnight:  {"--bg":"#070c14","--bg2":"#0e1520","--bg3":"#162035","--border":"#1e3050","--border2":"#162035","--text":"#cdd9f4","--text2":"#8dacd8","--text3":"#4a6ea8","--text4":"#2a3e60","--accent":"#7aa2f7","--accent2":"#3d6fda","--success":"#73daca","--danger":"#f7768e","--canvas-dot":"#162035","--node-bg":"#0e1520","--shadow":"rgba(0,0,0,0.7)"},
+  forest:    {"--bg":"#091410","--bg2":"#0f1c16","--bg3":"#162c1e","--border":"#284035","--border2":"#1e3028","--text":"#c8e0cc","--text2":"#90b898","--text3":"#4e8060","--text4":"#2a4a34","--accent":"#73daca","--accent2":"#2ac3a4","--success":"#73daca","--danger":"#f7768e","--canvas-dot":"#162c1e","--node-bg":"#0f1c16","--shadow":"rgba(0,0,0,0.6)"},
+  ocean:     {"--bg":"#030b18","--bg2":"#071428","--bg3":"#0c2040","--border":"#0d3060","--border2":"#0a2040","--text":"#b8d8f4","--text2":"#6aaad8","--text3":"#3070a0","--text4":"#1a4870","--accent":"#00b8d9","--accent2":"#0090b0","--success":"#2bd4a0","--danger":"#ff5e85","--canvas-dot":"#0c2040","--node-bg":"#071428","--shadow":"rgba(0,0,0,0.7)"},
+  amber:     {"--bg":"#0e0a06","--bg2":"#181208","--bg3":"#241c0e","--border":"#3a2a14","--border2":"#2a1e0c","--text":"#f0d8a8","--text2":"#d4b878","--text3":"#9a7840","--text4":"#5a4820","--accent":"#f0a830","--accent2":"#c88020","--success":"#68c880","--danger":"#e05040","--canvas-dot":"#241c0e","--node-bg":"#181208","--shadow":"rgba(0,0,0,0.7)"},
+  violet:    {"--bg":"#07040f","--bg2":"#0e0820","--bg3":"#160e30","--border":"#2a1850","--border2":"#1e1040","--text":"#d8c8f8","--text2":"#b098e8","--text3":"#7058b8","--text4":"#402888","--accent":"#bd93f9","--accent2":"#8b5cf6","--success":"#50fa7b","--danger":"#ff5555","--canvas-dot":"#160e30","--node-bg":"#0e0820","--shadow":"rgba(0,0,0,0.8)"},
+  light:     {"--bg":"#f8f9fc","--bg2":"#ffffff","--bg3":"#f1f3f8","--border":"#dde1ea","--border2":"#eaedf4","--text":"#0f1824","--text2":"#2d3a4a","--text3":"#6b7888","--text4":"#9faab8","--accent":"#2563eb","--accent2":"#1d4ed8","--success":"#059669","--danger":"#dc2626","--canvas-dot":"#dde1ea","--node-bg":"#ffffff","--shadow":"rgba(0,0,0,0.08)"},
+  cream:     {"--bg":"#fdf7ee","--bg2":"#fffbf5","--bg3":"#f5edde","--border":"#e0cebc","--border2":"#eadece","--text":"#28180a","--text2":"#4a3020","--text3":"#8a6a48","--text4":"#b89a78","--accent":"#c2622a","--accent2":"#9e4e22","--success":"#2d7a3a","--danger":"#c42828","--canvas-dot":"#c8b89e","--node-bg":"#fffbf5","--shadow":"rgba(0,0,0,0.07)"},
+  sepia:     {"--bg":"#f2e8da","--bg2":"#f9f3e8","--bg3":"#e8dece","--border":"#c4a882","--border2":"#d4b892","--text":"#1e1408","--text2":"#3c2a18","--text3":"#7a5e3c","--text4":"#a8886a","--accent":"#7c4f1e","--accent2":"#5a3a14","--success":"#2d5a1e","--danger":"#8b1c1c","--canvas-dot":"#c4a882","--node-bg":"#f9f3e8","--shadow":"rgba(0,0,0,0.09)"},
+  rose:      {"--bg":"#fef5f7","--bg2":"#fff9fa","--bg3":"#fce8ed","--border":"#f0c8d4","--border2":"#f8dce4","--text":"#28080e","--text2":"#4a1420","--text3":"#9a3a50","--text4":"#c87888","--accent":"#e11d48","--accent2":"#be1238","--success":"#059669","--danger":"#dc2626","--canvas-dot":"#dba8b8","--node-bg":"#fff9fa","--shadow":"rgba(0,0,0,0.07)"},
+  softblue:  {"--bg":"#eff6ff","--bg2":"#f8fbff","--bg3":"#dbeafe","--border":"#bfdbfe","--border2":"#dbeafe","--text":"#0c1a3a","--text2":"#1e3060","--text3":"#4a6898","--text4":"#7a98c8","--accent":"#2563eb","--accent2":"#1d4ed8","--success":"#059669","--danger":"#dc2626","--canvas-dot":"#90b8ee","--node-bg":"#f8fbff","--shadow":"rgba(0,0,0,0.07)"},
+  mint:      {"--bg":"#f0faf5","--bg2":"#f8fffc","--bg3":"#dcfce7","--border":"#a8e6bf","--border2":"#d4f4e0","--text":"#082018","--text2":"#143a28","--text3":"#3d7a58","--text4":"#6aaa88","--accent":"#16a34a","--accent2":"#15803d","--success":"#16a34a","--danger":"#dc2626","--canvas-dot":"#80c8a0","--node-bg":"#f8fffc","--shadow":"rgba(0,0,0,0.07)"},
+  clay:      {"--bg":"#dde4ef","--bg2":"#e8edf5","--bg3":"#d0d8e8","--border":"#c8d0e0","--border2":"#d4dcea","--text":"#2d3a4e","--text2":"#3d4f68","--text3":"#7888a0","--text4":"#a8b8cc","--accent":"#5b8dee","--accent2":"#2563eb","--success":"#27ae60","--danger":"#e74c3c","--canvas-dot":"#b0bdd0","--node-bg":"#f4f7ff","--shadow":"rgba(190,199,216,0.8)"},
+  parchment: {"--bg":"#faf8f3","--bg2":"#ffffff","--bg3":"#f2ede4","--border":"#d8cdb8","--border2":"#e8e0d0","--text":"#1a1410","--text2":"#3a2e24","--text3":"#7a6a56","--text4":"#a89a84","--accent":"#8b6914","--accent2":"#6b4e0c","--success":"#3a6e28","--danger":"#9e2020","--canvas-dot":"#c0b09a","--node-bg":"#ffffff","--shadow":"rgba(0,0,0,0.06)"},
+};
+
+function clonePalette(name) {
+  return { ...(PALETTE_PRESETS[name] || PALETTE_PRESETS.dark) };
 }
+
+export function getSkinPalettes(skinName) {
+  const skin = SKINS[skinName];
+  if (!skin) return { dark: clonePalette("dark") };
+  if (skin.palettes) return skin.palettes;
+
+  const allowed = SKIN_THEME_MATRIX[skinName] || [skin.defaultTheme || "dark"];
+  const palettes = {};
+  for (const key of allowed) palettes[key] = clonePalette(key);
+  return palettes;
+}
+
+// Explicit Neumorphic variants (core consistency requirement).
+SKINS.neumorphic.palettes = {
+  clay: clonePalette("clay"),
+  dark: {
+    ...clonePalette("dark"),
+    "--bg": "#161b22",
+    "--bg2": "#1d2430",
+    "--bg3": "#263041",
+    "--border": "#2f3a4f",
+    "--border2": "#2a3447",
+    "--text": "#dde7f5",
+    "--text2": "#c1d0e8",
+    "--text3": "#91a2bf",
+    "--text4": "#667892",
+    "--canvas-dot": "#2a3447",
+    "--node-bg": "#1d2430",
+    "--shadow": "rgba(8,12,18,0.8)",
+  },
+};
 
 const UNIFORM_STATE_CONTRACT_CSS = `
 /* Shared state contract (all skins/themes) */

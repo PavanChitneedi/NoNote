@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { SKINS, SKIN_KEYS, getAllowedThemesForSkin } from "../skins.js";
+import { SKINS, SKIN_KEYS, getSkinPalettes } from "../skins.js";
 
 const SkinContext = createContext(null);
 
@@ -7,33 +7,71 @@ export function SkinProvider({ children }) {
   const [skinName, setSkinRaw] = useState(
     () => localStorage.getItem("nn_skin") || "obsidian"
   );
+  const [variantName, setVariantRaw] = useState(
+    () => localStorage.getItem(`nn_skin_variant_${localStorage.getItem("nn_skin") || "obsidian"}`) || null
+  );
   const styleRef = useRef(null);
   const firstMount = useRef(true);
 
-  // Apply only personality vars (no colors, no spacing)
-  const applyPersonality = (skin) => {
+  // One-time migration from legacy global theme to per-skin variant.
+  useEffect(() => {
+    const legacyTheme = localStorage.getItem("nm_theme");
+    if (!legacyTheme) return;
+    const palettes = getSkinPalettes(skinName);
+    const fallback = Object.keys(palettes).includes(SKINS[skinName]?.defaultTheme)
+      ? SKINS[skinName].defaultTheme
+      : Object.keys(palettes)[0];
+    const migrated = palettes[legacyTheme] ? legacyTheme : fallback;
+    localStorage.setItem(`nn_skin_variant_${skinName}`, migrated);
+    setVariantRaw(migrated);
+    localStorage.removeItem("nm_theme");
+  }, []);
+
+  // Apply palette + personality vars
+  const applySkinTokens = (skin, variant) => {
     const root = document.documentElement;
+    const palettes = getSkinPalettes(skinName);
+    const paletteVars = palettes[variant] || palettes[skin.defaultTheme] || Object.values(palettes)[0] || {};
+    Object.entries(paletteVars).forEach(([k, v]) => root.style.setProperty(k, v));
     Object.entries(skin.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+    root.style.setProperty("--on-accent", "#ffffff");
+    root.style.setProperty("--overlay-scrim-1", "rgba(0,0,0,0.45)");
+    root.style.setProperty("--overlay-scrim-2", "rgba(0,0,0,0.62)");
+    root.style.setProperty("--state-hover-bg", "color-mix(in srgb, var(--accent) 10%, var(--bg))");
+    root.style.setProperty("--state-active-bg", "color-mix(in srgb, var(--accent) 18%, var(--bg))");
+    root.style.setProperty("--state-selected-bg", "color-mix(in srgb, var(--accent2) 22%, var(--bg))");
+    root.style.setProperty("--state-focus-ring", "0 0 0 2px var(--accent)55");
+    root.style.setProperty("--state-disabled-opacity", "0.45");
+    root.style.setProperty("--state-soft-danger-bg", "color-mix(in srgb, var(--danger) 14%, var(--bg))");
+    root.style.setProperty("--state-soft-success-bg", "color-mix(in srgb, var(--success) 14%, var(--bg))");
     document.body.style.fontFamily = skin.vars["--font-ui"] || "";
+    document.body.dataset.theme = variant || skin.defaultTheme || "dark";
   };
 
   const setSkinName = (name) => {
     if (!SKINS[name]) return;
     setSkinRaw(name);
     const skin = SKINS[name];
-    const allowedThemes = getAllowedThemesForSkin(name);
-    const preferredTheme = allowedThemes.includes(skin.defaultTheme) ? skin.defaultTheme : allowedThemes[0];
-    // Apply default theme
-    if (preferredTheme) {
-      localStorage.setItem("nm_theme", preferredTheme);
-      window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: preferredTheme }));
-    }
+    const palettes = getSkinPalettes(name);
+    const variantKeys = Object.keys(palettes);
+    const preferredVariant = variantKeys.includes(skin.defaultTheme) ? skin.defaultTheme : variantKeys[0];
+    setVariantRaw(preferredVariant);
+    localStorage.setItem(`nn_skin_variant_${name}`, preferredVariant);
+    // Legacy theme key is deprecated in skin-only mode.
+    localStorage.removeItem("nm_theme");
     // Apply default accent — clears any previous accent override
     if (skin.defaultAccent) {
       localStorage.setItem("nn_skin_accent", JSON.stringify({ accent: skin.defaultAccent.accent, accent2: skin.defaultAccent.accent2, skinName: name }));
     } else {
       localStorage.removeItem("nn_skin_accent");
     }
+  };
+
+  const setSkinVariant = (variant) => {
+    const palettes = getSkinPalettes(skinName);
+    if (!palettes[variant]) return;
+    setVariantRaw(variant);
+    localStorage.setItem(`nn_skin_variant_${skinName}`, variant);
   };
 
   // Apply accent color override
@@ -60,7 +98,11 @@ export function SkinProvider({ children }) {
 
     // Apply personality — deferred so theme/design run first, then skin wins on font/radius
     const t = setTimeout(() => {
-      applyPersonality(skin);
+      const palettes = getSkinPalettes(skinName);
+      const defaultVariant = Object.keys(palettes).includes(skin.defaultTheme) ? skin.defaultTheme : Object.keys(palettes)[0];
+      const savedVariant = localStorage.getItem(`nn_skin_variant_${skinName}`);
+      const resolvedVariant = palettes[savedVariant] ? savedVariant : (variantName || defaultVariant);
+      applySkinTokens(skin, resolvedVariant);
       // Apply accent — saved override first, then defaultAccent
       try {
         const saved = JSON.parse(localStorage.getItem("nn_skin_accent") || "{}");
@@ -78,43 +120,30 @@ export function SkinProvider({ children }) {
     localStorage.setItem("nn_skin", skinName);
     firstMount.current = false;
     return () => clearTimeout(t);
-  }, [skinName]);
+  }, [skinName, variantName]);
 
-  // Re-apply personality when theme/design change (skin personality always wins over them)
+  // Re-apply skin tokens when design changes
   useEffect(() => {
     const reapply = () => {
       const skin = SKINS[skinName] || SKINS.obsidian;
-      setTimeout(() => applyPersonality(skin), 0);
+      const palettes = getSkinPalettes(skinName);
+      const defaultVariant = Object.keys(palettes).includes(skin.defaultTheme) ? skin.defaultTheme : Object.keys(palettes)[0];
+      const resolvedVariant = palettes[variantName] ? variantName : defaultVariant;
+      setTimeout(() => applySkinTokens(skin, resolvedVariant), 0);
     };
-    window.addEventListener("nn-theme-changed", reapply);
     window.addEventListener("nn-design-changed", reapply);
     return () => {
-      window.removeEventListener("nn-theme-changed", reapply);
       window.removeEventListener("nn-design-changed", reapply);
     };
-  }, [skinName]);
-
-  // Enforce approved themes for each skin.
-  useEffect(() => {
-    const enforceThemeMatrix = () => {
-      const allowedThemes = getAllowedThemesForSkin(skinName);
-      const currentTheme = localStorage.getItem("nm_theme") || document.body.dataset.theme || "";
-      if (!allowedThemes.includes(currentTheme)) {
-        const fallbackTheme = allowedThemes[0];
-        localStorage.setItem("nm_theme", fallbackTheme);
-        window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: fallbackTheme }));
-      }
-    };
-    const onThemeChanged = () => enforceThemeMatrix();
-    enforceThemeMatrix();
-    window.addEventListener("nn-theme-changed", onThemeChanged);
-    return () => window.removeEventListener("nn-theme-changed", onThemeChanged);
-  }, [skinName]);
+  }, [skinName, variantName]);
 
   return (
     <SkinContext.Provider value={{
       skinName, setSkinName,
       skin: SKINS[skinName] || SKINS.obsidian,
+      skinVariants: Object.keys(getSkinPalettes(skinName)),
+      skinVariant: variantName || SKINS[skinName]?.defaultTheme,
+      setSkinVariant,
       setAccent,
     }}>
       {children}

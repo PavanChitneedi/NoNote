@@ -2,6 +2,8 @@
 **Version:** v5.43.2 | **Updated:** Apr 2026
 **Source of truth** — every change MUST update this file.
 
+> Skin-only update: Neumorphic is now variant-driven within the skin (`clay`, `dark`) with the same component state contract and controlled token differences only.
+
 ## Token Reference
 
 ### Elevation (box-shadow)
