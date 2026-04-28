@@ -3148,13 +3148,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
             {/* ── Group A: Map resources ── */}
             <button onClick={()=>setShowTemplates(v=>!v)}
-              style={tbtn(showTemplates,"#FF9800")} title="Templates — start from a preset">📋</button>
+              style={tbtn(showTemplates,"var(--accent2)")} title="Templates — start from a preset">📋</button>
             <button onClick={()=>setShowVersions(true)}
               style={tbtn(false)} data-tut="history" title="Version History (V)">🕐</button>
             <button onClick={()=>{setShowCollabLog(v=>!v);
                 if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`)
                   .then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}}
-              style={tbtn(showCollabLog,"#7B1FA2")} title="Change log — who changed what">📝</button>
+              style={tbtn(showCollabLog,"var(--accent2)")} title="Change log — who changed what">📝</button>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
@@ -3183,7 +3183,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
             <div style={{position:"relative"}}>
               <button onClick={()=>setShowExportMenu(v=>!v)}
-                style={tbtn(showExportMenu,"#238636")}
+                style={tbtn(showExportMenu,"var(--accent2)")}
                 data-tut="export" title="Export map">↗</button>
               {showExportMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
@@ -3231,14 +3231,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>{setShowShare(true);
                 if(mapId)apiFetch(`/maps/${mapId}/collaborators`)
                   .then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});}}
-              style={tbtn(false,"#1565C0")} data-tut="share" title="Share & Collaborate">👥</button>
+              style={tbtn(false,"var(--accent2)")} data-tut="share" title="Share & Collaborate">👥</button>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
             {/* ── Group D: Appearance ── */}
             <div style={{position:"relative"}}>
               <button onClick={()=>setShowAppMenu(v=>!v)}
-                style={tbtn(showAppMenu,"#6C63FF")} title="Appearance — themes, canvas style">🎨</button>
+                style={tbtn(showAppMenu,"var(--accent2)")} title="Appearance — themes, canvas style">🎨</button>
               {showAppMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
                 <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
@@ -3353,15 +3353,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* ── DRAWING TOOLS GROUP ── what you're creating/arranging ── */}
             <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
               <button onClick={()=>{setMode("select");setDrawingEdge(null);}} data-tut="mode-select" style={tbtn(mode==="select","var(--accent2)")} title="Select mode (S)">↖ Select</button>
-              <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} data-tut="mode-connect" style={tbtn(mode==="connect","#6C63FF")} title="Connect nodes (C)">⤳ Connect</button>
+              <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} data-tut="mode-connect" style={tbtn(mode==="connect","var(--accent2)")} title="Connect nodes (C)">⤳ Connect</button>
               <button onClick={()=>setMode(m=>m==="groupbox"?"select":"groupbox")}
-                data-tut="mode-group" style={tbtn(mode==="groupbox","#FF9800")} title="Draw group box (G)">▭ Group</button>
+                data-tut="mode-group" style={tbtn(mode==="groupbox","var(--accent2)")} title="Draw group box (G)">▭ Group</button>
 
               {/* Connection style — only in connect mode */}
               {mode==="connect"&&(
                 <div style={{position:"relative"}}>
                   <button onClick={()=>setShowConnDropdown(v=>!v)}
-                    style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:4}}
+                    style={{...tbtn(showConnDropdown,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}}
                     title={`Style: ${EDGE_STYLES[edgeStyle]?.label}`}>
                     <EdgeIcon styleKey={edgeStyle} size={24} active/>
                     <span style={{fontSize:9,color:"var(--text3)",maxWidth:40,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
@@ -3452,7 +3452,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   </div>
                 </>)}
               </div>
-              <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
+              <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"var(--accent2)")} title="Collapse / Expand all nodes">
                 {globalCollapsed?"⊞ Expand All":"⊟ Collapse"}
               </button>
             </div>

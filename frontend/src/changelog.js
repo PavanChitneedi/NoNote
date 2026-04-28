@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.44.1",date:"Apr 2026",items:[
+    "Fix: Toolbar button active states inconsistent -- Connect (#6C63FF), Group (#FF9800), appearance (#6C63FF), templates, collab, export, collapse, share all used hardcoded colors that neumorphic CSS could not target",
+    "Fix: Normalized all 9 toolbar tbtn() color params to var(--accent2) -- now neumorphic inset state applies uniformly to ALL active toolbar buttons",
+    "Fix: Active toolbar buttons now use --nIs (stronger inset) vs --nIx (too subtle) for clearer pressed state",
+    "Fix: Active toolbar buttons get font-weight:800 for extra visual clarity without color change",
+    "Fix: Popup/Panel segmented toggle wrapper now treated as inset trough (nIs) in neumorphic skin",
+    "Fix: Edit/View toggle (success color) also gets stronger nIs inset + 800 weight",
+  ]},
   {v:"v5.44.0",date:"Apr 2026",items:[
     "Fix: CRASH ROOT CAUSE -- data-ui template literals used ${m.id} but the loop variable is named `map` not `m`. Changed to ${map.id} in both nn-map-card and nn-map-list-row",
     "Fix: AppErrorBoundary surfaced the crash as Application Error: m is not defined",
