@@ -79,8 +79,8 @@ function GuestCard({g}){
       opacity:running?1:0.6}}>
       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
         <span style={{fontSize:9,padding:'1px 5px',borderRadius:3,fontWeight:700,
-          background:isVM?'#8E24AA22':'#00897B22',
-          color:isVM?'#CE93D8':'#80CBC4'}}>{isVM?'VM':'CT'}</span>
+          background:isVM?'var(--state-selected-bg)':'var(--state-soft-success-bg)',
+          color:isVM?'var(--accent)':'var(--success)'}}>{isVM?'VM':'CT'}</span>
         <span style={{fontSize:11,fontWeight:700,color:'var(--text)',flex:1,
           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name||`${g._type}${g.vmid}`}</span>
         <span style={{fontSize:9,padding:'1px 6px',borderRadius:10,
@@ -96,14 +96,14 @@ function GuestCard({g}){
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>CPU</span>
-            <span style={{fontSize:9,fontWeight:700,color:cpuPct>80?'#f44336':cpuPct>60?'#ff9800':'var(--success)'}}>{cpuPct}%</span>
+            <span style={{fontSize:9,fontWeight:700,color:cpuPct>80?'var(--danger)':cpuPct>60?'var(--accent)':'var(--success)'}}>{cpuPct}%</span>
           </div>
           <MiniBar v={cpuPct}/>
         </div>
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
-            <span style={{fontSize:9,fontWeight:700,color:memPct>80?'#f44336':memPct>60?'#ff9800':'var(--success)'}}>{memPct}% <span style={{fontWeight:400,color:'var(--text4)'}}>{gb(g.mem)}</span></span>
+            <span style={{fontSize:9,fontWeight:700,color:memPct>80?'var(--danger)':memPct>60?'var(--accent)':'var(--success)'}}>{memPct}% <span style={{fontWeight:400,color:'var(--text4)'}}>{gb(g.mem)}</span></span>
           </div>
           <MiniBar v={memPct}/>
         </div>
@@ -163,7 +163,7 @@ function ProxmoxMetrics({ data }) {
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
                       <span style={{fontSize:9,color:'var(--text4)'}}>{label}</span>
                       <span style={{fontSize:10,fontWeight:700,
-                        color:v>=90?'#f44336':v>=75?'#ff9800':'var(--text)'}}>{v}%</span>
+                        color:v>=90?'var(--danger)':v>=75?'var(--accent)':'var(--text)'}}>{v}%</span>
                     </div>
                     <MiniBar v={v} h={5}/>
                     <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{sub}</div>
@@ -182,7 +182,7 @@ function ProxmoxMetrics({ data }) {
                       <div key={st.storage} style={{background:'var(--bg)',borderRadius:6,padding:'6px 8px',border:'1px solid var(--border2)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
                           <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{st.storage}</span>
-                          <span style={{fontSize:9,fontWeight:700,color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
+                          <span style={{fontSize:9,fontWeight:700,color:sp>85?'var(--danger)':sp>70?'var(--accent)':'var(--success)'}}>{sp}%</span>
                         </div>
                         <MiniBar v={sp} h={4}/>
                         <div style={{fontSize:8,color:'var(--text4)',marginTop:3}}>{fmt(st.used||st.disk_used)} / {fmt(st.total)}</div>
@@ -201,7 +201,7 @@ function ProxmoxMetrics({ data }) {
                 {Object.entries(n.diskTemps).map(([path,temp])=>(
                   <span key={path} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
                     background:'var(--bg)',border:'1px solid var(--border2)',
-                    color:temp>50?'#f44336':temp>40?'#ff9800':'var(--text4)'}}>
+                    color:temp>50?'var(--danger)':temp>40?'var(--accent)':'var(--text4)'}}>
                     {path.replace('/dev/','').split('/')[0]} {temp}°C
                   </span>
                 ))}
@@ -330,7 +330,7 @@ function TrueNASMetrics({ data }) {
           <div>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
               <span style={{fontSize:9,color:'var(--text4)'}}>CPU · {cpuCores}c{cpuTemp!=null?` · ${Math.round(cpuTemp)}°C`:''}</span>
-              <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'#f44336':cpuPct>=75?'#ff9800':'var(--text)'}}>{cpuPct}%</span>
+              <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'var(--danger)':cpuPct>=75?'var(--accent)':'var(--text)'}}>{cpuPct}%</span>
             </div>
             <MiniBar v={cpuPct} h={5}/>
             <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{load1 ? `load ${load1} / ${load5} / ${load15}` : '—'}</div>
@@ -339,7 +339,7 @@ function TrueNASMetrics({ data }) {
           <div>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
               <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
-              <span style={{fontSize:10,fontWeight:700,color:memPct!=null?(memPct>=90?'#f44336':memPct>=75?'#ff9800':'var(--text)'):'var(--text4)'}}>
+              <span style={{fontSize:10,fontWeight:700,color:memPct!=null?(memPct>=90?'var(--danger)':memPct>=75?'var(--accent)':'var(--text)'):'var(--text4)'}}>
                 {memPct!=null?`${memPct}%`:memTotal?fmt(memTotal):'—'}
               </span>
             </div>
@@ -353,7 +353,7 @@ function TrueNASMetrics({ data }) {
             <div>
               <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
                 <span style={{fontSize:9,color:'var(--text4)'}}>Storage</span>
-                <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'var(--text)'}}>{v}%</span>
+                <span style={{fontSize:10,fontWeight:700,color:v>=90?'var(--danger)':v>=75?'var(--accent)':'var(--text)'}}>{v}%</span>
               </div>
               <MiniBar v={v} h={5}/>
               <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{fmt(storage.totalAllocated||0)} / {fmt(storage.totalSize||0)}</div>
@@ -377,7 +377,7 @@ function TrueNASMetrics({ data }) {
                     <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',
                       textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{p.name}</span>
                     <span style={{fontSize:9,fontWeight:700,
-                      color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
+                      color:sp>85?'var(--danger)':sp>70?'var(--accent)':'var(--success)'}}>{sp}%</span>
                   </div>
                   <MiniBar v={sp} h={4}/>
                   <div style={{fontSize:8,color:'var(--text4)',marginTop:3,display:'flex',justifyContent:'space-between'}}>
@@ -396,7 +396,7 @@ function TrueNASMetrics({ data }) {
         <div style={{background:'var(--bg3)',padding:'4px 14px',
           borderLeft:`1px solid ${borderCol}`,borderRight:`1px solid ${borderCol}`}}>
           {bootPool?.healthy===false&&(
-            <div style={{fontSize:10,color:'#ff9800',padding:'3px 0',borderBottom:'1px solid var(--border2)'}}>
+            <div style={{fontSize:10,color:'var(--accent)',padding:'3px 0',borderBottom:'1px solid var(--border2)'}}>
               ⚠ Boot pool {bootPool.status} — run: zpool detach boot-pool &lt;device&gt;
             </div>
           )}
@@ -456,7 +456,7 @@ function TrueNASMetrics({ data }) {
                 <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
                   <span style={{fontSize:11,fontWeight:700,color:'var(--text)',flex:1}}>{d.name}</span>
                   {d.temp!=null&&<span style={{fontSize:9,fontWeight:700,
-                    color:d.temp>50?'#f44336':d.temp>40?'#ff9800':'var(--success)'}}>{d.temp}°C</span>}
+                    color:d.temp>50?'var(--danger)':d.temp>40?'var(--accent)':'var(--success)'}}>{d.temp}°C</span>}
                 </div>
                 <div style={{fontSize:9,color:'var(--text4)',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.model||'—'}</div>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text3)'}}>
@@ -596,14 +596,14 @@ function UnraidMetrics({ data }) {
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>CPU{cpuTemp!=null?` · ${Math.round(cpuTemp)}°C`:''}</span>
-            <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'#f44336':cpuPct>=75?'#ff9800':'var(--text)'}}>{cpuPct}%</span>
+            <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'var(--danger)':cpuPct>=75?'var(--accent)':'var(--text)'}}>{cpuPct}%</span>
           </div>
           <MiniBar v={cpuPct} h={5}/>
         </div>
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
-            <span style={{fontSize:10,fontWeight:700,color:memPct>=90?'#f44336':memPct>=75?'#ff9800':'var(--text)'}}>{memPct}%</span>
+            <span style={{fontSize:10,fontWeight:700,color:memPct>=90?'var(--danger)':memPct>=75?'var(--accent)':'var(--text)'}}>{memPct}%</span>
           </div>
           <MiniBar v={memPct} h={5}/>
           <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{gb(mem.total-mem.free)} / {gb(mem.total)}</div>
@@ -619,7 +619,7 @@ function UnraidMetrics({ data }) {
           {disks.filter(d=>d.temp!=null).map((d,i)=>(
             <span key={i} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
               background:'var(--bg3)',border:'1px solid var(--border2)',
-              color:d.temp>50?'#f44336':d.temp>40?'#ff9800':'var(--text4)'}}>
+              color:d.temp>50?'var(--danger)':d.temp>40?'var(--accent)':'var(--text4)'}}>
               {d.name} {d.temp}°C
             </span>
           ))}
