@@ -439,22 +439,22 @@ body.skin-neumorphic [data-tut="topbar-row1"] + div button:not([disabled]):hover
   background: var(--bg) !important; color: var(--text) !important;
   box-shadow: var(--nEx) !important; transform: none !important;
 }
-/* Active toolbar button: pure neumorphic — inset (pressed into surface), NO color change
-   Depth alone communicates the active state. Same surface color as everything else. */
+/* Active toolbar button: stronger inset (nIs not nIx) + bold weight for clarity */
 body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--accent2)"],
-body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--accent2)"],
-body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--success)"],
-body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--success)"] {
-  box-shadow: var(--nIm) !important;   /* medium inset — clearly pressed in */
-  background: var(--bg) !important;    /* same surface, no color change      */
-  color: var(--text) !important;       /* same text, no accent tint           */
-  font-weight: 700 !important;
-  transform: none !important;
+body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--accent2)"] {
+  box-shadow: var(--nIs) !important; background: var(--bg) !important;
+  color: var(--accent2) !important; font-weight: 800 !important;
 }
-/* Popup/Panel segmented toggle wrapper: inset trough — active pill pops out */
+/* Popup/Panel segmented toggle wrapper: inset trough */
 body.skin-neumorphic [data-tut="topbar-row1"] + div [style*="background: var(--bg3)"][style*="border-radius: var(--radius-md)"][style*="overflow: hidden"] {
   background: var(--bg) !important; box-shadow: var(--nIs) !important;
   border-radius: var(--nRm) !important; overflow: hidden !important;
+}
+/* Active success (Edit/View toggle) */
+body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--success)"],
+body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--success)"] {
+  box-shadow: var(--nIs) !important; background: var(--bg) !important;
+  color: var(--success) !important; font-weight: 800 !important;
 }
 body.skin-neumorphic [data-tut="topbar-row1"] button:disabled,
 body.skin-neumorphic [data-tut="topbar-row1"] + div button:disabled,
