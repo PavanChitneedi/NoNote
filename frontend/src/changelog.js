@@ -1,6 +1,9 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.44.2",date:"Apr 2026",items:[
+    "Neumorphic toolbar: active buttons now pure depth-only (no blue/accent color). Pressed button sinks into surface with --nIm inset shadow, same surface color, same text color -- depth alone communicates state.",
+  ]},
   {v:"v5.44.1",date:"Apr 2026",items:[
     "Fix: Toolbar button active states inconsistent -- Connect (#6C63FF), Group (#FF9800), appearance (#6C63FF), templates, collab, export, collapse, share all used hardcoded colors that neumorphic CSS could not target",
     "Fix: Normalized all 9 toolbar tbtn() color params to var(--accent2) -- now neumorphic inset state applies uniformly to ALL active toolbar buttons",
