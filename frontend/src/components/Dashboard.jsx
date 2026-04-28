@@ -5,7 +5,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch, saveMap, getAccessToken } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 
-const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
+const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent2)", viewer:"var(--text3)" };
 
 const MAP_ACCENT_COLORS = ["#6C63FF","#FF6C2F","#0095D5","#16a34a","#E67C1C","#be185d","#0891b2","#7c3aed","#dc2626","#059669"];
 const MAP_ICON_OPTIONS   = ["🗺","🏠","🌐","⚙","🔒","☁","💾","📊","🔌","🧪","🏢","📱","🚀","🎯","📡"];
@@ -54,7 +54,7 @@ function ShareModal({ map, onClose }) {
   };
 
   return (
-    <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
+    <div style={{position:"fixed",inset:0,zIndex:800,background:"var(--overlay-scrim-2)",display:"flex",alignItems:"center",justifyContent:"center"}}
       onClick={e=>{if(e.target===e.currentTarget)onClose();}}>
       <div style={{background:"var(--bg2)",borderRadius:14,
         width:"min(460px,94vw)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",padding:26,
@@ -101,8 +101,8 @@ function ShareModal({ map, onClose }) {
             {users.map(u=>(
               <div key={u.id} style={{display:"flex",alignItems:"center",gap:10,padding:"6px 0",
                 borderBottom:"1px solid var(--border2)"}}>
-                <div style={{width:28,height:28,borderRadius:"50%",background:u.avatar_color||"#6C63FF",
-                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"#fff",flexShrink:0}}>
+                <div style={{width:28,height:28,borderRadius:"50%",background:u.avatar_color||"var(--accent2)",
+                  display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,fontWeight:700,color:"var(--on-accent)",flexShrink:0}}>
                   {u.display_name?.[0]?.toUpperCase()}
                 </div>
                 <div style={{flex:1,minWidth:0}}>

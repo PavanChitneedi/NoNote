@@ -147,7 +147,7 @@ export default function Tutorial({ page, onClose }) {
     <>
       {/* Full-screen dim — rendered only when NO spotlight so centered steps have a backdrop */}
       {!spotRect && (
-        <div onClick={onClose} data-ui="tutorial" data-component="Tutorial" data-page="global" data-role="overlay" style={{position:"fixed",inset:0,zIndex:9990,background:"rgba(0,0,0,0.72)"}}/>
+        <div onClick={onClose} data-ui="tutorial" data-component="Tutorial" data-page="global" data-role="overlay" style={{position:"fixed",inset:0,zIndex:9990,background:"var(--overlay-scrim-2)"}}/>
       )}
 
       {/* Spotlight: box-shadow creates the dark surround WITHOUT a separate overlay div.
@@ -163,7 +163,7 @@ export default function Tutorial({ page, onClose }) {
           borderRadius: 10,
           border: `2.5px solid ${ACCENT}`,
           /* This single box-shadow dims the ENTIRE page except the spotlight area */
-          boxShadow: `0 0 0 3px ${ACCENT}55, 0 0 0 4000px rgba(0,0,0,0.76)`,
+          boxShadow: `0 0 0 3px ${ACCENT}55, 0 0 0 4000px var(--overlay-scrim-2)`,
           pointerEvents: "none",
           animation: "tut-pulse 2s ease-in-out infinite",
         }}/>
@@ -196,7 +196,7 @@ export default function Tutorial({ page, onClose }) {
               fontSize:11,fontFamily:"var(--font-ui)",fontWeight:700}}>← Back</button>
           )}
           <button onClick={next} style={{background:ACCENT,border:"none",borderRadius:6,
-            padding:"6px 20px",color:"#0d1117",cursor:"pointer",
+            padding:"6px 20px",color:"var(--on-accent)",cursor:"pointer",
             fontSize:11,fontFamily:"var(--font-ui)",fontWeight:800}}>
             {isLast ? "Finish ✓" : "Next →"}
           </button>
@@ -214,8 +214,8 @@ export default function Tutorial({ page, onClose }) {
 
       <style>{`
         @keyframes tut-pulse {
-          0%,100%{box-shadow:0 0 0 3px #58a6ff55, 0 0 0 4000px rgba(0,0,0,0.76);}
-          50%   {box-shadow:0 0 0 8px #58a6ff22, 0 0 0 4000px rgba(0,0,0,0.76);}
+          0%,100%{box-shadow:0 0 0 3px #58a6ff55, 0 0 0 4000px var(--overlay-scrim-2);}
+          50%   {box-shadow:0 0 0 8px #58a6ff22, 0 0 0 4000px var(--overlay-scrim-2);}
         }
       `}</style>
     </>

@@ -403,7 +403,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
 
   return (
     <div data-ui="doc-export" data-component="DocExportModal" data-page="canvas" data-role="modal" style={{ position:"fixed", inset:0, zIndex:900,
-      background:"rgba(0,0,0,.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
+      background:"var(--overlay-scrim-2)", display:"flex", alignItems:"center", justifyContent:"center" }}
       onClick={onClose}>
       <div onClick={e=>e.stopPropagation()}
         style={{ background:"var(--bg2)", 
@@ -489,7 +489,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
             style={{ flex:1, padding:"10px 18px",
               background: status==="generating" ? "var(--bg3)" : "var(--accent2)",
               border:"none", borderRadius:8,
-              color: status==="generating" ? "var(--text4)" : "#fff",
+              color: status==="generating" ? "var(--text4)" : "var(--on-accent)",
               cursor: status==="generating" ? "not-allowed" : "pointer",
               fontSize:13, fontWeight:700, fontFamily:"var(--font-ui)" }}>
             {status==="generating" ? "Working…"

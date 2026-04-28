@@ -51,7 +51,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
   };
 
   return (
-    <div data-ui="version-history" data-component="VersionHistory" data-page="canvas" data-role="panel" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
+    <div data-ui="version-history" data-component="VersionHistory" data-page="canvas" data-role="panel" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16, width:"100%", maxWidth:680, maxHeight:"88vh", display:"flex", flexDirection:"column", overflow:"hidden" }}
         onClick={e => e.stopPropagation()}>
@@ -75,7 +75,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
               onKeyDown={e => e.key === "Enter" && handleSave()}
             />
             <button onClick={handleSave} disabled={saving}
-              style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+              style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
               {saving ? "Saving…" : "💾 SAVE NOW"}
             </button>
           </div>
@@ -158,7 +158,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
 
                 <div style={{ display:"flex", gap:8 }}>
                   <button onClick={handleRestore}
-                    style={{ flex:1, padding:"11px", background:"var(--accent2)", border:"none", borderRadius:9, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                    style={{ flex:1, padding:"11px", background:"var(--accent2)", border:"none", borderRadius:9, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                     ↩ RESTORE THIS VERSION
                   </button>
                   <button onClick={() => setPreview(null)}

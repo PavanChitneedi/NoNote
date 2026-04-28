@@ -98,7 +98,7 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
     padding: "3px 10px", borderRadius: 20, cursor: "pointer", fontSize: 10,
     fontFamily: "var(--font-ui)", fontWeight: active ? 700 : 400,
     background: active ? "var(--accent2)" : "var(--bg3)",
-    color: active ? "#fff" : "var(--text3)",
+    color: active ? "var(--on-accent)" : "var(--text3)",
     border: `1px solid ${active ? "var(--accent2)" : "var(--border)"}`,
     flexShrink: 0, whiteSpace: "nowrap", transition: "all .12s",
   });
@@ -125,7 +125,7 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
           onMouseDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); newConv(); }}
           disabled={!selectedProvider}
-          style={{ padding: "5px 10px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)", border: "none", borderRadius: "var(--radius-xs)", color: selectedProvider ? "#fff" : "var(--text4)", fontSize: 10, fontWeight: 700, cursor: selectedProvider ? "pointer" : "default", fontFamily: "var(--font-ui)", flexShrink: 0 }}>
+          style={{ padding: "5px 10px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)", border: "none", borderRadius: "var(--radius-xs)", color: selectedProvider ? "var(--on-accent)" : "var(--text4)", fontSize: 10, fontWeight: 700, cursor: selectedProvider ? "pointer" : "default", fontFamily: "var(--font-ui)", flexShrink: 0 }}>
           + NEW
         </button>
       </div>
@@ -209,7 +209,7 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
             onInput={e => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 80) + "px"; }}
           />
           <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); send(); }} disabled={!canSend}
-            style={{ width: 32, height: 32, borderRadius: "var(--radius-xs)", border: "none", flexShrink: 0, background: canSend ? "var(--accent2)" : "var(--bg3)", color: canSend ? "#fff" : "var(--text4)", cursor: canSend ? "pointer" : "default", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>↑</button>
+            style={{ width: 32, height: 32, borderRadius: "var(--radius-xs)", border: "none", flexShrink: 0, background: canSend ? "var(--accent2)" : "var(--bg3)", color: canSend ? "var(--on-accent)" : "var(--text4)", cursor: canSend ? "pointer" : "default", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>↑</button>
         </div>
       </div>
 

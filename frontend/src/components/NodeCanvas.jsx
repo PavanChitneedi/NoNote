@@ -175,7 +175,7 @@ function highlightText(text, query) {
   if(idx<0) return str;
   return <span>
     {str.slice(0,idx)}
-    <mark style={{background:"var(--accent2)",color:"#fff",borderRadius:2,padding:"0 1px",fontSize:"inherit"}}>
+    <mark style={{background:"var(--accent2)",color:"var(--on-accent)",borderRadius:2,padding:"0 1px",fontSize:"inherit"}}>
       {str.slice(idx,idx+q.length)}
     </mark>
     {str.slice(idx+q.length)}
@@ -3529,7 +3529,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
               🗨 <span style={{fontSize:10}}>Comments</span>
               {Object.values(comments).flat().length>0&&(
-                <span style={{fontSize:8,background:"var(--accent)",color:"#fff",borderRadius:10,padding:"0 4px"}}>{Object.values(comments).flat().length}</span>
+                <span style={{fontSize:8,background:"var(--accent)",color:"var(--on-accent)",borderRadius:10,padding:"0 4px"}}>{Object.values(comments).flat().length}</span>
               )}
             </button>
           </div>
@@ -3541,7 +3541,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {showSearch&&(
         <>
           {/* Full-screen backdrop */}
-          <div style={{position:"fixed",inset:0,zIndex:600,background:"rgba(0,0,0,.45)"}}
+          <div style={{position:"fixed",inset:0,zIndex:600,background:"var(--overlay-scrim-1)"}}
             onClick={()=>{setShowSearch(false);setSearchQuery("");}}/>
 
           {/* Command palette panel */}
@@ -3938,13 +3938,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {/* Quick Capture */}
               {quickPos&&canEdit&&editMode&&(
                 <div style={{position:"absolute",left:quickPos.x,top:quickPos.y-64,zIndex:100,display:"flex",flexDirection:"column",gap:5}} onClick={e=>e.stopPropagation()}>
-                  <div style={{background:"#6C63FF",color:"#fff",fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"3px 9px",borderRadius:"var(--radius-xs)",alignSelf:"flex-start"}}>⚡ QUICK CAPTURE</div>
+                  <div style={{background:"var(--accent2)",color:"var(--on-accent)",fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"3px 9px",borderRadius:"var(--radius-xs)",alignSelf:"flex-start"}}>⚡ QUICK CAPTURE</div>
                   <div style={{background:"var(--bg)",border:"none",borderRadius:"var(--radius-md)",padding:"8px 10px",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",outline:"2px solid var(--accent2)",display:"flex",gap:6}}>
                     <input ref={quickInpRef} value={quickText} onChange={e=>setQuickText(e.target.value)}
                       onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")commitCapture();if(e.key==="Escape"){setQuickPos(null);setQuickText("");}}}
                       placeholder="Type a thought, hit Enter…"
                       style={{background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",width:220}}/>
-                    <button onClick={commitCapture} style={{background:"#6C63FF",border:"none",borderRadius:"var(--radius-xs)",color:"#fff",cursor:"pointer",padding:"2px 10px",fontSize:11,fontWeight:700,fontFamily:"var(--font-ui)"}}>↵</button>
+                    <button onClick={commitCapture} style={{background:"var(--accent2)",border:"none",borderRadius:"var(--radius-xs)",color:"var(--on-accent)",cursor:"pointer",padding:"2px 10px",fontSize:11,fontWeight:700,fontFamily:"var(--font-ui)"}}>↵</button>
                   </div>
                 </div>
               )}
@@ -4113,7 +4113,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       {/* ── Share Modal ── */}
       {showShare&&(
-        <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.65)",display:"flex",alignItems:"center",justifyContent:"center"}}
+        <div style={{position:"fixed",inset:0,zIndex:900,background:"var(--overlay-scrim-2)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>{setShowShare(false);setShareStatus(null);setShareEmail("");}}>
           <div style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",
             boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:440,maxWidth:"94vw",
@@ -4252,7 +4252,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       )}
       {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
       {showChangelog&&(
-        <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
+        <div style={{position:"fixed",inset:0,zIndex:900,background:"var(--overlay-scrim-2)",display:"flex",alignItems:"center",justifyContent:"center"}}
           onClick={()=>setShowChangelog(false)}>
           <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:"var(--radius-lg)",
             boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:560,maxWidth:"94vw",maxHeight:"80vh",
@@ -5401,7 +5401,7 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
     if(!q||!text) return <span>{text}</span>;
     const low=String(text).toLowerCase(), ql=q.toLowerCase();
     const idx=low.indexOf(ql); if(idx<0) return <span>{text}</span>;
-    return <span>{String(text).slice(0,idx)}<mark style={{background:"var(--accent2)",color:"#fff",borderRadius:2,padding:"0 1px"}}>{String(text).slice(idx,idx+q.length)}</mark>{String(text).slice(idx+q.length)}</span>;
+    return <span>{String(text).slice(0,idx)}<mark style={{background:"var(--accent2)",color:"var(--on-accent)",borderRadius:2,padding:"0 1px"}}>{String(text).slice(idx,idx+q.length)}</mark>{String(text).slice(idx+q.length)}</span>;
   };
 
   const FIELDS=[{id:"all",label:"All"},{id:"title",label:"Title"},{id:"notes",label:"Notes"},{id:"props",label:"Properties"},{id:"type",label:"Type"}];
@@ -6225,7 +6225,7 @@ function ExportModal({nodes,edges,mapTitle,exportLLM,onClose}){
   const copy=()=>{navigator.clipboard.writeText(content);setCopied(true);setTimeout(()=>setCopied(false),2000);};
   const tbS=(active,color="var(--accent2)")=>({padding:"8px 16px",border:"none",borderRadius:"var(--radius-sm)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"var(--font-ui)",background:active?color:"var(--bg3)",color:active?"#fff":"var(--text3)"});
   return(
-    <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.76)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16}} onClick={onClose}>
+    <div style={{position:"fixed",inset:0,background:"var(--overlay-scrim-2)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16}} onClick={onClose}>
       <div style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",padding:20,width:"100%",maxWidth:600,maxHeight:"84vh",display:"flex",flexDirection:"column",gap:14}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontWeight:700,fontSize:14,color:"var(--accent)"}}>↗ EXPORT</span>

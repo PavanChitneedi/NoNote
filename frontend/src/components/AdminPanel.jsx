@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { apiFetch } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
-const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)", restricted:"#888" };
+const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent2)", viewer:"var(--text3)", restricted:"var(--text4)" };
 const GC = ["#6C63FF","#E91E63","#2196F3","#4CAF50","#FF9800","#9C27B0","#00BCD4","#F44336","#FF5722","#607D8B"];
 const AVATAR_COLORS = ["#6C63FF","#E91E63","#2196F3","#4CAF50","#FF9800","#9C27B0","#00BCD4","#F44336","#FF5722","#607D8B","#3F51B5","#009688"];
 
@@ -53,7 +53,7 @@ const btn = (primary, danger) => ({
   padding:"8px 16px",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,
   fontWeight:700,fontFamily:"inherit",
   background: danger ? "var(--danger)18" : primary ? "var(--accent2)" : "var(--bg3)",
-  color:       danger ? "var(--danger)"   : primary ? "#fff"          : "var(--text3)",
+  color:       danger ? "var(--danger)"   : primary ? "var(--on-accent)" : "var(--text3)",
 });
 
 function Alert({color,children}){
@@ -68,7 +68,7 @@ function Tab({label,active,onClick,badge}){
       fontWeight:700,letterSpacing:.5,fontFamily:"inherit",whiteSpace:"nowrap",
       display:"flex",alignItems:"center",gap:5}}>
       {label}
-      {badge!==undefined&&badge>0&&<span style={{background:"var(--accent2)",color:"#fff",
+      {badge!==undefined&&badge>0&&<span style={{background:"var(--accent2)",color:"var(--on-accent)",
         borderRadius:10,fontSize:9,padding:"1px 5px",lineHeight:1.5}}>{badge}</span>}
     </button>
   );
@@ -106,7 +106,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
   };
 
   return(
-    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.72)",
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"var(--overlay-scrim-2)",
       display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
       <div data-ui="admin-panel" data-component="AdminPanel" data-page="admin" data-role="modal"
         onClick={e=>e.stopPropagation()} style={{background:"var(--bg2)",
@@ -117,7 +117,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:44,height:44,borderRadius:"50%",background:color,
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>
+            fontSize:18,fontWeight:700,color:"var(--on-accent)",flexShrink:0}}>
             {name?.[0]?.toUpperCase()}
           </div>
           <div style={{flex:1}}>

@@ -169,7 +169,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
             )}
             <button onClick={startNewChat} disabled={!selectedProvider} style={{
               padding: "6px 12px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)",
-              border: "none", borderRadius: "var(--radius-sm)", color: selectedProvider ? "#fff" : "var(--text4)",
+              border: "none", borderRadius: "var(--radius-sm)", color: selectedProvider ? "var(--on-accent)" : "var(--text4)",
               fontSize: 10, fontWeight: 700, letterSpacing: 0.5, cursor: selectedProvider ? "pointer" : "default",
               fontFamily: "var(--font-ui)", flexShrink: 0, transition: "all .15s",
             }}>+ NEW</button>
@@ -192,7 +192,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                       padding: "3px 6px 3px 8px", borderRadius: 20, cursor: "pointer",
                       fontSize: 10, fontFamily: "var(--font-ui)", fontWeight: active ? 700 : 400,
                       background: active ? "var(--accent2)" : "var(--bg3)",
-                      color: active ? "#fff" : "var(--text3)",
+                      color: active ? "var(--on-accent)" : "var(--text3)",
                       border: `1px solid ${active ? "var(--accent2)" : "var(--border)"}`,
                       maxWidth: 150, transition: "all .12s",
                     }}
@@ -202,7 +202,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                     </span>
                     <span
                       onClick={e => handleDeleteConv(c.id, e)}
-                      style={{ color: active ? "#ffffff88" : "var(--text4)", fontSize: 14, lineHeight: 1, flexShrink: 0, cursor: "pointer" }}
+                      style={{ color: active ? "var(--on-accent)" : "var(--text4)", fontSize: 14, lineHeight: 1, flexShrink: 0, cursor: "pointer", opacity: active ? 0.7 : 1 }}
                     >×</span>
                   </div>
                 );
@@ -234,13 +234,13 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               {providers.length === 0 ? (
                 <button onClick={() => setShowSettings(true)} style={{
                   padding: "9px 18px", background: "var(--accent2)", border: "none",
-                  borderRadius: "var(--radius-md)", color: "#fff", fontSize: 11, fontWeight: 700,
+                  borderRadius: "var(--radius-md)", color: "var(--on-accent)", fontSize: 11, fontWeight: 700,
                   cursor: "pointer", fontFamily: "var(--font-ui)",
                 }}>+ Add your first LLM provider</button>
               ) : (
                 <button onClick={startNewChat} disabled={!selectedProvider} style={{
                   padding: "9px 18px", background: "var(--accent2)", border: "none",
-                  borderRadius: "var(--radius-md)", color: "#fff", fontSize: 11, fontWeight: 700,
+                  borderRadius: "var(--radius-md)", color: "var(--on-accent)", fontSize: 11, fontWeight: 700,
                   cursor: "pointer", fontFamily: "var(--font-ui)",
                 }}>Start a chat</button>
               )}
@@ -322,7 +322,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               style={{
                 width: 38, height: 38, borderRadius: "var(--radius-md)", border: "none", flexShrink: 0,
                 background: (activeConvId && input.trim() && !sending) ? "var(--accent2)" : "var(--bg3)",
-                color: (activeConvId && input.trim() && !sending) ? "#fff" : "var(--text4)",
+                color: (activeConvId && input.trim() && !sending) ? "var(--on-accent)" : "var(--text4)",
                 cursor: (activeConvId && input.trim() && !sending) ? "pointer" : "default",
                 fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all .15s",

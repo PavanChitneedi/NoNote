@@ -7,8 +7,8 @@ const TYPE_COLOR = { proxmox:'var(--accent2)', truenas:'#0095D5', unraid:'#E67C1
 const TYPE_LABEL = { proxmox:'Proxmox VE', truenas:'TrueNAS', unraid:'Unraid', esxi:'ESXi', probe:'HTTP Probe', freenas:'FreeNAS' };
 
 function uptime(s){ if(!s) return'—'; const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m`; }
-function Bar({v,h=4}){ const c=v>=90?'var(--danger)':v>=70?'#ff9800':'var(--success)'; return <div style={{height:h,background:'var(--border2)',borderRadius:h,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(v,100)}%`,background:c,borderRadius:h,transition:'width .4s'}}/></div>; }
-function MiniMetric({label,value,sub,v}){ return <div style={{minWidth:0}}><div style={{fontSize:9,color:'var(--text4)',marginBottom:1}}>{label}</div><div style={{fontSize:13,fontWeight:800,color:v>=90?'var(--danger)':v>=70?'#ff9800':'var(--text)',lineHeight:1.1}}>{value}</div>{sub&&<div style={{fontSize:9,color:'var(--text4)',marginTop:1}}>{sub}</div>}{v!=null&&<Bar v={v}/>}</div>; }
+function Bar({v,h=4}){ const c=v>=90?'var(--danger)':v>=70?'var(--accent)':'var(--success)'; return <div style={{height:h,background:'var(--border2)',borderRadius:h,overflow:'hidden'}}><div style={{height:'100%',width:`${Math.min(v,100)}%`,background:c,borderRadius:h,transition:'width .4s'}}/></div>; }
+function MiniMetric({label,value,sub,v}){ return <div style={{minWidth:0}}><div style={{fontSize:9,color:'var(--text4)',marginBottom:1}}>{label}</div><div style={{fontSize:13,fontWeight:800,color:v>=90?'var(--danger)':v>=70?'var(--accent)':'var(--text)',lineHeight:1.1}}>{value}</div>{sub&&<div style={{fontSize:9,color:'var(--text4)',marginTop:1}}>{sub}</div>}{v!=null&&<Bar v={v}/>}</div>; }
 function Pill({running}){ return <span style={{fontSize:9,padding:'1px 6px',borderRadius:8,fontWeight:700,background:running?'var(--success)22':'var(--bg3)',color:running?'var(--success)':'var(--text4)',border:`1px solid ${running?'var(--success)44':'var(--border)'}`}}>{running?'●':'■'} {running?'on':'off'}</span>; }
 
 // ── Guest list (shared) ───────────────────────────────────────
@@ -20,7 +20,7 @@ function GuestList({guests, color}){
   return <div>
     <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
       {[['all',`All ${guests.length}`],['vm',`VM ${rVM}/${tVM}`],['ct',`CT ${rCT}/${tCT}`],['off','Stopped']].map(([v,l])=>(
-        <button key={v} onClick={()=>setF(v)} style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:8,cursor:'pointer',fontFamily:'var(--font-ui)',fontWeight:600,background:f===v?color:'var(--bg3)',color:f===v?'#fff':'var(--text4)'}}>{l}</button>
+        <button key={v} onClick={()=>setF(v)} style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:8,cursor:'pointer',fontFamily:'var(--font-ui)',fontWeight:600,background:f===v?color:'var(--bg3)',color:f===v?'var(--on-accent)':'var(--text4)'}}>{l}</button>
       ))}
     </div>
     {shown.length===0&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic',textAlign:'center',padding:'8px 0'}}>None</div>}
@@ -68,7 +68,7 @@ function ProxmoxCard({result, color}){
         {d.nodes?.map(nd=>{const st=nd.status||{};const c2=Math.round((st.cpu||0)*100),m2=pct(st.memory?.used,st.memory?.total),d2=pct(st.rootfs?.used,st.rootfs?.total);return <div key={nd.node} style={{gridColumn:'span 3',background:'var(--bg)',borderRadius:6,padding:'8px 10px',border:'1px solid var(--border2)'}}>
           <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:8}}><span style={{width:7,height:7,borderRadius:'50%',background:nd.online?'var(--success)':'var(--danger)'}}/><span style={{fontWeight:700,fontSize:11,color:'var(--text)'}}>{nd.node}</span><span style={{fontSize:9,color:'var(--text4)',marginLeft:'auto'}}>v{d.version} · {st.cpuinfo?.model?.split(' ').slice(-1)[0]||`${st.cpuinfo?.cores||'?'}c`}</span></div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:6}}>
-            {[{l:`CPU(${st.cpuinfo?.cores}c)`,v:c2},{l:'RAM',v:m2,s:`${gb(st.memory?.used)}/${gb(st.memory?.total)}`},{l:'Disk',v:d2,s:`${fmt(st.rootfs?.used)}/${fmt(st.rootfs?.total)}`}].map(({l,v,s})=><div key={l}><div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}><span style={{fontSize:9,color:'var(--text4)'}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:v>=90?'var(--danger)':v>=70?'#ff9800':'var(--text)'}}>{v}%</span></div><Bar v={v} h={5}/>{s&&<div style={{fontSize:8,color:'var(--text4)',marginTop:2}}>{s}</div>}</div>)}
+            {[{l:`CPU(${st.cpuinfo?.cores}c)`,v:c2},{l:'RAM',v:m2,s:`${gb(st.memory?.used)}/${gb(st.memory?.total)}`},{l:'Disk',v:d2,s:`${fmt(st.rootfs?.used)}/${fmt(st.rootfs?.total)}`}].map(({l,v,s})=><div key={l}><div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}><span style={{fontSize:9,color:'var(--text4)'}}>{l}</span><span style={{fontSize:10,fontWeight:700,color:v>=90?'var(--danger)':v>=70?'var(--accent)':'var(--text)'}}>{v}%</span></div><Bar v={v} h={5}/>{s&&<div style={{fontSize:8,color:'var(--text4)',marginTop:2}}>{s}</div>}</div>)}
           </div>
         </div>;})}
       </div>}
@@ -79,7 +79,7 @@ function ProxmoxCard({result, color}){
           <span style={{fontSize:11,fontWeight:600,color:'var(--text)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{st.storage}</span>
           <span style={{fontSize:9,color:'var(--text4)',whiteSpace:'nowrap'}}>{fmt(st.used||st.disk_used||0)}/{fmt(st.total)}</span>
           <Bar v={sp} h={5}/>
-          <span style={{fontSize:10,fontWeight:700,color:sp>=85?'var(--danger)':sp>=70?'#ff9800':'var(--success)',minWidth:32,textAlign:'right'}}>{sp}%</span>
+          <span style={{fontSize:10,fontWeight:700,color:sp>=85?'var(--danger)':sp>=70?'var(--accent)':'var(--success)',minWidth:32,textAlign:'right'}}>{sp}%</span>
         </div>;})}
       </div>}
     </div>
@@ -112,7 +112,7 @@ function TrueNASCard({result, color}){
         {(d.alerts||[]).map((a,i)=><div key={i} style={{padding:'4px 8px',background:'var(--danger)11',borderRadius:4,fontSize:10,color:'var(--danger)',marginBottom:3}}>⚠ {a.formatted||a.text}</div>)}
       </div>}
       {tab==='pools'&&pools.map(p=>{const sp=pct(p.size?.allocated,p.size?.total);return <div key={p.name} style={{padding:'7px 10px',borderRadius:6,marginBottom:5,background:'var(--bg)',border:`1px solid ${p.healthy?'var(--success)22':'var(--danger)33'}`}}>
-        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:5}}><span style={{fontWeight:600,fontSize:12,color:'var(--text)',flex:1}}>{p.name}</span><span style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:8,background:p.healthy?'var(--success)22':'var(--danger)22',color:p.healthy?'var(--success)':'var(--danger)'}}>{p.status}</span><span style={{fontSize:10,fontWeight:700,color:sp>=85?'var(--danger)':sp>=70?'#ff9800':'var(--success)'}}>{sp}%</span></div>
+        <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:5}}><span style={{fontWeight:600,fontSize:12,color:'var(--text)',flex:1}}>{p.name}</span><span style={{fontSize:9,fontWeight:700,padding:'1px 6px',borderRadius:8,background:p.healthy?'var(--success)22':'var(--danger)22',color:p.healthy?'var(--success)':'var(--danger)'}}>{p.status}</span><span style={{fontSize:10,fontWeight:700,color:sp>=85?'var(--danger)':sp>=70?'var(--accent)':'var(--success)'}}>{sp}%</span></div>
         <Bar v={sp} h={5}/>
         <div style={{display:'flex',justifyContent:'space-between',marginTop:4}}><span style={{fontSize:9,color:'var(--text4)'}}>Used {fmt(p.size?.allocated)}</span><span style={{fontSize:9,color:'var(--text4)'}}>Free {fmt((p.size?.total||0)-(p.size?.allocated||0))}</span><span style={{fontSize:9,color:'var(--text4)'}}>Total {fmt(p.size?.total)}</span></div>
       </div>;})}
@@ -144,7 +144,7 @@ function UnraidCard({result, color}){
     </div>
     <div style={{height:220,overflowY:'auto',padding:'10px 12px'}}>
       {tab==='overview'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
-        {[{l:'CPU',v:cp},{l:'RAM',v:mp,s:`${gb(mem.total-mem.free)} / ${gb(mem.total)}`}].map(({l,v,s})=><div key={l} style={{background:'var(--bg)',borderRadius:5,padding:'8px 10px',border:'1px solid var(--border2)'}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:9,color:'var(--text4)'}}>{l}</span><span style={{fontSize:13,fontWeight:800,color:v>=90?'var(--danger)':v>=70?'#ff9800':'var(--text)'}}>{v}%</span></div><Bar v={v} h={6}/>{s&&<div style={{fontSize:9,color:'var(--text4)',marginTop:3}}>{s}</div>}</div>)}
+        {[{l:'CPU',v:cp},{l:'RAM',v:mp,s:`${gb(mem.total-mem.free)} / ${gb(mem.total)}`}].map(({l,v,s})=><div key={l} style={{background:'var(--bg)',borderRadius:5,padding:'8px 10px',border:'1px solid var(--border2)'}}><div style={{display:'flex',justifyContent:'space-between',marginBottom:4}}><span style={{fontSize:9,color:'var(--text4)'}}>{l}</span><span style={{fontSize:13,fontWeight:800,color:v>=90?'var(--danger)':v>=70?'var(--accent)':'var(--text)'}}>{v}%</span></div><Bar v={v} h={6}/>{s&&<div style={{fontSize:9,color:'var(--text4)',marginTop:3}}>{s}</div>}</div>)}
       </div>}
       {tab==='docker'&&ctrs.map((c,i)=>{const r=c.state==='running';return <div key={i} style={{display:'flex',alignItems:'center',gap:8,padding:'5px 8px',borderRadius:5,marginBottom:3,background:'var(--bg)',border:`1px solid ${r?'var(--success)22':'var(--border2)'}`,opacity:r?1:.6}}>
         <span style={{fontSize:10,color:r?'var(--success)':'var(--text4)'}}>{r?'▶':'■'}</span>
@@ -198,7 +198,7 @@ function StandaloneAdd({onAdd}){
       <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>URL</div><input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://192.168.x.x:8006" style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
       <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>{form.type==='esxi'?'USERNAME':'TOKEN / API KEY'}</div>
         <input value={form.type==='esxi'?form.username:form.token} onChange={e=>setForm(f=>form.type==='esxi'?{...f,username:e.target.value}:{...f,token:e.target.value})} type="password" placeholder={form.type==='esxi'?'admin@vsphere.local':'user@pam!id=uuid'} style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
-      <button onClick={save} style={{padding:'5px 14px',background:'var(--accent2)',border:'none',borderRadius:5,color:'#fff',cursor:'pointer',fontSize:11,fontWeight:700,fontFamily:'var(--font-ui)',whiteSpace:'nowrap'}}>Add</button>
+      <button onClick={save} style={{padding:'5px 14px',background:'var(--accent2)',border:'none',borderRadius:5,color:'var(--on-accent)',cursor:'pointer',fontSize:11,fontWeight:700,fontFamily:'var(--font-ui)',whiteSpace:'nowrap'}}>Add</button>
       <button onClick={()=>setShow(false)} style={{padding:'5px 10px',background:'none',border:'1px solid var(--border)',borderRadius:5,color:'var(--text4)',cursor:'pointer',fontSize:11,fontFamily:'var(--font-ui)'}}>×</button>
     </div>}
   </div>;
@@ -257,7 +257,7 @@ export default function LiveDashboard({maps}){
       <span style={{fontSize:11,color:'var(--text4)'}}>📡 {nodes.length} integration{nodes.length!==1?'s':''}</span>
       <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
         {lastRefresh&&<span style={{fontSize:9,color:'var(--text4)'}}>↻{countdown}s</span>}
-        <button onClick={()=>refresh()} disabled={refreshing} style={{fontSize:10,background:refreshing?'var(--bg3)':'var(--accent2)',border:'none',borderRadius:5,color:refreshing?'var(--text4)':'#fff',cursor:refreshing?'default':'pointer',padding:'4px 12px',fontFamily:'var(--font-ui)',fontWeight:700}}>{refreshing?'…':'🔄 Refresh'}</button>
+        <button onClick={()=>refresh()} disabled={refreshing} style={{fontSize:10,background:refreshing?'var(--bg3)':'var(--accent2)',border:'none',borderRadius:5,color:refreshing?'var(--text4)':'var(--on-accent)',cursor:refreshing?'default':'pointer',padding:'4px 12px',fontFamily:'var(--font-ui)',fontWeight:700}}>{refreshing?'…':'🔄 Refresh'}</button>
       </div>
     </div>
 

@@ -11,7 +11,7 @@ const btn = (primary) => ({
   padding:"10px 20px", border:"none", borderRadius:8, cursor:"pointer",
   fontSize:12, fontWeight:700, fontFamily:"inherit",
   background: primary ? "var(--accent2)" : "var(--bg3)",
-  color:      primary ? "#fff"           : "var(--text3)",
+  color:      primary ? "var(--on-accent)" : "var(--text3)",
 });
 
 const AVATAR_COLORS = [
@@ -124,7 +124,7 @@ export default function UserProfile({ onClose }) {
   );
 
   return (
-    <div data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex",
+    <div data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)",  borderRadius:14,
@@ -137,7 +137,7 @@ export default function UserProfile({ onClose }) {
           display:"flex", alignItems:"center", gap:14, flexShrink:0 }}>
           <div style={{ width:48, height:48, borderRadius:"50%", background:color,
             display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:20, fontWeight:700, color:"#fff", flexShrink:0 }}>
+            fontSize:20, fontWeight:700, color:"var(--on-accent)", flexShrink:0 }}>
             {user?.display_name?.[0]?.toUpperCase()}
           </div>
           <div style={{ flex:1, minWidth:0 }}>

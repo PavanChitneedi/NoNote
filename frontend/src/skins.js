@@ -1415,3 +1415,57 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
 };
 
 export const SKIN_KEYS = Object.keys(SKINS);
+
+const UNIFORM_STATE_CONTRACT_CSS = `
+/* Shared state contract (all skins/themes) */
+[data-role="action-btn"], [data-role="nav-btn"], [data-role="panel-btn"], [data-role="mode-btn"], button {
+  transition: var(--transition-all);
+}
+[data-role="action-btn"]:hover, [data-role="nav-btn"]:hover, [data-role="panel-btn"]:hover, [data-role="mode-btn"]:hover, button:not([disabled]):hover {
+  background: var(--state-hover-bg) !important;
+}
+[data-role="action-btn"]:active, [data-role="nav-btn"]:active, [data-role="panel-btn"]:active, [data-role="mode-btn"]:active, button:not([disabled]):active {
+  background: var(--state-active-bg) !important;
+}
+[data-role="action-btn"]:focus-visible, [data-role="nav-btn"]:focus-visible, [data-role="panel-btn"]:focus-visible, [data-role="mode-btn"]:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+  outline: none !important;
+  box-shadow: var(--state-focus-ring) !important;
+}
+button:disabled, button[disabled], input:disabled, select:disabled, textarea:disabled, [aria-disabled="true"] {
+  opacity: var(--state-disabled-opacity) !important;
+  cursor: not-allowed !important;
+}
+[data-role="tab"][data-state="active"], [data-state="selected"] {
+  background: var(--state-selected-bg) !important;
+  color: var(--on-accent) !important;
+}
+[data-role="modal"], [data-role="overlay"] {
+  background: var(--overlay-scrim-2);
+}
+/* Normalize frequent hardcoded UI literals to semantic tokens */
+[style*="background: rgba(0,0,0,.7)"], [style*="background:rgba(0,0,0,.7)"],
+[style*="background: rgba(0,0,0,.6)"], [style*="background:rgba(0,0,0,.6)"],
+[style*="background: rgba(0,0,0,.5)"], [style*="background:rgba(0,0,0,.5)"],
+[style*="background: #000a"], [style*="background:#000a"] {
+  background: var(--overlay-scrim-2) !important;
+}
+[style*="color:#fff"], [style*="color: #fff"], [style*="color: \"#fff\""] {
+  color: var(--on-accent) !important;
+}
+[style*="background:#fff"], [style*="background: #fff"] {
+  background: var(--bg2) !important;
+}
+[style*="box-shadow: 0 8px 40px #000a"], [style*="boxShadow:\"0 8px 40px #000a\""] {
+  box-shadow: 0 8px 40px var(--shadow) !important;
+}
+[style*="border: 1px solid #00e5ff55"], [style*="border:1px solid #00e5ff55"] {
+  border: 1px solid var(--accent) !important;
+}
+[style*="background:#00e5ff22"], [style*="background: #00e5ff22"] {
+  background: var(--state-selected-bg) !important;
+}
+`;
+
+for (const key of SKIN_KEYS) {
+  SKINS[key].css = `${SKINS[key].css}\n${UNIFORM_STATE_CONTRACT_CSS}`;
+}

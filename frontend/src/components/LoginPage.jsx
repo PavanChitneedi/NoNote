@@ -51,7 +51,7 @@ export default function LoginPage() {
                 {error}
               </div>
             )}
-            <button type="submit" disabled={loading} style={{ marginTop:6, padding:"12px", background:loading?"var(--bg3)":"var(--accent2)", border:"none", borderRadius:"var(--radius-md)", color:loading?"var(--text4)":"#fff", fontSize:13, fontWeight:700, letterSpacing:1, cursor:loading?"not-allowed":"pointer", transition:"all .2s", fontFamily:"inherit" }}>
+            <button type="submit" disabled={loading} style={{ marginTop:6, padding:"12px", background:loading?"var(--bg3)":"var(--accent2)", border:"none", borderRadius:"var(--radius-md)", color:loading?"var(--text4)":"var(--on-accent)", fontSize:13, fontWeight:700, letterSpacing:1, cursor:loading?"not-allowed":"pointer", transition:"all .2s", fontFamily:"inherit" }}>
               {loading ? "SIGNING IN…" : "SIGN IN →"}
             </button>
           </form>

@@ -196,7 +196,7 @@ export default function LLMSettings({ onClose }) {
   };
 
   return (
-    <div data-ui="llm-settings" data-component="LLMSettings" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex",
+    <div data-ui="llm-settings" data-component="LLMSettings" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16,
@@ -438,7 +438,7 @@ const S = {
   inp:     { width:"100%", background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:7,
              padding:"8px 10px", color:"var(--text)", fontSize:12, fontFamily:"inherit", outline:"none", boxSizing:"border-box" },
   primary: { padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8,
-             color:"#fff", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
+             color:"var(--on-accent)", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
   ghost:   { padding:"9px 14px", background:"var(--bg3)", border:"none", borderRadius:8,
              color:"var(--text3)", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
   danger:  { background:"none", border:"1px solid #f7816640", borderRadius:6, color:"var(--danger)",

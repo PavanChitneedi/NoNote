@@ -28,7 +28,7 @@ class MobileErrorBoundary extends Component {
         </div>
         <button onClick={this.props.onBack}
           style={{padding:"12px 24px",background:"var(--accent2)",border:"none",
-            borderRadius:10,color:"#fff",fontSize:14,cursor:"pointer",fontWeight:700}}>
+            borderRadius:10,color:"var(--on-accent)",fontSize:14,cursor:"pointer",fontWeight:700}}>
           ← Back
         </button>
       </div>
@@ -119,13 +119,13 @@ function AppInner() {
       <div onClick={() => setShowProfile(true)}
         style={{ width:28, height:28, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
           display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer", flexShrink:0 }}>
+          fontSize:12, fontWeight:700, color:"var(--on-accent)", cursor:"pointer", flexShrink:0 }}>
         {user.display_name?.[0]?.toUpperCase()}
       </div>
       <button onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode (Ctrl+Shift+D)"}
         data-ui="topbar-devmode-toggle" data-component="Topbar" data-page="global" data-role="toggle"
         data-state={devMode?"active":"default"}
-        style={{...hBtn,background:devMode?"#00e5ff22":"transparent",color:devMode?"#00e5ff":"var(--text4)",border:devMode?"1px solid #00e5ff55":"none",fontSize:9,letterSpacing:1}}>DEV</button>
+        style={{...hBtn,background:devMode?"var(--state-selected-bg)":"transparent",color:devMode?"var(--accent)":"var(--text4)",border:devMode?"1px solid var(--accent)":"none",fontSize:9,letterSpacing:1}}>DEV</button>
       <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }} data-ui="topbar-logout" data-component="Topbar" data-page="global" data-role="action-btn">✕</button>
     </div>
   );
@@ -218,13 +218,13 @@ function AppInner() {
           <div onClick={() => setShowProfile(true)}
             style={{ width:32, height:32, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
               display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", marginBottom:4 }}>
+              fontSize:13, fontWeight:700, color:"var(--on-accent)", cursor:"pointer", marginBottom:4 }}>
             {user.display_name?.[0]?.toUpperCase()}
           </div>
           <button onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode"}
             data-ui="topbar-devmode-toggle" data-component="Topbar" data-page="global" data-role="toggle"
             data-state={devMode?"active":"default"}
-            style={{...hBtn,padding:"6px",fontSize:9,width:40,background:devMode?"#00e5ff22":"transparent",color:devMode?"#00e5ff":"var(--text4)",border:devMode?"1px solid #00e5ff55":"none"}}>DEV</button>
+            style={{...hBtn,padding:"6px",fontSize:9,width:40,background:devMode?"var(--state-selected-bg)":"transparent",color:devMode?"var(--accent)":"var(--text4)",border:devMode?"1px solid var(--accent)":"none"}}>DEV</button>
           <button onClick={logout} style={{...hBtn,padding:"6px",fontSize:11,width:40,color:"var(--danger)"}} title="Logout">✕</button>
         </div>
       )}

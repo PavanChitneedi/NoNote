@@ -40,7 +40,7 @@ function gb(bytes) { return bytes ? (bytes / 1073741824).toFixed(1) + ' GB' : '�
 function fmt(bytes) { if (!bytes) return '—'; if (bytes > 1e12) return (bytes/1e12).toFixed(1)+'TB'; if (bytes > 1e9) return (bytes/1e9).toFixed(1)+'GB'; return (bytes/1e6).toFixed(0)+'MB'; }
 
 function Bar({ pct: p, warn = 80, crit = 90 }) {
-  const c = p >= crit ? '#f44336' : p >= warn ? '#ff9800' : '#4caf50';
+  const c = p >= crit ? 'var(--danger)' : p >= warn ? 'var(--accent)' : 'var(--success)';
   return (
     <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', marginTop: 2 }}>
       <div style={{ height: '100%', width: `${p}%`, background: c, borderRadius: 3, transition: 'width .4s' }} />
@@ -62,7 +62,7 @@ function Stat({ label, value, sub }) {
 function uptime(s){if(!s)return'—';const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m`;}
 
 function MiniBar({v,warn=70,crit=90,h=4}){
-  const col=v>=crit?'#f44336':v>=warn?'#ff9800':'#4caf50';
+  const col=v>=crit?'var(--danger)':v>=warn?'var(--accent)':'var(--success)';
   return <div style={{height:h,background:'var(--bg)',borderRadius:h,overflow:'hidden'}}>
     <div style={{height:'100%',width:`${Math.min(v,100)}%`,background:col,borderRadius:h,transition:'width .4s'}}/>
   </div>;
@@ -220,7 +220,7 @@ function ProxmoxMetrics({ data }) {
                         style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
                           fontFamily:'var(--font-ui)',fontWeight:600,
                           background:filter===v?'var(--accent2)':'var(--bg)',
-                          color:filter===v?'#fff':'var(--text4)'}}>
+                        color:filter===v?'var(--on-accent)':'var(--text4)'}}>
                         {l} {v==='all'?`(${allGuests.length})`:v==='vm'?`(${n.vms.length})`:v==='ct'?`(${n.lxc.length})`:``}
                       </button>
                     ))}
@@ -441,7 +441,7 @@ function TrueNASMetrics({ data }) {
               style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
                 fontFamily:'var(--font-ui)',fontWeight:600,
                 background:filter===v?'var(--accent2)':'var(--bg)',
-                color:filter===v?'#fff':'var(--text4)'}}>
+                color:filter===v?'var(--on-accent)':'var(--text4)'}}>
               {l} ({count})
             </button>
           ))}
@@ -787,7 +787,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
             {canEdit && (
               <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); }}
                 style={{ width: '100%', padding: '6px', background: 'var(--accent2)', border: 'none', borderRadius: 4,
-                  color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)', marginTop: 4 }}>
+                  color: 'var(--on-accent)', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)', marginTop: 4 }}>
                 Save Configuration
               </button>
             )}
@@ -800,7 +800,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
           <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();doFetch()}} disabled={busy}
             style={{ flex: 1, padding: '7px', background: busy ? 'var(--bg3)' : 'var(--accent2)', border: 'none',
-              borderRadius: 6, color: busy ? 'var(--text4)' : '#fff', cursor: busy ? 'default' : 'pointer',
+              borderRadius: 6, color: busy ? 'var(--text4)' : 'var(--on-accent)', cursor: busy ? 'default' : 'pointer',
               fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)' }}>
             {busy ? '⏳ Connecting…' : data ? '🔄 Refresh' : '⚡ Connect'}
           </button>

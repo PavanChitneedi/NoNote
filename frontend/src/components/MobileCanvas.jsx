@@ -509,7 +509,7 @@ export default function MobileCanvas({ mapId, onBack }) {
           onClick={()=>{setSheet(s=>s==="add"?null:"add");setMode("select");setConnecting(null);}}
           style={{width:54,height:54,borderRadius:"50%",
             background:sheet==="add"?"var(--bg3)":"var(--accent2)",
-            border:"none",color:"#fff",fontSize:28,cursor:"pointer",
+            border:"none",color:"var(--on-accent)",fontSize:28,cursor:"pointer",
             boxShadow:sheet==="add"?"0 0 0 2px var(--accent)":"0 4px 18px rgba(88,166,255,.55)",
             display:"flex",alignItems:"center",justifyContent:"center",
             transform:sheet==="add"?"rotate(45deg)":"none",transition:"all .2s",
@@ -522,7 +522,7 @@ export default function MobileCanvas({ mapId, onBack }) {
 
       {/* ─── SHEET BACKDROP ────────────────────────────────── */}
       {sheet&&<div onClick={()=>{if(sheet==="node")saveEdit();else setSheet(null);}}
-        style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:29}}/>}
+        style={{position:"fixed",inset:0,background:"var(--overlay-scrim-1)",zIndex:29}}/>}
 
       {/* ADD SHEET */}
       {sheet==="add"&&(
@@ -534,7 +534,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                 style={{padding:"5px 13px",borderRadius:20,border:"none",cursor:"pointer",
                   fontSize:11,fontWeight:700,whiteSpace:"nowrap",flexShrink:0,
                   background:addCat===c?"var(--accent2)":"var(--bg3)",
-                  color:addCat===c?"#fff":"var(--text3)"}}>
+                  color:addCat===c?"var(--on-accent)":"var(--text3)"}}>
                 {c}
               </button>
             ))}
@@ -701,5 +701,5 @@ function Fld({label,val,set,multi=false,rows=1,focus=false}){
 function mBtn(primary){
   return{padding:"11px 18px",border:primary?"none":"1px solid var(--border)",
     borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:"var(--font-ui)",
-    background:primary?"var(--accent2)":"var(--bg3)",color:primary?"#fff":"var(--text3)"};
+    background:primary?"var(--accent2)":"var(--bg3)",color:primary?"var(--on-accent)":"var(--text3)"};
 }

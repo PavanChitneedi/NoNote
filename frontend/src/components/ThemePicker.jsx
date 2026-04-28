@@ -76,7 +76,7 @@ export default function ThemePicker({
     <div
       // Only close on clicking the ACTUAL backdrop div, not bubbled events from children
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      data-ui="theme-picker" data-component="ThemePicker" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
+      data-ui="theme-picker" data-component="ThemePicker" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
       <div
         onClick={e => e.stopPropagation()}
         style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:12, width:"100%", maxWidth:680, height:"88vh", maxHeight:680, display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -94,7 +94,7 @@ export default function ThemePicker({
             <button key={t.id} onClick={e => { e.stopPropagation(); setTab(t.id); }}
               style={{ padding:"7px 14px", border:"none", borderRadius:"var(--radius-sm)", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit", flexShrink:0,
                 background: tab===t.id ? "var(--accent2)" : "var(--bg3)",
-                color:      tab===t.id ? "#fff"           : "var(--text3)" }}>
+                color:      tab===t.id ? "var(--on-accent)" : "var(--text3)" }}>
               {t.label}
             </button>
           ))}
@@ -152,7 +152,7 @@ export default function ThemePicker({
                         {active && (
                           <div style={{ position:"absolute", top:4, right:6, background:"var(--accent)",
                             borderRadius:"50%", width:16, height:16, display:"flex", alignItems:"center",
-                            justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>✓</div>
+                            justifyContent:"center", fontSize:10, color:"var(--on-accent)", fontWeight:800 }}>✓</div>
                         )}
                       </div>
                       {/* Info */}
