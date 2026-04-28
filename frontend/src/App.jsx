@@ -37,6 +37,35 @@ class MobileErrorBoundary extends Component {
   }
 }
 
+class AppErrorBoundary extends Component {
+  constructor(props) { super(props); this.state = { crashed: false, err: "", stack: "" }; }
+  static getDerivedStateFromError(e) { return { crashed: true, err: e?.message || String(e) }; }
+  componentDidCatch(e, info) { console.error("App crash:", e, info); this.setState({ stack: info?.componentStack || "" }); }
+  render() {
+    if (this.state.crashed) return (
+      <div style={{minHeight:"100vh",background:"#0d1117",display:"flex",
+        alignItems:"center",justifyContent:"center",flexDirection:"column",gap:16,padding:24}}>
+        <div style={{fontSize:36}}>⬡</div>
+        <div style={{fontSize:14,color:"#f78166",fontWeight:700}}>Application Error</div>
+        <div style={{fontSize:11,color:"#e6edf3",textAlign:"center",lineHeight:1.6,maxWidth:480,
+          background:"#161b22",padding:"12px 16px",borderRadius:8,fontFamily:"monospace"}}>
+          {this.state.err}
+        </div>
+        {this.state.stack && <details style={{fontSize:9,color:"#8b949e",maxWidth:600}}>
+          <summary style={{cursor:"pointer"}}>Stack trace</summary>
+          <pre style={{overflow:"auto",maxHeight:200,fontSize:8}}>{this.state.stack}</pre>
+        </details>}
+        <button onClick={()=>window.location.reload()}
+          style={{padding:"10px 20px",background:"#2563eb",border:"none",
+            borderRadius:8,color:"#fff",fontSize:13,cursor:"pointer"}}>
+          Reload
+        </button>
+      </div>
+    );
+    return this.props.children;
+  }
+}
+
 function AppInner() {
   const { user, loading, logout } = useAuth();
   const { setThemeName } = useTheme();
@@ -268,16 +297,18 @@ const hBtn = {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <DesignProvider>
-        <SkinProvider>
-          <DevModeProvider>
-            <AuthProvider>
-              <AppInner />
-            </AuthProvider>
-          </DevModeProvider>
-        </SkinProvider>
-      </DesignProvider>
-    </ThemeProvider>
+    <AppErrorBoundary>
+      <ThemeProvider>
+        <DesignProvider>
+          <SkinProvider>
+            <DevModeProvider>
+              <AuthProvider>
+                <AppInner />
+              </AuthProvider>
+            </DevModeProvider>
+          </SkinProvider>
+        </DesignProvider>
+      </ThemeProvider>
+    </AppErrorBoundary>
   );
 }

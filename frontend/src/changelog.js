@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.9",date:"Apr 2026",items:[
+    "Fix: Added global AppErrorBoundary to catch React crashes and show error message + stack trace instead of blank page",
+    "Fix: Remaining duplicate style key bugs (NodeCanvas L5506 border, IntegrationPanel fontFamily)",
+    "Fix: neumorphic CSS body.skin-neumorphic [style*=radial-gradient] now scoped to canvas only to not affect LoginPage decorative gradient",
+    "Diagnostic: Error boundary will surface the actual crash cause on next deploy",
+  ]},
   {v:"v5.43.8",date:"Apr 2026",items:[
     "Fix: BLANK PAGE ROOT CAUSE -- neumorphic CSS rule [style*=rgba(0,0,0,.7)] was matching full-screen backdrop divs and setting background:var(--bg) with border-radius:20px, turning auth/login overlays into solid colored boxes hiding everything",
     "Fix: Removed rgba() background override from neumorphic CSS entirely -- backdrop overlays must stay dark/transparent",
