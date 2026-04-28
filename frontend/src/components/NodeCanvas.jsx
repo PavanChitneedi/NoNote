@@ -281,6 +281,57 @@ function parseNotes(raw) {
 function stripHtml(html) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
+function sanitizeRichHtml(html) {
+  if (!html) return "";
+  if (typeof document === "undefined") return stripHtml(html);
+
+  const allowedTags = new Set([
+    "A", "B", "BLOCKQUOTE", "BR", "DIV", "EM", "H1", "H2", "H3", "HR",
+    "I", "LI", "OL", "P", "S", "SPAN", "STRONG", "SUB", "SUP", "U", "UL",
+  ]);
+
+  const template = document.createElement("template");
+  template.innerHTML = html;
+  const walker = document.createTreeWalker(template.content, NodeFilter.SHOW_ELEMENT);
+  const toReplace = [];
+
+  while (walker.nextNode()) {
+    const el = walker.currentNode;
+    if (!allowedTags.has(el.tagName)) {
+      toReplace.push(el);
+      continue;
+    }
+
+    for (const attr of [...el.attributes]) {
+      const name = attr.name.toLowerCase();
+      const value = attr.value || "";
+      if (name.startsWith("on")) {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      if (name === "style") {
+        el.removeAttribute(attr.name);
+        continue;
+      }
+      if (el.tagName === "A" && name === "href") {
+        const safe = /^(https?:|mailto:|tel:)/i.test(value.trim());
+        if (!safe) el.removeAttribute("href");
+      } else if (!(el.tagName === "A" && (name === "target" || name === "rel"))) {
+        el.removeAttribute(attr.name);
+      }
+    }
+
+    if (el.tagName === "A") {
+      el.setAttribute("rel", "noopener noreferrer");
+      if (!el.getAttribute("target")) el.setAttribute("target", "_blank");
+    }
+  }
+
+  for (const el of toReplace) {
+    el.replaceWith(document.createTextNode(el.textContent || ""));
+  }
+  return template.innerHTML;
+}
 function serializeNotes(notes) {
   return JSON.stringify(Array.isArray(notes) ? notes : []);
 }
@@ -3012,7 +3063,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                             ):(
                               <div style={{position:"relative",padding:"3px 8px 6px"}}>
                                 <div style={{fontSize:10,color:"var(--text3)",lineHeight:1.55,paddingRight:16}}
-                                  dangerouslySetInnerHTML={{__html:nt.content||"<em style='color:var(--text4)'>Empty — click ✎ to add content</em>"}}/>
+                                  dangerouslySetInnerHTML={{__html:sanitizeRichHtml(nt.content)||"<em>Empty - click ✎ to add content</em>"}}/>
                                 {canEdit&&editMode&&(
                                   <button className="nn-pencil-btn"
                                     onMouseDown={e=>e.stopPropagation()}
@@ -4912,9 +4963,10 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
 
   useEffect(() => {
     if (!editorRef.current) return;
-    if (editorRef.current.innerHTML !== (value || '')) {
+    const safeValue = sanitizeRichHtml(value || "");
+    if (editorRef.current.innerHTML !== safeValue) {
       isUpdating.current = true;
-      editorRef.current.innerHTML = value || '';
+      editorRef.current.innerHTML = safeValue;
       isUpdating.current = false;
     }
   }, [value]);
@@ -4923,7 +4975,7 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
     if (disabled) return;
     editorRef.current?.focus();
     document.execCommand(cmd, false, val || null);
-    onChange(editorRef.current?.innerHTML || '');
+    onChange(sanitizeRichHtml(editorRef.current?.innerHTML || ""));
   };
 
   const TBtn = ({ cmd, val, title, active, children, style: s }) => (
@@ -5010,7 +5062,7 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
       <div ref={editorRef}
         contentEditable={!disabled}
         suppressContentEditableWarning
-        onInput={e => { if (!isUpdating.current) onChange(e.currentTarget.innerHTML); }}
+        onInput={e => { if (!isUpdating.current) onChange(sanitizeRichHtml(e.currentTarget.innerHTML)); }}
         onKeyDown={e => e.stopPropagation()}
         onClick={e => e.stopPropagation()}
         onMouseDown={e => e.stopPropagation()}

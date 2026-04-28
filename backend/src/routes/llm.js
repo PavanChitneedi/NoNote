@@ -1,10 +1,65 @@
 import { Router } from "express";
 import { body, validationResult } from "express-validator";
+import net from "node:net";
 import { query, withTransaction } from "../db/pool.js";
-import { authenticate } from "../middleware/auth.js";
+import { authenticate, mapPermission } from "../middleware/auth.js";
 import { encrypt, decrypt } from "../utils/crypto.js";
 
 const router = Router();
+const ALLOW_LOCAL_LLM = process.env.ALLOW_LOCAL_LLM === "true";
+
+function isPrivateIp(hostname) {
+  const ipType = net.isIP(hostname);
+  if (!ipType) return false;
+
+  if (ipType === 4) {
+    const [a, b] = hostname.split(".").map(Number);
+    return (
+      a === 10 ||
+      a === 127 ||
+      (a === 169 && b === 254) ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168)
+    );
+  }
+
+  const v6 = hostname.toLowerCase();
+  return v6 === "::1" || v6.startsWith("fc") || v6.startsWith("fd") || v6.startsWith("fe80");
+}
+
+function assertSafeBaseUrl(raw, provider = "custom") {
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    throw new Error("Invalid base_url");
+  }
+
+  const protocol = parsed.protocol.toLowerCase();
+  const host = parsed.hostname.toLowerCase();
+
+  if (!["http:", "https:"].includes(protocol)) {
+    throw new Error("Only http/https base_url is allowed");
+  }
+  if (!ALLOW_LOCAL_LLM && protocol !== "https:") {
+    throw new Error("Only https base_url is allowed");
+  }
+  if (
+    !ALLOW_LOCAL_LLM &&
+    (host === "localhost" || host === "0.0.0.0" || host.endsWith(".local") || isPrivateIp(host))
+  ) {
+    throw new Error("Local/private base_url is blocked");
+  }
+  if (parsed.username || parsed.password) {
+    throw new Error("Credentials in base_url are not allowed");
+  }
+  if (!ALLOW_LOCAL_LLM && provider !== "custom" && (provider === "ollama" || provider === "lmstudio")) {
+    throw new Error(`${provider} requires ALLOW_LOCAL_LLM=true`);
+  }
+
+  return parsed.toString().replace(/\/$/, "");
+}
 
 const validate = (req, res, next) => {
   const e = validationResult(req);
@@ -58,9 +113,15 @@ router.get("/presets", authenticate, (req, res) => {
 router.get("/probe-models", authenticate, async (req, res) => {
   const { base_url } = req.query;
   if (!base_url) return res.status(400).json({ error: "base_url required" });
+  let safeBase;
+  try {
+    safeBase = assertSafeBaseUrl(base_url, "custom");
+  } catch (err) {
+    return res.status(400).json({ error: err.message });
+  }
   try {
     // Ollama: GET /api/tags
-    const ollamaUrl = base_url.replace(/\/v1\/?$/, "") + "/api/tags";
+    const ollamaUrl = safeBase.replace(/\/v1\/?$/, "") + "/api/tags";
     const resp = await fetch(ollamaUrl, { signal: AbortSignal.timeout(5000) });
     if (!resp.ok) throw new Error("Ollama not reachable");
     const data = await resp.json();
@@ -69,7 +130,7 @@ router.get("/probe-models", authenticate, async (req, res) => {
   } catch {
     try {
       // OpenAI-compatible: GET /models
-      const openaiUrl = base_url.replace(/\/?$/, "") + "/models";
+      const openaiUrl = safeBase.replace(/\/?$/, "") + "/models";
       const resp = await fetch(openaiUrl, { signal: AbortSignal.timeout(5000) });
       if (!resp.ok) throw new Error("Models endpoint not reachable");
       const data = await resp.json();
@@ -113,7 +174,7 @@ router.post(
     try {
       const { name, provider, model, api_key, is_default = false } = req.body;
       const preset  = PROVIDER_PRESETS[provider];
-      const base_url = req.body.base_url || preset.base_url;
+      const base_url = assertSafeBaseUrl(req.body.base_url || preset.base_url, provider);
       const enc_key  = api_key ? encrypt(api_key) : null;
 
       await withTransaction(async (client) => {
@@ -141,6 +202,7 @@ router.post(
 router.patch("/providers/:id", authenticate, async (req, res) => {
   try {
     const { name, model, api_key, base_url, is_default } = req.body;
+    const safeBaseUrl = base_url ? assertSafeBaseUrl(base_url, "custom") : undefined;
 
     await withTransaction(async (client) => {
       // Verify ownership
@@ -167,7 +229,7 @@ router.patch("/providers/:id", authenticate, async (req, res) => {
            api_key_enc = COALESCE($5, api_key_enc),
            is_default = COALESCE($6, is_default)
          WHERE id=$1`,
-        [req.params.id, name, model, base_url, enc_key, is_default]
+        [req.params.id, name, model, safeBaseUrl, enc_key, is_default]
       );
 
       const { rows } = await client.query(
@@ -197,7 +259,11 @@ router.delete("/providers/:id", authenticate, async (req, res) => {
 });
 
 // ── GET /api/llm/maps/:mapId/conversations ────────────────────
-router.get("/maps/:mapId/conversations", authenticate, async (req, res) => {
+router.get(
+  "/maps/:mapId/conversations",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
   try {
     const { node_id } = req.query;
     const { rows } = await query(
@@ -217,7 +283,11 @@ router.get("/maps/:mapId/conversations", authenticate, async (req, res) => {
 });
 
 // ── POST /api/llm/maps/:mapId/conversations ───────────────────
-router.post("/maps/:mapId/conversations", authenticate, async (req, res) => {
+router.post(
+  "/maps/:mapId/conversations",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
+  async (req, res) => {
   try {
     const { provider_id, title = "New Chat", node_id = null } = req.body;
     // Verify provider belongs to user
@@ -361,18 +431,19 @@ router.delete("/conversations/:id", authenticate, async (req, res) => {
 
 // ── LLM proxy helper ──────────────────────────────────────────
 async function callLLM({ provider, base_url, model, api_key, system, history, message }) {
+  const safeBaseUrl = assertSafeBaseUrl(base_url, provider);
   const messages = [
     ...history.filter(m => m.role !== "system"),
     { role: "user", content: message },
   ];
 
-  if (provider === "anthropic") return callAnthropic({ base_url, model, api_key, system, messages });
-  if (provider === "gemini")    return callGemini({ base_url, model, api_key, system, messages });
-  if (provider === "cohere")    return callCohere({ base_url, model, api_key, system, messages });
-  if (provider === "azure")     return callAzure({ base_url, model, api_key, system, messages });
-  if (provider === "huggingface") return callHuggingFace({ base_url, model, api_key, system, messages });
+  if (provider === "anthropic") return callAnthropic({ base_url: safeBaseUrl, model, api_key, system, messages });
+  if (provider === "gemini")    return callGemini({ base_url: safeBaseUrl, model, api_key, system, messages });
+  if (provider === "cohere")    return callCohere({ base_url: safeBaseUrl, model, api_key, system, messages });
+  if (provider === "azure")     return callAzure({ base_url: safeBaseUrl, model, api_key, system, messages });
+  if (provider === "huggingface") return callHuggingFace({ base_url: safeBaseUrl, model, api_key, system, messages });
   // OpenAI-compatible: openai, groq, mistral, perplexity, xai, deepseek, together, openrouter, ollama, lmstudio, custom
-  return callOpenAICompat({ base_url, model, api_key, system, messages, provider });
+  return callOpenAICompat({ base_url: safeBaseUrl, model, api_key, system, messages, provider });
 }
 
 async function callOpenAICompat({ base_url, model, api_key, system, messages, provider="" }) {

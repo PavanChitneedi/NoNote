@@ -746,7 +746,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         const accent=mapColor(map.id,maps.indexOf(map));
                         const icon=mapIcon(map.id);
                         return <div key={map.id}
-                          className="nn-map-card" data-ui={`mapcard-${m.id}`} data-component="MapCard" data-page="dashboard" data-role="card"
+                          className="nn-map-card" data-ui={`mapcard-${map.id}`} data-component="MapCard" data-page="dashboard" data-role="card"
                           data-tut={maps.indexOf(map)===0?"map-card":undefined}
                           onClick={()=>onOpenMap(map.id)}
                           onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
@@ -797,7 +797,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         const accent=mapColor(map.id,maps.indexOf(map));
                         const icon=mapIcon(map.id);
                         return <div key={map.id}
-                          className="nn-map-list-row" data-ui={`maprow-${m.id}`} data-component="MapListRow" data-page="dashboard" data-role="list-item"
+                          className="nn-map-list-row" data-ui={`maprow-${map.id}`} data-component="MapListRow" data-page="dashboard" data-role="list-item"
                           onClick={()=>onOpenMap(map.id)}
                           onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
                           style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",
