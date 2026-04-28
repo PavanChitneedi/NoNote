@@ -4,6 +4,7 @@ import LiveDashboard from "./LiveDashboard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch, saveMap, getAccessToken } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
+import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent2)", viewer:"var(--text3)" };
 
@@ -65,7 +66,7 @@ function ShareModal({ map, onClose }) {
             <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Share — {map.title}</div>
             <div style={{fontSize:11,color:"var(--text4)",marginTop:2}}>Invite people to collaborate</div>
           </div>
-          <button onClick={onClose} style={{background:"none",border:"none",fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</button>
+          <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</Button>
         </div>
         {msg&&<div style={{fontSize:12,color:"var(--accent)"}}>{msg}</div>}
         {/* Add user */}
@@ -109,8 +110,8 @@ function ShareModal({ map, onClose }) {
                   <div style={{fontSize:12,fontWeight:600,color:"var(--text)"}}>{u.display_name}</div>
                   <div style={{fontSize:10,color:"var(--text4)"}}>{u.permission}</div>
                 </div>
-                <button onClick={()=>removeUser(u.id)} style={{background:"none",border:"none",
-                  color:"var(--danger)",cursor:"pointer",fontSize:14}}>×</button>
+                <Button variant="destructive" onClick={()=>removeUser(u.id)} style={{background:"none",border:"none",
+                  color:"var(--danger)",cursor:"pointer",fontSize:14}}>×</Button>
               </div>
             ))}
           </div>
@@ -380,7 +381,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
 
         {/* Nav items */}
         {[["maps","🗺","Maps"],["live","📡","Live Dashboard"]].map(([id,icon,label])=>(
-          <button key={id} onClick={()=>{ setDashTab(id); window.location.hash=id==="live"?"live":"dashboard"; }}
+          <Button variant="primary" key={id} onClick={()=>{ setDashTab(id); window.location.hash=id==="live"?"live":"dashboard"; }}
             style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 18px",
               border:"none", cursor:"pointer", fontFamily:"var(--font-ui)", fontWeight:600,
               fontSize:12, textAlign:"left", transition:"all .1s",
@@ -388,19 +389,19 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               color: dashTab===id ? "var(--accent2)" : "var(--text3)",
               borderLeft: dashTab===id ? "3px solid var(--accent2)" : "3px solid transparent" }}>
             <span style={{ fontSize:14 }}>{icon}</span>{label}
-          </button>
+          </Button>
         ))}
 
         <div style={{ flex:1 }}/>
 
         {/* Bottom actions */}
         <div style={{ padding:"0 12px", borderTop:"1px solid var(--border2)", paddingTop:12 }}>
-          <button onClick={()=>setShowChangelog(true)}
+          <Button variant="primary" onClick={()=>setShowChangelog(true)}
             style={{ width:"100%", padding:"7px 10px", background:"none",
                borderRadius:7, color:"var(--text4)",
               fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"var(--font-ui)", textAlign:"left" }}>
             {CURRENT_VERSION} ✦ What's new
-          </button>
+          </Button>
         </div>
       </div>}
 
@@ -429,7 +430,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             <div style={{ display:"flex", gap:2, background:"var(--bg3)",
               borderRadius:"var(--radius-sm)", padding:2, border:"1px solid var(--border)" }}>
               {[["maps","🗺 Maps"],["live","📡 Live"]].map(([id,lbl])=>(
-                <button key={id}
+                <Button variant="primary" key={id}
                   onClick={()=>{ setDashTab(id); window.location.hash=id==="live"?"live":"dashboard"; }}
                   style={{ fontSize:11, padding:"4px 12px",
                     border:"none", borderRadius:"var(--radius-xs)", cursor:"pointer",
@@ -437,16 +438,16 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     background: dashTab===id ? "var(--accent2)" : "transparent",
                     color: dashTab===id ? "var(--on-accent)" : "var(--text4)" }}>
                   {lbl}
-                </button>
+                </Button>
               ))}
             </div>
             <div style={{ flex:1 }}/>
-            <button onClick={()=>setShowChangelog(true)}
+            <Button variant="primary" onClick={()=>setShowChangelog(true)}
               style={{ background:"none",  borderRadius:"var(--radius-btn)",
                 padding:"4px 10px", color:"var(--text4)", fontSize:10, cursor:"pointer",
                 fontFamily:"var(--font-ui)", fontWeight:600 }}>
               {CURRENT_VERSION} ✦ What's new
-            </button>
+            </Button>
           </div>
         )}
 
@@ -464,8 +465,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                   <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What's New</div>
                   <div style={{fontSize:10,color:"var(--text4)",marginTop:2}}>Full changelog across all versions</div>
                 </div>
-                <button onClick={()=>setShowChangelog(false)}
-                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+                <Button variant="secondary" onClick={()=>setShowChangelog(false)}
+                  style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</Button>
               </div>
               <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
                 {CHANGELOG.map(entry=>(
@@ -514,18 +515,18 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                 A map named <strong style={{color:"var(--text1)"}}>"{importConflict.title}"</strong> already exists.<br/>What would you like to do?
               </div>
               <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
-                <button onClick={()=>handleImportConflictResolve("overwrite")}
+                <Button variant="destructive" onClick={()=>handleImportConflictResolve("overwrite")}
                   style={{ flex:1, padding:"9px 16px", background:"var(--danger)22", border:"1px solid var(--danger)60", borderRadius:8, color:"var(--danger)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
                   ↺ Overwrite existing
-                </button>
-                <button onClick={()=>handleImportConflictResolve("copy")}
+                </Button>
+                <Button variant="primary" onClick={()=>handleImportConflictResolve("copy")}
                   style={{ flex:1, padding:"9px 16px", background:"var(--accent)22", border:"1px solid var(--accent)60", borderRadius:8, color:"var(--accent)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
                   ⊕ Save as copy
-                </button>
-                <button onClick={()=>handleImportConflictResolve("cancel")}
+                </Button>
+                <Button variant="primary" onClick={()=>handleImportConflictResolve("cancel")}
                   style={{ padding:"9px 16px", background:"var(--bg3)",  borderRadius:8, color:"var(--text3)", fontSize:13, fontWeight:600, cursor:"pointer" }}>
                   Cancel
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -546,17 +547,17 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
                 <input autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Map title…"
                   style={{ flex:1, background:"var(--bg2)",  borderRadius:8, padding:"9px 14px", color:"var(--text)", fontSize:13, outline:"none" }}/>
-                <button type="submit" disabled={creating} style={{ padding:"9px 16px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                <Button variant="primary" type="submit" disabled={creating} style={{ padding:"9px 16px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                   {creating?"…":"CREATE"}
-                </button>
-                <button type="button" onClick={()=>setShowNew(false)} style={{ padding:"9px 12px", background:"var(--bg3)", border:"none", borderRadius:8, color:"var(--text3)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
+                </Button>
+                <Button variant="primary" type="button" onClick={()=>setShowNew(false)} style={{ padding:"9px 12px", background:"var(--bg3)", border:"none", borderRadius:8, color:"var(--text3)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
                   CANCEL
-                </button>
+                </Button>
               </form>
             ) : (
-              <button data-tut="new-map" onClick={()=>setShowNew(true)} style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              <Button variant="primary" data-tut="new-map" onClick={()=>setShowNew(true)} style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                 ＋ New Map
-              </button>
+              </Button>
             )
           )}
           {/* Import .nonote */}
@@ -590,8 +591,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     onKeyDown={e=>{if(e.key==="Enter")handleRename(renaming.id,renaming.title);if(e.key==="Escape")setRenaming(null);}}
                     style={{width:"100%",boxSizing:"border-box",padding:"8px 12px",background:"var(--bg3)",border:"1px solid var(--accent)",borderRadius:8,color:"var(--text)",fontSize:13,outline:"none",marginBottom:10}}/>
                   <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
-                    <button onClick={()=>setRenaming(null)} style={{padding:"6px 14px",background:"var(--bg3)",border:"none",borderRadius:7,color:"var(--text3)",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Cancel</button>
-                    <button onClick={()=>handleRename(renaming.id,renaming.title)} style={{padding:"6px 16px",background:"var(--accent2)",border:"none",borderRadius:7,color:"var(--on-accent)",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Rename</button>
+                    <Button variant="primary" onClick={()=>setRenaming(null)} style={{padding:"6px 14px",background:"var(--bg3)",border:"none",borderRadius:7,color:"var(--text3)",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Cancel</Button>
+                    <Button variant="primary" onClick={()=>handleRename(renaming.id,renaming.title)} style={{padding:"6px 16px",background:"var(--accent2)",border:"none",borderRadius:7,color:"var(--on-accent)",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Rename</Button>
                   </div>
                 </div>
               </div>
@@ -648,24 +649,24 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                   {/* Group pills */}
                   <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:1}}>
                     {[["all","All"],...allGroups.map(g=>[g,g])].map(([id,lbl])=>(
-                      <button key={id} onClick={()=>setGroup(id)}
+                      <Button variant="primary" key={id} onClick={()=>setGroup(id)}
                         style={{fontSize:10,padding:"4px 10px",border:"none",borderRadius:6,cursor:"pointer",
                           fontFamily:"var(--font-ui)",fontWeight:600,
                           background:activeGroup===id?"var(--accent2)":"var(--bg3)",
                           color:activeGroup===id?"var(--on-accent)":"var(--text4)"}}>
                         {lbl} <span style={{opacity:.6}}>({id==="all"?maps.length:maps.filter(m=>mapGroup(m.id)===id).length})</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                   {/* View toggle */}
                   <div style={{display:"flex",gap:2,background:"var(--bg3)",borderRadius:6,padding:2,border:"1px solid var(--border)",flexShrink:0}}>
                     {[["grid","⊞"],["list","☰"]].map(([v,icon])=>(
-                      <button key={v} onClick={()=>setViewMode(v)}
+                      <Button variant="primary" key={v} onClick={()=>setViewMode(v)}
                         style={{fontSize:14,padding:"3px 8px",border:"none",borderRadius:4,cursor:"pointer",
                           background:viewMode===v?"var(--accent2)":"transparent",
                           color:viewMode===v?"var(--on-accent)":"var(--text4)"}}>
                         {icon}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -683,12 +684,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         <div style={{fontSize:10,color:"var(--text4)",marginBottom:4,fontWeight:700}}>GROUP</div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
                           {DEFAULT_GROUPS.map(g=>(
-                            <button key={g} onClick={()=>{setMapMeta(editingMeta,{...meta,group:g});forceUpdate(n=>n+1);}}
+                            <Button variant="primary" key={g} onClick={()=>{setMapMeta(editingMeta,{...meta,group:g});forceUpdate(n=>n+1);}}
                               style={{fontSize:10,padding:"3px 9px",
                                 borderRadius:6,cursor:"pointer",background:meta.group===g?"var(--accent2)":"var(--bg3)",
                                 color:meta.group===g?"var(--on-accent)":"var(--text3)",fontFamily:"var(--font-ui)"}}>
                               {g}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                         <input value={meta.group||""} onChange={e=>{setMapMeta(editingMeta,{...meta,group:e.target.value});forceUpdate(n=>n+1);}}
@@ -701,11 +702,11 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         <div style={{fontSize:10,color:"var(--text4)",marginBottom:6,fontWeight:700}}>ICON</div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                           {MAP_ICON_OPTIONS.map(ic=>(
-                            <button key={ic} onClick={()=>{setMapMeta(editingMeta,{...meta,icon:ic});forceUpdate(n=>n+1);}}
+                            <Button variant="primary" key={ic} onClick={()=>{setMapMeta(editingMeta,{...meta,icon:ic});forceUpdate(n=>n+1);}}
                               style={{fontSize:18,padding:"4px 8px",
                                 borderRadius:7,cursor:"pointer",background:meta.icon===ic?"var(--accent2)22":"var(--bg3)"}}>
                               {ic}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
@@ -714,18 +715,18 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         <div style={{fontSize:10,color:"var(--text4)",marginBottom:6,fontWeight:700}}>ACCENT COLOR</div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                           {MAP_ACCENT_COLORS.map(col=>(
-                            <button key={col} onClick={()=>{setMapMeta(editingMeta,{...meta,color:col});forceUpdate(n=>n+1);}}
+                            <Button variant="secondary" key={col} onClick={()=>{setMapMeta(editingMeta,{...meta,color:col});forceUpdate(n=>n+1);}}
                               style={{width:24,height:24,borderRadius:"50%",background:col,border:`2px solid ${meta.color===col?"white":"transparent"}`,
                                 cursor:"pointer",boxShadow:meta.color===col?"0 0 0 2px "+col:"none"}}>
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </div>
-                      <button onClick={()=>setEditingMeta(null)}
+                      <Button variant="primary" onClick={()=>setEditingMeta(null)}
                         style={{width:"100%",padding:"8px",background:"var(--accent2)",border:"none",borderRadius:8,
                           color:"var(--on-accent)",fontWeight:700,cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>
                         Done
-                      </button>
+                      </Button>
                     </div>
                   </div>;
                 })()}
@@ -761,12 +762,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                                 overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,letterSpacing:"var(--letter-space)"}}>{map.title}</div>
                               {/* Inline actions */}
                               <div className="nn-card-actions" style={{display:"flex",gap:1,flexShrink:0,opacity:0,transition:"opacity .15s"}}>
-                                <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
+                                <Button variant="primary" onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
                                   style={{fontSize:11,background:"none",border:"none",color:"var(--text3)",cursor:"pointer",padding:"3px 5px",borderRadius:"var(--radius-xs)"}}
-                                  title="Customize">✎</button>
-                                <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
+                                  title="Customize">✎</Button>
+                                <Button variant="primary" onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
                                   style={{fontSize:14,background:"none",border:"none",color:"var(--text3)",cursor:"pointer",padding:"3px 4px",borderRadius:"var(--radius-xs)"}}
-                                  title="Options">⋮</button>
+                                  title="Options">⋮</Button>
                               </div>
                             </div>
                             {map.description&&<div style={{fontSize:10,color:"var(--text4)",marginBottom:6,
@@ -813,12 +814,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                           {map.is_public?<span style={{fontSize:9,color:"var(--success)"}}>public</span>:<span/>}
                           <span style={{fontSize:10,color:"var(--text4)",whiteSpace:"nowrap"}}>{new Date(map.updated_at).toLocaleDateString()}</span>
                           <div style={{display:"flex",gap:2,justifyContent:"flex-end"}}>
-                            <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
+                            <Button variant="primary" onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
                               style={{fontSize:11,background:"none",border:"none",color:"var(--text4)",cursor:"pointer",padding:"2px 5px"}}
-                              title="Customize">✎</button>
-                            <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
+                              title="Customize">✎</Button>
+                            <Button variant="primary" onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
                               style={{fontSize:14,background:"none",border:"none",color:"var(--text4)",cursor:"pointer",padding:"2px 4px"}}
-                              title="Options">⋮</button>
+                              title="Options">⋮</Button>
                           </div>
                         </div>;
                       })}

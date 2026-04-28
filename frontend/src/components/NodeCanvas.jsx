@@ -20,6 +20,7 @@ import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,P
   Hexagon,Box,ArrowUpDown,PackageOpen,Link2,Library,Power,Puzzle,Gauge,MessageCircle,
   BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban,
   Boxes,AppWindow,Component,Layers2,Container,MemoryStick } from "lucide-react";
+import { Button, ModeSwitchGroup, NodeCardBase, NodeChip, NodeContent, NodeFooter, NodeHeader, NodeInlineToolbar, NodeInput, NodeSection, NodeSubtitle, NodeTextarea, NodeTitle, NodeToolbar, NodeTooltip, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 import ThemePicker    from "./ThemePicker.jsx";
 import IntegrationPanel from "./IntegrationPanel.jsx";
 import VersionHistory from "./VersionHistory.jsx";
@@ -214,6 +215,15 @@ const EDGE_STYLES = {
   leads:         { label:"Leads to →",   section:"Semantic",strokeW:2.5, dash:"none", mEnd:"nn-tk",   mStart:null,       desc:"Sequential / next step" },
   depends:       { label:"Depends on",   section:"Semantic",strokeW:2,   dash:"8,4",  mEnd:"nn-arr",  mStart:null,       desc:"Dependency" },
 };
+
+const ACTION_NODE_TYPES = new Set(["process","task","checklist","goal","milestone","deadline","blocker","step","problem","solution","decision"]);
+const INFO_NODE_TYPES = new Set(["note","heading","annotation","idea","topic","concept","definition","quote","summary","question","answer","warning","tip","codeblock"]);
+function getNodeKind(type) {
+  if (type === "group") return "GroupNode";
+  if (ACTION_NODE_TYPES.has(type)) return "ActionNode";
+  if (INFO_NODE_TYPES.has(type)) return "InfoNode";
+  return "DataNode";
+}
 
 // Sections order for the panel
 const EDGE_SECTIONS = ["Basic","Dashed","Dotted","Bold","Double","Special","Semantic"];
@@ -2722,7 +2732,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const focusDim=focusMode&&!isFocused?"0.15":"1";
 
     if(isCollapsed) return(
-      <div key={`fc-${node.id}`} style={{opacity:focusDim,transition:"opacity .2s"}}>
+      <div key={`fc-${node.id}`} style={{opacity:focusDim,transition:"var(--motion-transition-interactive)"}}>
         <CollapsedNode node={node} t={t} isSel={isSel}
           canEdit={canEdit&&editMode} mode={mode}
           onMouseDown={e=>{e.stopPropagation();startDrag(e.clientX,e.clientY,node.id);}}
@@ -2735,7 +2745,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     );
 
     return(
-      <div key={node.id} className="nn-node" data-ui={`node-${node.id}`} data-component="NodeCard" data-page="canvas" data-role="node" data-variant={node.type}
+      <NodeCardBase key={node.id} className="nn-node" nodeKind={getNodeKind(node.type)} data-ui={`node-${node.id}`} data-component="NodeCard" data-page="canvas" data-role="node" data-variant={node.type}
+        state={isSel ? "selected" : "default"}
         ref={el=>{ if(el) nodeHeightsRef.current[node.id]=el.getBoundingClientRect().height/zoom; }}
         onMouseDown={e=>{e.stopPropagation();if(editingTitle!==node.id)startDrag(e.clientX,e.clientY,node.id);}}
         onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
@@ -2747,161 +2758,136 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           else if(canEdit&&editMode) setEditingTitle(node.id);
         }}
         style={{
-          opacity:focusDim,transition:"opacity .2s,border-color .12s,box-shadow .12s",
+          "--node-accent": t.color,
+          opacity:focusDim,transition:"var(--motion-transition-interactive)",
           position:"absolute",left:node.x,top:node.y,width:nw,minHeight:nh,
-          background:isGroup?`${t.color}10`:"var(--node-bg)",
-          border:`var(--node-border-w) ${isGroup?"dashed":"solid"} ${isSel?"var(--accent)":`${t.color}65`}`,
+          background:isGroup?undefined:"var(--node-bg)",
+          border:`var(--node-border-w) ${isGroup?"dashed":"solid"} ${isSel?"var(--accent)":"var(--border)"}`,
           borderRadius:"var(--radius-node)",
-          boxShadow:isSel?"var(--shadow-node-sel)":"var(--shadow-node)",
           cursor:mode==="connect"?"crosshair":canEdit&&editMode?"grab":"default",
           userSelect:"none",overflow:"hidden",touchAction:"none",
           outline:searchHitIds.has(node.id)&&!isSel?"2px solid var(--success)":selected.size>1&&isSel?"2px solid var(--accent)":"none",
           outlineOffset:searchHitIds.has(node.id)&&!isSel?"2px":"0",
         }}>
-        {/* Header */}
-        <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:"7px 10px 5px"}}>
+        <NodeHeader>
 
           {/* ── Row 1: icon + title + comment + collapse in ONE line ── */}
-          <div style={{display:"flex",alignItems:"center",gap:5,minHeight:22}}>
+          <div className="ui-v2-node-row">
 
             {/* Icon */}
             <NodeIcon icon={t.icon} size={14} color={t.color} />
 
             {/* Title — editable inline */}
-            <div style={{flex:1,minWidth:0}}>
+            <div className="ui-v2-node-title-wrap">
               {editingTitle===node.id?(
-                <input autoFocus value={node.title}
+                <input className="ui-v2-node-input" autoFocus value={node.title}
                   onChange={e=>{e.stopPropagation();updateNode(node.id,{title:e.target.value});}}
                   onMouseDown={e=>e.stopPropagation()}
                   onBlur={()=>setEditingTitle(null)}
                   onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter"||e.key==="Escape")setEditingTitle(null);}}
-                  style={{width:"100%",background:"var(--bg)",borderRadius:"var(--radius-xs)",
-                    padding:"1px 5px",color:"var(--text)",fontSize:13,fontFamily:"var(--font-ui)",outline:"none",fontWeight:700,boxSizing:"border-box"}}
                 />
               ):(
-                <div style={{display:"flex",alignItems:"center",gap:3,minWidth:0}}>
-                  <span style={{fontSize:13,fontWeight:700,color:"var(--text)",overflow:"hidden",
-                    textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,lineHeight:1.3,
-                    cursor:canEdit&&editMode?"text":"default"}}
+                <div className="ui-v2-node-row">
+                  <NodeTitle className={canEdit&&editMode?"ui-v2-node-title-editable":"ui-v2-node-title-static"}
                     title={node.title}
                     onDoubleClick={e=>{e.stopPropagation();if(canEdit&&editMode)setEditingTitle(node.id);}}>
                     {node.title}
-                  </span>
+                  </NodeTitle>
                   {canEdit&&editMode&&(
-                    <button className="nn-pencil-btn"
+                    <Button variant="primary" className="nn-pencil-btn"
                       onMouseDown={e=>e.stopPropagation()}
                       onClick={e=>{e.stopPropagation();setEditingTitle(node.id);}}
                       title="Edit title (F2)"
-                      style={{background:"none",border:"none",cursor:"pointer",padding:"1px 2px",
-                        flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                      >✎</Button>
                   )}
                 </div>
               )}
             </div>
 
             {/* Comment icon */}
-            <button className="nn-comment-btn"
+            <Button variant="secondary" className="nn-comment-btn"
               onMouseDown={e=>e.stopPropagation()}
               onClick={e=>{e.stopPropagation();setCommentNode(node.id);setShowComments(true);}}
               title={`Comments (${(comments[node.id]||[]).length})`}
-              style={{background:"none",border:"none",cursor:"pointer",padding:"1px",flexShrink:0,
-                opacity:0,transition:"opacity .15s",lineHeight:1,position:"relative",
-                color:(comments[node.id]||[]).length>0?"var(--accent)":"var(--text4)",fontSize:11}}>
+              >
               💬
               {(comments[node.id]||[]).length>0&&(
-                <span style={{position:"absolute",top:-3,right:-3,fontSize:7,background:"var(--accent)",
-                  color:"#fff",borderRadius:"50%",width:10,height:10,display:"flex",alignItems:"center",
-                  justifyContent:"center",fontWeight:700}}>
+                <span className="ui-v2-node-comment-count">
                   {(comments[node.id]||[]).length}
                 </span>
               )}
-            </button>
+            </Button>
 
             {/* Collapse icon — same line, no gap fight */}
             {canEdit&&(
-              <button className="nn-collapse-btn"
+              <Button variant="secondary" className="nn-collapse-btn"
                 onMouseDown={e=>e.stopPropagation()}
                 onClick={e=>{e.stopPropagation();toggleCollapse(node.id);}}
-                title={node.collapsed?"Expand node":"Collapse node"}
-                style={{background:"none",borderRadius:3,
-                  color:t.color,cursor:"pointer",fontSize:9,width:15,height:15,flexShrink:0,
-                  display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,
-                  opacity:0,transition:"opacity .15s"}}>
+                title={node.collapsed?"Expand node":"Collapse node"}>
                 ⊟
-              </button>
+              </Button>
             )}
           </div>
 
           {/* ── Row 2: description (editable) ── */}
           {(node.description||(canEdit&&editMode))&&(
-            <div style={{marginTop:2,paddingLeft:25,paddingRight:4}}>
+            <NodeContent className="ui-v2-node-content-compact">
               {inlineEditField?.nodeId===node.id&&inlineEditField?.field==='desc'?(
-                <input autoFocus value={node.description||""}
+                <input className="ui-v2-node-input ui-v2-node-input-muted" autoFocus value={node.description||""}
                   onChange={e=>{e.stopPropagation();updateNode(node.id,{description:e.target.value});}}
                   onMouseDown={e=>e.stopPropagation()}
                   onBlur={()=>setInlineEditField(null)}
                   onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setInlineEditField(null);}}
                   placeholder="Add description…"
-                  style={{width:"100%",background:"none",border:"none",borderBottom:"1px solid var(--accent)",
-                    outline:"none",fontSize:10,color:"var(--text3)",fontFamily:"var(--font-ui)",padding:"0",boxSizing:"border-box"}}
                 />
               ):(
-                <div style={{display:"flex",alignItems:"center",gap:3}}>
-                  <span style={{fontSize:10,color:"var(--text4)",lineHeight:1.3,flex:1,
-                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",
-                    fontStyle:node.description?"normal":"italic"}}
+                <div className="ui-v2-node-row">
+                  <NodeSubtitle className={node.description?"":"ui-v2-node-subtitle-empty"}
                     title={node.description||""}>
                     {node.description||(canEdit&&editMode?"Double-click to add description…":"")}
-                  </span>
+                  </NodeSubtitle>
                   {canEdit&&editMode&&(
-                    <button className="nn-pencil-btn"
+                    <Button variant="primary" className="nn-pencil-btn"
                       onMouseDown={e=>e.stopPropagation()}
                       onClick={e=>{e.stopPropagation();setInlineEditField({nodeId:node.id,field:'desc'});}}
                       title="Edit description"
-                      style={{background:"none",border:"none",cursor:"pointer",padding:"0",
-                        flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                      >✎</Button>
                   )}
                 </div>
               )}
-            </div>
+            </NodeContent>
           )}
 
           {/* ── Row 3: node type — right-aligned, very subtle ── */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:2,paddingRight:2}}>
+          <NodeFooter className="ui-v2-node-footer-tight">
             {/* IP / Domain quick badge */}
             {(node.properties?.IP||node.properties?.Domain)&&(
-              <span style={{fontSize:8,color:`${t.color}99`,letterSpacing:.3,fontFamily:"monospace",
-                background:`${t.color}14`,borderRadius:3,padding:"0 4px",userSelect:"none",
-                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",maxWidth:120}}>
+              <span className="ui-v2-node-meta-chip ui-v2-node-meta-mono">
                 {node.properties.IP||node.properties.Domain}
               </span>
             )}
-            <span style={{fontSize:8,color:`${t.color}80`,letterSpacing:.5,fontWeight:400,
-              fontFamily:"var(--font-ui)",userSelect:"none",marginLeft:"auto"}}>
+            <span className="ui-v2-node-meta-chip">
               {t.label}
             </span>
-          </div>
+          </NodeFooter>
 
-        </div>
+        </NodeHeader>
         {/* Body */}
         {!isGroup&&(
-          <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
-
-            <div style={{display:"flex",alignItems:"center",gap:4,marginTop:3}}>
+          <NodeContent>
+            <div className="ui-v2-node-section-row">
               {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
-                <button onMouseDown={e=>e.stopPropagation()}
+                <Button variant="secondary" className="ui-v2-node-note-toggle" onMouseDown={e=>e.stopPropagation()}
                   onClick={e=>{e.stopPropagation();updateNode(node.id,{showNotes:!node.showNotes});}}
-                  style={{display:"flex",alignItems:"center",gap:3,background:"none",
-                    borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
-                    color:node.showNotes?t.color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0}}>
+                >
                   {node.showNotes?"▲":"▼"} {(Array.isArray(node.notes)?node.notes:[]).length} note{(Array.isArray(node.notes)?node.notes:[]).length!==1?"s":""}
-                </button>
+                </Button>
               )}
               {(Array.isArray(node.notes)?node.notes:[]).some(n=>n.sensitive)&&(
-                <span title="Contains sensitive notes" style={{fontSize:10,color:"var(--danger)"}}>🔒</span>
+                <NodeChip title="Contains sensitive notes" className="ui-v2-node-chip--danger">🔒</NodeChip>
               )}
               {canEdit&&editMode&&(
-                <button onMouseDown={e=>e.stopPropagation()}
+                <Button variant="secondary" className="ui-v2-node-mini-action nn-addnote-btn" onMouseDown={e=>e.stopPropagation()}
                   onClick={e=>{
                     e.stopPropagation();
                     const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false,editing:true};
@@ -2912,12 +2898,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     setTimeout(()=>setInlineEditField({noteId:newNote.id,field:'noteTitle'}),60);
                   }}
                   title="Add note (opens editor)"
-                  style={{display:"flex",alignItems:"center",gap:2,background:"none",
-                    borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
-                    color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0,opacity:0,transition:"opacity .15s"}}
-                  className="nn-addnote-btn">
+                >
                   + note
-                </button>
+                </Button>
               )}
             </div>
             {node.showNotes&&(()=>{
@@ -2928,28 +2911,25 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               const expandedSet=new Set(node.expandedNoteIds||[]);
               const allExpanded=noteArr.every(nt=>expandedSet.has(nt.id));
               return(
-                <div style={{marginTop:6,borderTop:`1px solid ${t.color}20`,paddingTop:4}}>
+                <NodeSection expanded={node.showNotes}>
                   {/* Expand-all button */}
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginBottom:3}}>
-                    <button onMouseDown={e=>e.stopPropagation()}
+                  <div className="ui-v2-node-section-row ui-v2-node-section-row--end">
+                    <Button variant="secondary" className="ui-v2-node-mini-action" onMouseDown={e=>e.stopPropagation()}
                       onClick={e=>{
                         e.stopPropagation();
                         const newSet=allExpanded?new Set():new Set(noteArr.map(n=>n.id));
                         updateNode(node.id,{expandedNoteIds:[...newSet]});
                       }}
-                      style={{fontSize:8,background:"none",borderRadius:3,
-                        color:"var(--text4)",cursor:"pointer",padding:"0 5px",fontFamily:"var(--font-ui)"}}>
+                    >
                       {allExpanded?"▲ Collapse all":"▼ Expand all"}
-                    </button>
+                    </Button>
                   </div>
                   {noteArr.map(nt=>{
                     const isExpanded=expandedSet.has(nt.id);
                     return(
-                      <div key={nt.id} style={{marginBottom:4,borderRadius:4,overflow:"hidden",
-                        border:`1px solid ${t.color}20`,background:`${t.color}08`}}>
+                      <div key={nt.id} className="ui-v2-node-item">
                         {/* Note title row — always visible, click to expand */}
-                        <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",
-                          cursor:"pointer",userSelect:"none"}}
+                        <div className="ui-v2-node-item-header"
                           onMouseDown={e=>e.stopPropagation()}
                           onClick={e=>{
                             if(e.target.tagName==="BUTTON"||e.target.tagName==="INPUT") return;
@@ -2958,11 +2938,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                             if(isExpanded) newSet.delete(nt.id); else newSet.add(nt.id);
                             updateNode(node.id,{expandedNoteIds:[...newSet]});
                           }}>
-                          <span style={{fontSize:8,color:t.color,flexShrink:0}}>
+                          <span className="ui-v2-node-item-chevron">
                             {isExpanded?"▾":"▸"}
                           </span>
                           {inlineEditField?.noteId===nt.id&&inlineEditField?.field==='noteTitle'?(
-                            <input autoFocus value={nt.title||""}
+                            <NodeInput className="ui-v2-node-input-muted ui-v2-node-grow" autoFocus value={nt.title||""}
                               onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
                               onChange={e=>{
                                 e.stopPropagation();
@@ -2971,44 +2951,37 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                               }}
                               onBlur={()=>setInlineEditField(null)}
                               onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setInlineEditField(null);}}
-                              style={{flex:1,background:"none",border:"none",borderBottom:"1px solid var(--accent)",
-                                outline:"none",fontSize:10,fontWeight:600,color:"var(--text2)",fontFamily:"var(--font-ui)",padding:"0"}}
                             />
                           ):(
-                            <div style={{display:"flex",alignItems:"center",gap:2,flex:1,minWidth:0}}>
-                              <span style={{fontSize:10,fontWeight:600,color:"var(--text2)",flex:1,
-                                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                            <div className="ui-v2-node-section-row ui-v2-node-grow ui-v2-node-minw0">
+                              <span className="ui-v2-node-item-title">
                                 {nt.sensitive?"🔒 Sensitive":nt.title||"Untitled note"}
                               </span>
                               {canEdit&&editMode&&!nt.sensitive&&(
-                                <>
-                                  <button className="nn-pencil-btn"
+                                <NodeInlineToolbar>
+                                  <Button variant="primary" className="nn-pencil-btn"
                                     onMouseDown={e=>e.stopPropagation()}
                                     onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteTitle'});}}
-                                    title="Edit note title"
-                                    style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
-                                      flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
-                                  <button className="nn-pencil-btn"
+                                    title="Edit note title">✎</Button>
+                                  <Button variant="destructive" className="nn-pencil-btn"
                                     onMouseDown={e=>e.stopPropagation()}
                                     onClick={e=>{
                                       e.stopPropagation();
                                       const arr=(Array.isArray(node.notes)?node.notes:[]).filter(n=>n.id!==nt.id);
                                       updateNotes(node.id,arr);
                                     }}
-                                    title="Delete note"
-                                    style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
-                                      flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:10,color:"var(--danger)",lineHeight:1}}>✕</button>
-                                </>
+                                    title="Delete note">✕</Button>
+                                </NodeInlineToolbar>
                               )}
                             </div>
                           )}
                         </div>
                         {/* Note content — only when expanded, click ✎ to edit */}
                         {isExpanded&&!nt.sensitive&&(
-                          <div style={{borderTop:`1px solid ${t.color}15`}}>
+                          <div className="ui-v2-node-item-body">
                             {inlineEditField?.noteId===nt.id&&inlineEditField?.field==='noteContent'?(
-                              <div style={{position:"relative"}}>
-                                <textarea autoFocus id={`nt-edit-${nt.id}`} value={stripHtml(nt.content)||""}
+                              <NodeSection className="ui-v2-node-section-editor" expanded>
+                                <NodeTextarea autoFocus id={`nt-edit-${nt.id}`} value={stripHtml(nt.content)||""}
                                   onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
                                   onChange={e=>{
                                     e.stopPropagation();
@@ -3019,18 +2992,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                                   onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape")setInlineEditField(null);}}
                                   placeholder="Write note content…"
                                   rows={3}
-                                  style={{width:"100%",boxSizing:"border-box",padding:"4px 8px",background:"var(--bg3)",
-                                    border:"none",outline:"1px solid var(--accent)",resize:"vertical",
-                                    fontSize:10,color:"var(--text2)",fontFamily:"var(--font-ui)",lineHeight:1.55,
-                                    borderRadius:0}}
                                 />
                                 {/* Mini format bar */}
-                                <div style={{display:"flex",gap:1,padding:"1px 3px",
-                                  background:"var(--bg2)",
-                                  borderRadius:3,position:"absolute",top:-22,left:0,zIndex:10,
-                                  boxShadow:"var(--shadow-node, 4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))"}}>
+                                <NodeInlineToolbar>
                                   {[["B","bold"],["I","italic"],["U","underline"],["S","strikethrough"],["—","insertHorizontalRule"]].map(([lbl,cmd])=>(
-                                    <button key={cmd}
+                                    <Button variant="secondary" className="ui-v2-node-mini-action" key={cmd}
                                       onMouseDown={e=>{
                                         e.preventDefault();e.stopPropagation();
                                         // Wrap selected text with markdown-style tags
@@ -3047,31 +3013,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                                         updateNotes(node.id,arr2);
                                         setTimeout(()=>{ta.selectionStart=s+wrap.length;ta.selectionEnd=e2+wrap.length;ta.focus();},0);
                                       }}
-                                      style={{background:"none",border:"none",cursor:"pointer",
-                                        padding:"0 4px",fontSize:lbl==="B"?11:10,
-                                        fontWeight:lbl==="B"?"700":"400",
-                                        fontStyle:lbl==="I"?"italic":"normal",
-                                        textDecoration:lbl==="U"?"underline":lbl==="S"?"line-through":"none",
-                                        color:"var(--text2)",lineHeight:"18px",borderRadius:2,
-                                        minWidth:18,textAlign:"center"}}
                                       title={cmd}>
                                       {lbl}
-                                    </button>
+                                    </Button>
                                   ))}
-                                </div>
-                              </div>
+                                </NodeInlineToolbar>
+                              </NodeSection>
                             ):(
-                              <div style={{position:"relative",padding:"3px 8px 6px"}}>
-                                <div style={{fontSize:10,color:"var(--text3)",lineHeight:1.55,paddingRight:16}}
+                              <div className="ui-v2-node-item-preview">
+                                <div className="ui-v2-node-rich-text"
                                   dangerouslySetInnerHTML={{__html:sanitizeRichHtml(nt.content)||"<em>Empty - click ✎ to add content</em>"}}/>
                                 {canEdit&&editMode&&(
-                                  <button className="nn-pencil-btn"
+                                  <Button variant="secondary" className="nn-pencil-btn ui-v2-node-mini-action ui-v2-node-edit-action"
                                     onMouseDown={e=>e.stopPropagation()}
                                     onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteContent'});}}
-                                    title="Edit note content"
-                                    style={{position:"absolute",top:4,right:4,background:"none",border:"none",
-                                      cursor:"pointer",padding:"0",opacity:0,transition:"opacity .15s",
-                                      fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
+                                    title="Edit note content">✎</Button>
                                 )}
                               </div>
                             )}
@@ -3080,10 +3036,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       </div>
                     );
                   })}
-                </div>
+                </NodeSection>
               );
             })()}
-          </div>
+          </NodeContent>
         )}
         {/* Anchor dots in connect mode */}
         {mode==="connect"&&canEdit&&!isCollapsed&&(()=>{
@@ -3110,7 +3066,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               background:"transparent",borderRight:`2px solid ${t.color}60`,borderBottom:`2px solid ${t.color}60`}}/>
         )}
 
-      </div>
+      </NodeCardBase>
     );
   });
 
@@ -3136,8 +3092,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <div style={{display:"flex",alignItems:"center",gap:4,flex:1,minWidth:0}}>
             <span onClick={onHome} title="Home"
               style={{fontSize:17,cursor:"pointer",padding:"0 3px",userSelect:"none",lineHeight:1}}>⬡</span>
-            <button onClick={onBack} style={{...tbtn(false),fontSize:10,padding:"2px 8px"}}
-              title="Back to dashboard">← Maps</button>
+            <Button variant="ghost" onClick={onBack} style={{...tbtn(false),fontSize:10,padding:"2px 8px"}}
+              title="Back to dashboard">← Maps</Button>
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 4px",flexShrink:0}}/>
 
             {/* Map title — click to edit */}
@@ -3197,14 +3153,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <div style={{display:"flex",alignItems:"center",gap:1,flexShrink:0}}>
 
             {/* ── Group A: Map resources ── */}
-            <button onClick={()=>setShowTemplates(v=>!v)}
-              style={tbtn(showTemplates,"#FF9800")} title="Templates — start from a preset">📋</button>
-            <button onClick={()=>setShowVersions(true)}
-              style={tbtn(false)} data-tut="history" title="Version History (V)">🕐</button>
-            <button onClick={()=>{setShowCollabLog(v=>!v);
+            <Button variant="primary" onClick={()=>setShowTemplates(v=>!v)}
+              style={tbtn(showTemplates,"#FF9800")} title="Templates — start from a preset">📋</Button>
+            <Button variant="ghost" onClick={()=>setShowVersions(true)}
+              style={tbtn(false)} data-tut="history" title="Version History (V)">🕐</Button>
+            <Button variant="ghost" onClick={()=>{setShowCollabLog(v=>!v);
                 if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`)
                   .then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}}
-              style={tbtn(showCollabLog,"#7B1FA2")} title="Change log — who changed what">📝</button>
+              style={tbtn(showCollabLog,"#7B1FA2")} title="Change log — who changed what">📝</Button>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
@@ -3232,9 +3188,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             </label>
 
             <div style={{position:"relative"}}>
-              <button onClick={()=>setShowExportMenu(v=>!v)}
+              <Button variant="primary" onClick={()=>setShowExportMenu(v=>!v)}
                 style={tbtn(showExportMenu,"#238636")}
-                data-tut="export" title="Export map">↗</button>
+                data-tut="export" title="Export map">↗</Button>
               {showExportMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowExportMenu(false)}/>
                 <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
@@ -3277,17 +3233,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
             {/* ── Group C: Collaboration ── */}
-            <button onClick={()=>{setShowShare(true);
+            <Button variant="ghost" onClick={()=>{setShowShare(true);
                 if(mapId)apiFetch(`/maps/${mapId}/collaborators`)
                   .then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});}}
-              style={tbtn(false,"#1565C0")} data-tut="share" title="Share & Collaborate">👥</button>
+              style={tbtn(false,"#1565C0")} data-tut="share" title="Share & Collaborate">👥</Button>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
             {/* ── Group D: Appearance ── */}
             <div style={{position:"relative"}}>
-              <button onClick={()=>setShowAppMenu(v=>!v)}
-                style={tbtn(showAppMenu,"#6C63FF")} title="Appearance — themes, canvas style">🎨</button>
+              <Button variant="secondary" onClick={()=>setShowAppMenu(v=>!v)}
+                style={tbtn(showAppMenu,"#6C63FF")} title="Appearance — themes, canvas style">🎨</Button>
               {showAppMenu&&(<>
                 <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
                 <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
@@ -3311,36 +3267,36 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* ── Zoom control ── */}
             <div style={{display:"flex",alignItems:"center",
               borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}>
-              <button onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))}
-                style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>−</button>
+              <Button variant="primary" onClick={()=>setZoom(z=>Math.max(0.2,+(z-0.1).toFixed(1)))}
+                style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>−</Button>
               <span onClick={()=>setZoom(1)}
                 style={{fontSize:9,color:"var(--text3)",cursor:"pointer",minWidth:32,
                   textAlign:"center",userSelect:"none"}}>{Math.round(zoom*100)}%</span>
-              <button onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))}
-                style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>＋</button>
+              <Button variant="primary" onClick={()=>setZoom(z=>Math.min(3,+(z+0.1).toFixed(1)))}
+                style={{...tbtn(false),padding:"2px 6px",borderRadius:0,fontSize:13,border:"none"}}>＋</Button>
             </div>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
             {/* ── Utilities ── */}
-            <button onClick={()=>{setShowSearch(v=>!v);if(!showSearch)setSearchQuery("");}}
+            <Button variant="secondary" onClick={()=>{setShowSearch(v=>!v);if(!showSearch)setSearchQuery("");}}
               style={tbtn(showSearch,"var(--accent2)")}
-              data-tut="find" title="Find in map (Ctrl+F)">🔍</button>
+              data-tut="find" title="Find in map (Ctrl+F)">🔍</Button>
 
             {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View\nF2  Rename\nN  Note\nV  History\nC  Connect\nG  Group\nSpace  Quick capture"}
               style={{fontSize:12,color:"var(--text4)",cursor:"help",padding:"0 4px",lineHeight:1}}>⌨</span>}
 
-            <button onClick={()=>setShowHelp(true)} style={tbtn(false)} title="Help & Documentation">❓</button>
-            <button onClick={()=>setShowTutorial(true)} style={tbtn(false,"var(--accent)")} title="Interactive Tutorial">🎓</button>
+            <Button variant="ghost" onClick={()=>setShowHelp(true)} style={tbtn(false)} title="Help & Documentation">❓</Button>
+            <Button variant="ghost" onClick={()=>setShowTutorial(true)} style={tbtn(false,"var(--accent)")} title="Interactive Tutorial">🎓</Button>
 
-            <button onClick={()=>setShowChangelog(true)}
+            <Button variant="primary" onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
-              title="What's new">{CURRENT_VERSION}✦</button>
-            <button onClick={logout}
+              title="What's new">{CURRENT_VERSION}✦</Button>
+            <Button variant="destructive" onClick={logout}
               style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
                 border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}
-              title="Log out">Logout</button>
+              title="Log out">Logout</Button>
           </div>
         </div>
 
@@ -3357,16 +3313,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           {/* ── MODE GROUP ── edit/view + props mode ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
             {canEdit&&(
-              <button onClick={()=>setEditMode(v=>!v)}
+              <Button variant="secondary" onClick={()=>setEditMode(v=>!v)}
                 style={{...tbtn(!editMode,"var(--success)"),minWidth:58}}
                 data-tut="edit-mode" title="Toggle edit/view mode (E)">
                 {editMode?"✏ Edit":"👁 View"}
-              </button>
+              </Button>
             )}
             {/* POPUP / PANEL — how you open node details */}
             <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
               title="How to view node details">
-              <button onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
+              <Button variant="primary" onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
                 style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",border:"none",cursor:"pointer",
                   fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
                   background:propsMode==='popup'?"var(--accent2)":"transparent",
@@ -3378,8 +3334,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   <rect x="3.5" y="3.5" width="4" height="4" rx=".8" fill="currentColor" opacity=".7"/>
                 </svg>
                 Popup
-              </button>
-              <button onClick={()=>{setPropsMode('panel');setNodePopup(null);if(selected.size===1)setShowProps(true);}}
+              </Button>
+              <Button variant="primary" onClick={()=>{setPropsMode('panel');setNodePopup(null);if(selected.size===1)setShowProps(true);}}
                 style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",border:"none",cursor:"pointer",
                   fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
                   background:propsMode==='panel'?"var(--accent2)":"transparent",
@@ -3391,7 +3347,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   <line x1="7" y1="1" x2="7" y2="10" stroke="currentColor" strokeWidth="1.4"/>
                 </svg>
                 Panel
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -3400,21 +3356,27 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
             {/* ── DRAWING TOOLS GROUP ── what you're creating/arranging ── */}
             <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-              <button onClick={()=>{setMode("select");setDrawingEdge(null);}} data-tut="mode-select" style={tbtn(mode==="select","var(--accent2)")} title="Select mode (S)">↖ Select</button>
-              <button onClick={()=>{setMode(m=>m==="connect"?"select":"connect");setDrawingEdge(null);}} data-tut="mode-connect" style={tbtn(mode==="connect","#6C63FF")} title="Connect nodes (C)">⤳ Connect</button>
-              <button onClick={()=>setMode(m=>m==="groupbox"?"select":"groupbox")}
-                data-tut="mode-group" style={tbtn(mode==="groupbox","#FF9800")} title="Draw group box (G)">▭ Group</button>
+              <ModeSwitchGroup
+                value={mode === "connect" ? "connect" : "select"}
+                onChange={(v)=>{ setMode(v); setDrawingEdge(null); }}
+                options={[
+                  { value:"select", label:"↖ Select" },
+                  { value:"connect", label:"⤳ Connect" },
+                ]}
+              />
+              <Button variant="secondary" onClick={()=>setMode(m=>m==="groupbox"?"select":"groupbox")}
+                data-tut="mode-group" style={tbtn(mode==="groupbox","#FF9800")} title="Draw group box (G)">▭ Group</Button>
 
               {/* Connection style — only in connect mode */}
               {mode==="connect"&&(
                 <div style={{position:"relative"}}>
-                  <button onClick={()=>setShowConnDropdown(v=>!v)}
+                  <Button variant="secondary" onClick={()=>setShowConnDropdown(v=>!v)}
                     style={{...tbtn(showConnDropdown,"#6C63FF"),display:"flex",alignItems:"center",gap:4}}
                     title={`Style: ${EDGE_STYLES[edgeStyle]?.label}`}>
                     <EdgeIcon styleKey={edgeStyle} size={24} active/>
                     <span style={{fontSize:9,color:"var(--text3)",maxWidth:40,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{EDGE_STYLES[edgeStyle]?.label}</span>
                     <span style={{fontSize:8,opacity:.6}}>▾</span>
-                  </button>
+                  </Button>
                   {showConnDropdown&&(<>
                     <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowConnDropdown(false)}/>
                     <div style={{position:"absolute",top:"100%",left:0,marginTop:4,zIndex:501,background:"var(--bg)",border:"none",outline:"2px solid var(--accent)44",borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:292,overflow:"hidden"}}>
@@ -3443,7 +3405,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         {["#58a6ff","#3fb950","#f78166","#d2a8ff","#ffa657","#ffffff"].map(c=>(
                           <div key={c} onClick={()=>setEdgeColor(c)} style={{width:16,height:16,borderRadius:"50%",background:c,cursor:"pointer",flexShrink:0,border:(edgeColor===c||edgeColor==="var(--accent)"&&c==="#58a6ff")?"2px solid #fff":"2px solid transparent"}}/>
                         ))}
-                        <button onClick={()=>setEdgeColor("var(--accent)")} style={{marginLeft:"auto",fontSize:9,background:"none",borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</button>
+                        <Button variant="primary" onClick={()=>setEdgeColor("var(--accent)")} style={{marginLeft:"auto",fontSize:9,background:"none",borderRadius:3,padding:"2px 6px",color:"var(--text4)",cursor:"pointer",fontFamily:"var(--font-ui)"}}>↺</Button>
                       </div>
                     </div>
                   </>)}
@@ -3456,15 +3418,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {/* Layout with direction picker */}
               <div style={{position:"relative",flexShrink:0}}>
                 <div style={{display:"flex",borderRadius:"var(--radius-sm)",overflow:"hidden"}}>
-                  <button onClick={()=>handleAutoLayout()} style={{...tbtn(false),borderRadius:0,padding:"4px 9px",fontSize:11,borderRight:"1px solid var(--border)"}}
+                  <Button variant="primary" onClick={()=>handleAutoLayout()} style={{...tbtn(false),borderRadius:0,padding:"4px 9px",fontSize:11,borderRight:"1px solid var(--border)"}}
                     title="Auto-arrange (Ctrl+Enter)">
                     ⊞ Layout
-                  </button>
-                  <button data-ui="toolbar-layout" data-component="CanvasToolbar" data-page="canvas" data-role="action-btn" onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn"
+                  </Button>
+                  <Button variant="primary" data-ui="toolbar-layout" data-component="CanvasToolbar" data-page="canvas" data-role="action-btn" onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn"
                     style={{...tbtn(showLayoutMenu,"var(--accent2)"),borderRadius:0,padding:"4px 6px",fontSize:10}}
                     title="Choose layout direction">
                     {{LR:"→",TB:"↓",RL:"←",BT:"↑",radial:"◎"}[layoutDir]||"→"} ▾
-                  </button>
+                  </Button>
                 </div>
                 {showLayoutMenu&&(<>
                   <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowLayoutMenu(false)}/>
@@ -3498,19 +3460,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   </div>
                 </>)}
               </div>
-              <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
+              <Button variant="ghost" onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"#9C27B0")} title="Collapse / Expand all nodes">
                 {globalCollapsed?"⊞ Expand All":"⊟ Collapse"}
-              </button>
+              </Button>
             </div>
 
             <div style={{width:1,height:20,background:"var(--border)",flexShrink:0,margin:"0 6px"}}/>
 
             {/* ── SELECTION ACTIONS GROUP ── what happens to selected items ── */}
             <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-              <button onClick={undo} disabled={!canUndo} style={{...tbtn(false),opacity:!canUndo?.3:1}} title="Undo (Ctrl+Z)">↩ Undo</button>
-              <button onClick={redo} disabled={!canRedo} style={{...tbtn(false),opacity:!canRedo?.3:1}} title="Redo (Ctrl+Y)">↪ Redo</button>
-              {(selected.size>0||selEdge)&&<button onClick={deleteSelected} style={{...tbtn(false),background:"var(--danger)20",color:"var(--danger)"}} title="Delete selected (Del)">🗑{selected.size>1?` ×${selected.size}`:""}</button>}
-              {selectedNode&&propsMode==='popup'&&<button onClick={()=>setShowProps(v=>!v)} style={tbtn(showProps,"var(--accent2)")} title="Open properties panel">✏ Props</button>}
+              <Button variant="secondary" onClick={undo} disabled={!canUndo} title="Undo (Ctrl+Z)">↩ Undo</Button>
+              <Button variant="secondary" onClick={redo} disabled={!canRedo} title="Redo (Ctrl+Y)">↪ Redo</Button>
+              {(selected.size>0||selEdge)&&<Button variant="destructive" onClick={deleteSelected} title="Delete selected (Del)">🗑{selected.size>1?` ×${selected.size}`:""}</Button>}
+              {selectedNode&&propsMode==='popup'&&<ToggleButton pressed={showProps} onClick={()=>setShowProps(v=>!v)} title="Open properties panel">✏ Props</ToggleButton>}
             </div>
           </>}
 
@@ -3518,15 +3480,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
           {/* ── SIDE PANELS GROUP ── persistent panel toggles ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-            <button onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"#6C63FF"),display:"flex",alignItems:"center",gap:4}} title="AI Chat panel">
+            <Button variant="secondary" onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"#6C63FF"),display:"flex",alignItems:"center",gap:4}} title="AI Chat panel">
               💬 <span style={{fontSize:10}}>AI Chat</span>
-            </button>
-            <button onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
+            </Button>
+            <Button variant="secondary" onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
               🗨 <span style={{fontSize:10}}>Comments</span>
               {Object.values(comments).flat().length>0&&(
                 <span style={{fontSize:8,background:"var(--accent)",color:"var(--on-accent)",borderRadius:10,padding:"0 4px"}}>{Object.values(comments).flat().length}</span>
               )}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -3566,8 +3528,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   color:"var(--text)",fontSize:15,fontFamily:"var(--font-ui)"}}
               />
               {searchQuery&&(
-                <button onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
-                  style={{background:"var(--bg3)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text4)",cursor:"pointer",fontSize:13,flexShrink:0}}>×</button>
+                <Button variant="secondary" onClick={e=>{e.stopPropagation();setSearchQuery("");document.getElementById("nn-search-input")?.focus();}}
+                  style={{background:"var(--bg3)",borderRadius:"50%",width:22,height:22,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--text4)",cursor:"pointer",fontSize:13,flexShrink:0}}>×</Button>
               )}
               <kbd style={{fontSize:10,color:"var(--text4)",background:"var(--bg3)",borderRadius:4,padding:"2px 7px",flexShrink:0,fontFamily:"var(--font-ui)",whiteSpace:"nowrap"}}>ESC to close</kbd>
             </div>
@@ -3576,14 +3538,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 16px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)"}}>
               <span style={{fontSize:9,fontWeight:700,letterSpacing:.5,color:"var(--text4)",marginRight:4,flexShrink:0}}>SEARCH IN</span>
               {[["all","All fields"],["title","Name & Desc"],["notes","Notes"],["props","Properties"],["type","Type"]].map(([id,lbl])=>(
-                <button key={id} onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
+                <Button variant="primary" key={id} onClick={e=>{e.stopPropagation();setSearchField(id);document.getElementById("nn-search-input")?.focus();}}
                   style={{padding:"3px 11px",border:"1px solid",borderRadius:12,cursor:"pointer",
                     fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",transition:"all .12s",
                     borderColor:searchField===id?"var(--accent)":"var(--border)",
                     background:searchField===id?"var(--accent)":"transparent",
                     color:searchField===id?"#fff":"var(--text3)"}}>
                   {lbl}
-                </button>
+                </Button>
               ))}
               {searchQuery.trim()&&searchResults.length>0&&(
                 <span style={{marginLeft:"auto",fontSize:10,color:"var(--text4)",flexShrink:0}}>
@@ -3790,7 +3752,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         title="Double-click to rename" style={{cursor:"text"}}>{gb.label||"Group"}</span>
                     )}
                     {/* Line style cycle */}
-                    <button onMouseDown={e=>e.stopPropagation()}
+                    <Button variant="primary" onMouseDown={e=>e.stopPropagation()}
                       onClick={e=>{e.stopPropagation();
                         const ls=["solid","dashed","dotted"];
                         const cur=gb.lineStyle||"solid";
@@ -3798,7 +3760,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       }} title={`Line: ${gb.lineStyle||"solid"} — click to change`}
                       style={{background:"none",border:"none",cursor:"pointer",fontSize:9,color:"var(--text4)",padding:0,lineHeight:1}}>
                       {(gb.lineStyle||"solid")==="dotted"?"···":(gb.lineStyle||"solid")==="dashed"?"---":"—"}
-                    </button>
+                    </Button>
                     {/* Border color */}
                     <input type="color" value={gb.color&&gb.color.startsWith("#")?gb.color:"#58a6ff"}
                       onMouseDown={e=>e.stopPropagation()}
@@ -3811,9 +3773,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       onChange={e=>setGroupBoxes(bs=>bs.map(b=>b.id===gb.id?{...b,bgColor:e.target.value}:b))}
                       title="Fill color"
                       style={{width:13,height:13,border:"none",borderRadius:2,cursor:"pointer",padding:0,background:"none",opacity:.7}}/>
-                    <button onMouseDown={e=>e.stopPropagation()}
+                    <Button variant="primary" onMouseDown={e=>e.stopPropagation()}
                       onClick={e=>{e.stopPropagation();setGroupBoxes(bs=>bs.filter(b=>b.id!==gb.id));}}
-                      style={{background:"none",border:"none",cursor:"pointer",fontSize:11,color:"var(--text4)",padding:0,lineHeight:1}}>×</button>
+                      style={{background:"none",border:"none",cursor:"pointer",fontSize:11,color:"var(--text4)",padding:0,lineHeight:1}}>×</Button>
                   </div>
                   {/* SE resize grip */}
                   <div onMouseDown={e=>{
@@ -3937,7 +3899,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                       onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")commitCapture();if(e.key==="Escape"){setQuickPos(null);setQuickText("");}}}
                       placeholder="Type a thought, hit Enter…"
                       style={{background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",width:220}}/>
-                    <button onClick={commitCapture} style={{background:"var(--accent2)",border:"none",borderRadius:"var(--radius-xs)",color:"var(--on-accent)",cursor:"pointer",padding:"2px 10px",fontSize:11,fontWeight:700,fontFamily:"var(--font-ui)"}}>↵</button>
+                    <Button variant="primary" onClick={commitCapture}>↵</Button>
                   </div>
                 </div>
               )}
@@ -3952,7 +3914,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
               <span style={{fontSize:13}}>📋</span>
               <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",flex:1}}>TEMPLATE LIBRARY</span>
-              <button onClick={()=>setShowTemplates(false)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+              <Button variant="secondary" onClick={()=>setShowTemplates(false)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</Button>
             </div>
             <TemplateLibrary onInsert={(tpl)=>{
               const el=canvasRef.current; if(!el) return;
@@ -3977,8 +3939,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",flex:1}}>
                 {commentNode?`"${nodes.find(n=>n.id===commentNode)?.title||"node"}"`:"All Comments"}
               </span>
-              {commentNode&&<button onClick={()=>setCommentNode(null)} style={{fontSize:10,background:"none",border:"none",color:"var(--text4)",cursor:"pointer"}}>All</button>}
-              <button onClick={()=>{setShowComments(false);setCommentNode(null);}} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+              {commentNode&&<Button variant="secondary" onClick={()=>setCommentNode(null)} style={{fontSize:10,background:"none",border:"none",color:"var(--text4)",cursor:"pointer"}}>All</Button>}
+              <Button variant="secondary" onClick={()=>{setShowComments(false);setCommentNode(null);}} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</Button>
             </div>
             <CommentsPanel comments={comments} nodes={nodes} commentNode={commentNode}
               setCommentNode={setCommentNode} draft={commentDraft} setDraft={setCommentDraft}
@@ -3995,7 +3957,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 14px",borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
               <span style={{fontSize:13}}>💬</span>
               <span style={{fontSize:11,fontWeight:700,color:"var(--accent)",flex:1}}>AI CHAT</span>
-              <button onClick={()=>setShowChat(false)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+              <Button variant="secondary" onClick={()=>setShowChat(false)} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</Button>
             </div>
             <LLMChat mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title}/>
           </div>
@@ -4063,11 +4025,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <div style={{display:"flex",alignItems:"center",padding:"10px 14px",
             borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
             <span style={{fontSize:13,fontWeight:700,color:"var(--text)",flex:1}}>📋 Map Changes</span>
-            <button onClick={()=>apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{})}
+            <Button variant="primary" onClick={()=>apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{})}
               style={{background:"none",borderRadius:4,
-                color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"2px 6px",marginRight:6}}>↺</button>
-            <button onClick={()=>setShowCollabLog(false)}
-              style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</button>
+                color:"var(--text4)",cursor:"pointer",fontSize:10,padding:"2px 6px",marginRight:6}}>↺</Button>
+            <Button variant="secondary" onClick={()=>setShowCollabLog(false)}
+              style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1}}>×</Button>
           </div>
           <div style={{flex:1,overflowY:"auto",padding:8}}>
             {collabLog.length===0?(
@@ -4120,8 +4082,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Share Map</div>
                 <div style={{fontSize:10,color:"var(--text4)",marginTop:1}}>Invite teammates to view or edit this map</div>
               </div>
-              <button onClick={()=>setShowShare(false)}
-                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+              <Button variant="secondary" onClick={()=>setShowShare(false)}
+                style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</Button>
             </div>
             {/* Invite row */}
             <div style={{padding:"14px 18px",borderBottom:"1px solid var(--border2)"}}>
@@ -4169,7 +4131,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   <option value="viewer">Viewer</option>
                   <option value="editor">Editor</option>
                 </select>
-                <button
+                <Button variant="primary"
                   onClick={async()=>{
                     if(!shareEmail.trim()) return;
                     setShareStatus("Sending…");
@@ -4187,7 +4149,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   style={{background:"var(--accent)",border:"none",borderRadius:"var(--radius-sm)",
                     padding:"6px 14px",color:"#fff",fontSize:12,cursor:"pointer",fontFamily:"var(--font-ui)",fontWeight:700}}>
                   Invite
-                </button>
+                </Button>
               </div>
               {shareStatus&&(
                 <div style={{fontSize:11,color:shareStatus.startsWith("✓")?"var(--success)":"var(--danger)",marginTop:4}}>
@@ -4222,12 +4184,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     fontWeight:600}}>
                     {u.permission||"viewer"}
                   </span>
-                  <button onClick={async()=>{
+                  <Button variant="destructive" onClick={async()=>{
                     await removeCollab(mapId, u.user_id);
                     setShareUsers(v=>v.filter(x=>x.user_id!==u.user_id));
                   }}
                   style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",
-                    fontSize:14,padding:"0 2px",lineHeight:1,flexShrink:0}}>×</button>
+                    fontSize:14,padding:"0 2px",lineHeight:1,flexShrink:0}}>×</Button>
                 </div>
               ))}
             </div>
@@ -4257,8 +4219,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What's New</div>
                 <div style={{fontSize:10,color:"var(--text4)",marginTop:2}}>Full changelog across all versions</div>
               </div>
-              <button onClick={()=>setShowChangelog(false)}
-                style={{marginLeft:"auto",background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+              <Button variant="secondary" onClick={()=>setShowChangelog(false)}
+                style={{marginLeft:"auto",background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</Button>
             </div>
             {/* Content */}
             <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>
@@ -4337,8 +4299,10 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
   const [hovered,setHovered]=useState(false);
   const propEntries=Object.entries(node.properties||{}).filter(([,v])=>v).slice(0,4);
   return (
-    <div
+    <NodeCardBase
       className="nn-node"
+      nodeKind={getNodeKind(node.type)}
+      state={isSel ? "selected" : "default"}
       onMouseDown={onMouseDown} onTouchStart={onTouchStart} onClick={onClick} onContextMenu={onContextMenu}
       onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}
       style={{
@@ -4347,61 +4311,53 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
         background:"var(--node-bg)",
         border:`var(--node-border-w) solid ${isSel?"var(--accent)":`${t.color}65`}`,
         borderRadius:"var(--radius-node)",
-        boxShadow:isSel?"var(--shadow-node-sel)":"var(--shadow-node)",
         cursor:mode==="connect"?"crosshair":canEdit?"grab":"default",
         userSelect:"none",touchAction:"none",
         display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:4,
         overflow:"visible",
-        transition:"var(--transition-all)",
+        transition:"var(--motion-transition-interactive)",
         zIndex:hovered?20:1,
       }}
     >
       {/* Icon */}
       <NodeIcon icon={t.icon} size={28} color={t.color} />
       {/* Name */}
-      <span style={{fontSize:10,fontWeight:700,color:t.color,textAlign:"center",lineHeight:1.2,padding:"0 4px",maxWidth:COL_W-8,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+      <span className="ui-v2-node-collapsed-title">
         {node.title}
       </span>
       {/* ⊞ Expand icon — top-right of collapsed node */}
       {canEdit&&(
-        <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onToggleCollapse(e);}}
-          title="Expand node (⊞)"
-          style={{position:"absolute",top:2,right:2,background:"none",borderRadius:3,color:t.color,cursor:"pointer",fontSize:11,width:16,height:16,display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1}}>
+        <Button variant="secondary" className="ui-v2-node-collapsed-expand" onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();onToggleCollapse(e);}}
+          title="Expand node (⊞)">
           ⊞
-        </button>
+        </Button>
       )}
       {/* Status dots: notes (blue), properties (green), connections — injected via prop */}
-      <div style={{position:"absolute",bottom:3,left:0,right:0,display:"flex",justifyContent:"center",gap:3,pointerEvents:"none"}}>
-        {(Array.isArray(node.notes)?node.notes:[]).length>0&&<div title="Has notes" style={{width:5,height:5,borderRadius:"50%",background:"var(--accent)",opacity:.9}}/>}
-        {Object.values(node.properties||{}).some(v=>v)&&<div title="Has properties" style={{width:5,height:5,borderRadius:"50%",background:"var(--success)",opacity:.9}}/>}
-        {Object.keys(node.customProps||{}).length>0&&<div title="Has custom fields" style={{width:5,height:5,borderRadius:"50%",background:"#d2a8ff",opacity:.9}}/>}
+      <div className="ui-v2-node-collapsed-status">
+        {(Array.isArray(node.notes)?node.notes:[]).length>0&&<NodeChip title="Has notes" className="ui-v2-node-dot ui-v2-node-dot--accent" />}
+        {Object.values(node.properties||{}).some(v=>v)&&<NodeChip title="Has properties" className="ui-v2-node-dot ui-v2-node-dot--success" />}
+        {Object.keys(node.customProps||{}).length>0&&<NodeChip title="Has custom fields" className="ui-v2-node-dot ui-v2-node-dot--custom" />}
       </div>
 
       {/* Hover tooltip */}
       {hovered&&(propEntries.length>0||node.notes)&&(
-        <div style={{
-          position:"absolute",bottom:"calc(100% + 8px)",left:"50%",transform:"translateX(-50%)",
-          background:"var(--bg2)",borderRadius:"var(--radius-md)",
-          padding:"10px 12px",minWidth:180,maxWidth:260,
-          boxShadow:"0 8px 28px var(--shadow)",zIndex:100,
-          pointerEvents:"none",
-        }}>
-          <div style={{fontSize:12,fontWeight:700,color:t.color,marginBottom:6}}><NodeIcon icon={t.icon} size={16} color={t.color} /> {node.title}</div>
+        <NodeTooltip className="ui-v2-node-collapsed-tooltip">
+          <div className="ui-v2-node-collapsed-tooltip-title"><NodeIcon icon={t.icon} size={16} color={t.color} /> {node.title}</div>
           {propEntries.map(([k,v])=>(
-            <div key={k} style={{display:"flex",gap:6,fontSize:11,marginBottom:2}}>
-              <span style={{color:"var(--text4)",flexShrink:0}}>{k}:</span>
-              <span style={{color:"var(--text2)"}}>{String(v).slice(0,30)}</span>
+            <div key={k} className="ui-v2-node-collapsed-tooltip-row">
+              <span className="ui-v2-node-collapsed-tooltip-key">{k}:</span>
+              <span className="ui-v2-node-collapsed-tooltip-value">{String(v).slice(0,30)}</span>
             </div>
           ))}
 {(Array.isArray(node.notes)?node.notes:[]).filter(nt=>!nt.sensitive).slice(0,2).map(nt=>(
-            <div key={nt.id} style={{fontSize:10,color:"var(--text3)",marginTop:4,fontStyle:"italic",borderTop:"1px solid var(--border2)",paddingTop:4}}>
-              {nt.title&&<span style={{fontWeight:700,marginRight:4}}>{nt.title}:</span>}{stripHtml(nt.content).slice(0,80)}
+            <div key={nt.id} className="ui-v2-node-collapsed-tooltip-note">
+              {nt.title&&<span className="ui-v2-node-collapsed-tooltip-note-title">{nt.title}:</span>}{stripHtml(nt.content).slice(0,80)}
             </div>
           ))}
-          <div style={{fontSize:9,color:"var(--text4)",marginTop:5,textAlign:"right"}}>Click for full details</div>
-        </div>
+          <div className="ui-v2-node-collapsed-tooltip-hint">Click for full details</div>
+        </NodeTooltip>
       )}
-    </div>
+    </NodeCardBase>
   );
 }
 
@@ -4433,10 +4389,10 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
     return(
       <div style={{width:28,flexShrink:0,background:"var(--bg2)",borderRight:"1px solid var(--border2)",
         display:"flex",flexDirection:"column",alignItems:"center",paddingTop:8,gap:6,overflow:"hidden"}}>
-        <button onClick={onToggleCollapse}
+        <Button variant="secondary" onClick={onToggleCollapse}
           style={{background:"none",borderRadius:"var(--radius-sm)",
             color:"var(--text4)",cursor:"pointer",fontSize:13,width:20,height:20,display:"flex",
-            alignItems:"center",justifyContent:"center",lineHeight:1}}>›</button>
+            alignItems:"center",justifyContent:"center",lineHeight:1}}>›</Button>
         <div style={{writingMode:"vertical-rl",fontSize:9,fontWeight:700,color:"var(--text4)",
           letterSpacing:2,marginTop:8,userSelect:"none",opacity:.6}}>NODES</div>
       </div>
@@ -4457,18 +4413,18 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
           </span>}
           {iconOnly&&<div style={{flex:1}}/>}
           {/* Mode cycle button */}
-          <button onClick={onCycleMode}
+          <Button variant="secondary" onClick={onCycleMode}
             title={iconOnly?"Switch to full mode":dense?"Switch to icons only":"Switch to compact mode"}
             style={{background:"none",borderRadius:"var(--radius-xs)",
               color:dense||iconOnly?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:8,
               padding:"1px 4px",height:15,display:"flex",alignItems:"center",
               lineHeight:1,flexShrink:0,whiteSpace:"nowrap",gap:2}}>
             {iconOnly?"⊞ Full":dense?"⊡ Icons":"⊟ Compact"}
-          </button>
-          <button onClick={onToggleCollapse} title="Collapse"
+          </Button>
+          <Button variant="secondary" onClick={onToggleCollapse} title="Collapse"
             style={{background:"none",borderRadius:"var(--radius-xs)",
               color:"var(--text4)",cursor:"pointer",fontSize:10,width:15,height:15,
-              display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,flexShrink:0}}>‹</button>
+              display:"flex",alignItems:"center",justifyContent:"center",lineHeight:1,flexShrink:0}}>‹</Button>
         </div>
 
         {/* Search — visible in all modes */}
@@ -4487,9 +4443,9 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                 fontSize:11,color:"var(--text4)",cursor:"pointer"}}>×</span>}
           </div>
         ):(
-          <button onClick={onCycleMode} title="Switch to full view to search"
+          <Button variant="secondary" onClick={onCycleMode} title="Switch to full view to search"
             style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
-              fontSize:11,width:"100%",display:"flex",justifyContent:"center",paddingTop:2}}>🔍</button>
+              fontSize:11,width:"100%",display:"flex",justifyContent:"center",paddingTop:2}}>🔍</Button>
         )}
       </div>
 
@@ -4663,24 +4619,24 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
       <div style={{padding:"11px 14px",borderBottom:"1px solid var(--border2)",display:"flex",alignItems:"center",gap:8,position:"sticky",top:0,background:"var(--bg2)",zIndex:1}}>
         <NodeIcon icon={t.icon} size={16} color={t.color} />
         <span style={{fontSize:11,color:t.color,fontWeight:700,flex:1}}>{t.label.toUpperCase()}</span>
-        <button onClick={onToggleCollapse} title={node.collapsed?"Expand node":"Collapse node"}
+        <Button variant="secondary" onClick={onToggleCollapse} title={node.collapsed?"Expand node":"Collapse node"}
           style={{background:node.collapsed?"var(--success)18":"var(--bg3)",borderRadius:5,color:node.collapsed?"var(--success)":"var(--text3)",cursor:"pointer",fontSize:10,padding:"3px 9px",fontFamily:"inherit",fontWeight:700}}>
           {node.collapsed?"▶ EXPAND":"◀ COLLAPSE"}
-        </button>
-        <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</button>
+        </Button>
+        <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>×</Button>
       </div>
       <div style={{padding:"13px 14px",display:"flex",flexDirection:"column",gap:11}}>
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
             <label style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>TITLE</label>
-            {canEdit&&<button onClick={onStartEditTitle} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:10,fontFamily:"inherit"}}>✏ inline</button>}
+            {canEdit&&<Button variant="ghost" onClick={onStartEditTitle}>✏ inline</Button>}
           </div>
           <input value={node.title} onChange={e=>onUpdate(node.id,{title:e.target.value})} disabled={!canEdit} style={inp()}/>
         </div>
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
             <label style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>SIZE</label>
-            {canEdit&&<button onClick={onResetSize} style={{background:"none",borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",fontSize:10,padding:"2px 8px",fontFamily:"inherit"}}>⊡ RESET</button>}
+            {canEdit&&<Button variant="secondary" onClick={onResetSize}>⊡ RESET</Button>}
           </div>
           <div style={{display:"flex",gap:6}}>
             {["w","h"].map(dim=>(
@@ -4709,18 +4665,18 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
           <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
             <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
               <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>PORTS / INTERFACES</span>
-              {canEdit&&unassigned.length>0&&<button onClick={autoFill}
+              {canEdit&&unassigned.length>0&&<Button variant="secondary" onClick={autoFill}
                 title={`Auto-assign: ${unassigned.join(", ")}`}
                 style={{fontSize:10,background:"var(--accent1)18",border:"1px solid var(--accent1)",
                   borderRadius:"var(--radius-xs)",color:"var(--accent1)",cursor:"pointer",
-                  padding:"2px 7px",fontFamily:"inherit"}}>⚡ Auto-fill</button>}
-              {canEdit&&<button onClick={()=>{
+                  padding:"2px 7px",fontFamily:"inherit"}}>⚡ Auto-fill</Button>}
+              {canEdit&&<Button variant="primary" onClick={()=>{
                 const ports=[...(node.properties.Ports||[]),
                   {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:"Ethernet",connected:"",ip:"",vlan:""}];
                 onUpdateProp(node.id,"Ports",ports);
               }} style={{fontSize:10,background:"none",
                 borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",
-                padding:"2px 8px",fontFamily:"inherit"}}>+ Port</button>}
+                padding:"2px 8px",fontFamily:"inherit"}}>+ Port</Button>}
             </div>
             {canvasConn.length>0&&(
               <div style={{fontSize:10,color:"var(--text4)",background:"var(--bg3)",borderRadius:5,
@@ -4772,8 +4728,8 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
                     disabled={!canEdit}
                     onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],ip:e.target.value,vlan:e.target.value};onUpdateProp(node.id,"Ports",p);}}
                     style={{...inp(),fontSize:10,padding:"3px 5px",marginTop:0}}/>
-                  {canEdit&&<button onClick={()=>{const p=(node.properties.Ports||[]).filter((_,i)=>i!==pi);onUpdateProp(node.id,"Ports",p);}}
-                    style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:14,flexShrink:0,lineHeight:1}}>×</button>}
+                  {canEdit&&<Button variant="secondary" onClick={()=>{const p=(node.properties.Ports||[]).filter((_,i)=>i!==pi);onUpdateProp(node.id,"Ports",p);}}
+                    style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:14,flexShrink:0,lineHeight:1}}>×</Button>}
                 </div>
               ))}
               {!(node.properties?.Ports?.length)&&(
@@ -4788,13 +4744,13 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
           <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
             <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
               <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>SERVICES / VMs / CONTAINERS</span>
-              {canEdit&&<button onClick={()=>{
+              {canEdit&&<Button variant="primary" onClick={()=>{
                 const svcs=[...(node.properties.Services||[]),
                   {id:Math.random().toString(36).slice(2,7),name:"",type:"Docker",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}];
                 onUpdateProp(node.id,"Services",svcs);
               }} style={{fontSize:10,background:"none",
                 borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",
-                padding:"2px 8px",fontFamily:"inherit"}}>+ Add</button>}
+                padding:"2px 8px",fontFamily:"inherit"}}>+ Add</Button>}
             </div>
             <div style={{display:"grid",gridTemplateColumns:"1fr",gap:6}}>
               {(node.properties.Services||[]).map((svc,si)=>(
@@ -4823,8 +4779,8 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
                         color:svc.status==="Running"?"var(--success)":svc.status==="Stopped"?"var(--danger)":svc.status==="Error"?"var(--danger)":"var(--text2)"}}>
                       <option>Running</option><option>Stopped</option><option>Paused</option><option>Error</option><option>Starting</option>
                     </select>
-                    {canEdit&&<button onClick={()=>{const s=(node.properties.Services||[]).filter((_,i)=>i!==si);onUpdateProp(node.id,"Services",s);}}
-                      style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:14,lineHeight:1}}>×</button>}
+                    {canEdit&&<Button variant="secondary" onClick={()=>{const s=(node.properties.Services||[]).filter((_,i)=>i!==si);onUpdateProp(node.id,"Services",s);}}
+                      style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:14,lineHeight:1}}>×</Button>}
                   </div>
                   <div style={{display:"grid",gridTemplateColumns:"1fr 70px 1fr",gap:4,marginBottom:4}}>
                     <div><label style={{fontSize:9,color:"var(--text4)"}}>IP</label>
@@ -4874,7 +4830,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
             <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>CUSTOM PROPERTIES</span>
-            {canEdit&&<button onClick={onAddCustom} style={{background:"none",borderRadius:"var(--radius-xs)",color:"var(--text3)",cursor:"pointer",fontSize:10,padding:"2px 8px",fontFamily:"inherit"}}>+ ADD</button>}
+            {canEdit&&<Button variant="primary" onClick={onAddCustom}>+ ADD</Button>}
           </div>
           {Object.entries(node.customProps||{}).map(([k,v])=>(
             <div key={k} style={{display:"flex",gap:4,marginBottom:5,alignItems:"flex-start"}}>
@@ -4887,8 +4843,8 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
                 onKeyDown={e=>e.stopPropagation()}
                 placeholder="value"
               />
-              {canEdit&&<button onClick={()=>onDeleteCustom(node.id,k)}
-                style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:16,flexShrink:0,alignSelf:"flex-start",paddingTop:2}}>×</button>}
+              {canEdit&&<Button variant="destructive" onClick={()=>onDeleteCustom(node.id,k)}
+                style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:16,flexShrink:0,alignSelf:"flex-start",paddingTop:2}}>×</Button>}
             </div>
           ))}
           {!Object.keys(node.customProps||{}).length&&<div style={{fontSize:11,color:"var(--text4)",fontStyle:"italic"}}>None yet</div>}
@@ -4897,13 +4853,13 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
         <div style={{borderTop:"1px solid var(--border2)",paddingTop:10}}>
           <div style={{display:"flex",alignItems:"center",marginBottom:8}}>
             <span style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2,flex:1}}>NOTES</span>
-            {canEdit&&<button onClick={()=>{
+            {canEdit&&<Button variant="primary" onClick={()=>{
               const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false};
               onUpdateNotes(node.id,[...(Array.isArray(node.notes)?node.notes:[]),newNote]);
             }} style={{fontSize:10,background:"var(--accent2)",border:"none",borderRadius:"var(--radius-xs)",
               color:"#fff",cursor:"pointer",padding:"2px 8px",fontFamily:"var(--font-ui)",fontWeight:700}}>
               + ADD NOTE
-            </button>}
+            </Button>}
           </div>
           {(Array.isArray(node.notes)?node.notes:[]).map((nt,idx)=>(
             <NoteCard key={nt.id} note={nt} canEdit={canEdit}
@@ -4935,7 +4891,7 @@ function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdate
                   <span style={{flex:1,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{other?.title||"?"}</span>
                   <input value={edge.label||""} placeholder="label" onChange={e=>onUpdateEdge(edge.id,{label:e.target.value})} disabled={!canEdit}
                     style={{...inp(),width:62,marginTop:0,padding:"3px 6px",fontSize:11}}/>
-                  {canEdit&&<button onClick={()=>onDeleteEdge(edge.id)} style={{background:"none",border:"none",color:"var(--danger)",cursor:"pointer",fontSize:16,flexShrink:0}}>×</button>}
+                  {canEdit&&<Button variant="destructive" onClick={()=>onDeleteEdge(edge.id)}>×</Button>}
                 </div>
               );
             })}
@@ -4970,14 +4926,14 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
   };
 
   const TBtn = ({ cmd, val, title, active, children, style: s }) => (
-    <button onMouseDown={e => { e.preventDefault(); exec(cmd, val); }} title={title}
+    <Button variant="primary" onMouseDown={e => { e.preventDefault(); exec(cmd, val); }} title={title}
       style={{
         background: active ? 'var(--accent2)' : 'transparent',
         border: 'none', borderRadius: 3, cursor: disabled ? 'default' : 'pointer',
         padding: '3px 5px', fontSize: 11, color: active ? '#fff' : 'var(--text3)',
         lineHeight: 1, minWidth: 22, height: 22, display: 'flex', alignItems: 'center',
         justifyContent: 'center', flexShrink: 0, opacity: disabled ? 0.4 : 1, ...s,
-      }}>{children}</button>
+      }}>{children}</Button>
   );
 
   const Div = () => <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />;
@@ -5118,7 +5074,7 @@ function NoteCard({ note, canEdit, onChange, onDelete }) {
           </span>
         )}
         {/* Sensitive toggle */}
-        <button
+        <Button variant="primary"
           title={note.sensitive ? 'Sensitive — hidden from exports' : 'Mark as sensitive'}
           onMouseDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); onChange({ ...note, sensitive: !note.sensitive }); }}
@@ -5128,15 +5084,15 @@ function NoteCard({ note, canEdit, onChange, onDelete }) {
             padding: '0 2px', flexShrink: 0,
           }}>
           {note.sensitive ? '🔒' : '🔓'}
-        </button>
+        </Button>
         {canEdit && (
-          <button
+          <Button variant="destructive"
             onMouseDown={e => e.stopPropagation()}
             onClick={e => { e.stopPropagation(); onDelete(); }}
             style={{ background: 'none', border: 'none', cursor: 'pointer',
               color: 'var(--text4)', fontSize: 14, padding: '0 2px', flexShrink: 0 }}>
             ×
-          </button>
+          </Button>
         )}
       </div>
       {/* Collapsed preview */}
@@ -5408,17 +5364,17 @@ function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nod
             placeholder="Search nodes, notes, properties…"
             style={{flex:1,background:"var(--bg3)",border:"1px solid var(--accent)",borderRadius:"var(--radius-sm)",
               padding:"6px 10px",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",outline:"none"}}/>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1,flexShrink:0}}>×</button>
+          <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",fontSize:18,lineHeight:1,flexShrink:0}}>×</Button>
         </div>
         <div style={{display:"flex",gap:4,flexWrap:"wrap"}}>
           {FIELDS.map(f=>(
-            <button key={f.id} onClick={()=>setField(f.id)}
+            <Button variant="primary" key={f.id} onClick={()=>setField(f.id)}
               style={{padding:"2px 8px",border:"none",borderRadius:"var(--radius-xs)",cursor:"pointer",
                 fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
                 background:field===f.id?"var(--accent2)":"var(--bg3)",
                 color:field===f.id?"#fff":"var(--text4)"}}>
               {f.label}
-            </button>
+            </Button>
           ))}
         </div>
         {query.trim()&&(
@@ -5558,8 +5514,8 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
             fontSize: 14, fontWeight: 700, color: t.color, fontFamily: 'var(--font-ui)' }}
         />
         <span style={{ fontSize: 9, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1 }}>{t.label.toUpperCase()}</span>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text4)',
-          cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
+        <Button variant="secondary" onClick={onClose} style={{ background: 'none', border: 'none', color: 'var(--text4)',
+          cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</Button>
       </div>
 
       {/* Description field */}
@@ -5577,7 +5533,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border2)', flexShrink: 0 }}>
         {TABS.map(tb => (
-          <button key={tb.id} onClick={() => onTabChange(tb.id)}
+          <Button variant="primary" key={tb.id} onClick={() => onTabChange(tb.id)}
             style={{ flex: 1, padding: '7px 4px', border: 'none', cursor: 'pointer',
               fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-ui)',
               background: tab === tb.id ? 'var(--bg)' : 'var(--bg2)',
@@ -5585,7 +5541,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
               borderBottom: tab === tb.id ? `2px solid ${t.color}` : '2px solid transparent',
             }}>
             {tb.label}
-          </button>
+          </Button>
         ))}
       </div>
 
@@ -5597,25 +5553,25 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
           <div>
             <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
               <span style={{ fontSize: 10, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1, flex: 1 }}>NOTES</span>
-              {canEdit && <button onClick={() => {
+              {canEdit && <Button variant="primary" onClick={() => {
                 const newNote = { id: Math.random().toString(36).slice(2), title: '', content: '', sensitive: false };
                 onUpdateNotes([...(Array.isArray(node.notes) ? node.notes : []), newNote]);
               }} style={{ fontSize: 10, background: 'var(--accent2)', border: 'none', borderRadius: 4,
                 color: '#fff', cursor: 'pointer', padding: '3px 10px', fontFamily: 'var(--font-ui)', fontWeight: 700 }}>
                 + ADD NOTE
-              </button>}
+              </Button>}
             </div>
             {/* Notes toggle */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
               padding: '6px 10px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)' }}>
               <span style={{ fontSize: 10, color: 'var(--text3)', flex: 1 }}>Show notes on node canvas</span>
-              <button onClick={() => onUpdate({ showNotes: !node.showNotes })}
+              <Button variant="secondary" onClick={() => onUpdate({ showNotes: !node.showNotes })}
                 style={{ background: node.showNotes ? t.color : 'var(--bg)', border: `1.5px solid ${t.color}`,
                   borderRadius: 10, width: 32, height: 18, cursor: 'pointer', position: 'relative',
                   transition: 'background .15s', flexShrink: 0 }}>
                 <div style={{ position: 'absolute', top: 2, left: node.showNotes ? 14 : 2, width: 12, height: 12,
                   borderRadius: '50%', background: node.showNotes ? '#fff' : t.color, transition: 'left .15s' }}/>
-              </button>
+              </Button>
             </div>
             {(Array.isArray(node.notes) ? node.notes : []).map((nt, idx) => (
               <NoteCard key={nt.id} note={nt} canEdit={canEdit}
@@ -5659,9 +5615,9 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
             <div>
               <div style={{ display: 'flex', alignItems: 'center', marginBottom: 6 }}>
                 <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, flex: 1 }}>CUSTOM FIELDS</span>
-                {canEdit && <button onClick={onAddCustom} style={{ fontSize: 9, background: 'none',
+                {canEdit && <Button variant="primary" onClick={onAddCustom} style={{ fontSize: 9, background: 'none',
                   border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text3)',
-                  cursor: 'pointer', padding: '2px 7px', fontFamily: 'var(--font-ui)' }}>+ ADD</button>}
+                  cursor: 'pointer', padding: '2px 7px', fontFamily: 'var(--font-ui)' }}>+ ADD</Button>}
               </div>
               {Object.entries(node.customProps || {}).map(([k, v]) => (
                 <div key={k} style={{ display: 'flex', gap: 4, marginBottom: 5 }}>
@@ -5674,7 +5630,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                     placeholder="value"
                     onKeyDown={e=>e.stopPropagation()}
                   />
-                  {canEdit && <button onClick={() => onDeleteCustom(k)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: 16, flexShrink: 0 }}>×</button>}
+                  {canEdit && <Button variant="destructive" onClick={() => onDeleteCustom(k)}>×</Button>}
                 </div>
               ))}
               {!Object.keys(node.customProps || {}).length && (
@@ -5701,11 +5657,11 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
           <div style={{display:'flex',flexDirection:'column',gap:6}}>
             <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:4}}>
               <span style={{fontSize:10,fontWeight:700,color:'var(--text4)',letterSpacing:2,flex:1}}>SERVICES / VMs / CONTAINERS</span>
-              {canEdit&&<button onClick={()=>{
+              {canEdit&&<Button variant="primary" onClick={()=>{
                 const svcs=[...(node.properties.Services||[]),
                   {id:Math.random().toString(36).slice(2,7),name:'',type:'Docker',ip:'',port:'',status:'Running',image:'',os:'',memory:'',cpu:'',notes:''}];
                 onUpdateProp('Services',svcs);
-              }} style={{fontSize:10,background:'none',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Add</button>}
+              }} style={{fontSize:10,background:'none',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Add</Button>}
             </div>
             {(node.properties.Services||[]).map((svc,si)=>{
               const isAuto=nodes.some(n=>n.id===svc.id);
@@ -5730,8 +5686,8 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                       fontSize:10,fontFamily:'var(--font-ui)',outline:'none',fontWeight:700}}>
                     <option>Running</option><option>Stopped</option><option>Paused</option><option>Error</option><option>Starting</option>
                   </select>
-                  {canEdit&&<button onClick={()=>{const s=(node.properties.Services||[]).filter((_,i)=>i!==si);onUpdateProp('Services',s);}}
-                    style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1}}>×</button>}
+                  {canEdit&&<Button variant="secondary" onClick={()=>{const s=(node.properties.Services||[]).filter((_,i)=>i!==si);onUpdateProp('Services',s);}}
+                    style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1}}>×</Button>}
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'1fr 60px 1fr',gap:4}}>
                   <input value={svc.ip||''} placeholder='IP' disabled={!canEdit}
@@ -5761,19 +5717,19 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
           <div style={{display:'flex',flexDirection:'column',gap:6}}>
             <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
               <span style={{fontSize:10,fontWeight:700,color:'var(--text4)',letterSpacing:2,flex:1}}>PORTS / INTERFACES</span>
-              {canEdit&&unassigned.length>0&&<button onClick={()=>{
+              {canEdit&&unassigned.length>0&&<Button variant="secondary" onClick={()=>{
                 const ports=[...(node.properties.Ports||[])];
                 let ui=0;
                 for(let pi=0;pi<ports.length&&ui<unassigned.length;pi++){
                   if(!ports[pi].connected){ports[pi]={...ports[pi],connected:unassigned[ui]};ui++;}
                 }
                 onUpdateProp('Ports',ports);
-              }} style={{fontSize:10,background:'var(--accent1)18',border:'1px solid var(--accent1)',borderRadius:4,color:'var(--accent1)',cursor:'pointer',padding:'2px 7px',fontFamily:'var(--font-ui)'}}>⚡ Auto-fill</button>}
-              {canEdit&&<button onClick={()=>{
+              }} style={{fontSize:10,background:'var(--accent1)18',border:'1px solid var(--accent1)',borderRadius:4,color:'var(--accent1)',cursor:'pointer',padding:'2px 7px',fontFamily:'var(--font-ui)'}}>⚡ Auto-fill</Button>}
+              {canEdit&&<Button variant="primary" onClick={()=>{
                 const ports=[...(node.properties.Ports||[]),
                   {id:Math.random().toString(36).slice(2,7),label:`Port ${(node.properties.Ports||[]).length+1}`,type:'Ethernet',connected:'',ip:'',vlan:''}];
                 onUpdateProp('Ports',ports);
-              }} style={{fontSize:10,background:'none',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Port</button>}
+              }} style={{fontSize:10,background:'none',borderRadius:4,color:'var(--text3)',cursor:'pointer',padding:'2px 8px',fontFamily:'var(--font-ui)'}}>+ Port</Button>}
             </div>
             {canvasConn.length>0&&(
               <div style={{fontSize:10,color:'var(--text4)',background:'var(--bg3)',borderRadius:5,padding:'4px 8px',display:'flex',flexWrap:'wrap',gap:4,alignItems:'center'}}>
@@ -5815,8 +5771,8 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                 <input value={port.ip||port.vlan||''} placeholder='IP / VLAN' disabled={!canEdit}
                   onChange={e=>{const p=[...node.properties.Ports];p[pi]={...p[pi],ip:e.target.value,vlan:e.target.value};onUpdateProp('Ports',p);}}
                   style={{background:'var(--bg)',borderRadius:4,padding:'3px 5px',color:'var(--text)',fontSize:10,fontFamily:'var(--font-ui)',outline:'none'}}/>
-                {canEdit&&<button onClick={()=>{const p=(node.properties.Ports||[]).filter((_,i)=>i!==pi);onUpdateProp('Ports',p);}}
-                  style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1}}>×</button>}
+                {canEdit&&<Button variant="secondary" onClick={()=>{const p=(node.properties.Ports||[]).filter((_,i)=>i!==pi);onUpdateProp('Ports',p);}}
+                  style={{background:'none',border:'none',color:'var(--danger)',cursor:'pointer',fontSize:14,lineHeight:1}}>×</Button>}
               </div>
             ))}
             {!node.properties?.Ports?.length&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic'}}>No ports configured</div>}
@@ -5857,7 +5813,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                   <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text4)', letterSpacing: 1.5, marginBottom: 4 }}>{cat.toUpperCase()}</div>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4 }}>
                     {items.map(([key, nt]) => (
-                      <button key={key}
+                      <Button variant="primary" key={key}
                         onClick={() => {
                           if (key === node.type) return;
                           if (Object.values(node.properties || {}).some(v => v)) {
@@ -5878,7 +5834,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                         <NodeIcon icon={nt.icon} size={13} color={key===node.type?nt.color:'var(--text4)'} />
                         <span style={{ fontWeight: key === node.type ? 700 : 400 }}>{nt.label}</span>
                         {key === node.type && <span style={{ fontSize: 9 }}>✓</span>}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -5895,23 +5851,23 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                     Change to {NT[confirmType]?.icon} {NT[confirmType]?.label}? You can keep or reset existing property values.
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <button onClick={() => { onChangeType(confirmType); setConfirmType(null); onTabChange('props'); }}
+                    <Button variant="primary" onClick={() => { onChangeType(confirmType); setConfirmType(null); onTabChange('props'); }}
                       style={{ flex: 1, padding: '7px', background: 'var(--accent2)', border: 'none', borderRadius: 6,
                         color: '#fff', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)', fontWeight: 700 }}>
                       Change + Keep Props
-                    </button>
-                    <button onClick={() => {
+                    </Button>
+                    <Button variant="primary" onClick={() => {
                       onUpdate({ type: confirmType, properties: { ...(DP[confirmType] || {}) } });
                       setConfirmType(null); onTabChange('props');
                     }}
                       style={{ flex: 1, padding: '7px', background: 'var(--bg3)', border: '1px solid var(--border)',
                         borderRadius: 6, color: 'var(--text)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
                       Reset Props
-                    </button>
-                    <button onClick={() => setConfirmType(null)}
+                    </Button>
+                    <Button variant="primary" onClick={() => setConfirmType(null)}
                       style={{ padding: '7px 12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text4)', fontSize: 14 }}>
                       ×
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -6163,9 +6119,9 @@ function CommentsPanel({comments,nodes,commentNode,setCommentNode,draft,setDraft
                     <span style={{fontSize:9,color:"var(--text4)"}}>
                       {new Date(c.ts).toLocaleDateString()} {new Date(c.ts).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})}
                     </span>
-                    <button onClick={()=>onDelete(nodeId,c.id)}
+                    <Button variant="destructive" onClick={()=>onDelete(nodeId,c.id)}
                       style={{marginLeft:"auto",background:"none",border:"none",
-                        color:"var(--text4)",cursor:"pointer",fontSize:12,opacity:.5}}>×</button>
+                        color:"var(--text4)",cursor:"pointer",fontSize:12,opacity:.5}}>×</Button>
                   </div>
                   <div style={{fontSize:11,color:"var(--text2)",lineHeight:1.5,whiteSpace:"pre-wrap"}}>{c.text}</div>
                 </div>
@@ -6189,10 +6145,10 @@ function CommentsPanel({comments,nodes,commentNode,setCommentNode,draft,setDraft
               style={{flex:1,background:"var(--bg)",
                 borderRadius:"var(--radius-sm)",padding:"6px 8px",color:"var(--text)",
                 fontSize:11,fontFamily:"var(--font-ui)",resize:"none",outline:"none"}}/>
-            <button onClick={addComment}
+            <Button variant="secondary" onClick={addComment}
               style={{background:"var(--accent2)",border:"none",borderRadius:"var(--radius-sm)",
                 color:"#fff",cursor:"pointer",padding:"0 10px",fontSize:11,fontWeight:700,
-                fontFamily:"var(--font-ui)",flexShrink:0}}>↑</button>
+                fontFamily:"var(--font-ui)",flexShrink:0}}>↑</Button>
           </div>
         </div>
       ):(
@@ -6218,15 +6174,15 @@ function ExportModal({nodes,edges,mapTitle,exportLLM,onClose}){
       <div style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",padding:20,width:"100%",maxWidth:600,maxHeight:"84vh",display:"flex",flexDirection:"column",gap:14}} onClick={e=>e.stopPropagation()}>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{fontWeight:700,fontSize:14,color:"var(--accent)"}}>↗ EXPORT</span>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:22}}>×</button>
+          <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:22}}>×</Button>
         </div>
         <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           {[["llm","🤖 LLM Text"],["json","{ } JSON"]].map(([id,label])=>(
-            <button key={id} onClick={()=>setTab(id)} style={tbS(tab===id)}>{label}</button>
+            <Button variant="ghost" key={id} onClick={()=>setTab(id)} style={tbS(tab===id)}>{label}</Button>
           ))}
-          <button onClick={()=>exportAsPNG(nodes,edges,mapTitle)} style={tbS(false,"#9C27B0")}>🖼 PNG</button>
+          <Button variant="primary" onClick={()=>exportAsPNG(nodes,edges,mapTitle)} style={tbS(false,"#9C27B0")}>🖼 PNG</Button>
           <div style={{flex:1}}/>
-          <button onClick={copy} style={tbS(copied,"var(--success)")}>{copied?"✓ COPIED":"📋 COPY"}</button>
+          <Button variant="primary" onClick={copy} style={tbS(copied,"var(--success)")}>{copied?"✓ COPIED":"📋 COPY"}</Button>
         </div>
         {tab==="llm"&&<div style={{fontSize:12,color:"var(--text3)",background:"var(--bg3)",borderRadius:"var(--radius-sm)",padding:"8px 12px",lineHeight:1.6}}>Grouped by category · Arrows as sentences · Paste into any LLM</div>}
         <pre style={{background:"var(--bg)",borderRadius:"var(--radius-md)",padding:16,fontSize:12,overflow:"auto",flex:1,margin:0,color:"var(--text)",lineHeight:1.65,whiteSpace:"pre-wrap"}}>{content}</pre>

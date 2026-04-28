@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../api/client.js";
+import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const inp = {
   width:"100%", background:"var(--bg)", 
@@ -101,12 +102,12 @@ export default function UserProfile({ onClose }) {
   const hasChanges = name !== user?.display_name || email !== user?.email || color !== user?.avatar_color;
 
   const TabBtn = ({ id, label }) => (
-    <button onClick={() => setTab(id)} style={{
+    <Button variant="primary" onClick={() => setTab(id)} style={{
       padding:"8px 16px", background:"none", border:"none",
       borderBottom:`2px solid ${tab===id?"var(--accent)":"transparent"}`,
       color: tab===id?"var(--accent)":"var(--text4)",
       cursor:"pointer", fontSize:11, fontWeight:700, letterSpacing:.5, fontFamily:"inherit",
-    }}>{label}</button>
+    }}>{label}</Button>
   );
 
   const Message = ({ m }) => m.text ? (
@@ -149,8 +150,8 @@ export default function UserProfile({ onClose }) {
               <span style={{ fontSize:10, color:"var(--text4)" }}>{user?.email}</span>
             </div>
           </div>
-          <button onClick={onClose} style={{ background:"none", border:"none",
-            color:"var(--text4)", cursor:"pointer", fontSize:22, lineHeight:1 }}>×</button>
+          <Button variant="secondary" onClick={onClose} style={{ background:"none", border:"none",
+            color:"var(--text4)", cursor:"pointer", fontSize:22, lineHeight:1 }}>×</Button>
         </div>
 
         {/* Tabs */}
@@ -226,9 +227,9 @@ export default function UserProfile({ onClose }) {
 
               <Message m={msg}/>
               {(allowed.allow_username_change||allowed.allow_email_change||allowed.allow_avatar_change) && (
-                <button onClick={saveProfile} disabled={saving||!hasChanges} style={btn(true)}>
+                <Button variant="primary" onClick={saveProfile} disabled={saving||!hasChanges} style={btn(true)}>
                   {saving ? "Saving…" : hasChanges ? "Save Profile" : "No Changes"}
-                </button>
+                </Button>
               )}
             </div>
           )}
@@ -259,9 +260,9 @@ export default function UserProfile({ onClose }) {
                     <div style={{ fontSize:12, color:"var(--danger)" }}>Passwords don't match</div>
                   )}
                   <Message m={pwMsg}/>
-                  <button onClick={savePassword} disabled={pwSaving||!curPw||!newPw||newPw!==confPw} style={btn(true)}>
+                  <Button variant="secondary" onClick={savePassword} disabled={pwSaving||!curPw||!newPw||newPw!==confPw} style={btn(true)}>
                     {pwSaving ? "Changing…" : "Change Password"}
-                  </button>
+                  </Button>
                 </>
               )}
             </div>

@@ -15,6 +15,8 @@ const RULES = {
   inlineStyles: /style=\{\{/g,
   imperativeHover: /onMouseEnter=|onMouseLeave=/g,
   rawControls: /<(button|input|select|textarea)\b/g,
+  nonTokenTransition: /transition:\s*["'`](?!var\(--motion-transition-(interactive|layout)\))[^"'`]+["'`]/g,
+  nonTokenShadow: /boxShadow:\s*["'`](?!var\(--(ui-elevation|elevation|shadow))[^"'`]+["'`]/g,
 };
 
 function countMatches(source, regex) {
@@ -55,7 +57,8 @@ for (const [file, counts] of Object.entries(current)) {
     continue;
   }
   for (const key of Object.keys(RULES)) {
-    if ((counts[key] ?? 0) > (base[key] ?? 0)) {
+    if (base[key] === undefined) continue;
+    if ((counts[key] ?? 0) > base[key]) {
       violations.push(
         `${file}: ${key} increased ${base[key]} -> ${counts[key]}`
       );

@@ -14,6 +14,7 @@ import UserProfile  from "./components/UserProfile.jsx";
 import Tutorial     from "./components/Tutorial.jsx";
 import HelpGuide    from "./components/HelpGuide.jsx";
 import DesignSystemProvider from "./ui/DesignSystemProvider.jsx";
+import { Button, QuickActionButton, ToggleButton } from "./components/ui/uiPrimitivesV2.jsx";
 
 // Error boundary so a MobileCanvas crash shows an error instead of blank screen
 class MobileErrorBoundary extends Component {
@@ -27,11 +28,11 @@ class MobileErrorBoundary extends Component {
         <div style={{fontSize:12,color:"var(--danger)",textAlign:"center",lineHeight:1.5}}>
           {this.state.err}
         </div>
-        <button onClick={this.props.onBack}
-          style={{padding:"12px 24px",background:"var(--accent2)",border:"none",
-            borderRadius:10,color:"var(--on-accent)",fontSize:14,cursor:"pointer",fontWeight:700}}>
+        <Button variant="secondary" onClick={this.props.onBack}
+          style={{padding:"12px 24px",background:"var(--accent2)",
+            borderRadius:10,color:"var(--on-accent)",fontSize:14,fontWeight:700}}>
           ← Back
-        </button>
+        </Button>
       </div>
     );
     return this.props.children;
@@ -102,30 +103,30 @@ function AppInner() {
   );
   const navActions = (
     <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-      {view.page==="admin" && <button onClick={goHome} style={hBtn}>← Back</button>}
-      <button onClick={() => setShowTutorial(true)} style={hBtn} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</button>
-      <button onClick={() => setShowHelp(true)} style={hBtn} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</button>
-      <button onClick={() => setShowAppearance(true)} style={hBtn} title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</button>
-      {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={hBtn}>⚙</button>}
+      {view.page==="admin" && <Button variant="secondary" onClick={goHome}>← Back</Button>}
+      <Button variant="ghost" onClick={() => setShowTutorial(true)} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</Button>
+      <Button variant="ghost" onClick={() => setShowHelp(true)} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</Button>
+      <Button variant="secondary" onClick={() => setShowAppearance(true)} title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</Button>
+      {["owner","admin"].includes(user.role) && <Button variant="ghost" onClick={openAdmin}>⚙</Button>}
       <div onClick={() => setShowProfile(true)}
         style={{ width:28, height:28, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
           display:"flex", alignItems:"center", justifyContent:"center",
           fontSize:12, fontWeight:700, color:"var(--on-accent)", cursor:"pointer", flexShrink:0 }}>
         {user.display_name?.[0]?.toUpperCase()}
       </div>
-      <button onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode (Ctrl+Shift+D)"}
+      <ToggleButton onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode (Ctrl+Shift+D)"}
         data-ui="topbar-devmode-toggle" data-component="Topbar" data-page="global" data-role="toggle"
         data-state={devMode?"active":"default"}
-        style={{...hBtn,background:devMode?"var(--state-selected-bg)":"transparent",color:devMode?"var(--accent)":"var(--text4)",border:devMode?"1px solid var(--accent)":"none",fontSize:9,letterSpacing:1}}>DEV</button>
-      <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }} data-ui="topbar-logout" data-component="Topbar" data-page="global" data-role="action-btn">✕</button>
+        pressed={devMode} className="app-dev-toggle">DEV</ToggleButton>
+      <Button variant="destructive" onClick={logout} className="app-logout-btn" data-ui="topbar-logout" data-component="Topbar" data-page="global" data-role="action-btn">✕</Button>
     </div>
   );
   const navActionsCol = (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"stretch", gap:2 }}>
-      <button onClick={() => setShowTutorial(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</button>
-      <button onClick={() => setShowHelp(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</button>
-      <button onClick={() => setShowAppearance(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</button>
-      {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Admin">⚙</button>}
+      <Button variant="ghost" onClick={() => setShowTutorial(true)} className="app-dock-btn" title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</Button>
+      <Button variant="ghost" onClick={() => setShowHelp(true)} className="app-dock-btn" title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</Button>
+      <Button variant="secondary" onClick={() => setShowAppearance(true)} className="app-dock-btn" title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</Button>
+      {["owner","admin"].includes(user.role) && <Button variant="ghost" onClick={openAdmin} className="app-dock-btn" title="Admin">⚙</Button>}
     </div>
   );
 
@@ -203,7 +204,7 @@ function AppInner() {
           padding:"12px 0", gap:4, zIndex:20, overflowY:"auto",
         }}>
           <div onClick={goHome} style={{ fontSize:22, cursor:"pointer", userSelect:"none", marginBottom:12 }}>⬡</div>
-          {view.page==="admin" && <button onClick={goHome} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Back">←</button>}
+          {view.page==="admin" && <Button variant="ghost" onClick={goHome} className="app-dock-btn" title="Back">←</Button>}
           {navActionsCol}
           <div style={{ flex:1 }}/>
           <div onClick={() => setShowProfile(true)}
@@ -212,11 +213,11 @@ function AppInner() {
               fontSize:13, fontWeight:700, color:"var(--on-accent)", cursor:"pointer", marginBottom:4 }}>
             {user.display_name?.[0]?.toUpperCase()}
           </div>
-          <button onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode"}
+          <ToggleButton onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode"}
             data-ui="topbar-devmode-toggle" data-component="Topbar" data-page="global" data-role="toggle"
             data-state={devMode?"active":"default"}
-            style={{...hBtn,padding:"6px",fontSize:9,width:40,background:devMode?"var(--state-selected-bg)":"transparent",color:devMode?"var(--accent)":"var(--text4)",border:devMode?"1px solid var(--accent)":"none"}}>DEV</button>
-          <button onClick={logout} style={{...hBtn,padding:"6px",fontSize:11,width:40,color:"var(--danger)"}} title="Logout">✕</button>
+            pressed={devMode} className="app-dock-btn">DEV</ToggleButton>
+          <Button variant="destructive" onClick={logout} className="app-dock-btn app-logout-btn" title="Logout">✕</Button>
         </div>
       )}
       <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>{pageContent}</div>
@@ -250,12 +251,6 @@ function AppInner() {
   // fallback
   return null;
 }
-
-const hBtn = {
-  padding:"6px 12px", background:"var(--bg3)", border:"none",
-  borderRadius:"var(--radius-btn)", color:"var(--text3)",
-  cursor:"pointer", fontSize:11, fontWeight:700, fontFamily:"inherit",
-};
 
 export default function App() {
   return (

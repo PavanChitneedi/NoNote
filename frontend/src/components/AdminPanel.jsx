@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
+import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent2)", viewer:"var(--text3)", restricted:"var(--text4)" };
 const GC = ["var(--accent2)","var(--danger)","#2196F3","var(--success)","var(--accent)","#9C27B0","#00BCD4","var(--danger)","#FF5722","#607D8B"];
@@ -62,7 +63,7 @@ function Alert({color,children}){
 }
 function Tab({label,active,onClick,badge}){
   return(
-    <button onClick={onClick} style={{padding:"8px 14px",background:"none",border:"none",
+    <Button variant="secondary" onClick={onClick} style={{padding:"8px 14px",background:"none",border:"none",
       borderBottom:`2px solid ${active?"var(--accent)":"transparent"}`,
       color:active?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:11,
       fontWeight:700,letterSpacing:.5,fontFamily:"inherit",whiteSpace:"nowrap",
@@ -70,7 +71,7 @@ function Tab({label,active,onClick,badge}){
       {label}
       {badge!==undefined&&badge>0&&<span style={{background:"var(--accent2)",color:"var(--on-accent)",
         borderRadius:10,fontSize:9,padding:"1px 5px",lineHeight:1.5}}>{badge}</span>}
-    </button>
+    </Button>
   );
 }
 
@@ -124,8 +125,8 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
             <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Edit User</div>
             <div style={{fontSize:11,color:"var(--text4)"}}>{u.email}</div>
           </div>
-          <button onClick={onClose} style={{background:"none",border:"none",
-            fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</button>
+          <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",
+            fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</Button>
         </div>
 
         {err && <Alert color="var(--danger)">{err}</Alert>}
@@ -190,10 +191,10 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
         )}
 
         <div style={{display:"flex",gap:10}}>
-          <button onClick={save} disabled={saving} style={{...btn(true),flex:1}}>
+          <Button variant="primary" onClick={save} disabled={saving} style={{...btn(true),flex:1}}>
             {saving?"Saving…":"Save Changes"}
-          </button>
-          <button onClick={onClose} style={btn(false)}>Cancel</button>
+          </Button>
+          <Button variant="secondary" onClick={onClose} style={btn(false)}>Cancel</Button>
         </div>
       </div>
     </div>
@@ -317,7 +318,7 @@ export default function AdminPanel({ onBack }) {
 
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
-        <button onClick={onBack} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>←</button>
+        <Button variant="ghost" onClick={onBack}>←</Button>
         <div>
           <div style={{fontSize:18,fontWeight:700,color:"var(--text)"}}>Administration</div>
           <div style={{fontSize:11,color:"var(--text4)"}}>Manage users, groups, permissions and system settings</div>
@@ -342,9 +343,9 @@ export default function AdminPanel({ onBack }) {
           <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search by name or email…" style={{...inp,flex:1,minWidth:200}}/>
-            <button onClick={()=>setShowCreate(v=>!v)} style={btn(true)}>
+            <Button variant="destructive" onClick={()=>setShowCreate(v=>!v)} style={btn(true)}>
               {showCreate?"✕ Cancel":"+ Create User"}
-            </button>
+            </Button>
           </div>
 
           {/* Role legend */}
@@ -384,8 +385,8 @@ export default function AdminPanel({ onBack }) {
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
-                <button type="submit" disabled={creating} style={btn(true)}>{creating?"Creating…":"Create User"}</button>
-                <button type="button" onClick={()=>setShowCreate(false)} style={btn(false)}>Cancel</button>
+                <Button variant="primary" type="submit" disabled={creating} style={btn(true)}>{creating?"Creating…":"Create User"}</Button>
+                <Button variant="primary" type="button" onClick={()=>setShowCreate(false)} style={btn(false)}>Cancel</Button>
               </div>
             </form>
           )}
@@ -427,9 +428,9 @@ export default function AdminPanel({ onBack }) {
                       </div>
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
-                      <button onClick={()=>setEditUser(u)} style={btn(false)}>Edit</button>
+                      <Button variant="secondary" onClick={()=>setEditUser(u)} style={btn(false)}>Edit</Button>
                       {u.id!==me?.id&&me?.role==="owner"&&(
-                        <button onClick={()=>handleDelete(u.id)} style={btn(false,true)}>✕</button>
+                        <Button variant="destructive" onClick={()=>handleDelete(u.id)} style={btn(false,true)}>✕</Button>
                       )}
                     </div>
                   </div>
@@ -445,7 +446,7 @@ export default function AdminPanel({ onBack }) {
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
             <div style={{fontSize:12,color:"var(--text4)"}}>Groups apply permission sets to multiple users at once. Assign users to groups in the Users tab.</div>
-            <button onClick={()=>setShowCG(v=>!v)} style={btn(true)} >{showCG?"✕ Cancel":"+ Create Group"}</button>
+            <Button variant="destructive" onClick={()=>setShowCG(v=>!v)} style={btn(true)} >{showCG?"✕ Cancel":"+ Create Group"}</Button>
           </div>
 
           {showCG&&(
@@ -496,8 +497,8 @@ export default function AdminPanel({ onBack }) {
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
-                <button type="submit" disabled={creatingG} style={btn(true)}>{creatingG?"Creating…":"Create Group"}</button>
-                <button type="button" onClick={()=>setShowCG(false)} style={btn(false)}>Cancel</button>
+                <Button variant="primary" type="submit" disabled={creatingG} style={btn(true)}>{creatingG?"Creating…":"Create Group"}</Button>
+                <Button variant="secondary" type="button" onClick={()=>setShowCG(false)} style={btn(false)}>Cancel</Button>
               </div>
             </form>
           )}
@@ -530,7 +531,7 @@ export default function AdminPanel({ onBack }) {
                         <span style={{fontSize:9,color:"var(--text4)"}}>No extra permissions</span>}
                     </div>
                   </div>
-                  <button onClick={()=>handleDeleteGroup(g.id)} style={btn(false,true)}>✕ Delete</button>
+                  <Button variant="destructive" onClick={()=>handleDeleteGroup(g.id)} style={btn(false,true)}>✕ Delete</Button>
                 </div>
               ))}
             </div>
@@ -624,10 +625,10 @@ export default function AdminPanel({ onBack }) {
                   })}
                 </div>
               ))}
-              <button onClick={handleSaveSettings} disabled={savingSet}
+              <Button variant="primary" onClick={handleSaveSettings} disabled={savingSet}
                 style={{...btn(true),marginTop:4}}>
                 {savingSet?"Saving…":"Save All Settings"}
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -652,12 +653,12 @@ export default function AdminPanel({ onBack }) {
                 style={{width:46,background:"transparent",border:"none",color:"var(--text)",
                   fontSize:11,fontFamily:"inherit",outline:"none",textAlign:"center"}} min="1" max="365"/>
               <span style={{fontSize:10,color:"var(--text4)"}}>days</span>
-              <button onClick={()=>apiFetch("/users/logs/retention",{method:"PATCH",body:JSON.stringify({days:parseInt(logRetInput)||7})}).catch(()=>{})}
-                style={{...btn(true),padding:"3px 9px",fontSize:10}}>Save</button>
+              <Button variant="primary" onClick={()=>apiFetch("/users/logs/retention",{method:"PATCH",body:JSON.stringify({days:parseInt(logRetInput)||7})}).catch(()=>{})}
+                style={{...btn(true),padding:"3px 9px",fontSize:10}}>Save</Button>
             </div>
-            <button onClick={()=>apiFetch("/users/logs",{method:"DELETE"})
+            <Button variant="destructive" onClick={()=>apiFetch("/users/logs",{method:"DELETE"})
                 .then(d=>{alert(`Pruned ${d.deleted} old entries`);setTab("_");setTimeout(()=>setTab("logs"),0);}).catch(()=>{})}
-              style={{...btn(false,true),padding:"5px 12px",fontSize:10}}>🗑 Prune</button>
+              style={{...btn(false,true),padding:"5px 12px",fontSize:10}}>🗑 Prune</Button>
           </div>
           {logs.length===0
             ?<div style={{color:"var(--text4)",padding:20}}>No logs found for this filter.</div>

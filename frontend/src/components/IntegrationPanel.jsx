@@ -1,3 +1,4 @@
+import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 // IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiFetch } from '../api/client.js';
@@ -217,13 +218,13 @@ function ProxmoxMetrics({ data }) {
                   <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
                     <span style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginRight:4}}>SHOW</span>
                     {[['all','All'],['vm','VMs'],['ct','CTs'],['stopped','Stopped']].map(([v,l])=>(
-                      <button key={v} onClick={e=>{e.stopPropagation();setFilter(v)}}
+                      <Button variant="primary" key={v} onClick={e=>{e.stopPropagation();setFilter(v)}}
                         style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
                           fontFamily:'var(--font-ui)',fontWeight:600,
                           background:filter===v?'var(--accent2)':'var(--bg)',
                         color:filter===v?'var(--on-accent)':'var(--text4)'}}>
                         {l} {v==='all'?`(${allGuests.length})`:v==='vm'?`(${n.vms.length})`:v==='ct'?`(${n.lxc.length})`:``}
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -437,14 +438,14 @@ function TrueNASMetrics({ data }) {
         <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
           <span style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginRight:4}}>SHOW</span>
           {filterTabs.map(([v,l,count])=>(
-            <button key={v} onMouseDown={e=>e.stopPropagation()}
+            <Button variant="primary" key={v} onMouseDown={e=>e.stopPropagation()}
               onClick={e=>{e.stopPropagation();setFilter(v);}}
               style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
                 fontFamily:'var(--font-ui)',fontWeight:600,
                 background:filter===v?'var(--accent2)':'var(--bg)',
                 color:filter===v?'var(--on-accent)':'var(--text4)'}}>
               {l} ({count})
-            </button>
+            </Button>
           ))}
         </div>
 

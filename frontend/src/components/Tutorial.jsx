@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 export const TUTORIAL_STEPS = [
   { id:"welcome", target:null, page:"all",
@@ -186,20 +187,20 @@ export default function Tutorial({ page, onClose }) {
         <div style={{fontSize:12,color:"var(--text2)",lineHeight:1.7,marginBottom:18}}>{step.body}</div>
         {/* Nav */}
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
+          <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
             fontSize:11,fontFamily:"var(--font-ui)",padding:"4px 0",flex:1,textAlign:"left"}}>
             Skip tour
-          </button>
+          </Button>
           {stepIdx > 0 && (
-            <button onClick={prev} style={{background:"var(--bg3)",
+            <Button variant="secondary" onClick={prev} style={{background:"var(--bg3)",
               borderRadius:6,padding:"6px 14px",color:"var(--text3)",cursor:"pointer",
-              fontSize:11,fontFamily:"var(--font-ui)",fontWeight:700}}>← Back</button>
+              fontSize:11,fontFamily:"var(--font-ui)",fontWeight:700}}>← Back</Button>
           )}
-          <button onClick={next} style={{background:ACCENT,border:"none",borderRadius:6,
+          <Button variant="primary" onClick={next} style={{background:ACCENT,border:"none",borderRadius:6,
             padding:"6px 20px",color:"var(--on-accent)",cursor:"pointer",
             fontSize:11,fontFamily:"var(--font-ui)",fontWeight:800}}>
             {isLast ? "Finish ✓" : "Next →"}
-          </button>
+          </Button>
         </div>
         {/* Dots */}
         <div style={{display:"flex",gap:4,justifyContent:"center",marginTop:14}}>

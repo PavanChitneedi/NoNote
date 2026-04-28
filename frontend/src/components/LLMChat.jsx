@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import {
+import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
   getLLMProviders, getConversations, createConversation,
   deleteConversation, getMessages, sendMessage,
 } from "../api/client.js";
@@ -149,11 +149,11 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
           {/* Provider + New Chat */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {providers.length === 0 ? (
-              <button onClick={() => setShowSettings(true)} style={{
+              <Button variant="primary" onClick={() => setShowSettings(true)} style={{
                 flex: 1, padding: "7px 10px", background: "var(--accent2)11",
                 border: "1px dashed var(--accent2)", borderRadius: "var(--radius-sm)",
                 color: "var(--accent)", cursor: "pointer", fontSize: 11, fontFamily: "var(--font-ui)",
-              }}>+ Add LLM Provider</button>
+              }}>+ Add LLM Provider</Button>
             ) : (
               <select value={selectedProvider} onChange={e => setSelectedProvider(e.target.value)} style={{
                 flex: 1, background: "var(--bg)", border: "1px solid var(--border)",
@@ -167,12 +167,12 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 ))}
               </select>
             )}
-            <button onClick={startNewChat} disabled={!selectedProvider} style={{
+            <Button variant="primary" onClick={startNewChat} disabled={!selectedProvider} style={{
               padding: "6px 12px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)",
               border: "none", borderRadius: "var(--radius-sm)", color: selectedProvider ? "var(--on-accent)" : "var(--text4)",
               fontSize: 10, fontWeight: 700, letterSpacing: 0.5, cursor: selectedProvider ? "pointer" : "default",
               fontFamily: "var(--font-ui)", flexShrink: 0, transition: "all .15s",
-            }}>+ NEW</button>
+            }}>+ NEW</Button>
           </div>
 
           {/* Conversation pills — horizontal scroll */}
@@ -232,17 +232,17 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 </div>
               </div>
               {providers.length === 0 ? (
-                <button onClick={() => setShowSettings(true)} style={{
+                <Button variant="primary" onClick={() => setShowSettings(true)} style={{
                   padding: "9px 18px", background: "var(--accent2)", border: "none",
                   borderRadius: "var(--radius-md)", color: "var(--on-accent)", fontSize: 11, fontWeight: 700,
                   cursor: "pointer", fontFamily: "var(--font-ui)",
-                }}>+ Add your first LLM provider</button>
+                }}>+ Add your first LLM provider</Button>
               ) : (
-                <button onClick={startNewChat} disabled={!selectedProvider} style={{
+                <Button variant="primary" onClick={startNewChat} disabled={!selectedProvider} style={{
                   padding: "9px 18px", background: "var(--accent2)", border: "none",
                   borderRadius: "var(--radius-md)", color: "var(--on-accent)", fontSize: 11, fontWeight: 700,
                   cursor: "pointer", fontFamily: "var(--font-ui)",
-                }}>Start a chat</button>
+                }}>Start a chat</Button>
               )}
             </div>
           ) : messages.length === 0 && !loading ? (
@@ -254,7 +254,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%" }}>
                 {SUGGESTED.map(p => (
-                  <button key={p}
+                  <Button variant="primary" key={p}
                     onClick={() => { setInput(p); textareaRef.current?.focus(); }}
                     style={{
                       padding: "8px 12px", background: "var(--bg3)", border: "1px solid var(--border)",
@@ -262,7 +262,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                       fontSize: 11, fontFamily: "var(--font-ui)", textAlign: "left",
                       transition: "var(--transition-all)",
                     }}
-                  >{p}</button>
+                  >{p}</Button>
                 ))}
               </div>
             </div>
@@ -314,7 +314,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
               }}
             />
-            <button
+            <Button variant="secondary"
               onClick={handleSend}
               disabled={!activeConvId || !input.trim() || sending}
               style={{
@@ -325,7 +325,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
                 transition: "all .15s",
               }}
-            >↑</button>
+            >↑</Button>
           </div>
           <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 5 }}>
             📌 {nodes.length} nodes · {edges.length} connections in context · Shift+Enter for newline

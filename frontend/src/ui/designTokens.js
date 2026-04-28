@@ -17,12 +17,15 @@ export const designTokens = {
     weightBold: 700,
   },
   space: {
+    0: "0px",
     1: "4px",
     2: "8px",
     3: "12px",
     4: "16px",
     5: "20px",
     6: "24px",
+    7: "28px",
+    8: "32px",
   },
   radius: {
     xs: "6px",
@@ -32,14 +35,16 @@ export const designTokens = {
     pill: "999px",
   },
   shadow: {
-    sm: "var(--shadow-node-xs,2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight))",
-    md: "var(--shadow-node-sm,4px 4px 10px var(--neu-shadow),-2px -2px 5px var(--neu-hilight))",
-    lg: "var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
+    level0: "none",
+    level1: "var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))",
+    level2: "var(--nEs,4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))",
+    level3: "var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
+    insetActive: "var(--neu-inset-xs)",
+    focus: "var(--shadow-focus)",
   },
   motion: {
-    fast: "120ms",
-    normal: "160ms",
-    easing: "ease",
+    durationUi: "160ms",
+    easingUi: "cubic-bezier(0.2, 0, 0, 1)",
   },
 };
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { getLLMProviders, createLLMProvider, updateLLMProvider, deleteLLMProvider, probeLLMModels } from "../api/client.js";
+import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const PRESETS = {
   openai:      { label:"OpenAI (ChatGPT)",          icon:"🟢", group:"Frontier",
@@ -211,7 +212,7 @@ export default function LLMSettings({ onClose }) {
             <div style={{ fontSize:13, fontWeight:700, color:"var(--text)" }}>LLM Providers</div>
             <div style={{ fontSize:10, color:"var(--text4)" }}>API keys are encrypted at rest — never exposed to the frontend</div>
           </div>
-          <button onClick={onClose} style={S.xBtn}>×</button>
+          <Button variant="ghost" onClick={onClose}>×</Button>
         </div>
 
         <div style={{ flex:1, overflow:"auto", padding:20, display:"flex", flexDirection:"column", gap:14 }}>
@@ -251,13 +252,13 @@ export default function LLMSettings({ onClose }) {
                         textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.base_url}</div>
                     </div>
                     <div style={{ display:"flex", gap:5, flexShrink:0 }}>
-                      <button onClick={() => isActiveEdit ? cancelForm() : openEdit(p)}
+                      <Button variant="primary" onClick={() => isActiveEdit ? cancelForm() : openEdit(p)}
                         style={{ ...S.ghost, padding:"4px 10px", fontSize:9,
                           background: isActiveEdit ? "var(--accent2)22" : undefined,
                           color: isActiveEdit ? "var(--accent2)" : undefined }}>
                         {isActiveEdit ? "CANCEL" : "EDIT"}
-                      </button>
-                      <button onClick={() => handleDelete(p.id)} style={S.danger}>REMOVE</button>
+                      </Button>
+                      <Button variant="destructive" onClick={() => handleDelete(p.id)} style={S.danger}>REMOVE</Button>
                     </div>
                   </div>
                 );
@@ -337,25 +338,25 @@ export default function LLMSettings({ onClose }) {
                         </datalist>
                         <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginTop:5 }}>
                           {displayModels.map(m => (
-                            <button key={m} type="button" onClick={() => setForm(f => ({ ...f, model:m }))}
+                            <Button variant="primary" key={m} type="button" onClick={() => setForm(f => ({ ...f, model:m }))}
                               style={{ padding:"2px 8px", fontSize:9,
                                 border:`1px solid ${form.model===m?"var(--accent2)":"var(--border)"}`,
                                 borderRadius:4, background:form.model===m?"var(--accent2)18":"transparent",
                                 color:form.model===m?"var(--accent)":"var(--text3)",
                                 cursor:"pointer", fontFamily:"inherit" }}>
                               {m.split("/").pop()}
-                            </button>
+                            </Button>
                           ))}
                         </div>
                       </>
                     )}
                     {probeError && <div style={{ fontSize:10, color:"var(--danger)", marginTop:4 }}>⚠ {probeError}</div>}
                     {preset.autoDiscover && !probing && !probeError && discoveredModels.length === 0 && (
-                      <button type="button" onClick={() => discoverModels(form.base_url || preset.placeholder_url)}
+                      <Button variant="primary" type="button" onClick={() => discoverModels(form.base_url || preset.placeholder_url)}
                         style={{ marginTop:5, fontSize:9, color:"var(--accent)", background:"none", border:"none",
                           cursor:"pointer", padding:0, fontFamily:"inherit" }}>
                         🔍 Detect models
-                      </button>
+                      </Button>
                     )}
                   </div>
 
@@ -394,17 +395,17 @@ export default function LLMSettings({ onClose }) {
 
                 {/* Actions */}
                 <div style={{ display:"flex", gap:8 }}>
-                  <button type="submit" disabled={saving} style={{ ...S.primary, opacity:saving?0.7:1 }}>
+                  <Button variant="primary" type="submit" disabled={saving} style={{ ...S.primary, opacity:saving?0.7:1 }}>
                     {saving ? "Saving…" : isEdit ? "SAVE CHANGES" : "ADD PROVIDER"}
-                  </button>
-                  <button type="button" onClick={cancelForm} style={S.ghost}>CANCEL</button>
+                  </Button>
+                  <Button variant="secondary" type="button" onClick={cancelForm} style={S.ghost}>CANCEL</Button>
                 </div>
               </form>
             </div>
           ) : (
-            <button onClick={openNew} style={{ ...S.primary, alignSelf:"flex-start" }}>
+            <Button variant="primary" onClick={openNew} style={{ ...S.primary, alignSelf:"flex-start" }}>
               + ADD PROVIDER
-            </button>
+            </Button>
           )}
 
           <div style={{ fontSize:10, color:"var(--text4)", lineHeight:1.6,

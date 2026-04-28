@@ -1,3 +1,4 @@
+import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 // NodeAIChat — compact AI chat focused on a single node, for the InlineNodeEditor AI tab
 import { useState, useEffect, useRef } from "react";
 import { getLLMProviders, getConversations, createConversation, getMessages, sendMessage } from "../api/client.js";
@@ -121,24 +122,24 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
             {providers.map(p => <option key={p.id} value={p.id}>{PICONS[p.provider]||"🔌"} {p.name} · {p.model}</option>)}
           </select>
         )}
-        <button
+        <Button variant="primary"
           onMouseDown={e => e.stopPropagation()}
           onClick={e => { e.stopPropagation(); newConv(); }}
           disabled={!selectedProvider}
           style={{ padding: "5px 10px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)", border: "none", borderRadius: "var(--radius-xs)", color: selectedProvider ? "var(--on-accent)" : "var(--text4)", fontSize: 10, fontWeight: 700, cursor: selectedProvider ? "pointer" : "default", fontFamily: "var(--font-ui)", flexShrink: 0 }}>
           + NEW
-        </button>
+        </Button>
       </div>
 
       {/* ── Conversation pills ── */}
       {conversations.length > 0 && (
         <div style={{ display: "flex", gap: 5, overflowX: "auto", padding: "6px 12px", borderBottom: "1px solid var(--border2)", flexShrink: 0, scrollbarWidth: "none" }}>
           {conversations.map(c => (
-            <button key={c.id} style={pill(c.id === activeConvId)}
+            <Button variant="secondary" key={c.id} style={pill(c.id === activeConvId)}
               onMouseDown={e => e.stopPropagation()}
               onClick={e => { e.stopPropagation(); loadConv(c.id); }}>
               {PICONS[c.provider]||"💬"} {c.title}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -159,11 +160,11 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
             {providers.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 5, width: "100%" }}>
                 {NODE_PROMPTS.map(p => (
-                  <button key={p} onMouseDown={e => e.stopPropagation()}
+                  <Button variant="primary" key={p} onMouseDown={e => e.stopPropagation()}
                     onClick={async e => { e.stopPropagation(); await newConv(); setInput(p); textareaRef.current?.focus(); }}
                     style={{ padding: "7px 10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", color: "var(--text3)", cursor: "pointer", fontSize: 10, fontFamily: "var(--font-ui)", textAlign: "left", transition: "var(--transition-all)" }}>
                     {p}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -206,8 +207,8 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
             onBlur={e => { e.target.style.borderColor = "var(--border)"; }}
             onInput={e => { e.target.style.height = "auto"; e.target.style.height = Math.min(e.target.scrollHeight, 80) + "px"; }}
           />
-          <button onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); send(); }} disabled={!canSend}
-            style={{ width: 32, height: 32, borderRadius: "var(--radius-xs)", border: "none", flexShrink: 0, background: canSend ? "var(--accent2)" : "var(--bg3)", color: canSend ? "var(--on-accent)" : "var(--text4)", cursor: canSend ? "pointer" : "default", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>↑</button>
+          <Button variant="secondary" onMouseDown={e => e.stopPropagation()} onClick={e => { e.stopPropagation(); send(); }} disabled={!canSend}
+            style={{ width: 32, height: 32, borderRadius: "var(--radius-xs)", border: "none", flexShrink: 0, background: canSend ? "var(--accent2)" : "var(--bg3)", color: canSend ? "var(--on-accent)" : "var(--text4)", cursor: canSend ? "pointer" : "default", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", transition: "all .15s" }}>↑</Button>
         </div>
       </div>
 

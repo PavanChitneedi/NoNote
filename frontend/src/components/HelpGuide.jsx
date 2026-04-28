@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const SECTIONS = [
   {
@@ -239,16 +240,16 @@ export default function HelpGuide({ onClose }) {
               padding:"5px 10px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",
               width:180,outline:"none"}}
           />
-          <button onClick={onClose} style={{background:"none",border:"none",
+          <Button variant="destructive" onClick={onClose} style={{background:"none",border:"none",
             color:"var(--text4)",cursor:"pointer",fontSize:16,padding:"2px 6px",
-            borderRadius:4,lineHeight:1}}>✕</button>
+            borderRadius:4,lineHeight:1}}>✕</Button>
         </div>
 
         <div style={S.body}>
           {/* Sidebar nav */}
           <div style={S.sidebar}>
             {filtered.map(s => (
-              <button key={s.id} onClick={()=>{ setActiveId(s.id); setSearch(""); }}
+              <Button variant="primary" key={s.id} onClick={()=>{ setActiveId(s.id); setSearch(""); }}
                 style={{display:"flex",alignItems:"center",gap:8,width:"100%",
                   padding:"8px 14px",border:"none",cursor:"pointer",textAlign:"left",
                   background: s.id===activeId ? "var(--accent)18" : "transparent",
@@ -258,7 +259,7 @@ export default function HelpGuide({ onClose }) {
                   transition:"all .12s"}}>
                 <span style={{fontSize:13}}>{s.icon}</span>
                 {s.title}
-              </button>
+              </Button>
             ))}
             {filtered.length === 0 && (
               <div style={{padding:"16px 14px",color:"var(--text4)",fontSize:11}}>No results</div>

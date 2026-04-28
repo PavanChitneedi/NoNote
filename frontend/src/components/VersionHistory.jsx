@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { getVersions, saveVersion, getVersion, deleteVersion } from "../api/client.js";
+import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestore, onClose }) {
   const [versions, setVersions] = useState([]);
@@ -63,7 +64,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
             <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>Version History</div>
             <div style={{ fontSize:11, color:"var(--text4)" }}>{mapTitle} · up to 50 versions stored</div>
           </div>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"var(--text3)", cursor:"pointer", fontSize:22 }}>×</button>
+          <Button variant="ghost" onClick={onClose}>×</Button>
         </div>
 
         {/* Save new version */}
@@ -74,10 +75,10 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
               style={{ flex:1, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, padding:"9px 12px", color:"var(--text)", fontSize:12, outline:"none", fontFamily:"inherit" }}
               onKeyDown={e => e.key === "Enter" && handleSave()}
             />
-            <button onClick={handleSave} disabled={saving}
+            <Button variant="primary" onClick={handleSave} disabled={saving}
               style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
               {saving ? "Saving…" : "💾 SAVE NOW"}
-            </button>
+            </Button>
           </div>
           {error && <div style={{ marginTop:8, fontSize:12, color:"var(--danger)" }}>{error}</div>}
         </div>
@@ -104,9 +105,9 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
                   <div style={{ fontSize:12, fontWeight:600, color:"var(--text)", flex:1, marginRight:8 }}>
                     {ver.label || `Snapshot`}
                   </div>
-                  <button onClick={e => handleDelete(ver.id, e)}
+                  <Button variant="destructive" onClick={e => handleDelete(ver.id, e)}
                     style={{ background:"none", border:"none", color:"var(--text4)", cursor:"pointer", fontSize:14, flexShrink:0, padding:0 }}
-                  >×</button>
+                  >×</Button>
                 </div>
                 <div style={{ fontSize:10, color:"var(--text4)", marginTop:3 }}>
                   {ver.node_count} nodes · {ver.edge_count} edges
@@ -153,14 +154,14 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
                 </div>
 
                 <div style={{ display:"flex", gap:8 }}>
-                  <button onClick={handleRestore}
+                  <Button variant="primary" onClick={handleRestore}
                     style={{ flex:1, padding:"11px", background:"var(--accent2)", border:"none", borderRadius:9, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                     ↩ RESTORE THIS VERSION
-                  </button>
-                  <button onClick={() => setPreview(null)}
+                  </Button>
+                  <Button variant="primary" onClick={() => setPreview(null)}
                     style={{ padding:"11px 16px", background:"var(--bg3)", border:"none", borderRadius:9, color:"var(--text3)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
                     CANCEL
-                  </button>
+                  </Button>
                 </div>
 
                 <div style={{ fontSize:11, color:"var(--text4)", textAlign:"center" }}>

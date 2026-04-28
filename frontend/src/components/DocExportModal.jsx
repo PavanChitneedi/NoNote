@@ -1,3 +1,4 @@
+import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 /**
  * DocExportModal — Word (.docx) and PDF export in Normal and AI modes.
  *
@@ -417,8 +418,8 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
             <div style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>{info.label}</div>
             <div style={{ fontSize:11, color:"var(--text4)", marginTop:3, lineHeight:1.4 }}>{info.sub}</div>
           </div>
-          <button onClick={onClose} style={{ background:"none", border:"none",
-            fontSize:22, color:"var(--text4)", cursor:"pointer", flexShrink:0 }}>×</button>
+          <Button variant="secondary" onClick={onClose} style={{ background:"none", border:"none",
+            fontSize:22, color:"var(--text4)", cursor:"pointer", flexShrink:0 }}>×</Button>
         </div>
 
         {/* What you'll get */}
@@ -479,13 +480,13 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
 
         {/* Actions */}
         <div style={{ display:"flex", gap:10 }}>
-          <button onClick={onClose}
+          <Button variant="primary" onClick={onClose}
             style={{ padding:"10px 18px", background:"var(--bg3)", 
               borderRadius:8, color:"var(--text3)", cursor:"pointer", fontSize:13,
               fontFamily:"var(--font-ui)", fontWeight:600 }}>
             {status==="done" ? "Close" : "Cancel"}
-          </button>
-          <button onClick={doExport} disabled={status==="generating"}
+          </Button>
+          <Button variant="primary" onClick={doExport} disabled={status==="generating"}
             style={{ flex:1, padding:"10px 18px",
               background: status==="generating" ? "var(--bg3)" : "var(--accent2)",
               border:"none", borderRadius:8,
@@ -496,7 +497,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
               : status==="done" ? `Export Again ↓`
               : isPDF ? `Open PDF Page ↗`
               : `Export as Word (.docx) ↓`}
-          </button>
+          </Button>
         </div>
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>
