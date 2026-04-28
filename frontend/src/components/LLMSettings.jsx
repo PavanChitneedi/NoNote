@@ -424,7 +424,7 @@ const Lbl = ({ children }) => (
 );
 
 const Alert = ({ type, children }) => {
-  const c = type === "success" ? "#4CAF50" : "var(--danger)";
+  const c = type === "success" ? "var(--success)" : "var(--danger)";
   return (
     <div style={{ background:`${c}18`, border:`1px solid ${c}40`, borderRadius:8,
       padding:"9px 12px", fontSize:12, color:c }}>
@@ -441,6 +441,6 @@ const S = {
              color:"var(--on-accent)", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
   ghost:   { padding:"9px 14px", background:"var(--bg3)", border:"none", borderRadius:8,
              color:"var(--text3)", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
-  danger:  { background:"none", border:"1px solid #f7816640", borderRadius:6, color:"var(--danger)",
+  danger:  { background:"none", border:"1px solid var(--danger)", borderRadius:6, color:"var(--danger)",
              cursor:"pointer", fontSize:9, padding:"4px 10px", fontFamily:"inherit", fontWeight:700 },
 };

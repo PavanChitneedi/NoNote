@@ -161,9 +161,7 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
                 {NODE_PROMPTS.map(p => (
                   <button key={p} onMouseDown={e => e.stopPropagation()}
                     onClick={async e => { e.stopPropagation(); await newConv(); setInput(p); textareaRef.current?.focus(); }}
-                    style={{ padding: "7px 10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", color: "var(--text3)", cursor: "pointer", fontSize: 10, fontFamily: "var(--font-ui)", textAlign: "left", transition: "border-color .12s" }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text3)"; }}>
+                    style={{ padding: "7px 10px", background: "var(--bg3)", border: "1px solid var(--border)", borderRadius: "var(--radius-xs)", color: "var(--text3)", cursor: "pointer", fontSize: 10, fontFamily: "var(--font-ui)", textAlign: "left", transition: "var(--transition-all)" }}>
                     {p}
                   </button>
                 ))}

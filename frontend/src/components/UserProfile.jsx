@@ -19,7 +19,7 @@ const AVATAR_COLORS = [
   "#00BCD4","#F44336","#8BC34A","#FF5722","#3F51B5","#009688",
 ];
 
-const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)", restricted:"#888" };
+const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent)", viewer:"var(--text3)", restricted:"var(--text4)" };
 
 export default function UserProfile({ onClose }) {
   const { user, updateUserLocal } = useAuth();
@@ -28,7 +28,7 @@ export default function UserProfile({ onClose }) {
   // Profile form
   const [name,    setName]    = useState(user?.display_name || "");
   const [email,   setEmail]   = useState(user?.email || "");
-  const [color,   setColor]   = useState(user?.avatar_color || "#6C63FF");
+  const [color,   setColor]   = useState(user?.avatar_color || "var(--accent2)");
   const [saving,  setSaving]  = useState(false);
   const [msg,     setMsg]     = useState({ text:"", ok:true });
 
@@ -110,7 +110,7 @@ export default function UserProfile({ onClose }) {
   );
 
   const Message = ({ m }) => m.text ? (
-    <div style={{ fontSize:12, color:m.ok?"#4CAF50":"var(--danger)", marginTop:4, lineHeight:1.4 }}>
+    <div style={{ fontSize:12, color:m.ok?"var(--success)":"var(--danger)", marginTop:4, lineHeight:1.4 }}>
       {m.ok?"✓ ":""}{m.text}
     </div>
   ) : null;
@@ -144,7 +144,7 @@ export default function UserProfile({ onClose }) {
             <div style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>{user?.display_name}</div>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:3 }}>
               <span style={{ fontSize:10, fontWeight:700, color:RC[user?.role]||"var(--text3)",
-                background:`${RC[user?.role]||"#888"}18`, padding:"1px 8px",
+                background:`${RC[user?.role]||"var(--text4)"}18`, padding:"1px 8px",
                 borderRadius:4 }}>{user?.role?.toUpperCase()}</span>
               <span style={{ fontSize:10, color:"var(--text4)" }}>{user?.email}</span>
             </div>
@@ -209,7 +209,7 @@ export default function UserProfile({ onClose }) {
                     {AVATAR_COLORS.map(c => (
                       <div key={c} onClick={() => setColor(c)} style={{
                         width:30, height:30, borderRadius:"50%", background:c, cursor:"pointer",
-                        border:`3px solid ${color===c?"#fff":"transparent"}`,
+                        border:`3px solid ${color===c?"var(--on-accent)":"transparent"}`,
                         boxShadow: color===c?"0 0 0 2px var(--accent)":"none",
                         transition:"all .12s",
                       }}/>
@@ -300,7 +300,7 @@ export default function UserProfile({ onClose }) {
                       YOUR EFFECTIVE PERMISSIONS
                     </div>
                     {myPerms.includes("*") ? (
-                      <div style={{ fontSize:12, color:"#FFD93D", fontWeight:700 }}>★ Full access — all permissions</div>
+                      <div style={{ fontSize:12, color:"var(--accent)", fontWeight:700 }}>★ Full access — all permissions</div>
                     ) : myPerms.length === 0 ? (
                       <div style={{ fontSize:12, color:"var(--text4)" }}>No special permissions.</div>
                     ) : (

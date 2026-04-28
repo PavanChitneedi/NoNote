@@ -97,10 +97,8 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
                 style={{
                   padding:"12px 16px", cursor:"pointer", borderLeft:`3px solid ${preview?.id===ver.id?"var(--accent)":"transparent"}`,
                   background: preview?.id===ver.id ? "var(--accent2)15" : "transparent",
-                  borderBottom:"1px solid var(--border2)", transition:"all .12s",
+                  borderBottom:"1px solid var(--border2)", transition:"var(--transition-all)",
                 }}
-                onMouseEnter={e => { if(preview?.id!==ver.id) e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"; }}
-                onMouseLeave={e => { if(preview?.id!==ver.id) e.currentTarget.style.background="transparent"; }}
               >
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                   <div style={{ fontSize:12, fontWeight:600, color:"var(--text)", flex:1, marginRight:8 }}>
@@ -108,8 +106,6 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
                   </div>
                   <button onClick={e => handleDelete(ver.id, e)}
                     style={{ background:"none", border:"none", color:"var(--text4)", cursor:"pointer", fontSize:14, flexShrink:0, padding:0 }}
-                    onMouseEnter={e => e.currentTarget.style.color="var(--danger)"}
-                    onMouseLeave={e => e.currentTarget.style.color="var(--text4)"}
                   >×</button>
                 </div>
                 <div style={{ fontSize:10, color:"var(--text4)", marginTop:3 }}>

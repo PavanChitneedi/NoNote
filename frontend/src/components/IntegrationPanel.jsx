@@ -1,6 +1,7 @@
 // IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiFetch } from '../api/client.js';
+import { Alert, Badge, Button, Input, Select } from './ui/primitives.jsx';
 
 // Which integration type to use per node type
 const NODE_INT_MAP = {
@@ -742,16 +743,14 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
             {intType.toUpperCase()} INTEGRATION
           </span>
           {isConfigured && (
-            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: data ? 'var(--success)22' : 'var(--bg3)',
-              color: data ? 'var(--success)' : 'var(--text4)', border: `1px solid ${data ? 'var(--success)' : 'var(--border)'}` }}>
+            <Badge tone={data ? 'success' : 'neutral'} style={{ fontSize: 9, padding: '1px 6px' }}>
               {data ? `● live · ↻${countdown}s` : '○ not connected'}
-            </span>
+            </Badge>
           )}
-          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setShow(s => !s); }}
-            style={{ fontSize: 10, background: 'none', border: '1px solid var(--border)', borderRadius: 4,
-              color: 'var(--text4)', cursor: 'pointer', padding: '2px 8px', fontFamily: 'var(--font-ui)' }}>
+          <Button variant="ghost" onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setShow(s => !s); }}
+            style={{ fontSize: 10, border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px' }}>
             {show ? 'Hide' : 'Configure'}
-          </button>
+          </Button>
         </div>
 
         {show && (
@@ -759,16 +758,15 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
             {/* Type override */}
             <div style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 9, color: 'var(--text4)', display: 'block', marginBottom: 3 }}>INTEGRATION TYPE</label>
-              <select value={form.type} disabled={!canEdit}
+              <Select value={form.type} disabled={!canEdit}
                 onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
-                  padding: '5px 8px', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none' }}>
+                style={{ background: 'var(--bg)', borderRadius: 4, padding: '5px 8px', fontSize: 11 }}>
                 <option value="proxmox">Proxmox VE</option>
                 <option value="truenas">TrueNAS / FreeNAS</option>
                 <option value="unraid">Unraid</option>
                 <option value="esxi">VMware ESXi / vCenter</option>
                 <option value="probe">HTTP Health Probe</option>
-              </select>
+              </Select>
             </div>
             {fields.map(f => (
               <div key={f.key} style={{ marginBottom: 6 }}>
@@ -776,20 +774,17 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
                   {f.label.toUpperCase()}
                   {f.help && <span style={{ fontSize: 8, color: 'var(--accent1)', marginLeft: 6 }}>ℹ {f.help}</span>}
                 </label>
-                <input type={f.type} value={form[f.key] || ''} placeholder={f.placeholder} disabled={!canEdit}
+                <Input type={f.type} value={form[f.key] || ''} placeholder={f.placeholder} disabled={!canEdit}
                   onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
-                  style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
-                    padding: '5px 8px', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-ui)',
-                    outline: 'none', boxSizing: 'border-box', fontFamily: f.type === 'password' ? 'monospace' : 'var(--font-ui)' }}
+                  style={{ background: 'var(--bg)', borderRadius: 4, padding: '5px 8px', fontSize: 11, fontFamily: f.type === 'password' ? 'monospace' : 'var(--font-ui)' }}
                 />
               </div>
             ))}
             {canEdit && (
-              <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); }}
-                style={{ width: '100%', padding: '6px', background: 'var(--accent2)', border: 'none', borderRadius: 4,
-                  color: 'var(--on-accent)', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)', marginTop: 4 }}>
+              <Button variant="primary" onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); }}
+                style={{ width: '100%', padding: '6px', borderRadius: 4, fontSize: 11, marginTop: 4 }}>
                 Save Configuration
-              </button>
+              </Button>
             )}
           </div>
         )}
@@ -798,21 +793,18 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
       {/* Connect / Refresh */}
       {isConfigured && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();doFetch()}} disabled={busy}
-            style={{ flex: 1, padding: '7px', background: busy ? 'var(--bg3)' : 'var(--accent2)', border: 'none',
-              borderRadius: 6, color: busy ? 'var(--text4)' : 'var(--on-accent)', cursor: busy ? 'default' : 'pointer',
-              fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)' }}>
+          <Button variant="primary" onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();doFetch()}} disabled={busy} loading={busy}
+            style={{ flex: 1, padding: '7px', borderRadius: 6, fontSize: 11 }}>
             {busy ? '⏳ Connecting…' : data ? '🔄 Refresh' : '⚡ Connect'}
-          </button>
-          {data && <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setData(null); clearInterval(intervalRef.current); clearInterval(countdownRef.current); }}
-            style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 6,
-              color: 'var(--text4)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
+          </Button>
+          {data && <Button variant="ghost" onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setData(null); clearInterval(intervalRef.current); clearInterval(countdownRef.current); }}
+            style={{ padding: '7px 12px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11 }}>
             Disconnect
-          </button>}
+          </Button>}
         </div>
       )}
 
-      {err && <div style={{ fontSize: 11, color: 'var(--danger)', background: 'var(--danger)11', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>⚠ {err}</div>}
+      {err && <Alert tone="danger" style={{ fontSize: 11, borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>⚠ {err}</Alert>}
 
       {/* Metrics */}
       {data && <Renderer data={data} />}

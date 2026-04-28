@@ -3,8 +3,8 @@ import { apiFetch } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
 
 const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent2)", viewer:"var(--text3)", restricted:"var(--text4)" };
-const GC = ["#6C63FF","#E91E63","#2196F3","#4CAF50","#FF9800","#9C27B0","#00BCD4","#F44336","#FF5722","#607D8B"];
-const AVATAR_COLORS = ["#6C63FF","#E91E63","#2196F3","#4CAF50","#FF9800","#9C27B0","#00BCD4","#F44336","#FF5722","#607D8B","#3F51B5","#009688"];
+const GC = ["var(--accent2)","var(--danger)","#2196F3","var(--success)","var(--accent)","#9C27B0","#00BCD4","var(--danger)","#FF5722","#607D8B"];
+const AVATAR_COLORS = ["var(--accent2)","var(--danger)","#2196F3","var(--success)","var(--accent)","#9C27B0","#00BCD4","var(--danger)","#FF5722","#607D8B","#3F51B5","#009688"];
 
 const ALL_PERMS = [
   {key:"maps.create",   label:"Create maps",             cat:"Maps"},
@@ -80,7 +80,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
   const [email, setEmail] = useState(u.email);
   const [role,  setRole]  = useState(u.role);
   const [active,setActive]= useState(u.is_active);
-  const [color, setColor] = useState(u.avatar_color||"#6C63FF");
+  const [color, setColor] = useState(u.avatar_color||"var(--accent2)");
   const [pw,    setPw]    = useState("");
   const [myGroups, setMyGroups] = useState(new Set((u.groups||[]).map(g=>g.id)));
   const [saving, setSaving] = useState(false);
@@ -221,7 +221,7 @@ export default function AdminPanel({ onBack }) {
 
   // Create group
   const [showCG, setShowCG] = useState(false);
-  const [gForm,  setGForm]  = useState({name:"",description:"",color:"#6C63FF",permissions:{}});
+  const [gForm,  setGForm]  = useState({name:"",description:"",color:"var(--accent2)",permissions:{}});
   const [creatingG, setCreatingG] = useState(false);
 
   // Settings
@@ -287,7 +287,7 @@ export default function AdminPanel({ onBack }) {
     try {
       const d = await apiFetch("/users/groups",{method:"POST",body:JSON.stringify(gForm)});
       setGroups(g=>[...g,d.group]);
-      setGForm({name:"",description:"",color:"#6C63FF",permissions:{}});
+      setGForm({name:"",description:"",color:"var(--accent2)",permissions:{}});
       setShowCG(false); setSuccess("Group created.");
     } catch(e){setError(e.message);}
     setCreatingG(false);
@@ -334,7 +334,7 @@ export default function AdminPanel({ onBack }) {
       </div>
 
       {error   && <Alert color="var(--danger)">{error}</Alert>}
-      {success && <Alert color="#4CAF50">{success}</Alert>}
+      {success && <Alert color="var(--success)">{success}</Alert>}
 
       {/* ── USERS ────────────────────────────────────────────── */}
       {tab==="users"&&(
@@ -398,7 +398,7 @@ export default function AdminPanel({ onBack }) {
                 return(
                   <div key={u.id} style={{background:"var(--bg2)",
                     borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,opacity:u.is_active?1:.5}}>
-                    <div style={{width:38,height:38,borderRadius:"50%",background:u.avatar_color||"#6C63FF",
+                    <div style={{width:38,height:38,borderRadius:"50%",background:u.avatar_color||"var(--accent2)",
                       display:"flex",alignItems:"center",justifyContent:"center",
                       fontSize:15,fontWeight:700,color:"#fff",flexShrink:0}}>
                       {u.display_name?.[0]?.toUpperCase()}
@@ -665,7 +665,7 @@ export default function AdminPanel({ onBack }) {
               {logs.map(log=>(
                 <div key={log.id} style={{display:"flex",gap:10,padding:"5px 2px",
                   borderBottom:"1px solid var(--border2)",alignItems:"flex-start"}}>
-                  <span style={{color:log.level==="error"?"var(--danger)":log.level==="warn"?"#f59e0b":"var(--text4)",
+                  <span style={{color:log.level==="error"?"var(--danger)":log.level==="warn"?"var(--accent)":"var(--text4)",
                     fontWeight:700,minWidth:42,fontSize:10,flexShrink:0}}>
                     {(log.level||"info").toUpperCase()}
                   </span>

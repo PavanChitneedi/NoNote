@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { NODE_INT_MAP, fmt, gb, pct } from './IntegrationPanel.jsx';
 import { apiFetch } from '../api/client.js';
+import { Button, Card, Input, Select } from './ui/primitives.jsx';
 
 const REFRESH_MS = 30000;
-const TYPE_COLOR = { proxmox:'var(--accent2)', truenas:'#0095D5', unraid:'#E67C1C', esxi:'#717CBD', probe:'var(--text3)', freenas:'#1565C0' };
+const TYPE_COLOR = { proxmox:'var(--accent2)', truenas:'var(--accent)', unraid:'var(--accent)', esxi:'var(--accent)', probe:'var(--text3)', freenas:'var(--accent)' };
 const TYPE_LABEL = { proxmox:'Proxmox VE', truenas:'TrueNAS', unraid:'Unraid', esxi:'ESXi', probe:'HTTP Probe', freenas:'FreeNAS' };
 
 function uptime(s){ if(!s) return'—'; const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60); return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m`; }
@@ -20,7 +21,7 @@ function GuestList({guests, color}){
   return <div>
     <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
       {[['all',`All ${guests.length}`],['vm',`VM ${rVM}/${tVM}`],['ct',`CT ${rCT}/${tCT}`],['off','Stopped']].map(([v,l])=>(
-        <button key={v} onClick={()=>setF(v)} style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:8,cursor:'pointer',fontFamily:'var(--font-ui)',fontWeight:600,background:f===v?color:'var(--bg3)',color:f===v?'var(--on-accent)':'var(--text4)'}}>{l}</button>
+        <Button key={v} variant="toggle" active={f===v} onClick={()=>setF(v)} style={{fontSize:9,padding:'2px 8px',borderRadius:8,background:f===v?color:undefined,color:f===v?'var(--on-accent)':undefined}}>{l}</Button>
       ))}
     </div>
     {shown.length===0&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic',textAlign:'center',padding:'8px 0'}}>None</div>}
@@ -60,7 +61,7 @@ function ProxmoxCard({result, color}){
     </div>
     {/* Tabs */}
     <div style={{display:'flex',background:'var(--bg3)',borderBottom:'1px solid var(--border2)'}}>
-      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 14px',border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'var(--font-ui)',background:tab===t.id?'var(--bg2)':'var(--bg3)',color:tab===t.id?color:'var(--text4)',borderBottom:tab===t.id?`2px solid ${color}`:'2px solid transparent'}}>{t.label}</button>)}
+      {TABS.map(t=><Button key={t.id} variant="toggle" active={tab===t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 14px',fontSize:10,borderBottom:tab===t.id?`2px solid ${color}`:'2px solid transparent',borderRadius:0,color:tab===t.id?color:'var(--text4)'}}>{t.label}</Button>)}
     </div>
     {/* Tab content — fixed height scroll */}
     <div style={{height:220,overflowY:'auto',padding:'10px 12px'}}>
@@ -102,7 +103,7 @@ function TrueNASCard({result, color}){
       <MiniMetric label="Alerts" value={(d.alerts||[]).length} sub={(d.alerts||[]).length>0?'⚠ active':'✓ none'}/>
     </div>
     <div style={{display:'flex',background:'var(--bg3)',borderBottom:'1px solid var(--border2)'}}>
-      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 14px',border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'var(--font-ui)',background:tab===t.id?'var(--bg2)':'var(--bg3)',color:tab===t.id?color:'var(--text4)',borderBottom:tab===t.id?`2px solid ${color}`:'2px solid transparent'}}>{t.label}</button>)}
+      {TABS.map(t=><Button key={t.id} variant="toggle" active={tab===t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 14px',fontSize:10,borderBottom:tab===t.id?`2px solid ${color}`:'2px solid transparent',borderRadius:0,color:tab===t.id?color:'var(--text4)'}}>{t.label}</Button>)}
     </div>
     <div style={{height:220,overflowY:'auto',padding:'10px 12px'}}>
       {tab==='overview'&&<div>
@@ -140,7 +141,7 @@ function UnraidCard({result, color}){
       <MiniMetric label="Docker" value={`${runC}/${ctrs.length}`} sub="running"/>
     </div>
     <div style={{display:'flex',background:'var(--bg3)',borderBottom:'1px solid var(--border2)'}}>
-      {TABS.map(t=><button key={t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 14px',border:'none',cursor:'pointer',fontSize:10,fontWeight:700,fontFamily:'var(--font-ui)',background:tab===t.id?'var(--bg2)':'var(--bg3)',color:tab===t.id?color:'var(--text4)',borderBottom:tab===t.id?`2px solid ${color}`:'2px solid transparent'}}>{t.label}</button>)}
+      {TABS.map(t=><Button key={t.id} variant="toggle" active={tab===t.id} onClick={()=>setTab(t.id)} style={{padding:'6px 14px',fontSize:10,borderBottom:tab===t.id?`2px solid ${color}`:'2px solid transparent',borderRadius:0,color:tab===t.id?color:'var(--text4)'}}>{t.label}</Button>)}
     </div>
     <div style={{height:220,overflowY:'auto',padding:'10px 12px'}}>
       {tab==='overview'&&<div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:8}}>
@@ -188,18 +189,18 @@ function StandaloneAdd({onAdd}){
     onAdd(node); setShow(false); setForm({title:'',type:'proxmox',url:'',token:'',username:'',password:''});
   };
   return <div style={{marginBottom:12}}>
-    {!show&&<button onClick={()=>setShow(true)} style={{fontSize:10,padding:'5px 12px',background:'var(--bg3)',border:'1px dashed var(--border)',borderRadius:6,color:'var(--text4)',cursor:'pointer',fontFamily:'var(--font-ui)',fontWeight:600}}>＋ Add integration without map</button>}
+    {!show&&<Button variant="secondary" onClick={()=>setShow(true)} style={{fontSize:10,padding:'5px 12px',border:'1px dashed var(--border)',color:'var(--text4)',fontWeight:600}}>＋ Add integration without map</Button>}
     {show&&<div style={{background:'var(--bg2)',borderRadius:8,padding:'12px 14px',border:'1px solid var(--border)',display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr auto auto',gap:8,alignItems:'end'}}>
-      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>NAME</div><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="My Proxmox" style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
+      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>NAME</div><Input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} placeholder="My Proxmox" style={{background:'var(--bg)',padding:'5px 8px',fontSize:11,borderRadius:4}}/></div>
       <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>TYPE</div>
-        <select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none'}}>
+        <Select value={form.type} onChange={e=>setForm(f=>({...f,type:e.target.value}))} style={{background:'var(--bg)',padding:'5px 8px',fontSize:11,borderRadius:4}}>
           <option value="proxmox">Proxmox VE</option><option value="truenas">TrueNAS</option><option value="unraid">Unraid</option><option value="esxi">ESXi/vCenter</option><option value="probe">HTTP Probe</option>
-        </select></div>
-      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>URL</div><input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://192.168.x.x:8006" style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
+        </Select></div>
+      <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>URL</div><Input value={form.url} onChange={e=>setForm(f=>({...f,url:e.target.value}))} placeholder="https://192.168.x.x:8006" style={{background:'var(--bg)',padding:'5px 8px',fontSize:11,borderRadius:4}}/></div>
       <div><div style={{fontSize:9,color:'var(--text4)',marginBottom:3}}>{form.type==='esxi'?'USERNAME':'TOKEN / API KEY'}</div>
-        <input value={form.type==='esxi'?form.username:form.token} onChange={e=>setForm(f=>form.type==='esxi'?{...f,username:e.target.value}:{...f,token:e.target.value})} type="password" placeholder={form.type==='esxi'?'admin@vsphere.local':'user@pam!id=uuid'} style={{width:'100%',background:'var(--bg)',border:'1px solid var(--border)',borderRadius:4,padding:'5px 8px',color:'var(--text)',fontSize:11,outline:'none',boxSizing:'border-box'}}/></div>
-      <button onClick={save} style={{padding:'5px 14px',background:'var(--accent2)',border:'none',borderRadius:5,color:'var(--on-accent)',cursor:'pointer',fontSize:11,fontWeight:700,fontFamily:'var(--font-ui)',whiteSpace:'nowrap'}}>Add</button>
-      <button onClick={()=>setShow(false)} style={{padding:'5px 10px',background:'none',border:'1px solid var(--border)',borderRadius:5,color:'var(--text4)',cursor:'pointer',fontSize:11,fontFamily:'var(--font-ui)'}}>×</button>
+        <Input value={form.type==='esxi'?form.username:form.token} onChange={e=>setForm(f=>form.type==='esxi'?{...f,username:e.target.value}:{...f,token:e.target.value})} type="password" placeholder={form.type==='esxi'?'admin@vsphere.local':'user@pam!id=uuid'} style={{background:'var(--bg)',padding:'5px 8px',fontSize:11,borderRadius:4}}/></div>
+      <Button variant="primary" onClick={save} style={{padding:'5px 14px',fontSize:11,whiteSpace:'nowrap'}}>Add</Button>
+      <Button variant="ghost" onClick={()=>setShow(false)} style={{padding:'5px 10px',fontSize:11}}>×</Button>
     </div>}
   </div>;
 }
@@ -257,7 +258,7 @@ export default function LiveDashboard({maps}){
       <span style={{fontSize:11,color:'var(--text4)'}}>📡 {nodes.length} integration{nodes.length!==1?'s':''}</span>
       <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
         {lastRefresh&&<span style={{fontSize:9,color:'var(--text4)'}}>↻{countdown}s</span>}
-        <button onClick={()=>refresh()} disabled={refreshing} style={{fontSize:10,background:refreshing?'var(--bg3)':'var(--accent2)',border:'none',borderRadius:5,color:refreshing?'var(--text4)':'var(--on-accent)',cursor:refreshing?'default':'pointer',padding:'4px 12px',fontFamily:'var(--font-ui)',fontWeight:700}}>{refreshing?'…':'🔄 Refresh'}</button>
+        <Button variant="primary" onClick={()=>refresh()} disabled={refreshing} loading={refreshing} style={{fontSize:10,padding:'4px 12px'}}>🔄 Refresh</Button>
       </div>
     </div>
 
@@ -268,7 +269,7 @@ export default function LiveDashboard({maps}){
         const cfg=node.properties._integration, result=results[node.id];
         const type=cfg.type||NODE_INT_MAP[node.type]||'probe', Renderer=RENDERERS[type];
         const color=TYPE_COLOR[type]||'var(--accent2)', isOnline=result?.ok;
-        return <div key={node.id} style={{background:'var(--bg2)',borderRadius:8,overflow:'hidden',border:`1px solid ${isOnline?color+'44':result?'var(--danger)33':'var(--border)'}`,borderLeft:`3px solid ${isOnline?color:result?'var(--danger)':'var(--border)'}`,boxShadow:'var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))'}}>
+        return <Card key={node.id} style={{background:'var(--bg2)',borderRadius:8,overflow:'hidden',border:`1px solid ${isOnline?color+'44':result?'var(--danger)33':'var(--border)'}`,borderLeft:`3px solid ${isOnline?color:result?'var(--danger)':'var(--border)'}`,boxShadow:'var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))'}}>
           {/* Compact header */}
           <div style={{display:'flex',alignItems:'center',gap:8,padding:'8px 12px',borderBottom:'1px solid var(--border2)'}}>
             <span style={{width:7,height:7,borderRadius:'50%',flexShrink:0,background:isOnline?'var(--success)':result?'var(--danger)':'var(--text4)',boxShadow:isOnline?'0 0 5px var(--success)':'none'}}/>
@@ -281,10 +282,10 @@ export default function LiveDashboard({maps}){
           {result?.error&&<div style={{margin:'10px',fontSize:10,color:'var(--danger)',padding:'6px 8px',background:'var(--danger)11',borderRadius:5}}>⚠ {result.error}</div>}
           {result?.ok&&Renderer&&<Renderer result={result} color={color}/>}
           <div style={{display:'flex',alignItems:'center',padding:'2px 10px 4px',borderTop:'1px solid var(--border2)'}}>
-            {node.mapId===null&&<button onClick={()=>{const saved=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');localStorage.setItem('nn_standalone_integrations',JSON.stringify(saved.filter(s=>s.properties._integration.url!==cfg.url)));setNodes(prev=>prev.filter(n=>n.id!==node.id));}} style={{fontSize:9,background:'none',border:'none',color:'var(--danger)',cursor:'pointer',padding:0,fontFamily:'var(--font-ui)'}}>✕ Remove</button>}
+            {node.mapId===null&&<Button variant="ghost" onClick={()=>{const saved=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');localStorage.setItem('nn_standalone_integrations',JSON.stringify(saved.filter(s=>s.properties._integration.url!==cfg.url)));setNodes(prev=>prev.filter(n=>n.id!==node.id));}} style={{fontSize:9,color:'var(--danger)',padding:0}}>✕ Remove</Button>}
             <span style={{fontSize:8,color:'var(--text4)',marginLeft:'auto'}}>{node.mapId===null?'standalone · ':'map: '+node.mapTitle+' · '}{result?.ts?new Date(result.ts).toLocaleTimeString():''}</span>
           </div>
-        </div>;
+        </Card>;
       })}
     </div>
   </div>;

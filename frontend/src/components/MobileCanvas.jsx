@@ -17,7 +17,7 @@ import { getMap, saveMap, getAccessToken } from "../api/client.js";
 
 // ── Node type map ─────────────────────────────────────────────────
 const NT = {
-  note:       { label:"Note",          color:"#FFD93D", icon:"📝", cat:"General" },
+  note:       { label:"Note",          color:"var(--accent)", icon:"📝", cat:"General" },
   heading:    { label:"Heading",       color:"#6C63FF", icon:"📌", cat:"General" },
   user:       { label:"User",          color:"#E91E63", icon:"👤", cat:"General" },
   process:    { label:"Process",       color:"#9C27B0", icon:"🔄", cat:"General" },
@@ -55,7 +55,7 @@ const NT = {
 
 const CATS = ["General","Network","Servers","Software","Cloud","Devices","Storage","Security"];
 const DEF_W = 220, DEF_H = 96;
-const ACCENT = "#58a6ff";
+const ACCENT = "var(--accent)";
 
 const USER_COLORS = ["#f97316","#06b6d4","#a855f7","#22c55e","#f59e0b","#ef4444","#3b82f6","#ec4899"];
 const userColor = id => { let h=0; for(let i=0;i<(id||"").length;i++) h=(h*31+id.charCodeAt(i))>>>0; return USER_COLORS[h%USER_COLORS.length]; };
@@ -354,7 +354,7 @@ export default function MobileCanvas({ mapId, onBack }) {
         {saving&&<span style={{fontSize:9,color:"var(--text4)"}}>saving…</span>}
         {Object.entries(remoteSelections).map(([uid,rs],i)=>(
           <div key={uid} title={uid} style={{width:22,height:22,borderRadius:"50%",background:rs.color,
-            color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
+            color:"var(--on-accent)",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
             border:"2px solid var(--bg2)",marginLeft:i>0?-6:0,flexShrink:0}}>
             {uid[0].toUpperCase()}
           </div>
@@ -484,7 +484,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                 )}
                 {/* Remote badge */}
                 {rColor&&<div style={{position:"absolute",top:-10,right:8,background:rColor,
-                  color:"#fff",fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:3,pointerEvents:"none"}}>
+                  color:"var(--on-accent)",fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:3,pointerEvents:"none"}}>
                   editing
                 </div>}
                 {/* Connect ring */}

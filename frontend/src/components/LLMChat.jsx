@@ -260,10 +260,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                       padding: "8px 12px", background: "var(--bg3)", border: "1px solid var(--border)",
                       borderRadius: "var(--radius-sm)", color: "var(--text3)", cursor: "pointer",
                       fontSize: 11, fontFamily: "var(--font-ui)", textAlign: "left",
-                      transition: "border-color .12s, color .12s",
+                      transition: "var(--transition-all)",
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = "var(--accent)"; e.currentTarget.style.color = "var(--accent)"; }}
-                    onMouseLeave={e => { e.currentTarget.style.borderColor = "var(--border)"; e.currentTarget.style.color = "var(--text3)"; }}
                   >{p}</button>
                 ))}
               </div>

@@ -359,7 +359,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             <div style={{ width:36, height:36, borderRadius:"50%",
               background:user?.avatar_color||"var(--accent2)",
               display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:15, fontWeight:800, color:"#fff", flexShrink:0 }}>
+              fontSize:15, fontWeight:800, color:"var(--on-accent)", flexShrink:0 }}>
               {user?.display_name?.[0]?.toUpperCase()}
             </div>
             <div>
@@ -417,7 +417,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               <div style={{ width:28, height:28, borderRadius:"50%",
                 background:user?.avatar_color||"var(--accent2)",
                 display:"flex", alignItems:"center", justifyContent:"center",
-                fontSize:12, fontWeight:700, color:"#fff", flexShrink:0 }}>
+                fontSize:12, fontWeight:700, color:"var(--on-accent)", flexShrink:0 }}>
                 {user?.display_name?.[0]?.toUpperCase()}
               </div>
               <div style={{ fontSize:11, fontWeight:600, color:"var(--text3)" }}>
@@ -435,7 +435,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     border:"none", borderRadius:"var(--radius-xs)", cursor:"pointer",
                     fontFamily:"var(--font-ui)", fontWeight:700,
                     background: dashTab===id ? "var(--accent2)" : "transparent",
-                    color: dashTab===id ? "#fff" : "var(--text4)" }}>
+                    color: dashTab===id ? "var(--on-accent)" : "var(--text4)" }}>
                   {lbl}
                 </button>
               ))}
@@ -452,7 +452,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
 
         {/* ── Changelog Modal ── */}
         {showChangelog&&(
-          <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}
+          <div style={{position:"fixed",inset:0,zIndex:900,background:"var(--overlay-scrim-2)",display:"flex",alignItems:"center",justifyContent:"center"}}
             onClick={()=>setShowChangelog(false)}>
             <div style={{background:"var(--bg2)",border:"1.5px solid var(--accent)",borderRadius:12,
               boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",width:540,maxWidth:"94vw",maxHeight:"80vh",
@@ -496,9 +496,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
         {/* Toast notification */}
         {toast && (
           <div style={{ position:"fixed", bottom:28, left:"50%", transform:"translateX(-50%)", zIndex:9999,
-            background: toast.type==="err" ? "#3d0f0f" : "#0f2d1a",
-            border:`1px solid ${toast.type==="err" ? "var(--danger)" : "#2ea043"}`,
-            color: toast.type==="err" ? "var(--danger)" : "#3fb950",
+            background: toast.type==="err" ? "var(--state-soft-danger-bg)" : "var(--state-soft-success-bg)",
+            border:`1px solid ${toast.type==="err" ? "var(--danger)" : "var(--success)"}`,
+            color: toast.type==="err" ? "var(--danger)" : "var(--success)",
             borderRadius:10, padding:"11px 22px", fontSize:13, fontWeight:600,
             boxShadow:"0 4px 24px #0008", pointerEvents:"none", whiteSpace:"nowrap" }}>
             {toast.type==="err" ? "✕ " : "✓ "}{toast.msg}
@@ -507,8 +507,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
 
         {/* Import conflict modal */}
         {importConflict && (
-          <div style={{ position:"fixed", inset:0, background:"#000a", zIndex:10000, display:"flex", alignItems:"center", justifyContent:"center" }}>
-            <div style={{ background:"var(--bg2)",  borderRadius:14, padding:"28px 32px", maxWidth:420, width:"90%", boxShadow:"0 8px 40px #000a" }}>
+          <div style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", zIndex:10000, display:"flex", alignItems:"center", justifyContent:"center" }}>
+            <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:14, padding:"28px 32px", maxWidth:420, width:"90%", boxShadow:"0 8px 40px var(--shadow)" }}>
               <div style={{ fontSize:15, fontWeight:700, color:"var(--text1)", marginBottom:10 }}>Map already exists</div>
               <div style={{ fontSize:13, color:"var(--text3)", marginBottom:24 }}>
                 A map named <strong style={{color:"var(--text1)"}}>"{importConflict.title}"</strong> already exists.<br/>What would you like to do?
@@ -546,7 +546,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               <form onSubmit={handleCreate} style={{ display:"flex", gap:8, flex:1, minWidth:260 }}>
                 <input autoFocus value={newTitle} onChange={e=>setNewTitle(e.target.value)} placeholder="Map title…"
                   style={{ flex:1, background:"var(--bg2)",  borderRadius:8, padding:"9px 14px", color:"var(--text)", fontSize:13, outline:"none" }}/>
-                <button type="submit" disabled={creating} style={{ padding:"9px 16px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                <button type="submit" disabled={creating} style={{ padding:"9px 16px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                   {creating?"…":"CREATE"}
                 </button>
                 <button type="button" onClick={()=>setShowNew(false)} style={{ padding:"9px 12px", background:"var(--bg3)", border:"none", borderRadius:8, color:"var(--text3)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
@@ -554,7 +554,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                 </button>
               </form>
             ) : (
-              <button data-tut="new-map" onClick={()=>setShowNew(true)} style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+              <button data-tut="new-map" onClick={()=>setShowNew(true)} style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                 ＋ New Map
               </button>
             )
@@ -580,7 +580,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
           <>
             {/* Rename inline overlay */}
             {renaming&&(
-              <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.5)",display:"flex",alignItems:"center",justifyContent:"center"}}
+              <div style={{position:"fixed",inset:0,zIndex:800,background:"var(--overlay-scrim-1)",display:"flex",alignItems:"center",justifyContent:"center"}}
                 onClick={()=>setRenaming(null)}>
                 <div style={{background:"var(--bg2)",borderRadius:10,padding:20,minWidth:340,boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}
                   onClick={e=>e.stopPropagation()}>
@@ -591,7 +591,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     style={{width:"100%",boxSizing:"border-box",padding:"8px 12px",background:"var(--bg3)",border:"1px solid var(--accent)",borderRadius:8,color:"var(--text)",fontSize:13,outline:"none",marginBottom:10}}/>
                   <div style={{display:"flex",gap:8,justifyContent:"flex-end"}}>
                     <button onClick={()=>setRenaming(null)} style={{padding:"6px 14px",background:"var(--bg3)",border:"none",borderRadius:7,color:"var(--text3)",cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Cancel</button>
-                    <button onClick={()=>handleRename(renaming.id,renaming.title)} style={{padding:"6px 16px",background:"var(--accent2)",border:"none",borderRadius:7,color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Rename</button>
+                    <button onClick={()=>handleRename(renaming.id,renaming.title)} style={{padding:"6px 16px",background:"var(--accent2)",border:"none",borderRadius:7,color:"var(--on-accent)",fontWeight:700,cursor:"pointer",fontFamily:"inherit",fontSize:12}}>Rename</button>
                   </div>
                 </div>
               </div>
@@ -652,7 +652,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         style={{fontSize:10,padding:"4px 10px",border:"none",borderRadius:6,cursor:"pointer",
                           fontFamily:"var(--font-ui)",fontWeight:600,
                           background:activeGroup===id?"var(--accent2)":"var(--bg3)",
-                          color:activeGroup===id?"#fff":"var(--text4)"}}>
+                          color:activeGroup===id?"var(--on-accent)":"var(--text4)"}}>
                         {lbl} <span style={{opacity:.6}}>({id==="all"?maps.length:maps.filter(m=>mapGroup(m.id)===id).length})</span>
                       </button>
                     ))}
@@ -663,7 +663,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                       <button key={v} onClick={()=>setViewMode(v)}
                         style={{fontSize:14,padding:"3px 8px",border:"none",borderRadius:4,cursor:"pointer",
                           background:viewMode===v?"var(--accent2)":"transparent",
-                          color:viewMode===v?"#fff":"var(--text4)"}}>
+                          color:viewMode===v?"var(--on-accent)":"var(--text4)"}}>
                         {icon}
                       </button>
                     ))}
@@ -673,7 +673,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                 {/* ── Map meta editor modal ── */}
                 {editingMeta&&(()=>{
                   const meta=getMapMeta(editingMeta);
-                  return <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center"}}
+                  return <div style={{position:"fixed",inset:0,zIndex:800,background:"var(--overlay-scrim-2)",display:"flex",alignItems:"center",justifyContent:"center"}}
                     onClick={()=>setEditingMeta(null)}>
                     <div style={{background:"var(--bg)",borderRadius:12,padding:20,width:380,border:"none",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}
                       onClick={e=>e.stopPropagation()}>
@@ -686,7 +686,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                             <button key={g} onClick={()=>{setMapMeta(editingMeta,{...meta,group:g});forceUpdate(n=>n+1);}}
                               style={{fontSize:10,padding:"3px 9px",
                                 borderRadius:6,cursor:"pointer",background:meta.group===g?"var(--accent2)":"var(--bg3)",
-                                color:meta.group===g?"#fff":"var(--text3)",fontFamily:"var(--font-ui)"}}>
+                                color:meta.group===g?"var(--on-accent)":"var(--text3)",fontFamily:"var(--font-ui)"}}>
                               {g}
                             </button>
                           ))}
@@ -723,7 +723,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                       </div>
                       <button onClick={()=>setEditingMeta(null)}
                         style={{width:"100%",padding:"8px",background:"var(--accent2)",border:"none",borderRadius:8,
-                          color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>
+                          color:"var(--on-accent)",fontWeight:700,cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>
                         Done
                       </button>
                     </div>

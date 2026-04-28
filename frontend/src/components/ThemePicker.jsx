@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import { useSkin } from "../context/SkinContext.jsx";
 import { SKINS, SKIN_KEYS } from "../skins.js";
+import { Badge, Button, Card, Input, Modal } from "./ui/primitives.jsx";
 
 export default function ThemePicker({
   onClose,
@@ -18,30 +19,28 @@ export default function ThemePicker({
   ];
 
   return (
-    <div
+    <Modal
       // Only close on clicking the ACTUAL backdrop div, not bubbled events from children
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      data-ui="theme-picker" data-component="ThemePicker" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
-      <div
+      data-ui="theme-picker" data-component="ThemePicker" data-page="global" data-role="modal">
+      <Card
         onClick={e => e.stopPropagation()}
-        style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:12, width:"100%", maxWidth:680, height:"88vh", maxHeight:680, display:"flex", flexDirection:"column", overflow:"hidden" }}>
+        style={{ width:"100%", maxWidth:680, height:"88vh", maxHeight:680, display:"flex", flexDirection:"column", overflow:"hidden" }}>
 
         {/* Header */}
         <div style={{ padding:"16px 20px", borderBottom:"1px solid var(--border2)", display:"flex", alignItems:"center", gap:10 }}>
           <span style={{ fontSize:18 }}>⚙</span>
           <span style={{ fontSize:14, fontWeight:700, color:"var(--text)", flex:1 }}>Appearance</span>
-          <button onClick={onClose} style={{ background:"none", border:"none", color:"var(--text3)", cursor:"pointer", fontSize:22, lineHeight:1 }}>×</button>
+          <Button variant="ghost" onClick={onClose} style={{ fontSize:22, lineHeight:1, padding:"2px 8px" }}>×</Button>
         </div>
 
         {/* Tabs */}
         <div style={{ display:"flex", gap:4, padding:"8px 16px", borderBottom:"1px solid var(--border2)", flexShrink:0, flexWrap:"wrap" }}>
           {tabs.map(t => (
-            <button key={t.id} onClick={e => { e.stopPropagation(); setTab(t.id); }}
-              style={{ padding:"7px 14px", border:"none", borderRadius:"var(--radius-sm)", cursor:"pointer", fontSize:12, fontWeight:600, fontFamily:"inherit", flexShrink:0,
-                background: tab===t.id ? "var(--accent2)" : "var(--bg3)",
-                color:      tab===t.id ? "var(--on-accent)" : "var(--text3)" }}>
+            <Button key={t.id} variant="toggle" active={tab===t.id} onClick={e => { e.stopPropagation(); setTab(t.id); }}
+              style={{ padding:"7px 14px", fontSize:12, flexShrink:0 }}>
               {t.label}
-            </button>
+            </Button>
           ))}
         </div>
 
@@ -65,7 +64,7 @@ export default function ThemePicker({
                   const bg1 = "var(--bg2)";
                   const acc = "var(--accent)";
                   return (
-                    <div key={key}
+                    <Card key={key}
                       onClick={() => setSkinName(key)}
                       style={{
                         borderRadius:8, cursor:"pointer", overflow:"hidden",
@@ -111,17 +110,15 @@ export default function ThemePicker({
                         </div>
                         <div style={{ fontSize:9, color:"var(--text3)", opacity:.65, marginBottom:5, lineHeight:1.4, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{s.concept||""}</div>
                         <div style={{ display:"flex", gap:4, flexWrap:"wrap", alignItems:"center" }}>
-                          <span style={{ fontSize:8, padding:"1px 6px", borderRadius:8,
-                            background:"var(--accent2)22", color:"var(--accent2)",
-                            border:"1px solid var(--accent2)44", fontWeight:700 }}>
+                          <Badge tone="accent" style={{ fontSize:8, padding:"1px 6px", fontWeight:700 }}>
                             {s.nav==="top"?"⬆ Top Nav":s.nav==="bottom"?"⬇ Dock":s.nav==="icon-dock"?"◀ Icon":s.nav==="editorial"?"⬛ Full":"?"}
-                          </span>
+                          </Badge>
                           {(s.tags||[]).slice(0,2).map(t=>(
                             <span key={t} style={{ fontSize:8, color:"var(--text4)", opacity:.6 }}>{t}</span>
                           ))}
                         </div>
                       </div>
-                    </div>
+                    </Card>
                   );
                 })}
               </div>
@@ -136,13 +133,11 @@ export default function ThemePicker({
                   </div>
                   <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                     {skin.accentOptions.map(opt => (
-                      <button key={opt.name} onClick={() => setAccent(opt.accent, opt.accent2)}
-                        style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px",
-                          border:"1px solid var(--border)", borderRadius:"var(--radius-sm)",
-                          background:"var(--bg2)", cursor:"pointer", fontFamily:"var(--font-ui)", fontSize:10 }}>
+                      <Button key={opt.name} variant="secondary" onClick={() => setAccent(opt.accent, opt.accent2)}
+                        style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px", fontSize:10 }}>
                         <span style={{ width:12, height:12, borderRadius:"50%", background:opt.accent, flexShrink:0, border:"1px solid var(--border2)" }}/>
                         <span style={{ color:"var(--text3)" }}>{opt.name}</span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 </div>
@@ -176,11 +171,11 @@ export default function ThemePicker({
                   const t = THEMES[key];
                   const active = skinVariant === key;
                   return (
-                    <button key={key} onClick={() => setSkinVariant(key)}
-                      style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", border:`1px solid ${active?"var(--accent)":"var(--border)"}`, borderRadius:"var(--radius-sm)", background:active?"var(--state-selected-bg)":"var(--bg2)", cursor:"pointer", fontFamily:"var(--font-ui)", fontSize:10, color:active?"var(--accent)":"var(--text3)" }}>
+                    <Button key={key} variant="toggle" active={active} onClick={() => setSkinVariant(key)}
+                      style={{ display:"flex", alignItems:"center", gap:6, padding:"6px 10px", fontSize:10 }}>
                       <span>{t?.icon || "🎨"}</span>
                       <span>{t?.name || key}</span>
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -193,14 +188,11 @@ export default function ThemePicker({
               <div style={{ fontSize:12, color:"var(--text3)" }}>Adjusts the base font size across the application.</div>
               <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
                 {[{l:"XS",v:75},{l:"S",v:85},{l:"M",v:100},{l:"L",v:115},{l:"XL",v:130},{l:"XXL",v:150}].map(p => (
-                  <button key={p.l}
+                  <Button key={p.l} variant="toggle" active={fontScale===p.v}
                     onClick={e => { e.stopPropagation(); setFontScale(p.v); setFontInput(String(p.v)); }}
-                    style={{ padding:"8px 16px", border:`2px solid ${fontScale===p.v?"var(--accent)":"var(--border)"}`,
-                      borderRadius:"var(--radius-sm)", cursor:"pointer", fontSize:12, fontFamily:"inherit",
-                      background: fontScale===p.v?"var(--accent2)18":"var(--bg3)",
-                      color: fontScale===p.v?"var(--accent)":"var(--text3)", fontWeight:600 }}>
+                    style={{ padding:"8px 16px", fontSize:12, fontWeight:600 }}>
                     {p.l}
-                  </button>
+                  </Button>
                 ))}
               </div>
               <div style={{ display:"flex", alignItems:"center", gap:10 }}>
@@ -208,11 +200,11 @@ export default function ThemePicker({
                   onChange={e => { setFontScale(Number(e.target.value)); setFontInput(e.target.value); }}
                   style={{ flex:1 }}/>
                 <div style={{ display:"flex", alignItems:"center", gap:4 }}>
-                  <input type="number" min={60} max={200} value={fontInput}
+                  <Input type="number" min={60} max={200} value={fontInput}
                     onChange={e => setFontInput(e.target.value)}
                     onBlur={() => setFontScale(Number(fontInput))}
                     onKeyDown={e => e.key==="Enter" && setFontScale(Number(fontInput))}
-                    style={{ width:56, padding:"6px 8px", background:"var(--bg3)", border:"1px solid var(--border)", borderRadius:"var(--radius-sm)", color:"var(--text)", fontSize:12, fontFamily:"inherit", outline:"none", textAlign:"center" }}/>
+                    style={{ width:56, padding:"6px 8px", background:"var(--bg3)", fontSize:12, textAlign:"center" }}/>
                   <span style={{ fontSize:12, color:"var(--text4)" }}>%</span>
                 </div>
               </div>
@@ -222,7 +214,7 @@ export default function ThemePicker({
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </Card>
+    </Modal>
   );
 }

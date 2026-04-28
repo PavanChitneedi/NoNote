@@ -6,7 +6,8 @@
     "dev": "vite --host",
     "build": "vite build",
     "preview": "vite preview",
-    "lint:ui-colors": "node scripts/check-ui-colors.mjs"
+    "lint:ui-colors": "node scripts/check-ui-colors.mjs",
+    "lint:ui-consistency": "node scripts/enforce-ui-consistency.mjs"
   },
   "dependencies": {
     "docx": "^8.5.0",

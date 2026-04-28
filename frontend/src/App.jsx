@@ -13,6 +13,7 @@ import ThemePicker  from "./components/ThemePicker.jsx";
 import UserProfile  from "./components/UserProfile.jsx";
 import Tutorial     from "./components/Tutorial.jsx";
 import HelpGuide    from "./components/HelpGuide.jsx";
+import DesignSystemProvider from "./ui/DesignSystemProvider.jsx";
 
 // Error boundary so a MobileCanvas crash shows an error instead of blank screen
 class MobileErrorBoundary extends Component {
@@ -39,8 +40,7 @@ class MobileErrorBoundary extends Component {
 
 function AppInner() {
   const { user, loading, logout } = useAuth();
-  const { setThemeName } = useTheme();
-  const { skin } = useSkin();
+  const { skin, skinVariant } = useSkin();
   const { themeName }             = useTheme();
   const { devMode, setDevMode }    = useDevMode();
   const [view,         setView]         = useState({ page:"dashboard", mapId:null });
@@ -79,15 +79,6 @@ function AppInner() {
     return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("hashchange", onPop); };
   }, []);
 
-  // Handle skin force-theme events
-  useEffect(() => {
-    const handler = (e) => {
-      if (e.detail && setThemeName) setThemeName(e.detail);
-    };
-    window.addEventListener("nn-skin-force-theme", handler);
-    return () => window.removeEventListener("nn-skin-force-theme", handler);
-  }, []);
-
   if (loading) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"var(--text4)" }}>
@@ -114,7 +105,7 @@ function AppInner() {
       {view.page==="admin" && <button onClick={goHome} style={hBtn}>← Back</button>}
       <button onClick={() => setShowTutorial(true)} style={hBtn} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</button>
       <button onClick={() => setShowHelp(true)} style={hBtn} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</button>
-      <button onClick={() => setShowAppearance(true)} style={hBtn} title="Appearance">{THEMES[themeName]?.icon}</button>
+      <button onClick={() => setShowAppearance(true)} style={hBtn} title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</button>
       {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={hBtn}>⚙</button>}
       <div onClick={() => setShowProfile(true)}
         style={{ width:28, height:28, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
@@ -133,7 +124,7 @@ function AppInner() {
     <div style={{ display:"flex", flexDirection:"column", alignItems:"stretch", gap:2 }}>
       <button onClick={() => setShowTutorial(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</button>
       <button onClick={() => setShowHelp(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</button>
-      <button onClick={() => setShowAppearance(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Appearance">{THEMES[themeName]?.icon}</button>
+      <button onClick={() => setShowAppearance(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</button>
       {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Admin">⚙</button>}
     </div>
   );
@@ -152,7 +143,7 @@ function AppInner() {
 
   const modals = (
     <>
-      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
+      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="skins"/>}
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
@@ -271,11 +262,13 @@ export default function App() {
     <ThemeProvider>
       <DesignProvider>
         <SkinProvider>
-          <DevModeProvider>
-            <AuthProvider>
-              <AppInner />
-            </AuthProvider>
-          </DevModeProvider>
+          <DesignSystemProvider>
+            <DevModeProvider>
+              <AuthProvider>
+                <AppInner />
+              </AuthProvider>
+            </DevModeProvider>
+          </DesignSystemProvider>
         </SkinProvider>
       </DesignProvider>
     </ThemeProvider>
