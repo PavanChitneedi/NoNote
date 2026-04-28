@@ -5500,7 +5500,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
       style={{
         position: 'absolute', left: x, top: y, width: 520, zIndex: 200,
         background: 'var(--bg2)', border: `2px solid ${t.color}`,
-        borderRadius: 'var(--radius-lg)', boxShadow: 'var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))', border: 'none',
+        borderRadius: 'var(--radius-lg)', boxShadow: 'var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))',
         display: 'flex', flexDirection: 'column', maxHeight: '80vh',
         userSelect: 'none',
       }}>

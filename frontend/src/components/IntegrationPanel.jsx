@@ -2,7 +2,7 @@ import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx
 // IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiFetch } from '../api/client.js';
-import { Alert, Badge, Button, Input, Select } from './ui/primitives.jsx';
+import { Alert, Badge, Input, Select } from './ui/primitives.jsx';
 
 // Which integration type to use per node type
 const NODE_INT_MAP = {
