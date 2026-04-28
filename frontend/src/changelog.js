@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.44.0",date:"Apr 2026",items:[
+    "Fix: CRASH ROOT CAUSE -- data-ui template literals used ${m.id} but the loop variable is named `map` not `m`. Changed to ${map.id} in both nn-map-card and nn-map-list-row",
+    "Fix: AppErrorBoundary surfaced the crash as Application Error: m is not defined",
+  ]},
   {v:"v5.43.9",date:"Apr 2026",items:[
     "Fix: Added global AppErrorBoundary to catch React crashes and show error message + stack trace instead of blank page",
     "Fix: Remaining duplicate style key bugs (NodeCanvas L5506 border, IntegrationPanel fontFamily)",
