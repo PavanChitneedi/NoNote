@@ -1,7 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { apiFetch } from "../api/client.js";
-import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const inp = {
   width:"100%", background:"var(--bg)", 
@@ -12,7 +11,7 @@ const btn = (primary) => ({
   padding:"10px 20px", border:"none", borderRadius:8, cursor:"pointer",
   fontSize:12, fontWeight:700, fontFamily:"inherit",
   background: primary ? "var(--accent2)" : "var(--bg3)",
-  color:      primary ? "var(--on-accent)" : "var(--text3)",
+  color:      primary ? "#fff"           : "var(--text3)",
 });
 
 const AVATAR_COLORS = [
@@ -20,7 +19,7 @@ const AVATAR_COLORS = [
   "#00BCD4","#F44336","#8BC34A","#FF5722","#3F51B5","#009688",
 ];
 
-const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent)", viewer:"var(--text3)", restricted:"var(--text4)" };
+const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)", restricted:"#888" };
 
 export default function UserProfile({ onClose }) {
   const { user, updateUserLocal } = useAuth();
@@ -29,7 +28,7 @@ export default function UserProfile({ onClose }) {
   // Profile form
   const [name,    setName]    = useState(user?.display_name || "");
   const [email,   setEmail]   = useState(user?.email || "");
-  const [color,   setColor]   = useState(user?.avatar_color || "var(--accent2)");
+  const [color,   setColor]   = useState(user?.avatar_color || "#6C63FF");
   const [saving,  setSaving]  = useState(false);
   const [msg,     setMsg]     = useState({ text:"", ok:true });
 
@@ -102,16 +101,16 @@ export default function UserProfile({ onClose }) {
   const hasChanges = name !== user?.display_name || email !== user?.email || color !== user?.avatar_color;
 
   const TabBtn = ({ id, label }) => (
-    <Button variant="primary" onClick={() => setTab(id)} style={{
+    <button onClick={() => setTab(id)} style={{
       padding:"8px 16px", background:"none", border:"none",
       borderBottom:`2px solid ${tab===id?"var(--accent)":"transparent"}`,
       color: tab===id?"var(--accent)":"var(--text4)",
       cursor:"pointer", fontSize:11, fontWeight:700, letterSpacing:.5, fontFamily:"inherit",
-    }}>{label}</Button>
+    }}>{label}</button>
   );
 
   const Message = ({ m }) => m.text ? (
-    <div style={{ fontSize:12, color:m.ok?"var(--success)":"var(--danger)", marginTop:4, lineHeight:1.4 }}>
+    <div style={{ fontSize:12, color:m.ok?"#4CAF50":"var(--danger)", marginTop:4, lineHeight:1.4 }}>
       {m.ok?"✓ ":""}{m.text}
     </div>
   ) : null;
@@ -125,7 +124,7 @@ export default function UserProfile({ onClose }) {
   );
 
   return (
-    <div data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex",
+    <div data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)",  borderRadius:14,
@@ -138,20 +137,20 @@ export default function UserProfile({ onClose }) {
           display:"flex", alignItems:"center", gap:14, flexShrink:0 }}>
           <div style={{ width:48, height:48, borderRadius:"50%", background:color,
             display:"flex", alignItems:"center", justifyContent:"center",
-            fontSize:20, fontWeight:700, color:"var(--on-accent)", flexShrink:0 }}>
+            fontSize:20, fontWeight:700, color:"#fff", flexShrink:0 }}>
             {user?.display_name?.[0]?.toUpperCase()}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
             <div style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>{user?.display_name}</div>
             <div style={{ display:"flex", alignItems:"center", gap:8, marginTop:3 }}>
               <span style={{ fontSize:10, fontWeight:700, color:RC[user?.role]||"var(--text3)",
-                background:`${RC[user?.role]||"var(--text4)"}18`, padding:"1px 8px",
+                background:`${RC[user?.role]||"#888"}18`, padding:"1px 8px",
                 borderRadius:4 }}>{user?.role?.toUpperCase()}</span>
               <span style={{ fontSize:10, color:"var(--text4)" }}>{user?.email}</span>
             </div>
           </div>
-          <Button variant="secondary" onClick={onClose} style={{ background:"none", border:"none",
-            color:"var(--text4)", cursor:"pointer", fontSize:22, lineHeight:1 }}>×</Button>
+          <button onClick={onClose} style={{ background:"none", border:"none",
+            color:"var(--text4)", cursor:"pointer", fontSize:22, lineHeight:1 }}>×</button>
         </div>
 
         {/* Tabs */}
@@ -210,7 +209,7 @@ export default function UserProfile({ onClose }) {
                     {AVATAR_COLORS.map(c => (
                       <div key={c} onClick={() => setColor(c)} style={{
                         width:30, height:30, borderRadius:"50%", background:c, cursor:"pointer",
-                        border:`3px solid ${color===c?"var(--on-accent)":"transparent"}`,
+                        border:`3px solid ${color===c?"#fff":"transparent"}`,
                         boxShadow: color===c?"0 0 0 2px var(--accent)":"none",
                         transition:"all .12s",
                       }}/>
@@ -227,9 +226,9 @@ export default function UserProfile({ onClose }) {
 
               <Message m={msg}/>
               {(allowed.allow_username_change||allowed.allow_email_change||allowed.allow_avatar_change) && (
-                <Button variant="primary" onClick={saveProfile} disabled={saving||!hasChanges} style={btn(true)}>
+                <button onClick={saveProfile} disabled={saving||!hasChanges} style={btn(true)}>
                   {saving ? "Saving…" : hasChanges ? "Save Profile" : "No Changes"}
-                </Button>
+                </button>
               )}
             </div>
           )}
@@ -260,9 +259,9 @@ export default function UserProfile({ onClose }) {
                     <div style={{ fontSize:12, color:"var(--danger)" }}>Passwords don't match</div>
                   )}
                   <Message m={pwMsg}/>
-                  <Button variant="secondary" onClick={savePassword} disabled={pwSaving||!curPw||!newPw||newPw!==confPw} style={btn(true)}>
+                  <button onClick={savePassword} disabled={pwSaving||!curPw||!newPw||newPw!==confPw} style={btn(true)}>
                     {pwSaving ? "Changing…" : "Change Password"}
-                  </Button>
+                  </button>
                 </>
               )}
             </div>
@@ -301,7 +300,7 @@ export default function UserProfile({ onClose }) {
                       YOUR EFFECTIVE PERMISSIONS
                     </div>
                     {myPerms.includes("*") ? (
-                      <div style={{ fontSize:12, color:"var(--accent)", fontWeight:700 }}>★ Full access — all permissions</div>
+                      <div style={{ fontSize:12, color:"#FFD93D", fontWeight:700 }}>★ Full access — all permissions</div>
                     ) : myPerms.length === 0 ? (
                       <div style={{ fontSize:12, color:"var(--text4)" }}>No special permissions.</div>
                     ) : (

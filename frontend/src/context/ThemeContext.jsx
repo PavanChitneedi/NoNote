@@ -171,12 +171,22 @@ export function ThemeProvider({ children }) {
     () => parseInt(localStorage.getItem("nm_fontscale") || "100", 10)
   );
 
-  // Compatibility shim only: skin context owns runtime palette application.
+  const theme = THEMES[themeName] || THEMES.dark;
+
+  // Listen for skin-driven theme switches
   useEffect(() => {
-    const safe = THEMES[themeName] ? themeName : "dark";
-    setThemeName(safe);
-    localStorage.setItem("nm_theme", safe);
-  }, [themeName]);
+    const h = (e) => { if (THEMES[e.detail]) setThemeName(e.detail); };
+    window.addEventListener("nn-set-theme", h);
+    return () => window.removeEventListener("nn-set-theme", h);
+  }, []);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v));
+    document.body.dataset.theme = themeName;
+    localStorage.setItem("nm_theme", themeName);
+    window.dispatchEvent(new CustomEvent("nn-theme-changed", { detail: themeName }));
+  }, [theme, themeName]);
 
   const setFontScale = (v) => {
     setFontScaleRaw(v);

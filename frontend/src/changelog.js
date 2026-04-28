@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.43.8",date:"Apr 2026",items:[
+    "Fix: BLANK PAGE ROOT CAUSE -- neumorphic CSS rule [style*=rgba(0,0,0,.7)] was matching full-screen backdrop divs and setting background:var(--bg) with border-radius:20px, turning auth/login overlays into solid colored boxes hiding everything",
+    "Fix: Removed rgba() background override from neumorphic CSS entirely -- backdrop overlays must stay dark/transparent",
+    "Fix: bg2/bg3 flattening rule scoped with :not([style*=position:fixed]) to prevent overriding fixed overlays",
+    "Fix: Remaining duplicate border key in NodeCanvas L5506 (inline popup)",
+    "Fix: Duplicate fontFamily key in IntegrationPanel L783",
+    "Fix: DevModeContext v2 -- starts false, reads localStorage after mount, non-capture events, only intercepts direct data-ui elements",
+  ]},
   {v:"v5.43.7",date:"Apr 2026",items:[
     "Fix: Blank homepage -- DevModeContext started with devMode=true from localStorage, registering capture-mode click listener with e.preventDefault() that blocked ALL clicks (login, buttons, everything)",
     "Fix: DevMode now initializes to false, reads localStorage/URL param only after mount (client-side only)",

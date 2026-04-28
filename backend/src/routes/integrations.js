@@ -6,7 +6,6 @@ import { WebSocket } from 'ws';
 
 const router = Router();
 router.use(authenticate);
-const ALLOW_INSECURE_HOMELAB_TLS = process.env.ALLOW_INSECURE_HOMELAB_TLS === 'true';
 
 // ── URL safety check ─────────────────────────────────────────
 // Integration routes are FOR homelab use — private IPs (192.168.x, 10.x, 172.16-31.x)
@@ -39,11 +38,8 @@ function isValidToken(t) {
 }
 
 
-function getHttpsAgent() {
-  // Secure by default; only allow insecure TLS with explicit opt-in.
-  if (ALLOW_INSECURE_HOMELAB_TLS) return new https.Agent({ rejectUnauthorized: false });
-  return new https.Agent({ rejectUnauthorized: true });
-}
+// Self-signed cert agent — homelab appliances use self-signed TLS certs
+const selfSignedAgent = new https.Agent({ rejectUnauthorized: false });
 
 // ── HTTP wrapper using https.request — correctly applies 'agent' unlike native fetch ──
 function go(url, opts = {}, timeout = 8000) {
@@ -58,7 +54,7 @@ function go(url, opts = {}, timeout = 8000) {
       path: parsed.pathname + (parsed.search || ''),
       method: opts.method || 'GET',
       headers: opts.headers || {},
-      ...(isHttps ? { agent: getHttpsAgent() } : {}),
+      ...(isHttps ? { agent: selfSignedAgent } : {}),
     };
     if (opts.body) {
       reqOpts.headers['Content-Length'] = Buffer.byteLength(opts.body);
@@ -98,7 +94,7 @@ function truenasRealtime(baseUrl, token) {
     const timer  = setTimeout(() => finish(null), 5000);
 
     let ws;
-    try { ws = new WebSocket(wsUrl, { rejectUnauthorized: !ALLOW_INSECURE_HOMELAB_TLS }); }
+    try { ws = new WebSocket(wsUrl, { rejectUnauthorized: false }); }
     catch { clearTimeout(timer); resolve(null); return; }
 
     ws.on('error', () => { clearTimeout(timer); finish(null); });

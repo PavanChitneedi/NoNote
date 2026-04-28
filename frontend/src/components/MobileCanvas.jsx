@@ -1,4 +1,3 @@
-import { Button, NodeCardBase, NodeContent, NodeFooter, NodeHeader, NodeTitle, NodeToolbar, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 /**
  * MobileCanvas v2 — full feature parity with desktop, touch-optimised.
  *
@@ -18,7 +17,7 @@ import { getMap, saveMap, getAccessToken } from "../api/client.js";
 
 // ── Node type map ─────────────────────────────────────────────────
 const NT = {
-  note:       { label:"Note",          color:"var(--accent)", icon:"📝", cat:"General" },
+  note:       { label:"Note",          color:"#FFD93D", icon:"📝", cat:"General" },
   heading:    { label:"Heading",       color:"#6C63FF", icon:"📌", cat:"General" },
   user:       { label:"User",          color:"#E91E63", icon:"👤", cat:"General" },
   process:    { label:"Process",       color:"#9C27B0", icon:"🔄", cat:"General" },
@@ -54,18 +53,9 @@ const NT = {
   siem:       { label:"SIEM",          color:"#C62828", icon:"🔍", cat:"Security" },
 };
 
-const ACTION_NODE_TYPES = new Set(["process","decision","service","microservice","api","router","switch","firewall","loadbal","vpn","lambda","waf","ids"]);
-const INFO_NODE_TYPES = new Set(["note","heading","annotation","user"]);
-function getNodeKind(type) {
-  if (type === "group") return "GroupNode";
-  if (ACTION_NODE_TYPES.has(type)) return "ActionNode";
-  if (INFO_NODE_TYPES.has(type)) return "InfoNode";
-  return "DataNode";
-}
-
 const CATS = ["General","Network","Servers","Software","Cloud","Devices","Storage","Security"];
 const DEF_W = 220, DEF_H = 96;
-const ACCENT = "var(--accent)";
+const ACCENT = "#58a6ff";
 
 const USER_COLORS = ["#f97316","#06b6d4","#a855f7","#22c55e","#f59e0b","#ef4444","#3b82f6","#ec4899"];
 const userColor = id => { let h=0; for(let i=0;i<(id||"").length;i++) h=(h*31+id.charCodeAt(i))>>>0; return USER_COLORS[h%USER_COLORS.length]; };
@@ -345,7 +335,7 @@ export default function MobileCanvas({ mapId, onBack }) {
   if(error) return(
     <div style={{minHeight:"100vh",background:"var(--bg)",display:"flex",alignItems:"center",justifyContent:"center",flexDirection:"column",gap:12}}>
       <div style={{fontSize:13,color:"var(--danger)"}}>{error}</div>
-      <Button variant="secondary" onClick={onBack} style={mBtn(true)}>← Back</Button>
+      <button onClick={onBack} style={mBtn(true)}>← Back</button>
     </div>
   );
 
@@ -355,7 +345,8 @@ export default function MobileCanvas({ mapId, onBack }) {
       {/* ─── TOP BAR ───────────────────────────────────────── */}
       <div style={{height:52,background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
         display:"flex",alignItems:"center",gap:8,padding:"0 12px",flexShrink:0,zIndex:20}}>
-        <Button variant="ghost" onClick={onBack}>←</Button>
+        <button onClick={onBack} style={{background:"none",border:"none",color:"var(--text3)",
+          fontSize:22,cursor:"pointer",padding:"4px 8px",borderRadius:8,lineHeight:1}}>←</button>
         <span style={{fontSize:14,fontWeight:700,color:"var(--accent)",flex:1,
           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
           {mapMeta?.title||"Map"}
@@ -363,15 +354,15 @@ export default function MobileCanvas({ mapId, onBack }) {
         {saving&&<span style={{fontSize:9,color:"var(--text4)"}}>saving…</span>}
         {Object.entries(remoteSelections).map(([uid,rs],i)=>(
           <div key={uid} title={uid} style={{width:22,height:22,borderRadius:"50%",background:rs.color,
-            color:"var(--on-accent)",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
+            color:"#fff",fontSize:9,fontWeight:700,display:"flex",alignItems:"center",justifyContent:"center",
             border:"2px solid var(--bg2)",marginLeft:i>0?-6:0,flexShrink:0}}>
             {uid[0].toUpperCase()}
           </div>
         ))}
-        <Button variant="secondary" onClick={fitView} style={{background:"var(--bg3)",border:"none",borderRadius:6,
+        <button onClick={fitView} style={{background:"var(--bg3)",border:"none",borderRadius:6,
           color:"var(--text4)",fontSize:10,padding:"4px 9px",cursor:"pointer",flexShrink:0}}>
           {Math.round(zoom*100)}% FIT
-        </Button>
+        </button>
       </div>
 
       {/* Connect mode hint */}
@@ -449,53 +440,58 @@ export default function MobileCanvas({ mapId, onBack }) {
             const border=isConn?"#22c55e":rColor||(isSel?ACCENT:`${t.color}55`);
             const noteCount=(Array.isArray(node.notes)?node.notes:[]).filter(n=>!n.sensitive).length;
             return(
-              <NodeCardBase key={node.id} className="mob-node" nodeKind={getNodeKind(node.type)} state={isSel ? "selected" : "default"}
+              <div key={node.id} className="mob-node"
                 onPointerDown={e=>onNodeDown(e,node.id)}
                 onPointerUp={e=>onNodeUp(e,node.id)}
                 onPointerCancel={e=>onNodeUp(e,node.id)}
-                style={{"--node-accent": t.color, position:"absolute",left:node.x,top:node.y,
+                style={{position:"absolute",left:node.x,top:node.y,
                   width:node.w||DEF_W,minHeight:node.h||DEF_H,zIndex:2,
                   background:"var(--bg2)",border:`2px solid ${border}`,
                   borderRadius:10,touchAction:"none",cursor:"grab",
-                  transition:"var(--motion-transition-interactive)"}}>
-                <NodeHeader>
+                  boxShadow:isSel?`var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight)),0 0 0 2px ${ACCENT}55`:"var(--nEs,4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))",
+                  transition:"border-color .12s,box-shadow .12s"}}>
+                {/* Header */}
+                <div style={{padding:"10px 12px 6px",background:`${t.color}18`,
+                  borderRadius:"8px 8px 0 0",display:"flex",alignItems:"center",gap:8}}>
                   <NodeIcon icon={t.icon} size={20} color={t.color} />
-                  <NodeTitle className="ui-v2-node-title-fill">{node.title||"Untitled"}</NodeTitle>
-                  <NodeToolbar>
+                  <span style={{fontSize:13,fontWeight:700,color:"var(--text)",
+                    overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,lineHeight:1.2}}>
+                    {node.title||"Untitled"}
+                  </span>
                   {isSel&&(
-                    <Button variant="primary" onPointerDown={e=>e.stopPropagation()}
-                      onClick={e=>{e.stopPropagation();setSheet("node");}}>
+                    <button onPointerDown={e=>e.stopPropagation()}
+                      onClick={e=>{e.stopPropagation();setSheet("node");}}
+                      style={{background:`${t.color}30`,border:"none",borderRadius:6,
+                        color:t.color,fontSize:11,fontWeight:700,padding:"3px 9px",cursor:"pointer",flexShrink:0}}>
                       Edit ✎
-                    </Button>
+                    </button>
                   )}
-                  </NodeToolbar>
-                </NodeHeader>
-                <NodeContent>
+                </div>
                 {node.description&&(
-                  <div>
+                  <div style={{padding:"6px 12px",fontSize:11,color:"var(--text3)",lineHeight:1.5}}>
                     {node.description.slice(0,140)}{node.description.length>140?"…":""}
                   </div>
                 )}
-                </NodeContent>
-                <NodeFooter>
-                  {noteCount>0&&(
-                    <Button variant="secondary" className="ui-v2-node-meta-chip" onPointerDown={e=>e.stopPropagation()}
+                {noteCount>0&&(
+                  <div style={{padding:"0 12px 8px"}}>
+                    <span onPointerDown={e=>e.stopPropagation()}
                       onClick={e=>{e.stopPropagation();setSelected(node.id);setSheet("notes");}}
-                    >
+                      style={{fontSize:10,color:"var(--text4)",background:"var(--bg3)",
+                        borderRadius:4,padding:"2px 8px",cursor:"pointer",display:"inline-block"}}>
                       📝 {noteCount} note{noteCount>1?"s":""}
-                    </Button>
-                  )}
-                </NodeFooter>
+                    </span>
+                  </div>
+                )}
                 {/* Remote badge */}
                 {rColor&&<div style={{position:"absolute",top:-10,right:8,background:rColor,
-                  color:"var(--on-accent)",fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:3,pointerEvents:"none"}}>
+                  color:"#fff",fontSize:9,fontWeight:700,padding:"1px 6px",borderRadius:3,pointerEvents:"none"}}>
                   editing
                 </div>}
                 {/* Connect ring */}
                 {isConn&&<div style={{position:"absolute",inset:-6,borderRadius:14,
                   border:"2.5px dashed #22c55e",pointerEvents:"none",
                   animation:"mob-ring 1.2s ease-in-out infinite"}}/>}
-              </NodeCardBase>
+              </div>
             );
           })}
         </div>
@@ -509,15 +505,15 @@ export default function MobileCanvas({ mapId, onBack }) {
         <TBtn icon="⤳" label="Connect" active={mode==="connect"} ac="#6C63FF"
           onTap={()=>{setMode(m=>m==="connect"?"select":"connect");setConnecting(null);setSheet(null);}}/>
         {/* FAB */}
-        <Button variant="primary" onPointerDown={e=>e.stopPropagation()}
+        <button onPointerDown={e=>e.stopPropagation()}
           onClick={()=>{setSheet(s=>s==="add"?null:"add");setMode("select");setConnecting(null);}}
           style={{width:54,height:54,borderRadius:"50%",
             background:sheet==="add"?"var(--bg3)":"var(--accent2)",
-            border:"none",color:"var(--on-accent)",fontSize:28,cursor:"pointer",
+            border:"none",color:"#fff",fontSize:28,cursor:"pointer",
             boxShadow:sheet==="add"?"0 0 0 2px var(--accent)":"0 4px 18px rgba(88,166,255,.55)",
             display:"flex",alignItems:"center",justifyContent:"center",
             transform:sheet==="add"?"rotate(45deg)":"none",transition:"all .2s",
-            marginTop:-20}}>+</Button>
+            marginTop:-20}}>+</button>
         <TBtn icon="⊞" label="Layout" active={false}
           onTap={()=>{alert("Auto-layout: open on desktop for full layout options.");}}/>
         <TBtn icon="···" label="More" active={sheet==="more"}
@@ -526,7 +522,7 @@ export default function MobileCanvas({ mapId, onBack }) {
 
       {/* ─── SHEET BACKDROP ────────────────────────────────── */}
       {sheet&&<div onClick={()=>{if(sheet==="node")saveEdit();else setSheet(null);}}
-        style={{position:"fixed",inset:0,background:"var(--overlay-scrim-1)",zIndex:29}}/>}
+        style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:29}}/>}
 
       {/* ADD SHEET */}
       {sheet==="add"&&(
@@ -534,18 +530,18 @@ export default function MobileCanvas({ mapId, onBack }) {
           <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:10,marginBottom:10,
             borderBottom:"1px solid var(--border2)"}}>
             {CATS.filter(c=>Object.values(NT).some(t=>t.cat===c)).map(c=>(
-              <Button variant="primary" key={c} onClick={()=>setAddCat(c)}
+              <button key={c} onClick={()=>setAddCat(c)}
                 style={{padding:"5px 13px",borderRadius:20,border:"none",cursor:"pointer",
                   fontSize:11,fontWeight:700,whiteSpace:"nowrap",flexShrink:0,
                   background:addCat===c?"var(--accent2)":"var(--bg3)",
-                  color:addCat===c?"var(--on-accent)":"var(--text3)"}}>
+                  color:addCat===c?"#fff":"var(--text3)"}}>
                 {c}
-              </Button>
+              </button>
             ))}
           </div>
           <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,overflowY:"auto",paddingBottom:16}}>
             {Object.entries(NT).filter(([,t])=>t.cat===addCat).map(([type,t])=>(
-              <Button variant="primary" key={type} onClick={()=>addNode(type)}
+              <button key={type} onClick={()=>addNode(type)}
                 style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,
                   padding:"14px 6px",border:`1.5px solid ${t.color}40`,borderRadius:10,
                   background:`${t.color}12`,cursor:"pointer"}}>
@@ -553,7 +549,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                 <span style={{fontSize:10,fontWeight:700,color:"var(--text2)",textAlign:"center",lineHeight:1.2}}>
                   {t.label}
                 </span>
-              </Button>
+              </button>
             ))}
           </div>
         </Sht>
@@ -564,11 +560,11 @@ export default function MobileCanvas({ mapId, onBack }) {
         <Sht title="Edit Node" onClose={saveEdit} h="78vh"
           foot={
             <div style={{display:"flex",gap:8}}>
-              <Button variant="secondary" onClick={()=>setSheet("notes")} style={mBtn(false)}>
+              <button onClick={()=>setSheet("notes")} style={mBtn(false)}>
                 📝 Notes {Array.isArray(selNode.notes)&&selNode.notes.length>0?` (${selNode.notes.length})`:""}
-              </Button>
-              <Button variant="primary" onClick={saveEdit} style={{...mBtn(true),flex:1}}>Save ✓</Button>
-              <Button variant="destructive" onClick={deleteSelected} style={{...mBtn(false),color:"var(--danger)"}}>🗑</Button>
+              </button>
+              <button onClick={saveEdit} style={{...mBtn(true),flex:1}}>Save ✓</button>
+              <button onClick={deleteSelected} style={{...mBtn(false),color:"var(--danger)"}}>🗑</button>
             </div>
           }>
           <div style={{display:"flex",flexDirection:"column",gap:14}}>
@@ -596,7 +592,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                 style={{flex:1,background:"var(--bg3)",border:"1px solid var(--border)",
                   borderRadius:8,padding:"10px 12px",color:"var(--text)",fontSize:13,
                   fontFamily:"var(--font-ui)",outline:"none"}}/>
-              <Button variant="primary" onClick={addNote}>→</Button>
+              <button onClick={addNote} style={mBtn(true)}>→</button>
             </div>
           }>
           {(!Array.isArray(selNode.notes)||selNode.notes.length===0)
@@ -611,9 +607,9 @@ export default function MobileCanvas({ mapId, onBack }) {
                   marginBottom:8,display:"flex",gap:10,alignItems:"flex-start"}}>
                   {sens&&<span title="Sensitive">🔒</span>}
                   <span style={{fontSize:13,color:"var(--text2)",flex:1,lineHeight:1.6}}>{text}</span>
-                  <Button variant="destructive" onClick={()=>deleteNote(selNode.id,i)}
+                  <button onClick={()=>deleteNote(selNode.id,i)}
                     style={{background:"none",border:"none",color:"var(--text4)",
-                      fontSize:18,cursor:"pointer",lineHeight:1,padding:"0 2px"}}>×</Button>
+                      fontSize:18,cursor:"pointer",lineHeight:1,padding:"0 2px"}}>×</button>
                 </div>
               );
             })
@@ -632,7 +628,7 @@ export default function MobileCanvas({ mapId, onBack }) {
             ["↗ Export","Export map (desktop only)",()=>alert("Open on desktop to export PNG, PDF, Markdown, HTML, .nonote")],
             ["❓ Help","Open documentation",()=>alert("Full help & documentation available on desktop")],
           ].map(([icon,label,fn])=>(
-            <Button variant="primary" key={label} onClick={()=>{fn();setSheet(null);}}
+            <button key={label} onClick={()=>{fn();setSheet(null);}}
               style={{display:"flex",alignItems:"center",gap:14,padding:"15px 4px",width:"100%",
                 background:"none",border:"none",borderBottom:"1px solid var(--border2)",
                 color:"var(--text)",cursor:"pointer",fontSize:13,fontFamily:"var(--font-ui)",textAlign:"left"}}>
@@ -641,7 +637,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                 <div style={{fontWeight:700,fontSize:13}}>{icon.split(" ").slice(1).join(" ")}</div>
                 <div style={{fontSize:11,color:"var(--text4)",marginTop:1}}>{label}</div>
               </div>
-            </Button>
+            </button>
           ))}
         </Sht>
       )}
@@ -658,7 +654,7 @@ function Sht({title,onClose,children,foot,h="60vh"}){
   return(
     <div style={{position:"fixed",bottom:0,left:0,right:0,zIndex:30,
       background:"var(--bg2)",borderTop:"1.5px solid var(--border)",
-      borderRadius:"16px 16px 0 0",boxShadow:"var(--elevation-level3)",
+      borderRadius:"16px 16px 0 0",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
       display:"flex",flexDirection:"column",
       maxHeight:h,height:h==="auto"?undefined:h}}>
       <div style={{display:"flex",justifyContent:"center",padding:"10px 0 2px"}}>
@@ -667,7 +663,8 @@ function Sht({title,onClose,children,foot,h="60vh"}){
       <div style={{display:"flex",alignItems:"center",padding:"4px 18px 10px",
         borderBottom:"1px solid var(--border2)"}}>
         <span style={{fontSize:14,fontWeight:700,color:"var(--text)",flex:1}}>{title}</span>
-        <Button variant="ghost" onClick={onClose}>×</Button>
+        <button onClick={onClose} style={{background:"none",border:"none",fontSize:24,
+          color:"var(--text4)",cursor:"pointer",lineHeight:1,padding:"0 4px"}}>×</button>
       </div>
       <div style={{flex:1,overflowY:"auto",padding:"14px 18px"}}>{children}</div>
       {foot&&<div style={{padding:"10px 18px 16px",borderTop:"1px solid var(--border2)"}}>{foot}</div>}
@@ -677,13 +674,13 @@ function Sht({title,onClose,children,foot,h="60vh"}){
 
 function TBtn({icon,label,active,ac=ACCENT,onTap}){
   return(
-    <Button variant="primary" onPointerDown={e=>e.stopPropagation()} onClick={onTap}
+    <button onPointerDown={e=>e.stopPropagation()} onClick={onTap}
       style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,
         background:"none",border:"none",cursor:"pointer",padding:"6px 14px",
         color:active?ac:"var(--text4)",transition:"color .15s"}}>
       <span style={{fontSize:22,lineHeight:1}}>{icon}</span>
       <span style={{fontSize:9,fontWeight:700,letterSpacing:.5}}>{label}</span>
-    </Button>
+    </button>
   );
 }
 
@@ -704,5 +701,5 @@ function Fld({label,val,set,multi=false,rows=1,focus=false}){
 function mBtn(primary){
   return{padding:"11px 18px",border:primary?"none":"1px solid var(--border)",
     borderRadius:10,cursor:"pointer",fontSize:13,fontWeight:700,fontFamily:"var(--font-ui)",
-    background:primary?"var(--accent2)":"var(--bg3)",color:primary?"var(--on-accent)":"var(--text3)"};
+    background:primary?"var(--accent2)":"var(--bg3)",color:primary?"#fff":"var(--text3)"};
 }

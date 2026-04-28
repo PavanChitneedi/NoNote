@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 export const TUTORIAL_STEPS = [
   { id:"welcome", target:null, page:"all",
@@ -148,7 +147,7 @@ export default function Tutorial({ page, onClose }) {
     <>
       {/* Full-screen dim — rendered only when NO spotlight so centered steps have a backdrop */}
       {!spotRect && (
-        <div onClick={onClose} data-ui="tutorial" data-component="Tutorial" data-page="global" data-role="overlay" style={{position:"fixed",inset:0,zIndex:9990,background:"var(--overlay-scrim-2)"}}/>
+        <div onClick={onClose} data-ui="tutorial" data-component="Tutorial" data-page="global" data-role="overlay" style={{position:"fixed",inset:0,zIndex:9990,background:"rgba(0,0,0,0.72)"}}/>
       )}
 
       {/* Spotlight: box-shadow creates the dark surround WITHOUT a separate overlay div.
@@ -164,7 +163,7 @@ export default function Tutorial({ page, onClose }) {
           borderRadius: 10,
           border: `2.5px solid ${ACCENT}`,
           /* This single box-shadow dims the ENTIRE page except the spotlight area */
-          boxShadow: `0 0 0 3px ${ACCENT}55, 0 0 0 4000px var(--overlay-scrim-2)`,
+          boxShadow: `0 0 0 3px ${ACCENT}55, 0 0 0 4000px rgba(0,0,0,0.76)`,
           pointerEvents: "none",
           animation: "tut-pulse 2s ease-in-out infinite",
         }}/>
@@ -187,20 +186,20 @@ export default function Tutorial({ page, onClose }) {
         <div style={{fontSize:12,color:"var(--text2)",lineHeight:1.7,marginBottom:18}}>{step.body}</div>
         {/* Nav */}
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
+          <button onClick={onClose} style={{background:"none",border:"none",color:"var(--text4)",cursor:"pointer",
             fontSize:11,fontFamily:"var(--font-ui)",padding:"4px 0",flex:1,textAlign:"left"}}>
             Skip tour
-          </Button>
+          </button>
           {stepIdx > 0 && (
-            <Button variant="secondary" onClick={prev} style={{background:"var(--bg3)",
+            <button onClick={prev} style={{background:"var(--bg3)",
               borderRadius:6,padding:"6px 14px",color:"var(--text3)",cursor:"pointer",
-              fontSize:11,fontFamily:"var(--font-ui)",fontWeight:700}}>← Back</Button>
+              fontSize:11,fontFamily:"var(--font-ui)",fontWeight:700}}>← Back</button>
           )}
-          <Button variant="primary" onClick={next} style={{background:ACCENT,border:"none",borderRadius:6,
-            padding:"6px 20px",color:"var(--on-accent)",cursor:"pointer",
+          <button onClick={next} style={{background:ACCENT,border:"none",borderRadius:6,
+            padding:"6px 20px",color:"#0d1117",cursor:"pointer",
             fontSize:11,fontFamily:"var(--font-ui)",fontWeight:800}}>
             {isLast ? "Finish ✓" : "Next →"}
-          </Button>
+          </button>
         </div>
         {/* Dots */}
         <div style={{display:"flex",gap:4,justifyContent:"center",marginTop:14}}>
@@ -215,8 +214,8 @@ export default function Tutorial({ page, onClose }) {
 
       <style>{`
         @keyframes tut-pulse {
-          0%,100%{box-shadow:0 0 0 3px #58a6ff55, 0 0 0 4000px var(--overlay-scrim-2);}
-          50%   {box-shadow:0 0 0 8px #58a6ff22, 0 0 0 4000px var(--overlay-scrim-2);}
+          0%,100%{box-shadow:0 0 0 3px #58a6ff55, 0 0 0 4000px rgba(0,0,0,0.76);}
+          50%   {box-shadow:0 0 0 8px #58a6ff22, 0 0 0 4000px rgba(0,0,0,0.76);}
         }
       `}</style>
     </>

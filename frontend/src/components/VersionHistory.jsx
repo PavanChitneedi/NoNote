@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { getVersions, saveVersion, getVersion, deleteVersion } from "../api/client.js";
-import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestore, onClose }) {
   const [versions, setVersions] = useState([]);
@@ -52,7 +51,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
   };
 
   return (
-    <div data-ui="version-history" data-component="VersionHistory" data-page="canvas" data-role="panel" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
+    <div data-ui="version-history" data-component="VersionHistory" data-page="canvas" data-role="panel" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.75)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16, width:"100%", maxWidth:680, maxHeight:"88vh", display:"flex", flexDirection:"column", overflow:"hidden" }}
         onClick={e => e.stopPropagation()}>
@@ -64,7 +63,7 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
             <div style={{ fontSize:14, fontWeight:700, color:"var(--text)" }}>Version History</div>
             <div style={{ fontSize:11, color:"var(--text4)" }}>{mapTitle} · up to 50 versions stored</div>
           </div>
-          <Button variant="ghost" onClick={onClose}>×</Button>
+          <button onClick={onClose} style={{ background:"none", border:"none", color:"var(--text3)", cursor:"pointer", fontSize:22 }}>×</button>
         </div>
 
         {/* Save new version */}
@@ -75,10 +74,10 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
               style={{ flex:1, background:"var(--bg)", border:"1px solid var(--border)", borderRadius:8, padding:"9px 12px", color:"var(--text)", fontSize:12, outline:"none", fontFamily:"inherit" }}
               onKeyDown={e => e.key === "Enter" && handleSave()}
             />
-            <Button variant="primary" onClick={handleSave} disabled={saving}
-              style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
+            <button onClick={handleSave} disabled={saving}
+              style={{ padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", flexShrink:0 }}>
               {saving ? "Saving…" : "💾 SAVE NOW"}
-            </Button>
+            </button>
           </div>
           {error && <div style={{ marginTop:8, fontSize:12, color:"var(--danger)" }}>{error}</div>}
         </div>
@@ -98,16 +97,20 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
                 style={{
                   padding:"12px 16px", cursor:"pointer", borderLeft:`3px solid ${preview?.id===ver.id?"var(--accent)":"transparent"}`,
                   background: preview?.id===ver.id ? "var(--accent2)15" : "transparent",
-                  borderBottom:"1px solid var(--border2)", transition:"var(--transition-all)",
+                  borderBottom:"1px solid var(--border2)", transition:"all .12s",
                 }}
+                onMouseEnter={e => { if(preview?.id!==ver.id) e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"; }}
+                onMouseLeave={e => { if(preview?.id!==ver.id) e.currentTarget.style.background="transparent"; }}
               >
                 <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
                   <div style={{ fontSize:12, fontWeight:600, color:"var(--text)", flex:1, marginRight:8 }}>
                     {ver.label || `Snapshot`}
                   </div>
-                  <Button variant="destructive" onClick={e => handleDelete(ver.id, e)}
+                  <button onClick={e => handleDelete(ver.id, e)}
                     style={{ background:"none", border:"none", color:"var(--text4)", cursor:"pointer", fontSize:14, flexShrink:0, padding:0 }}
-                  >×</Button>
+                    onMouseEnter={e => e.currentTarget.style.color="var(--danger)"}
+                    onMouseLeave={e => e.currentTarget.style.color="var(--text4)"}
+                  >×</button>
                 </div>
                 <div style={{ fontSize:10, color:"var(--text4)", marginTop:3 }}>
                   {ver.node_count} nodes · {ver.edge_count} edges
@@ -154,14 +157,14 @@ export default function VersionHistory({ mapId, nodes, edges, mapTitle, onRestor
                 </div>
 
                 <div style={{ display:"flex", gap:8 }}>
-                  <Button variant="primary" onClick={handleRestore}
-                    style={{ flex:1, padding:"11px", background:"var(--accent2)", border:"none", borderRadius:9, color:"var(--on-accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
+                  <button onClick={handleRestore}
+                    style={{ flex:1, padding:"11px", background:"var(--accent2)", border:"none", borderRadius:9, color:"#fff", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit" }}>
                     ↩ RESTORE THIS VERSION
-                  </Button>
-                  <Button variant="primary" onClick={() => setPreview(null)}
+                  </button>
+                  <button onClick={() => setPreview(null)}
                     style={{ padding:"11px 16px", background:"var(--bg3)", border:"none", borderRadius:9, color:"var(--text3)", fontSize:12, cursor:"pointer", fontFamily:"inherit" }}>
                     CANCEL
-                  </Button>
+                  </button>
                 </div>
 
                 <div style={{ fontSize:11, color:"var(--text4)", textAlign:"center" }}>

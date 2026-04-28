@@ -1,26 +1,21 @@
-# NoNote — Skin-Only UI System
+# NoNote — Skin & Theme System
 
 ## Philosophy
-Skin-only architecture. Skins own personality and palette together.
+Two independent layers. Any combination works.
 
-| Layer | File | Controls |
-|---|---|---|
-| **Skin** | `skins.js` + `SkinContext.jsx` | Palette tokens + font + radius + shadow + nav personality |
-| **ThemeContext (shim)** | `ThemeContext.jsx` | Legacy compatibility only (`nm_theme` read/write); does not drive runtime palette |
+| Layer | File | Controls | Never touches |
+|---|---|---|---|
+| **Theme** | `ThemeContext.jsx` | Colors only | Fonts, spacing |
+| **Skin** | `skins.js` + `SkinContext.jsx` | Font, radius, shadow, effects, nav layout | Colors |
 
 > **Note:** The Design layer (spacing/density) was removed from the user-facing UI. `DesignContext.jsx` still exists and applies a fixed "clean" spacing baseline — it is no longer user-selectable.
 
 ## Application Order
-1. `DesignContext.useEffect` → applies fixed spacing vars
-2. `SkinContext.useEffect` (with `setTimeout(0)`) → applies palette + personality vars
-3. Skin CSS contract from `skins.js` enforces uniform state roles
+1. `ThemeContext.useEffect` → applies color vars
+2. `DesignContext.useEffect` → applies fixed "clean" spacing vars
+3. `SkinContext.useEffect` (with `setTimeout(0)`) → applies personality vars LAST
 
-No runtime global theme mixing. Changing skin guarantees a consistent visual contract.
-
-## Skin Variants
-- Variants are palette presets inside a skin (example: `neumorphic` has `clay` and `dark`).
-- Variant is persisted as `nn_skin_variant_<skinKey>`.
-- Legacy `nm_theme` is migrated once into the active skin variant and then removed.
+Skin vars **always win** over theme on their variables. When theme changes, SkinContext listens to `nn-theme-changed` and re-applies personality vars on top.
 
 ## Current Skins (11)
 

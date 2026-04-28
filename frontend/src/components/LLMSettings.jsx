@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from "react";
 import { getLLMProviders, createLLMProvider, updateLLMProvider, deleteLLMProvider, probeLLMModels } from "../api/client.js";
-import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const PRESETS = {
   openai:      { label:"OpenAI (ChatGPT)",          icon:"🟢", group:"Frontier",
@@ -197,7 +196,7 @@ export default function LLMSettings({ onClose }) {
   };
 
   return (
-    <div data-ui="llm-settings" data-component="LLMSettings" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"var(--overlay-scrim-2)", display:"flex",
+    <div data-ui="llm-settings" data-component="LLMSettings" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.75)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
       onClick={onClose}>
       <div style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:16,
@@ -212,7 +211,7 @@ export default function LLMSettings({ onClose }) {
             <div style={{ fontSize:13, fontWeight:700, color:"var(--text)" }}>LLM Providers</div>
             <div style={{ fontSize:10, color:"var(--text4)" }}>API keys are encrypted at rest — never exposed to the frontend</div>
           </div>
-          <Button variant="ghost" onClick={onClose}>×</Button>
+          <button onClick={onClose} style={S.xBtn}>×</button>
         </div>
 
         <div style={{ flex:1, overflow:"auto", padding:20, display:"flex", flexDirection:"column", gap:14 }}>
@@ -252,13 +251,13 @@ export default function LLMSettings({ onClose }) {
                         textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{p.base_url}</div>
                     </div>
                     <div style={{ display:"flex", gap:5, flexShrink:0 }}>
-                      <Button variant="primary" onClick={() => isActiveEdit ? cancelForm() : openEdit(p)}
+                      <button onClick={() => isActiveEdit ? cancelForm() : openEdit(p)}
                         style={{ ...S.ghost, padding:"4px 10px", fontSize:9,
                           background: isActiveEdit ? "var(--accent2)22" : undefined,
                           color: isActiveEdit ? "var(--accent2)" : undefined }}>
                         {isActiveEdit ? "CANCEL" : "EDIT"}
-                      </Button>
-                      <Button variant="destructive" onClick={() => handleDelete(p.id)} style={S.danger}>REMOVE</Button>
+                      </button>
+                      <button onClick={() => handleDelete(p.id)} style={S.danger}>REMOVE</button>
                     </div>
                   </div>
                 );
@@ -338,25 +337,25 @@ export default function LLMSettings({ onClose }) {
                         </datalist>
                         <div style={{ display:"flex", flexWrap:"wrap", gap:4, marginTop:5 }}>
                           {displayModels.map(m => (
-                            <Button variant="primary" key={m} type="button" onClick={() => setForm(f => ({ ...f, model:m }))}
+                            <button key={m} type="button" onClick={() => setForm(f => ({ ...f, model:m }))}
                               style={{ padding:"2px 8px", fontSize:9,
                                 border:`1px solid ${form.model===m?"var(--accent2)":"var(--border)"}`,
                                 borderRadius:4, background:form.model===m?"var(--accent2)18":"transparent",
                                 color:form.model===m?"var(--accent)":"var(--text3)",
                                 cursor:"pointer", fontFamily:"inherit" }}>
                               {m.split("/").pop()}
-                            </Button>
+                            </button>
                           ))}
                         </div>
                       </>
                     )}
                     {probeError && <div style={{ fontSize:10, color:"var(--danger)", marginTop:4 }}>⚠ {probeError}</div>}
                     {preset.autoDiscover && !probing && !probeError && discoveredModels.length === 0 && (
-                      <Button variant="primary" type="button" onClick={() => discoverModels(form.base_url || preset.placeholder_url)}
+                      <button type="button" onClick={() => discoverModels(form.base_url || preset.placeholder_url)}
                         style={{ marginTop:5, fontSize:9, color:"var(--accent)", background:"none", border:"none",
                           cursor:"pointer", padding:0, fontFamily:"inherit" }}>
                         🔍 Detect models
-                      </Button>
+                      </button>
                     )}
                   </div>
 
@@ -395,17 +394,17 @@ export default function LLMSettings({ onClose }) {
 
                 {/* Actions */}
                 <div style={{ display:"flex", gap:8 }}>
-                  <Button variant="primary" type="submit" disabled={saving} style={{ ...S.primary, opacity:saving?0.7:1 }}>
+                  <button type="submit" disabled={saving} style={{ ...S.primary, opacity:saving?0.7:1 }}>
                     {saving ? "Saving…" : isEdit ? "SAVE CHANGES" : "ADD PROVIDER"}
-                  </Button>
-                  <Button variant="secondary" type="button" onClick={cancelForm} style={S.ghost}>CANCEL</Button>
+                  </button>
+                  <button type="button" onClick={cancelForm} style={S.ghost}>CANCEL</button>
                 </div>
               </form>
             </div>
           ) : (
-            <Button variant="primary" onClick={openNew} style={{ ...S.primary, alignSelf:"flex-start" }}>
+            <button onClick={openNew} style={{ ...S.primary, alignSelf:"flex-start" }}>
               + ADD PROVIDER
-            </Button>
+            </button>
           )}
 
           <div style={{ fontSize:10, color:"var(--text4)", lineHeight:1.6,
@@ -425,7 +424,7 @@ const Lbl = ({ children }) => (
 );
 
 const Alert = ({ type, children }) => {
-  const c = type === "success" ? "var(--success)" : "var(--danger)";
+  const c = type === "success" ? "#4CAF50" : "var(--danger)";
   return (
     <div style={{ background:`${c}18`, border:`1px solid ${c}40`, borderRadius:8,
       padding:"9px 12px", fontSize:12, color:c }}>
@@ -439,9 +438,9 @@ const S = {
   inp:     { width:"100%", background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:7,
              padding:"8px 10px", color:"var(--text)", fontSize:12, fontFamily:"inherit", outline:"none", boxSizing:"border-box" },
   primary: { padding:"9px 18px", background:"var(--accent2)", border:"none", borderRadius:8,
-             color:"var(--on-accent)", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
+             color:"#fff", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
   ghost:   { padding:"9px 14px", background:"var(--bg3)", border:"none", borderRadius:8,
              color:"var(--text3)", fontSize:10, fontWeight:700, letterSpacing:1, cursor:"pointer", fontFamily:"inherit" },
-  danger:  { background:"none", border:"1px solid var(--danger)", borderRadius:6, color:"var(--danger)",
+  danger:  { background:"none", border:"1px solid #f7816640", borderRadius:6, color:"var(--danger)",
              cursor:"pointer", fontSize:9, padding:"4px 10px", fontFamily:"inherit", fontWeight:700 },
 };

@@ -1,4 +1,3 @@
-import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 /**
  * DocExportModal — Word (.docx) and PDF export in Normal and AI modes.
  *
@@ -404,7 +403,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
 
   return (
     <div data-ui="doc-export" data-component="DocExportModal" data-page="canvas" data-role="modal" style={{ position:"fixed", inset:0, zIndex:900,
-      background:"var(--overlay-scrim-2)", display:"flex", alignItems:"center", justifyContent:"center" }}
+      background:"rgba(0,0,0,.72)", display:"flex", alignItems:"center", justifyContent:"center" }}
       onClick={onClose}>
       <div onClick={e=>e.stopPropagation()}
         style={{ background:"var(--bg2)", 
@@ -418,8 +417,8 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
             <div style={{ fontSize:15, fontWeight:700, color:"var(--text)" }}>{info.label}</div>
             <div style={{ fontSize:11, color:"var(--text4)", marginTop:3, lineHeight:1.4 }}>{info.sub}</div>
           </div>
-          <Button variant="secondary" onClick={onClose} style={{ background:"none", border:"none",
-            fontSize:22, color:"var(--text4)", cursor:"pointer", flexShrink:0 }}>×</Button>
+          <button onClick={onClose} style={{ background:"none", border:"none",
+            fontSize:22, color:"var(--text4)", cursor:"pointer", flexShrink:0 }}>×</button>
         </div>
 
         {/* What you'll get */}
@@ -480,24 +479,24 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
 
         {/* Actions */}
         <div style={{ display:"flex", gap:10 }}>
-          <Button variant="primary" onClick={onClose}
+          <button onClick={onClose}
             style={{ padding:"10px 18px", background:"var(--bg3)", 
               borderRadius:8, color:"var(--text3)", cursor:"pointer", fontSize:13,
               fontFamily:"var(--font-ui)", fontWeight:600 }}>
             {status==="done" ? "Close" : "Cancel"}
-          </Button>
-          <Button variant="primary" onClick={doExport} disabled={status==="generating"}
+          </button>
+          <button onClick={doExport} disabled={status==="generating"}
             style={{ flex:1, padding:"10px 18px",
               background: status==="generating" ? "var(--bg3)" : "var(--accent2)",
               border:"none", borderRadius:8,
-              color: status==="generating" ? "var(--text4)" : "var(--on-accent)",
+              color: status==="generating" ? "var(--text4)" : "#fff",
               cursor: status==="generating" ? "not-allowed" : "pointer",
               fontSize:13, fontWeight:700, fontFamily:"var(--font-ui)" }}>
             {status==="generating" ? "Working…"
               : status==="done" ? `Export Again ↓`
               : isPDF ? `Open PDF Page ↗`
               : `Export as Word (.docx) ↓`}
-          </Button>
+          </button>
         </div>
       </div>
       <style>{`@keyframes spin{to{transform:rotate(360deg);}}`}</style>

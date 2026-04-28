@@ -13,8 +13,6 @@ import ThemePicker  from "./components/ThemePicker.jsx";
 import UserProfile  from "./components/UserProfile.jsx";
 import Tutorial     from "./components/Tutorial.jsx";
 import HelpGuide    from "./components/HelpGuide.jsx";
-import DesignSystemProvider from "./ui/DesignSystemProvider.jsx";
-import { Button, QuickActionButton, ToggleButton } from "./components/ui/uiPrimitivesV2.jsx";
 
 // Error boundary so a MobileCanvas crash shows an error instead of blank screen
 class MobileErrorBoundary extends Component {
@@ -28,11 +26,11 @@ class MobileErrorBoundary extends Component {
         <div style={{fontSize:12,color:"var(--danger)",textAlign:"center",lineHeight:1.5}}>
           {this.state.err}
         </div>
-        <Button variant="secondary" onClick={this.props.onBack}
-          style={{padding:"12px 24px",background:"var(--accent2)",
-            borderRadius:10,color:"var(--on-accent)",fontSize:14,fontWeight:700}}>
+        <button onClick={this.props.onBack}
+          style={{padding:"12px 24px",background:"var(--accent2)",border:"none",
+            borderRadius:10,color:"#fff",fontSize:14,cursor:"pointer",fontWeight:700}}>
           ← Back
-        </Button>
+        </button>
       </div>
     );
     return this.props.children;
@@ -41,7 +39,8 @@ class MobileErrorBoundary extends Component {
 
 function AppInner() {
   const { user, loading, logout } = useAuth();
-  const { skin, skinVariant } = useSkin();
+  const { setThemeName } = useTheme();
+  const { skin } = useSkin();
   const { themeName }             = useTheme();
   const { devMode, setDevMode }    = useDevMode();
   const [view,         setView]         = useState({ page:"dashboard", mapId:null });
@@ -80,6 +79,15 @@ function AppInner() {
     return () => { window.removeEventListener("popstate", onPop); window.removeEventListener("hashchange", onPop); };
   }, []);
 
+  // Handle skin force-theme events
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.detail && setThemeName) setThemeName(e.detail);
+    };
+    window.addEventListener("nn-skin-force-theme", handler);
+    return () => window.removeEventListener("nn-skin-force-theme", handler);
+  }, []);
+
   if (loading) return (
     <div style={{ minHeight:"100vh", background:"var(--bg)", display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div style={{ textAlign:"center", color:"var(--text4)" }}>
@@ -103,30 +111,30 @@ function AppInner() {
   );
   const navActions = (
     <div style={{ display:"flex", alignItems:"center", gap:3 }}>
-      {view.page==="admin" && <Button variant="secondary" onClick={goHome}>← Back</Button>}
-      <Button variant="ghost" onClick={() => setShowTutorial(true)} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</Button>
-      <Button variant="ghost" onClick={() => setShowHelp(true)} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</Button>
-      <Button variant="secondary" onClick={() => setShowAppearance(true)} title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</Button>
-      {["owner","admin"].includes(user.role) && <Button variant="ghost" onClick={openAdmin}>⚙</Button>}
+      {view.page==="admin" && <button onClick={goHome} style={hBtn}>← Back</button>}
+      <button onClick={() => setShowTutorial(true)} style={hBtn} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</button>
+      <button onClick={() => setShowHelp(true)} style={hBtn} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</button>
+      <button onClick={() => setShowAppearance(true)} style={hBtn} title="Appearance">{THEMES[themeName]?.icon}</button>
+      {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={hBtn}>⚙</button>}
       <div onClick={() => setShowProfile(true)}
         style={{ width:28, height:28, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
           display:"flex", alignItems:"center", justifyContent:"center",
-          fontSize:12, fontWeight:700, color:"var(--on-accent)", cursor:"pointer", flexShrink:0 }}>
+          fontSize:12, fontWeight:700, color:"#fff", cursor:"pointer", flexShrink:0 }}>
         {user.display_name?.[0]?.toUpperCase()}
       </div>
-      <ToggleButton onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode (Ctrl+Shift+D)"}
+      <button onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode (Ctrl+Shift+D)"}
         data-ui="topbar-devmode-toggle" data-component="Topbar" data-page="global" data-role="toggle"
         data-state={devMode?"active":"default"}
-        pressed={devMode} className="app-dev-toggle">DEV</ToggleButton>
-      <Button variant="destructive" onClick={logout} className="app-logout-btn" data-ui="topbar-logout" data-component="Topbar" data-page="global" data-role="action-btn">✕</Button>
+        style={{...hBtn,background:devMode?"#00e5ff22":"transparent",color:devMode?"#00e5ff":"var(--text4)",border:devMode?"1px solid #00e5ff55":"none",fontSize:9,letterSpacing:1}}>DEV</button>
+      <button onClick={logout} style={{ ...hBtn, color:"var(--danger)" }} data-ui="topbar-logout" data-component="Topbar" data-page="global" data-role="action-btn">✕</button>
     </div>
   );
   const navActionsCol = (
     <div style={{ display:"flex", flexDirection:"column", alignItems:"stretch", gap:2 }}>
-      <Button variant="ghost" onClick={() => setShowTutorial(true)} className="app-dock-btn" title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</Button>
-      <Button variant="ghost" onClick={() => setShowHelp(true)} className="app-dock-btn" title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</Button>
-      <Button variant="secondary" onClick={() => setShowAppearance(true)} className="app-dock-btn" title="Appearance">{THEMES[skinVariant || themeName]?.icon || "🎨"}</Button>
-      {["owner","admin"].includes(user.role) && <Button variant="ghost" onClick={openAdmin} className="app-dock-btn" title="Admin">⚙</Button>}
+      <button onClick={() => setShowTutorial(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Tutorial" data-ui="topbar-tutorial" data-component="Topbar" data-page="global" data-role="nav-btn">🎓</button>
+      <button onClick={() => setShowHelp(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Help" data-ui="topbar-help" data-component="Topbar" data-page="global" data-role="nav-btn">?</button>
+      <button onClick={() => setShowAppearance(true)} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Appearance">{THEMES[themeName]?.icon}</button>
+      {["owner","admin"].includes(user.role) && <button onClick={openAdmin} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Admin">⚙</button>}
     </div>
   );
 
@@ -144,7 +152,7 @@ function AppInner() {
 
   const modals = (
     <>
-      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="skins"/>}
+      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
@@ -204,20 +212,20 @@ function AppInner() {
           padding:"12px 0", gap:4, zIndex:20, overflowY:"auto",
         }}>
           <div onClick={goHome} style={{ fontSize:22, cursor:"pointer", userSelect:"none", marginBottom:12 }}>⬡</div>
-          {view.page==="admin" && <Button variant="ghost" onClick={goHome} className="app-dock-btn" title="Back">←</Button>}
+          {view.page==="admin" && <button onClick={goHome} style={{...hBtn,padding:"8px",fontSize:14,width:40}} title="Back">←</button>}
           {navActionsCol}
           <div style={{ flex:1 }}/>
           <div onClick={() => setShowProfile(true)}
             style={{ width:32, height:32, borderRadius:"50%", background:user.avatar_color||"var(--accent2)",
               display:"flex", alignItems:"center", justifyContent:"center",
-              fontSize:13, fontWeight:700, color:"var(--on-accent)", cursor:"pointer", marginBottom:4 }}>
+              fontSize:13, fontWeight:700, color:"#fff", cursor:"pointer", marginBottom:4 }}>
             {user.display_name?.[0]?.toUpperCase()}
           </div>
-          <ToggleButton onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode"}
+          <button onClick={()=>setDevMode(!devMode)} title={devMode?"Exit Dev Mode":"Dev Mode"}
             data-ui="topbar-devmode-toggle" data-component="Topbar" data-page="global" data-role="toggle"
             data-state={devMode?"active":"default"}
-            pressed={devMode} className="app-dock-btn">DEV</ToggleButton>
-          <Button variant="destructive" onClick={logout} className="app-dock-btn app-logout-btn" title="Logout">✕</Button>
+            style={{...hBtn,padding:"6px",fontSize:9,width:40,background:devMode?"#00e5ff22":"transparent",color:devMode?"#00e5ff":"var(--text4)",border:devMode?"1px solid #00e5ff55":"none"}}>DEV</button>
+          <button onClick={logout} style={{...hBtn,padding:"6px",fontSize:11,width:40,color:"var(--danger)"}} title="Logout">✕</button>
         </div>
       )}
       <div style={{ flex:1, overflow:view.page==="canvas"?"hidden":"auto" }}>{pageContent}</div>
@@ -252,18 +260,22 @@ function AppInner() {
   return null;
 }
 
+const hBtn = {
+  padding:"6px 12px", background:"var(--bg3)", border:"none",
+  borderRadius:"var(--radius-btn)", color:"var(--text3)",
+  cursor:"pointer", fontSize:11, fontWeight:700, fontFamily:"inherit",
+};
+
 export default function App() {
   return (
     <ThemeProvider>
       <DesignProvider>
         <SkinProvider>
-          <DesignSystemProvider>
-            <DevModeProvider>
-              <AuthProvider>
-                <AppInner />
-              </AuthProvider>
-            </DevModeProvider>
-          </DesignSystemProvider>
+          <DevModeProvider>
+            <AuthProvider>
+              <AppInner />
+            </AuthProvider>
+          </DevModeProvider>
         </SkinProvider>
       </DesignProvider>
     </ThemeProvider>

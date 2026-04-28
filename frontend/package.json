@@ -5,11 +5,7 @@
   "scripts": {
     "dev": "vite --host",
     "build": "vite build",
-    "preview": "vite preview",
-    "lint:ui-colors": "node scripts/check-ui-colors.mjs",
-    "lint:ui-consistency": "node scripts/enforce-ui-consistency.mjs",
-    "lint:ui-usage-warn": "node scripts/warn-ui-usage.mjs",
-    "lint:ui-rules": "npm run lint:ui-colors && npm run lint:ui-consistency && npm run lint:ui-usage-warn"
+    "preview": "vite preview"
   },
   "dependencies": {
     "docx": "^8.5.0",

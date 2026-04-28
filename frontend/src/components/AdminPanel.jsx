@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
 import { apiFetch } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { Button, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
-const RC = { owner:"var(--accent)", admin:"var(--danger)", editor:"var(--accent2)", viewer:"var(--text3)", restricted:"var(--text4)" };
-const GC = ["var(--accent2)","var(--danger)","#2196F3","var(--success)","var(--accent)","#9C27B0","#00BCD4","var(--danger)","#FF5722","#607D8B"];
-const AVATAR_COLORS = ["var(--accent2)","var(--danger)","#2196F3","var(--success)","var(--accent)","#9C27B0","#00BCD4","var(--danger)","#FF5722","#607D8B","#3F51B5","#009688"];
+const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)", restricted:"#888" };
+const GC = ["#6C63FF","#E91E63","#2196F3","#4CAF50","#FF9800","#9C27B0","#00BCD4","#F44336","#FF5722","#607D8B"];
+const AVATAR_COLORS = ["#6C63FF","#E91E63","#2196F3","#4CAF50","#FF9800","#9C27B0","#00BCD4","#F44336","#FF5722","#607D8B","#3F51B5","#009688"];
 
 const ALL_PERMS = [
   {key:"maps.create",   label:"Create maps",             cat:"Maps"},
@@ -54,7 +53,7 @@ const btn = (primary, danger) => ({
   padding:"8px 16px",border:"none",borderRadius:8,cursor:"pointer",fontSize:11,
   fontWeight:700,fontFamily:"inherit",
   background: danger ? "var(--danger)18" : primary ? "var(--accent2)" : "var(--bg3)",
-  color:       danger ? "var(--danger)"   : primary ? "var(--on-accent)" : "var(--text3)",
+  color:       danger ? "var(--danger)"   : primary ? "#fff"          : "var(--text3)",
 });
 
 function Alert({color,children}){
@@ -63,15 +62,15 @@ function Alert({color,children}){
 }
 function Tab({label,active,onClick,badge}){
   return(
-    <Button variant="secondary" onClick={onClick} style={{padding:"8px 14px",background:"none",border:"none",
+    <button onClick={onClick} style={{padding:"8px 14px",background:"none",border:"none",
       borderBottom:`2px solid ${active?"var(--accent)":"transparent"}`,
       color:active?"var(--accent)":"var(--text4)",cursor:"pointer",fontSize:11,
       fontWeight:700,letterSpacing:.5,fontFamily:"inherit",whiteSpace:"nowrap",
       display:"flex",alignItems:"center",gap:5}}>
       {label}
-      {badge!==undefined&&badge>0&&<span style={{background:"var(--accent2)",color:"var(--on-accent)",
+      {badge!==undefined&&badge>0&&<span style={{background:"var(--accent2)",color:"#fff",
         borderRadius:10,fontSize:9,padding:"1px 5px",lineHeight:1.5}}>{badge}</span>}
-    </Button>
+    </button>
   );
 }
 
@@ -81,7 +80,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
   const [email, setEmail] = useState(u.email);
   const [role,  setRole]  = useState(u.role);
   const [active,setActive]= useState(u.is_active);
-  const [color, setColor] = useState(u.avatar_color||"var(--accent2)");
+  const [color, setColor] = useState(u.avatar_color||"#6C63FF");
   const [pw,    setPw]    = useState("");
   const [myGroups, setMyGroups] = useState(new Set((u.groups||[]).map(g=>g.id)));
   const [saving, setSaving] = useState(false);
@@ -107,7 +106,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
   };
 
   return(
-    <div style={{position:"fixed",inset:0,zIndex:500,background:"var(--overlay-scrim-2)",
+    <div style={{position:"fixed",inset:0,zIndex:500,background:"rgba(0,0,0,.72)",
       display:"flex",alignItems:"center",justifyContent:"center"}} onClick={onClose}>
       <div data-ui="admin-panel" data-component="AdminPanel" data-page="admin" data-role="modal"
         onClick={e=>e.stopPropagation()} style={{background:"var(--bg2)",
@@ -118,15 +117,15 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
         <div style={{display:"flex",alignItems:"center",gap:12}}>
           <div style={{width:44,height:44,borderRadius:"50%",background:color,
             display:"flex",alignItems:"center",justifyContent:"center",
-            fontSize:18,fontWeight:700,color:"var(--on-accent)",flexShrink:0}}>
+            fontSize:18,fontWeight:700,color:"#fff",flexShrink:0}}>
             {name?.[0]?.toUpperCase()}
           </div>
           <div style={{flex:1}}>
             <div style={{fontSize:14,fontWeight:700,color:"var(--text)"}}>Edit User</div>
             <div style={{fontSize:11,color:"var(--text4)"}}>{u.email}</div>
           </div>
-          <Button variant="secondary" onClick={onClose} style={{background:"none",border:"none",
-            fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</Button>
+          <button onClick={onClose} style={{background:"none",border:"none",
+            fontSize:22,color:"var(--text4)",cursor:"pointer"}}>×</button>
         </div>
 
         {err && <Alert color="var(--danger)">{err}</Alert>}
@@ -191,10 +190,10 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
         )}
 
         <div style={{display:"flex",gap:10}}>
-          <Button variant="primary" onClick={save} disabled={saving} style={{...btn(true),flex:1}}>
+          <button onClick={save} disabled={saving} style={{...btn(true),flex:1}}>
             {saving?"Saving…":"Save Changes"}
-          </Button>
-          <Button variant="secondary" onClick={onClose} style={btn(false)}>Cancel</Button>
+          </button>
+          <button onClick={onClose} style={btn(false)}>Cancel</button>
         </div>
       </div>
     </div>
@@ -222,7 +221,7 @@ export default function AdminPanel({ onBack }) {
 
   // Create group
   const [showCG, setShowCG] = useState(false);
-  const [gForm,  setGForm]  = useState({name:"",description:"",color:"var(--accent2)",permissions:{}});
+  const [gForm,  setGForm]  = useState({name:"",description:"",color:"#6C63FF",permissions:{}});
   const [creatingG, setCreatingG] = useState(false);
 
   // Settings
@@ -288,7 +287,7 @@ export default function AdminPanel({ onBack }) {
     try {
       const d = await apiFetch("/users/groups",{method:"POST",body:JSON.stringify(gForm)});
       setGroups(g=>[...g,d.group]);
-      setGForm({name:"",description:"",color:"var(--accent2)",permissions:{}});
+      setGForm({name:"",description:"",color:"#6C63FF",permissions:{}});
       setShowCG(false); setSuccess("Group created.");
     } catch(e){setError(e.message);}
     setCreatingG(false);
@@ -318,7 +317,7 @@ export default function AdminPanel({ onBack }) {
 
       {/* Header */}
       <div style={{display:"flex",alignItems:"center",gap:12,marginBottom:22}}>
-        <Button variant="ghost" onClick={onBack}>←</Button>
+        <button onClick={onBack} style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:20,lineHeight:1}}>←</button>
         <div>
           <div style={{fontSize:18,fontWeight:700,color:"var(--text)"}}>Administration</div>
           <div style={{fontSize:11,color:"var(--text4)"}}>Manage users, groups, permissions and system settings</div>
@@ -335,7 +334,7 @@ export default function AdminPanel({ onBack }) {
       </div>
 
       {error   && <Alert color="var(--danger)">{error}</Alert>}
-      {success && <Alert color="var(--success)">{success}</Alert>}
+      {success && <Alert color="#4CAF50">{success}</Alert>}
 
       {/* ── USERS ────────────────────────────────────────────── */}
       {tab==="users"&&(
@@ -343,9 +342,9 @@ export default function AdminPanel({ onBack }) {
           <div style={{display:"flex",gap:10,marginBottom:14,flexWrap:"wrap"}}>
             <input value={search} onChange={e=>setSearch(e.target.value)}
               placeholder="Search by name or email…" style={{...inp,flex:1,minWidth:200}}/>
-            <Button variant="destructive" onClick={()=>setShowCreate(v=>!v)} style={btn(true)}>
+            <button onClick={()=>setShowCreate(v=>!v)} style={btn(true)}>
               {showCreate?"✕ Cancel":"+ Create User"}
-            </Button>
+            </button>
           </div>
 
           {/* Role legend */}
@@ -385,8 +384,8 @@ export default function AdminPanel({ onBack }) {
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
-                <Button variant="primary" type="submit" disabled={creating} style={btn(true)}>{creating?"Creating…":"Create User"}</Button>
-                <Button variant="primary" type="button" onClick={()=>setShowCreate(false)} style={btn(false)}>Cancel</Button>
+                <button type="submit" disabled={creating} style={btn(true)}>{creating?"Creating…":"Create User"}</button>
+                <button type="button" onClick={()=>setShowCreate(false)} style={btn(false)}>Cancel</button>
               </div>
             </form>
           )}
@@ -399,7 +398,7 @@ export default function AdminPanel({ onBack }) {
                 return(
                   <div key={u.id} style={{background:"var(--bg2)",
                     borderRadius:10,padding:"12px 16px",display:"flex",alignItems:"center",gap:12,opacity:u.is_active?1:.5}}>
-                    <div style={{width:38,height:38,borderRadius:"50%",background:u.avatar_color||"var(--accent2)",
+                    <div style={{width:38,height:38,borderRadius:"50%",background:u.avatar_color||"#6C63FF",
                       display:"flex",alignItems:"center",justifyContent:"center",
                       fontSize:15,fontWeight:700,color:"#fff",flexShrink:0}}>
                       {u.display_name?.[0]?.toUpperCase()}
@@ -428,9 +427,9 @@ export default function AdminPanel({ onBack }) {
                       </div>
                     </div>
                     <div style={{display:"flex",gap:6,flexShrink:0}}>
-                      <Button variant="secondary" onClick={()=>setEditUser(u)} style={btn(false)}>Edit</Button>
+                      <button onClick={()=>setEditUser(u)} style={btn(false)}>Edit</button>
                       {u.id!==me?.id&&me?.role==="owner"&&(
-                        <Button variant="destructive" onClick={()=>handleDelete(u.id)} style={btn(false,true)}>✕</Button>
+                        <button onClick={()=>handleDelete(u.id)} style={btn(false,true)}>✕</button>
                       )}
                     </div>
                   </div>
@@ -446,7 +445,7 @@ export default function AdminPanel({ onBack }) {
         <div>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
             <div style={{fontSize:12,color:"var(--text4)"}}>Groups apply permission sets to multiple users at once. Assign users to groups in the Users tab.</div>
-            <Button variant="destructive" onClick={()=>setShowCG(v=>!v)} style={btn(true)} >{showCG?"✕ Cancel":"+ Create Group"}</Button>
+            <button onClick={()=>setShowCG(v=>!v)} style={btn(true)} >{showCG?"✕ Cancel":"+ Create Group"}</button>
           </div>
 
           {showCG&&(
@@ -497,8 +496,8 @@ export default function AdminPanel({ onBack }) {
                 ))}
               </div>
               <div style={{display:"flex",gap:8}}>
-                <Button variant="primary" type="submit" disabled={creatingG} style={btn(true)}>{creatingG?"Creating…":"Create Group"}</Button>
-                <Button variant="secondary" type="button" onClick={()=>setShowCG(false)} style={btn(false)}>Cancel</Button>
+                <button type="submit" disabled={creatingG} style={btn(true)}>{creatingG?"Creating…":"Create Group"}</button>
+                <button type="button" onClick={()=>setShowCG(false)} style={btn(false)}>Cancel</button>
               </div>
             </form>
           )}
@@ -531,7 +530,7 @@ export default function AdminPanel({ onBack }) {
                         <span style={{fontSize:9,color:"var(--text4)"}}>No extra permissions</span>}
                     </div>
                   </div>
-                  <Button variant="destructive" onClick={()=>handleDeleteGroup(g.id)} style={btn(false,true)}>✕ Delete</Button>
+                  <button onClick={()=>handleDeleteGroup(g.id)} style={btn(false,true)}>✕ Delete</button>
                 </div>
               ))}
             </div>
@@ -625,10 +624,10 @@ export default function AdminPanel({ onBack }) {
                   })}
                 </div>
               ))}
-              <Button variant="primary" onClick={handleSaveSettings} disabled={savingSet}
+              <button onClick={handleSaveSettings} disabled={savingSet}
                 style={{...btn(true),marginTop:4}}>
                 {savingSet?"Saving…":"Save All Settings"}
-              </Button>
+              </button>
             </>
           )}
         </div>
@@ -653,12 +652,12 @@ export default function AdminPanel({ onBack }) {
                 style={{width:46,background:"transparent",border:"none",color:"var(--text)",
                   fontSize:11,fontFamily:"inherit",outline:"none",textAlign:"center"}} min="1" max="365"/>
               <span style={{fontSize:10,color:"var(--text4)"}}>days</span>
-              <Button variant="primary" onClick={()=>apiFetch("/users/logs/retention",{method:"PATCH",body:JSON.stringify({days:parseInt(logRetInput)||7})}).catch(()=>{})}
-                style={{...btn(true),padding:"3px 9px",fontSize:10}}>Save</Button>
+              <button onClick={()=>apiFetch("/users/logs/retention",{method:"PATCH",body:JSON.stringify({days:parseInt(logRetInput)||7})}).catch(()=>{})}
+                style={{...btn(true),padding:"3px 9px",fontSize:10}}>Save</button>
             </div>
-            <Button variant="destructive" onClick={()=>apiFetch("/users/logs",{method:"DELETE"})
+            <button onClick={()=>apiFetch("/users/logs",{method:"DELETE"})
                 .then(d=>{alert(`Pruned ${d.deleted} old entries`);setTab("_");setTimeout(()=>setTab("logs"),0);}).catch(()=>{})}
-              style={{...btn(false,true),padding:"5px 12px",fontSize:10}}>🗑 Prune</Button>
+              style={{...btn(false,true),padding:"5px 12px",fontSize:10}}>🗑 Prune</button>
           </div>
           {logs.length===0
             ?<div style={{color:"var(--text4)",padding:20}}>No logs found for this filter.</div>
@@ -666,7 +665,7 @@ export default function AdminPanel({ onBack }) {
               {logs.map(log=>(
                 <div key={log.id} style={{display:"flex",gap:10,padding:"5px 2px",
                   borderBottom:"1px solid var(--border2)",alignItems:"flex-start"}}>
-                  <span style={{color:log.level==="error"?"var(--danger)":log.level==="warn"?"var(--accent)":"var(--text4)",
+                  <span style={{color:log.level==="error"?"var(--danger)":log.level==="warn"?"#f59e0b":"var(--text4)",
                     fontWeight:700,minWidth:42,fontSize:10,flexShrink:0}}>
                     {(log.level||"info").toUpperCase()}
                   </span>

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 
 const SECTIONS = [
   {
@@ -210,7 +209,7 @@ export default function HelpGuide({ onClose }) {
     : SECTIONS;
 
   const S = {
-    overlay:{ position:"fixed",inset:0,zIndex:9000,background:"var(--overlay-scrim-2)",
+    overlay:{ position:"fixed",inset:0,zIndex:9000,background:"rgba(0,0,0,.75)",
       display:"flex",alignItems:"center",justifyContent:"center" },
     modal:{ background:"var(--bg2)",
       borderRadius:16,width:"min(860px,96vw)",height:"min(640px,92vh)",
@@ -240,16 +239,16 @@ export default function HelpGuide({ onClose }) {
               padding:"5px 10px",color:"var(--text)",fontSize:11,fontFamily:"var(--font-ui)",
               width:180,outline:"none"}}
           />
-          <Button variant="destructive" onClick={onClose} style={{background:"none",border:"none",
+          <button onClick={onClose} style={{background:"none",border:"none",
             color:"var(--text4)",cursor:"pointer",fontSize:16,padding:"2px 6px",
-            borderRadius:4,lineHeight:1}}>✕</Button>
+            borderRadius:4,lineHeight:1}}>✕</button>
         </div>
 
         <div style={S.body}>
           {/* Sidebar nav */}
           <div style={S.sidebar}>
             {filtered.map(s => (
-              <Button variant="primary" key={s.id} onClick={()=>{ setActiveId(s.id); setSearch(""); }}
+              <button key={s.id} onClick={()=>{ setActiveId(s.id); setSearch(""); }}
                 style={{display:"flex",alignItems:"center",gap:8,width:"100%",
                   padding:"8px 14px",border:"none",cursor:"pointer",textAlign:"left",
                   background: s.id===activeId ? "var(--accent)18" : "transparent",
@@ -259,7 +258,7 @@ export default function HelpGuide({ onClose }) {
                   transition:"all .12s"}}>
                 <span style={{fontSize:13}}>{s.icon}</span>
                 {s.title}
-              </Button>
+              </button>
             ))}
             {filtered.length === 0 && (
               <div style={{padding:"16px 14px",color:"var(--text4)",fontSize:11}}>No results</div>

@@ -1,8 +1,6 @@
-import { Button, QuickActionButton, ToggleButton } from "./ui/uiPrimitivesV2.jsx";
 // IntegrationPanel.jsx — per-node API integrations (Proxmox, TrueNAS, Unraid, ESXi, probe)
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { apiFetch } from '../api/client.js';
-import { Alert, Badge, Input, Select } from './ui/primitives.jsx';
 
 // Which integration type to use per node type
 const NODE_INT_MAP = {
@@ -42,7 +40,7 @@ function gb(bytes) { return bytes ? (bytes / 1073741824).toFixed(1) + ' GB' : '�
 function fmt(bytes) { if (!bytes) return '—'; if (bytes > 1e12) return (bytes/1e12).toFixed(1)+'TB'; if (bytes > 1e9) return (bytes/1e9).toFixed(1)+'GB'; return (bytes/1e6).toFixed(0)+'MB'; }
 
 function Bar({ pct: p, warn = 80, crit = 90 }) {
-  const c = p >= crit ? 'var(--danger)' : p >= warn ? 'var(--accent)' : 'var(--success)';
+  const c = p >= crit ? '#f44336' : p >= warn ? '#ff9800' : '#4caf50';
   return (
     <div style={{ height: 6, background: 'var(--bg)', borderRadius: 3, overflow: 'hidden', marginTop: 2 }}>
       <div style={{ height: '100%', width: `${p}%`, background: c, borderRadius: 3, transition: 'width .4s' }} />
@@ -64,7 +62,7 @@ function Stat({ label, value, sub }) {
 function uptime(s){if(!s)return'—';const d=Math.floor(s/86400),h=Math.floor((s%86400)/3600),m=Math.floor((s%3600)/60);return d>0?`${d}d ${h}h`:h>0?`${h}h ${m}m`:`${m}m`;}
 
 function MiniBar({v,warn=70,crit=90,h=4}){
-  const col=v>=crit?'var(--danger)':v>=warn?'var(--accent)':'var(--success)';
+  const col=v>=crit?'#f44336':v>=warn?'#ff9800':'#4caf50';
   return <div style={{height:h,background:'var(--bg)',borderRadius:h,overflow:'hidden'}}>
     <div style={{height:'100%',width:`${Math.min(v,100)}%`,background:col,borderRadius:h,transition:'width .4s'}}/>
   </div>;
@@ -81,8 +79,8 @@ function GuestCard({g}){
       opacity:running?1:0.6}}>
       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
         <span style={{fontSize:9,padding:'1px 5px',borderRadius:3,fontWeight:700,
-          background:isVM?'var(--state-selected-bg)':'var(--state-soft-success-bg)',
-          color:isVM?'var(--accent)':'var(--success)'}}>{isVM?'VM':'CT'}</span>
+          background:isVM?'#8E24AA22':'#00897B22',
+          color:isVM?'#CE93D8':'#80CBC4'}}>{isVM?'VM':'CT'}</span>
         <span style={{fontSize:11,fontWeight:700,color:'var(--text)',flex:1,
           overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.name||`${g._type}${g.vmid}`}</span>
         <span style={{fontSize:9,padding:'1px 6px',borderRadius:10,
@@ -98,14 +96,14 @@ function GuestCard({g}){
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>CPU</span>
-            <span style={{fontSize:9,fontWeight:700,color:cpuPct>80?'var(--danger)':cpuPct>60?'var(--accent)':'var(--success)'}}>{cpuPct}%</span>
+            <span style={{fontSize:9,fontWeight:700,color:cpuPct>80?'#f44336':cpuPct>60?'#ff9800':'var(--success)'}}>{cpuPct}%</span>
           </div>
           <MiniBar v={cpuPct}/>
         </div>
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
-            <span style={{fontSize:9,fontWeight:700,color:memPct>80?'var(--danger)':memPct>60?'var(--accent)':'var(--success)'}}>{memPct}% <span style={{fontWeight:400,color:'var(--text4)'}}>{gb(g.mem)}</span></span>
+            <span style={{fontSize:9,fontWeight:700,color:memPct>80?'#f44336':memPct>60?'#ff9800':'var(--success)'}}>{memPct}% <span style={{fontWeight:400,color:'var(--text4)'}}>{gb(g.mem)}</span></span>
           </div>
           <MiniBar v={memPct}/>
         </div>
@@ -165,7 +163,7 @@ function ProxmoxMetrics({ data }) {
                     <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
                       <span style={{fontSize:9,color:'var(--text4)'}}>{label}</span>
                       <span style={{fontSize:10,fontWeight:700,
-                        color:v>=90?'var(--danger)':v>=75?'var(--accent)':'var(--text)'}}>{v}%</span>
+                        color:v>=90?'#f44336':v>=75?'#ff9800':'var(--text)'}}>{v}%</span>
                     </div>
                     <MiniBar v={v} h={5}/>
                     <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{sub}</div>
@@ -184,7 +182,7 @@ function ProxmoxMetrics({ data }) {
                       <div key={st.storage} style={{background:'var(--bg)',borderRadius:6,padding:'6px 8px',border:'1px solid var(--border2)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
                           <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{st.storage}</span>
-                          <span style={{fontSize:9,fontWeight:700,color:sp>85?'var(--danger)':sp>70?'var(--accent)':'var(--success)'}}>{sp}%</span>
+                          <span style={{fontSize:9,fontWeight:700,color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
                         </div>
                         <MiniBar v={sp} h={4}/>
                         <div style={{fontSize:8,color:'var(--text4)',marginTop:3}}>{fmt(st.used||st.disk_used)} / {fmt(st.total)}</div>
@@ -203,7 +201,7 @@ function ProxmoxMetrics({ data }) {
                 {Object.entries(n.diskTemps).map(([path,temp])=>(
                   <span key={path} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
                     background:'var(--bg)',border:'1px solid var(--border2)',
-                    color:temp>50?'var(--danger)':temp>40?'var(--accent)':'var(--text4)'}}>
+                    color:temp>50?'#f44336':temp>40?'#ff9800':'var(--text4)'}}>
                     {path.replace('/dev/','').split('/')[0]} {temp}°C
                   </span>
                 ))}
@@ -218,13 +216,13 @@ function ProxmoxMetrics({ data }) {
                   <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
                     <span style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginRight:4}}>SHOW</span>
                     {[['all','All'],['vm','VMs'],['ct','CTs'],['stopped','Stopped']].map(([v,l])=>(
-                      <Button variant="primary" key={v} onClick={e=>{e.stopPropagation();setFilter(v)}}
+                      <button key={v} onClick={e=>{e.stopPropagation();setFilter(v)}}
                         style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
                           fontFamily:'var(--font-ui)',fontWeight:600,
                           background:filter===v?'var(--accent2)':'var(--bg)',
-                        color:filter===v?'var(--on-accent)':'var(--text4)'}}>
+                          color:filter===v?'#fff':'var(--text4)'}}>
                         {l} {v==='all'?`(${allGuests.length})`:v==='vm'?`(${n.vms.length})`:v==='ct'?`(${n.lxc.length})`:``}
-                      </Button>
+                      </button>
                     ))}
                   </div>
                 )}
@@ -332,7 +330,7 @@ function TrueNASMetrics({ data }) {
           <div>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
               <span style={{fontSize:9,color:'var(--text4)'}}>CPU · {cpuCores}c{cpuTemp!=null?` · ${Math.round(cpuTemp)}°C`:''}</span>
-              <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'var(--danger)':cpuPct>=75?'var(--accent)':'var(--text)'}}>{cpuPct}%</span>
+              <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'#f44336':cpuPct>=75?'#ff9800':'var(--text)'}}>{cpuPct}%</span>
             </div>
             <MiniBar v={cpuPct} h={5}/>
             <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{load1 ? `load ${load1} / ${load5} / ${load15}` : '—'}</div>
@@ -341,7 +339,7 @@ function TrueNASMetrics({ data }) {
           <div>
             <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
               <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
-              <span style={{fontSize:10,fontWeight:700,color:memPct!=null?(memPct>=90?'var(--danger)':memPct>=75?'var(--accent)':'var(--text)'):'var(--text4)'}}>
+              <span style={{fontSize:10,fontWeight:700,color:memPct!=null?(memPct>=90?'#f44336':memPct>=75?'#ff9800':'var(--text)'):'var(--text4)'}}>
                 {memPct!=null?`${memPct}%`:memTotal?fmt(memTotal):'—'}
               </span>
             </div>
@@ -355,7 +353,7 @@ function TrueNASMetrics({ data }) {
             <div>
               <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
                 <span style={{fontSize:9,color:'var(--text4)'}}>Storage</span>
-                <span style={{fontSize:10,fontWeight:700,color:v>=90?'var(--danger)':v>=75?'var(--accent)':'var(--text)'}}>{v}%</span>
+                <span style={{fontSize:10,fontWeight:700,color:v>=90?'#f44336':v>=75?'#ff9800':'var(--text)'}}>{v}%</span>
               </div>
               <MiniBar v={v} h={5}/>
               <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{fmt(storage.totalAllocated||0)} / {fmt(storage.totalSize||0)}</div>
@@ -379,7 +377,7 @@ function TrueNASMetrics({ data }) {
                     <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',
                       textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{p.name}</span>
                     <span style={{fontSize:9,fontWeight:700,
-                      color:sp>85?'var(--danger)':sp>70?'var(--accent)':'var(--success)'}}>{sp}%</span>
+                      color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
                   </div>
                   <MiniBar v={sp} h={4}/>
                   <div style={{fontSize:8,color:'var(--text4)',marginTop:3,display:'flex',justifyContent:'space-between'}}>
@@ -398,7 +396,7 @@ function TrueNASMetrics({ data }) {
         <div style={{background:'var(--bg3)',padding:'4px 14px',
           borderLeft:`1px solid ${borderCol}`,borderRight:`1px solid ${borderCol}`}}>
           {bootPool?.healthy===false&&(
-            <div style={{fontSize:10,color:'var(--accent)',padding:'3px 0',borderBottom:'1px solid var(--border2)'}}>
+            <div style={{fontSize:10,color:'#ff9800',padding:'3px 0',borderBottom:'1px solid var(--border2)'}}>
               ⚠ Boot pool {bootPool.status} — run: zpool detach boot-pool &lt;device&gt;
             </div>
           )}
@@ -438,14 +436,14 @@ function TrueNASMetrics({ data }) {
         <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
           <span style={{fontSize:8,fontWeight:700,color:'var(--text4)',letterSpacing:1.5,marginRight:4}}>SHOW</span>
           {filterTabs.map(([v,l,count])=>(
-            <Button variant="primary" key={v} onMouseDown={e=>e.stopPropagation()}
+            <button key={v} onMouseDown={e=>e.stopPropagation()}
               onClick={e=>{e.stopPropagation();setFilter(v);}}
               style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:10,cursor:'pointer',
                 fontFamily:'var(--font-ui)',fontWeight:600,
                 background:filter===v?'var(--accent2)':'var(--bg)',
-                color:filter===v?'var(--on-accent)':'var(--text4)'}}>
+                color:filter===v?'#fff':'var(--text4)'}}>
               {l} ({count})
-            </Button>
+            </button>
           ))}
         </div>
 
@@ -458,7 +456,7 @@ function TrueNASMetrics({ data }) {
                 <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
                   <span style={{fontSize:11,fontWeight:700,color:'var(--text)',flex:1}}>{d.name}</span>
                   {d.temp!=null&&<span style={{fontSize:9,fontWeight:700,
-                    color:d.temp>50?'var(--danger)':d.temp>40?'var(--accent)':'var(--success)'}}>{d.temp}°C</span>}
+                    color:d.temp>50?'#f44336':d.temp>40?'#ff9800':'var(--success)'}}>{d.temp}°C</span>}
                 </div>
                 <div style={{fontSize:9,color:'var(--text4)',marginBottom:4,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.model||'—'}</div>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:9,color:'var(--text3)'}}>
@@ -598,14 +596,14 @@ function UnraidMetrics({ data }) {
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>CPU{cpuTemp!=null?` · ${Math.round(cpuTemp)}°C`:''}</span>
-            <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'var(--danger)':cpuPct>=75?'var(--accent)':'var(--text)'}}>{cpuPct}%</span>
+            <span style={{fontSize:10,fontWeight:700,color:cpuPct>=90?'#f44336':cpuPct>=75?'#ff9800':'var(--text)'}}>{cpuPct}%</span>
           </div>
           <MiniBar v={cpuPct} h={5}/>
         </div>
         <div>
           <div style={{display:'flex',justifyContent:'space-between',marginBottom:3}}>
             <span style={{fontSize:9,color:'var(--text4)'}}>RAM</span>
-            <span style={{fontSize:10,fontWeight:700,color:memPct>=90?'var(--danger)':memPct>=75?'var(--accent)':'var(--text)'}}>{memPct}%</span>
+            <span style={{fontSize:10,fontWeight:700,color:memPct>=90?'#f44336':memPct>=75?'#ff9800':'var(--text)'}}>{memPct}%</span>
           </div>
           <MiniBar v={memPct} h={5}/>
           <div style={{fontSize:9,color:'var(--text4)',marginTop:2}}>{gb(mem.total-mem.free)} / {gb(mem.total)}</div>
@@ -621,7 +619,7 @@ function UnraidMetrics({ data }) {
           {disks.filter(d=>d.temp!=null).map((d,i)=>(
             <span key={i} style={{fontSize:9,padding:'1px 6px',borderRadius:3,
               background:'var(--bg3)',border:'1px solid var(--border2)',
-              color:d.temp>50?'var(--danger)':d.temp>40?'var(--accent)':'var(--text4)'}}>
+              color:d.temp>50?'#f44336':d.temp>40?'#ff9800':'var(--text4)'}}>
               {d.name} {d.temp}°C
             </span>
           ))}
@@ -744,14 +742,16 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
             {intType.toUpperCase()} INTEGRATION
           </span>
           {isConfigured && (
-            <Badge tone={data ? 'success' : 'neutral'} style={{ fontSize: 9, padding: '1px 6px' }}>
+            <span style={{ fontSize: 9, padding: '1px 6px', borderRadius: 10, background: data ? 'var(--success)22' : 'var(--bg3)',
+              color: data ? 'var(--success)' : 'var(--text4)', border: `1px solid ${data ? 'var(--success)' : 'var(--border)'}` }}>
               {data ? `● live · ↻${countdown}s` : '○ not connected'}
-            </Badge>
+            </span>
           )}
-          <Button variant="ghost" onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setShow(s => !s); }}
-            style={{ fontSize: 10, border: '1px solid var(--border)', borderRadius: 4, padding: '2px 8px' }}>
+          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setShow(s => !s); }}
+            style={{ fontSize: 10, background: 'none', border: '1px solid var(--border)', borderRadius: 4,
+              color: 'var(--text4)', cursor: 'pointer', padding: '2px 8px', fontFamily: 'var(--font-ui)' }}>
             {show ? 'Hide' : 'Configure'}
-          </Button>
+          </button>
         </div>
 
         {show && (
@@ -759,15 +759,16 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
             {/* Type override */}
             <div style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 9, color: 'var(--text4)', display: 'block', marginBottom: 3 }}>INTEGRATION TYPE</label>
-              <Select value={form.type} disabled={!canEdit}
+              <select value={form.type} disabled={!canEdit}
                 onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                style={{ background: 'var(--bg)', borderRadius: 4, padding: '5px 8px', fontSize: 11 }}>
+                style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                  padding: '5px 8px', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none' }}>
                 <option value="proxmox">Proxmox VE</option>
                 <option value="truenas">TrueNAS / FreeNAS</option>
                 <option value="unraid">Unraid</option>
                 <option value="esxi">VMware ESXi / vCenter</option>
                 <option value="probe">HTTP Health Probe</option>
-              </Select>
+              </select>
             </div>
             {fields.map(f => (
               <div key={f.key} style={{ marginBottom: 6 }}>
@@ -775,17 +776,19 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
                   {f.label.toUpperCase()}
                   {f.help && <span style={{ fontSize: 8, color: 'var(--accent1)', marginLeft: 6 }}>ℹ {f.help}</span>}
                 </label>
-                <Input type={f.type} value={form[f.key] || ''} placeholder={f.placeholder} disabled={!canEdit}
+                <input type={f.type} value={form[f.key] || ''} placeholder={f.placeholder} disabled={!canEdit}
                   onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
-                  style={{ background: 'var(--bg)', borderRadius: 4, padding: '5px 8px', fontSize: 11, fontFamily: f.type === 'password' ? 'monospace' : 'var(--font-ui)' }}
+                  style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
+                    padding: '5px 8px', color: 'var(--text)', fontSize: 11, outline: 'none', boxSizing: 'border-box', fontFamily: f.type === 'password' ? 'monospace' : 'var(--font-ui)' }}
                 />
               </div>
             ))}
             {canEdit && (
-              <Button variant="primary" onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); }}
-                style={{ width: '100%', padding: '6px', borderRadius: 4, fontSize: 11, marginTop: 4 }}>
+              <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); save(); }}
+                style={{ width: '100%', padding: '6px', background: 'var(--accent2)', border: 'none', borderRadius: 4,
+                  color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)', marginTop: 4 }}>
                 Save Configuration
-              </Button>
+              </button>
             )}
           </div>
         )}
@@ -794,18 +797,21 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
       {/* Connect / Refresh */}
       {isConfigured && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-          <Button variant="primary" onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();doFetch()}} disabled={busy} loading={busy}
-            style={{ flex: 1, padding: '7px', borderRadius: 6, fontSize: 11 }}>
+          <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{e.stopPropagation();doFetch()}} disabled={busy}
+            style={{ flex: 1, padding: '7px', background: busy ? 'var(--bg3)' : 'var(--accent2)', border: 'none',
+              borderRadius: 6, color: busy ? 'var(--text4)' : '#fff', cursor: busy ? 'default' : 'pointer',
+              fontSize: 11, fontWeight: 700, fontFamily: 'var(--font-ui)' }}>
             {busy ? '⏳ Connecting…' : data ? '🔄 Refresh' : '⚡ Connect'}
-          </Button>
-          {data && <Button variant="ghost" onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setData(null); clearInterval(intervalRef.current); clearInterval(countdownRef.current); }}
-            style={{ padding: '7px 12px', border: '1px solid var(--border)', borderRadius: 6, fontSize: 11 }}>
+          </button>
+          {data && <button onMouseDown={e=>e.stopPropagation()} onClick={e=>{ e.stopPropagation(); setData(null); clearInterval(intervalRef.current); clearInterval(countdownRef.current); }}
+            style={{ padding: '7px 12px', background: 'none', border: '1px solid var(--border)', borderRadius: 6,
+              color: 'var(--text4)', cursor: 'pointer', fontSize: 11, fontFamily: 'var(--font-ui)' }}>
             Disconnect
-          </Button>}
+          </button>}
         </div>
       )}
 
-      {err && <Alert tone="danger" style={{ fontSize: 11, borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>⚠ {err}</Alert>}
+      {err && <div style={{ fontSize: 11, color: 'var(--danger)', background: 'var(--danger)11', borderRadius: 6, padding: '6px 10px', marginBottom: 8 }}>⚠ {err}</div>}
 
       {/* Metrics */}
       {data && <Renderer data={data} />}
