@@ -1416,6 +1416,28 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
 
 export const SKIN_KEYS = Object.keys(SKINS);
 
+// Strict compatibility matrix: only approved skin/theme pairings.
+export const SKIN_THEME_MATRIX = {
+  obsidian:   ["dark", "midnight", "ocean"],
+  aurora:     ["midnight", "violet", "softblue"],
+  brutalist:  ["dark", "amber", "light"],
+  neonTokyo:  ["ocean", "midnight", "violet"],
+  neumorphic: ["clay", "light", "dark"],
+  sakura:     ["cream", "rose", "parchment"],
+  vapor:      ["violet", "ocean", "midnight"],
+  newspaper:  ["parchment", "sepia", "light"],
+  coral:      ["dark", "rose", "mint"],
+  carbon:     ["amber", "dark", "sepia"],
+  pastelPop:  ["rose", "mint", "softblue"],
+};
+
+export function getAllowedThemesForSkin(skinName) {
+  const allowed = SKIN_THEME_MATRIX[skinName];
+  if (Array.isArray(allowed) && allowed.length > 0) return allowed;
+  const fallback = SKINS[skinName]?.defaultTheme;
+  return fallback ? [fallback] : ["dark"];
+}
+
 const UNIFORM_STATE_CONTRACT_CSS = `
 /* Shared state contract (all skins/themes) */
 [data-role="action-btn"], [data-role="nav-btn"], [data-role="panel-btn"], [data-role="mode-btn"], button {

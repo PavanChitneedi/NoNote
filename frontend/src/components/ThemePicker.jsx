@@ -1,18 +1,20 @@
 import { useState } from "react";
 import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import { useSkin } from "../context/SkinContext.jsx";
-import { SKINS, SKIN_KEYS } from "../skins.js";
+import { SKINS, SKIN_KEYS, getAllowedThemesForSkin } from "../skins.js";
 
 const THEME_GROUPS = ["Dark", "Light"];
 
 // ── ThemeGrid MUST be outside ThemePicker — if defined inside, every render
 // creates a new component type causing React to unmount/remount it, which
 // breaks click events because React re-mounts before the event finishes.
-function ThemeGrid({ selected, onSelect }) {
+function ThemeGrid({ selected, onSelect, allowedThemeKeys = null }) {
+  const allowSet = allowedThemeKeys ? new Set(allowedThemeKeys) : null;
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:14, marginTop:8 }}>
       {THEME_GROUPS.map(group => {
-        const grouped = Object.entries(THEMES).filter(([,t]) => t.group === group);
+        const grouped = Object.entries(THEMES).filter(([key, t]) => t.group === group && (!allowSet || allowSet.has(key)));
+        if (grouped.length === 0) return null;
         return (
           <div key={group}>
             <div style={{ fontSize:10, fontWeight:700, color:"var(--text4)", letterSpacing:2, marginBottom:8 }}>
@@ -223,8 +225,10 @@ export default function ThemePicker({
           {/* ── Global Theme ── */}
           {tab==="global" && (
             <>
-              <div style={{ fontSize:12, color:"var(--text3)", marginBottom:8 }}>Applies to the entire app — sidebar, topbar, panels, and canvas.</div>
-              <ThemeGrid selected={themeName} onSelect={key => { setThemeName(key); }} />
+              <div style={{ fontSize:12, color:"var(--text3)", marginBottom:8 }}>
+                Applies to the entire app. Themes are constrained to approved combinations for the selected skin.
+              </div>
+              <ThemeGrid selected={themeName} onSelect={key => { setThemeName(key); }} allowedThemeKeys={getAllowedThemesForSkin(skinName)} />
             </>
           )}
 

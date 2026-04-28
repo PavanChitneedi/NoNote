@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
-import { SKINS, SKIN_KEYS } from "../skins.js";
+import { SKINS, SKIN_KEYS, getAllowedThemesForSkin } from "../skins.js";
 
 const SkinContext = createContext(null);
 
@@ -21,10 +21,12 @@ export function SkinProvider({ children }) {
     if (!SKINS[name]) return;
     setSkinRaw(name);
     const skin = SKINS[name];
+    const allowedThemes = getAllowedThemesForSkin(name);
+    const preferredTheme = allowedThemes.includes(skin.defaultTheme) ? skin.defaultTheme : allowedThemes[0];
     // Apply default theme
-    if (skin.defaultTheme) {
-      localStorage.setItem("nm_theme", skin.defaultTheme);
-      window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: skin.defaultTheme }));
+    if (preferredTheme) {
+      localStorage.setItem("nm_theme", preferredTheme);
+      window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: preferredTheme }));
     }
     // Apply default accent — clears any previous accent override
     if (skin.defaultAccent) {
@@ -90,6 +92,23 @@ export function SkinProvider({ children }) {
       window.removeEventListener("nn-theme-changed", reapply);
       window.removeEventListener("nn-design-changed", reapply);
     };
+  }, [skinName]);
+
+  // Enforce approved themes for each skin.
+  useEffect(() => {
+    const enforceThemeMatrix = () => {
+      const allowedThemes = getAllowedThemesForSkin(skinName);
+      const currentTheme = localStorage.getItem("nm_theme") || document.body.dataset.theme || "";
+      if (!allowedThemes.includes(currentTheme)) {
+        const fallbackTheme = allowedThemes[0];
+        localStorage.setItem("nm_theme", fallbackTheme);
+        window.dispatchEvent(new CustomEvent("nn-set-theme", { detail: fallbackTheme }));
+      }
+    };
+    const onThemeChanged = () => enforceThemeMatrix();
+    enforceThemeMatrix();
+    window.addEventListener("nn-theme-changed", onThemeChanged);
+    return () => window.removeEventListener("nn-theme-changed", onThemeChanged);
   }, [skinName]);
 
   return (
