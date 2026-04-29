@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.44.4",date:"Apr 2026",items:[
+    "Fix: AI Chat 'Failed to fetch conversations' blocking providers from loading -- Promise.all() failed if conversations failed, so providers never loaded → all inputs disabled. Now load independently.",
+    "Fix: Ollama from Docker -- localhost inside container != host machine. probe-models and callOpenAICompat now retry with host.docker.internal and 172.17.0.1 fallbacks automatically.",
+    "Fix: LLMSettings auto-discover now also triggers when editId changes (opening existing Ollama provider for edit).",
+    "Fix: Improved Ollama unreachable error message with Docker-specific guidance.",
+  ]},
   {v:"v5.44.3",date:"Apr 2026",items:[
     "Fix: 100% button state audit across all JSX files — all toggle/tab/mode buttons now use neumorphic inset depth instead of blue/accent color fills",
     "Fix: CTA buttons (Submit/Create/Save/Add/Send with color:#fff) preserved with accent fill + elevation",

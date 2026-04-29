@@ -35,15 +35,23 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
 
   useEffect(() => {
     if (!mapId) return;
-    Promise.all([getLLMProviders(), getConversations(mapId)])
-      .then(([pData, cData]) => {
-        setProviders(pData.providers || []);
-        setConversations(cData.conversations || []);
-        const def = (pData.providers || []).find(p => p.is_default) || (pData.providers || [])[0];
+    // Load providers and conversations independently — provider failure must not block conversations and vice versa
+    getLLMProviders()
+      .then(pData => {
+        const provs = pData.providers || [];
+        setProviders(provs);
+        const def = provs.find(p => p.is_default) || provs[0];
         if (def) setSelectedProvider(def.id);
-        if ((cData.conversations || []).length > 0) openConversation(cData.conversations[0].id);
       })
-      .catch(e => setError(e.message))
+      .catch(() => {}); // silently ignore — UI shows "Add LLM Provider"
+
+    getConversations(mapId)
+      .then(cData => {
+        const convs = cData.conversations || [];
+        setConversations(convs);
+        if (convs.length > 0) openConversation(convs[0].id);
+      })
+      .catch(e => setError('Failed to load conversations: ' + e.message))
       .finally(() => setLoading(false));
   }, [mapId]);
 

@@ -55,30 +55,45 @@ router.get("/presets", authenticate, (req, res) => {
 
 // ── GET /api/llm/probe-models — discover models from a local/remote provider
 // Used for Ollama auto-discovery. Query: ?base_url=http://localhost:11434
+// NOTE: backend runs in Docker — "localhost" inside Docker ≠ host machine.
+// We try host.docker.internal as fallback for Docker-on-Linux/Mac setups.
 router.get("/probe-models", authenticate, async (req, res) => {
   const { base_url } = req.query;
   if (!base_url) return res.status(400).json({ error: "base_url required" });
-  try {
-    // Ollama: GET /api/tags
-    const ollamaUrl = base_url.replace(/\/v1\/?$/, "") + "/api/tags";
-    const resp = await fetch(ollamaUrl, { signal: AbortSignal.timeout(5000) });
-    if (!resp.ok) throw new Error("Ollama not reachable");
-    const data = await resp.json();
-    const models = (data.models || []).map(m => m.name || m.model).filter(Boolean);
-    return res.json({ models, source: "ollama" });
-  } catch {
-    try {
-      // OpenAI-compatible: GET /models
-      const openaiUrl = base_url.replace(/\/?$/, "") + "/models";
-      const resp = await fetch(openaiUrl, { signal: AbortSignal.timeout(5000) });
-      if (!resp.ok) throw new Error("Models endpoint not reachable");
-      const data = await resp.json();
-      const models = (data.data || data.models || []).map(m => m.id || m.name).filter(Boolean);
-      return res.json({ models, source: "openai" });
-    } catch {
-      return res.status(503).json({ error: "Provider unreachable or does not expose model list" });
-    }
+
+  // Build candidate URLs: original + Docker host fallback
+  const candidates = [base_url];
+  if (base_url.includes("localhost")) {
+    candidates.push(base_url.replace("localhost", "host.docker.internal"));
+    candidates.push(base_url.replace("localhost", "172.17.0.1")); // Docker bridge default
   }
+
+  const tryFetch = async (url, path) => {
+    const full = url.replace(/\/v1\/?$/, "").replace(/\/?$/, "") + path;
+    const r = await fetch(full, { signal: AbortSignal.timeout(4000) });
+    if (!r.ok) throw new Error(`${r.status}`);
+    return r.json();
+  };
+
+  // Try Ollama /api/tags on each candidate
+  for (const url of candidates) {
+    try {
+      const data = await tryFetch(url, "/api/tags");
+      const models = (data.models || []).map(m => m.name || m.model).filter(Boolean);
+      if (models.length > 0) return res.json({ models, source: "ollama", resolved_url: url });
+    } catch {}
+  }
+
+  // Try OpenAI-compatible /models on each candidate
+  for (const url of candidates) {
+    try {
+      const data = await tryFetch(url, "/v1/models");
+      const models = (data.data || data.models || []).map(m => m.id || m.name).filter(Boolean);
+      if (models.length > 0) return res.json({ models, source: "openai", resolved_url: url });
+    } catch {}
+  }
+
+  return res.status(503).json({ error: "Provider unreachable or does not expose model list" });
 });
 
 // ── GET /api/llm/providers ────────────────────────────────────
@@ -376,6 +391,25 @@ async function callLLM({ provider, base_url, model, api_key, system, history, me
 }
 
 async function callOpenAICompat({ base_url, model, api_key, system, messages, provider="" }) {
+  // Docker: if base_url has localhost, also try host.docker.internal
+  const baseUrls = [base_url];
+  if (base_url.includes("localhost")) {
+    baseUrls.push(base_url.replace("localhost", "host.docker.internal"));
+    baseUrls.push(base_url.replace("localhost", "172.17.0.1"));
+  }
+
+  let lastErr;
+  for (const base of baseUrls) {
+    try {
+      return await _callOpenAICompatBase({ base_url: base, model, api_key, system, messages, provider });
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr;
+}
+
+async function _callOpenAICompatBase({ base_url, model, api_key, system, messages, provider="" }) {
   const url  = `${base_url.replace(/\/$/, "")}/chat/completions`;
   const body = {
     model,

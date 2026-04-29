@@ -103,13 +103,13 @@ export default function LLMSettings({ onClose }) {
     reload();
   }, []);
 
-  // Auto-discover models when URL changes for auto-discover providers
+  // Auto-discover models when URL or provider changes, and when edit opens
   useEffect(() => {
     const url = form.base_url || preset.placeholder_url;
-    if (!preset.autoDiscover || !url) return;
-    const timer = setTimeout(() => discoverModels(url), 600);
+    if (!preset.autoDiscover || !url || !editId) return;
+    const timer = setTimeout(() => discoverModels(url), 400);
     return () => clearTimeout(timer);
-  }, [form.base_url, form.provider]);
+  }, [form.base_url, form.provider, editId]);
 
   const reload = () => {
     setLoading(true);
@@ -128,9 +128,12 @@ export default function LLMSettings({ onClose }) {
         setForm(f => ({ ...f, model: d.models[0] }));
       }
     } catch (e) {
-      setProbeError(e.message === "Provider unreachable or does not expose model list"
-        ? "Ollama not found at that URL — start Ollama or check the URL"
-        : "Could not fetch models: " + e.message);
+      const msg = e.message || "";
+      setProbeError(
+        msg.includes("unreachable") || msg.includes("Provider unreachable")
+          ? "Ollama not reachable — if running on host machine, try using your host IP instead of localhost (Docker can't reach localhost on the host)"
+          : "Could not fetch models: " + msg
+      );
     } finally { setProbing(false); }
   };
 
