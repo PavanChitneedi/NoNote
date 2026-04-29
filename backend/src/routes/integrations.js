@@ -80,13 +80,13 @@ function go(url, opts = {}, timeout = 8000) {
 }
 
 
-// ── TrueNAS WebSocket realtime bridge ────────────────────────
-// Tries DDP protocol (/websocket) then JSON-RPC 2.0 (/api/current)
+// ── TrueNAS WebSocket realtime bridge (JSON-RPC 2.0 first) ──
 // Returns { cpuPct, cpuTemp, memUsed, memTotal } or null on failure
 function truenasRealtime(baseUrl, token) {
   const toWs = u => u.replace(/^http/, u.startsWith('https') ? 'wss' : 'ws');
   const base  = baseUrl.replace(/\/$/, '');
-  const paths = [`${toWs(base)}/websocket`, `${toWs(base)}/api/current`];
+  // JSON-RPC 2.0 first (SCALE 25.04+), DDP fallback for older installs
+  const paths = [`${toWs(base)}/api/current`, `${toWs(base)}/websocket`];
 
   const tryPath = (wsUrl, isDDP) => new Promise(resolve => {
     let done = false;
@@ -115,7 +115,6 @@ function truenasRealtime(baseUrl, token) {
     };
 
     if (isDDP) {
-      // Old DDP/Meteor protocol
       ws.on('open', () => ws.send(JSON.stringify({ id: '1', msg: 'connect', version: '1', support: ['1'] })));
       ws.on('message', raw => {
         const m = parse(raw); if (!m) return;
@@ -125,11 +124,9 @@ function truenasRealtime(baseUrl, token) {
           ws.send(JSON.stringify({ id: '3', msg: 'sub', name: 'reporting.realtime', params: [] }));
         else if (m.msg === 'added' && m.collection === 'reporting.realtime') {
           clearTimeout(timer); finish(extract(m.fields));
-        } else if (m.id === '2' && m.error)
-          finish(null); // auth failed
+        } else if (m.id === '2' && m.error) finish(null);
       });
     } else {
-      // JSON-RPC 2.0 (SCALE 25.04+)
       let authDone = false;
       ws.on('open', () => ws.send(JSON.stringify({
         jsonrpc: '2.0', method: 'auth.login_with_api_key', id: 1, params: [token]
@@ -151,80 +148,57 @@ function truenasRealtime(baseUrl, token) {
 
   return (async () => {
     for (let i = 0; i < paths.length; i++) {
-      const r = await tryPath(paths[i], i === 0);
+      const r = await tryPath(paths[i], i === 1); // i===1 is DDP fallback
       if (r && (r.cpuPct != null || r.memTotal != null)) return r;
     }
     return null;
   })();
 }
 
-// ── Proxmox SMART temperatures ────────────────────────────────
-// Returns { node: { diskPath: tempC } } across all nodes (best-effort, parallel)
-async function proxmoxDiskTemps(base, h, nodes) {
-  const result = {};
-  await Promise.all(nodes.map(async node => {
-    try {
-      const r = await go(`${base}/api2/json/nodes/${node}/disks/list`, { headers: h }, 6000);
-      if (!r.ok) return;
-      const list = (await r.json()).data || [];
-      const temps = {};
-      await Promise.all(list.slice(0, 8).map(async d => {
-        if (!d.devpath) return;
-        try {
-          const sr = await go(`${base}/api2/json/nodes/${node}/disks/smart?disk=${encodeURIComponent(d.devpath)}`, { headers: h }, 5000);
-          if (!sr.ok) return;
-          const smart = (await sr.json()).data || {};
-          // Temperature is in SMART attribute 190 or 194
-          const tempAttr = (smart.attributes || []).find(a => a.name === 'Temperature_Celsius' || a.id === 194 || a.id === 190);
-          if (tempAttr) temps[d.devpath] = parseInt(tempAttr.raw?.split(' ')[0] || tempAttr.value);
-          // Or direct field
-          else if (smart.temperature != null) temps[d.devpath] = smart.temperature;
-        } catch {}
-      }));
-      result[node] = temps;
-    } catch {}
-  }));
-  return result;
-}
+// ── TrueNAS JSON-RPC 2.0 WebSocket batch helper ──────────────
+// Opens one WS, auths, fires all calls in parallel, returns Map<id, result|null>
+function truenasJsonRpc(baseUrl, token, calls, timeoutMs = 25000) {
+  const toWs = u => u.replace(/^http/, u.startsWith('https') ? 'wss' : 'ws');
+  const wsUrl = `${toWs(baseUrl.replace(/\/$/, ''))}/api/current`;
 
-// ── Proxmox VE ───────────────────────────────────────────────
-router.post('/proxmox', async (req, res) => {
-  const { url, token } = req.body;
-  if (!url || !token) return res.status(400).json({ error: 'url and token required' });
-  if (!isValidToken(token)) return res.status(400).json({ error: 'Invalid token format' });
-  if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
-  const base = url.replace(/\/$/, '');
-  const h = { Authorization: `PVEAPIToken=${token}` };
-  try {
-    const [nR, vR] = await Promise.all([
-      go(`${base}/api2/json/nodes`,   { headers: h }),
-      go(`${base}/api2/json/version`, { headers: h }),
-    ]);
-    const [nJ, vJ] = await Promise.all([nR.json(), vR.json()]);
-    const nodeList = (nJ.data || []).slice(0, 6);
-    const details = await Promise.all(nodeList.map(async n => {
-      const [sR, vmR, lxR, stR] = await Promise.all([
-        go(`${base}/api2/json/nodes/${n.node}/status`,  { headers: h }),
-        go(`${base}/api2/json/nodes/${n.node}/qemu`,    { headers: h }),
-        go(`${base}/api2/json/nodes/${n.node}/lxc`,     { headers: h }),
-        go(`${base}/api2/json/nodes/${n.node}/storage`, { headers: h }),
-      ]);
-      const [s, vms, lxc, storage] = await Promise.all([sR.json(), vmR.json(), lxR.json(), stR.json()]);
-      // CPU temp from node status (available on some Proxmox installs)
-      const cpuTemp = s.data?.cputemp ?? null;
-      return { node: n.node, online: n.status === 'online', status: s.data, cpuTemp, vms: vms.data || [], lxc: lxc.data || [], storage: storage.data || [] };
-    }));
-    // Disk temps via SMART (parallel, best-effort)
-    const diskTemps = await proxmoxDiskTemps(base, h, nodeList.map(n => n.node));
-    const nodesWithTemps = details.map(n => ({ ...n, diskTemps: diskTemps[n.node] || {} }));
-    res.json({ ok: true, version: vJ.data?.version, nodes: nodesWithTemps });
-  } catch(e) {
-    const msg = e.code === 'ENOTFOUND'
-      ? `Cannot resolve hostname "${e.hostname || ''}" from Docker. Use an IP address instead (e.g. https://192.168.x.x:8006), or add your LAN DNS to docker-compose.yml.`
-      : e.message;
-    res.status(502).json({ error: msg });
-  }
-});
+  return new Promise(resolve => {
+    const results = new Map();
+    let ws, timer, authDone = false;
+    let remaining = calls.length;
+
+    const finish = () => {
+      clearTimeout(timer);
+      try { ws.close(); } catch {}
+      resolve(results);
+    };
+
+    timer = setTimeout(finish, timeoutMs);
+
+    try { ws = new WebSocket(wsUrl, { rejectUnauthorized: false }); }
+    catch { resolve(results); return; }
+
+    ws.on('error', finish);
+
+    ws.on('open', () => ws.send(JSON.stringify({
+      jsonrpc: '2.0', method: 'auth.login_with_api_key', id: 0, params: [token]
+    })));
+
+    ws.on('message', raw => {
+      let m; try { m = JSON.parse(raw.toString()); } catch { return; }
+      if (!authDone && m.id === 0) {
+        if (m.error || !m.result) return finish();
+        authDone = true;
+        for (const c of calls)
+          ws.send(JSON.stringify({ jsonrpc: '2.0', method: c.method, id: c.id, params: c.params || [] }));
+        return;
+      }
+      if (authDone && m.id != null && m.id !== 0) {
+        results.set(m.id, m.error ? null : (m.result ?? null));
+        if (--remaining <= 0) finish();
+      }
+    });
+  });
+}
 
 // ── TrueNAS ──────────────────────────────────────────────────
 router.post('/truenas', async (req, res) => {
@@ -233,77 +207,69 @@ router.post('/truenas', async (req, res) => {
   if (!isValidToken(token)) return res.status(400).json({ error: 'Invalid token format' });
   if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
   const base = url.replace(/\/$/, '');
-  const h = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' };
-
-  // Safe GET — returns parsed JSON or null
-  const safe = async (endpoint, timeout = 8000) => {
-    try {
-      const r = await go(`${base}${endpoint}`, { headers: h }, timeout);
-      if (!r.ok) return null;
-      return JSON.parse(await r.text());
-    } catch { return null; }
-  };
-
-  // Safe POST — returns parsed JSON or null
-  const safePost = async (endpoint, body, timeout = 10000) => {
-    try {
-      const bodyStr = JSON.stringify(body);
-      const r = await go(`${base}${endpoint}`, { method: 'POST', headers: h, body: bodyStr }, timeout);
-      if (!r.ok) return null;
-      return JSON.parse(await r.text());
-    } catch { return null; }
-  };
 
   try {
-    // Batch 1: core (always needed)
-    const [info, pools, alerts, services] = await Promise.all([
-      safe('/api/v2.0/system/info'),
-      safe('/api/v2.0/pool'),
-      safe('/api/v2.0/alert/list'),
-      safe('/api/v2.0/service'),
+    // Batch 1: all core + extended data in one WebSocket connection
+    const r = await truenasJsonRpc(base, token, [
+      { id:  1, method: 'system.info',           params: [] },
+      { id:  2, method: 'pool.query',             params: [] },
+      { id:  3, method: 'alert.list',             params: [] },
+      { id:  4, method: 'service.query',          params: [] },
+      { id:  5, method: 'disk.query',             params: [] },
+      { id:  6, method: 'pool.dataset.query',     params: [[], { limit: 100 }] },
+      { id:  7, method: 'interface.query',        params: [] },
+      { id:  8, method: 'vm.query',               params: [] },
+      { id:  9, method: 'replication.query',      params: [] },
+      { id: 10, method: 'cloudsync.query',        params: [] },
+      { id: 11, method: 'app.query',              params: [] },
+      { id: 12, method: 'boot.get_state',         params: [] },
+      { id: 13, method: 'smart.test.results',     params: [[], { limit: 10 }] },
     ]);
 
-    // Batch 2: extended (best-effort, parallel)
-    const [disks, datasets, interfaces, vms, replication, cloudsync, apps, bootState, smartResults] = await Promise.all([
-      safe('/api/v2.0/disk'),
-      safe('/api/v2.0/pool/dataset?limit=100'),
-      safe('/api/v2.0/interface'),
-      safe('/api/v2.0/vm'),
-      safe('/api/v2.0/replication/task'),
-      safe('/api/v2.0/cloudsync/task'),
-      safe('/api/v2.0/app'),                        // SCALE 24+ apps (Docker-based)
-      safe('/api/v2.0/boot/get_state'),              // boot pool health
-      safe('/api/v2.0/smart/test/results?limit=10'), // recent SMART results
-    ]);
+    const info        = r.get(1)  || {};
+    const pools       = r.get(2)  || [];
+    const alerts      = r.get(3)  || [];
+    const services    = r.get(4)  || [];
+    const disks       = r.get(5)  || [];
+    const datasets    = r.get(6)  || [];
+    const interfaces  = r.get(7)  || [];
+    const vms         = r.get(8)  || [];
+    const replication = r.get(9)  || [];
+    const cloudsync   = r.get(10) || [];
+    const apps        = r.get(11) || [];
+    const bootState   = r.get(12) || null;
+    const smartResults= r.get(13) || [];
 
-    // Batch 3: disk temps + WS realtime (run in parallel)
-    const diskNames = (disks || []).map(d => d.name).filter(Boolean);
-    const [diskTemps, realtime] = await Promise.all([
+    // Batch 2: disk temps + realtime (parallel, both need disk names from batch 1)
+    const diskNames = disks.map(d => d.name).filter(Boolean);
+    const [tempMap, realtime] = await Promise.all([
       diskNames.length > 0
-        ? safePost('/api/v2.0/disk/temperature_agg', { names: diskNames, powermode: 'NEVER' })
+        ? truenasJsonRpc(base, token,
+            [{ id: 1, method: 'disk.temperature_agg', params: [{ names: diskNames, powermode: 'NEVER' }] }],
+            15000).then(m => m.get(1))
         : Promise.resolve(null),
       truenasRealtime(base, token),
     ]);
 
     // ── Process pools ──
-    const poolList = pools || [];
+    const poolList       = pools;
     const totalSize      = poolList.reduce((a, p) => a + (p.size      || 0), 0);
     const totalAllocated = poolList.reduce((a, p) => a + (p.allocated || 0), 0);
     const totalFree      = poolList.reduce((a, p) => a + (p.free      || 0), 0);
 
     // ── Process disks (merge in temperatures) ──
-    const diskSummary = (disks || []).map(d => ({
-      name:   d.name,
-      size:   d.size,
-      model:  d.model,
-      serial: d.serial,
-      type:   d.type,
+    const diskSummary = disks.map(d => ({
+      name:         d.name,
+      size:         d.size,
+      model:        d.model,
+      serial:       d.serial,
+      type:         d.type,
       rotationrate: d.rotationrate,
-      temp:   diskTemps?.[d.name] ?? d.temperature ?? null,
+      temp:         tempMap?.[d.name] ?? d.temperature ?? null,
     }));
 
     // ── Root datasets ──
-    const rootDatasets = (datasets || [])
+    const rootDatasets = datasets
       .filter(d => !d.id.includes('/') || d.id.split('/').length <= 2)
       .slice(0, 30)
       .map(d => ({
@@ -318,7 +284,7 @@ router.post('/truenas', async (req, res) => {
       }));
 
     // ── Network interfaces ──
-    const netIfaces = (interfaces || [])
+    const netIfaces = interfaces
       .filter(i => !i.fake)
       .map(i => ({
         name:    i.name,
@@ -330,25 +296,25 @@ router.post('/truenas', async (req, res) => {
       }));
 
     // ── VMs ──
-    const vmSummary = (vms || []).map(v => ({
-      name:   v.name,
-      status: v.status?.state,
-      vcpus:  v.vcpus,
-      memory: v.memory,
+    const vmSummary = vms.map(v => ({
+      name:        v.name,
+      status:      v.status?.state,
+      vcpus:       v.vcpus,
+      memory:      v.memory,
       description: v.description,
     }));
 
     // ── Apps (SCALE 24+) ──
-    const appSummary = (apps || []).map(a => ({
-      name:    a.name,
-      state:   a.state,
-      version: a.human_version || a.metadata?.app_version,
-      train:   a.metadata?.train,
+    const appSummary = apps.map(a => ({
+      name:       a.name,
+      state:      a.state,
+      version:    a.human_version || a.metadata?.app_version,
+      train:      a.metadata?.train,
       containers: a.active_workloads?.containers || 0,
     }));
 
     // ── Replication tasks ──
-    const replTasks = (replication || []).map(t => ({
+    const replTasks = replication.map(t => ({
       name:      t.name,
       enabled:   t.enabled,
       direction: t.direction,
@@ -358,7 +324,7 @@ router.post('/truenas', async (req, res) => {
     }));
 
     // ── Cloud sync tasks ──
-    const csyncTasks = (cloudsync || []).map(t => ({
+    const csyncTasks = cloudsync.map(t => ({
       name:      t.description || t.path,
       enabled:   t.enabled,
       direction: t.direction,
@@ -369,26 +335,26 @@ router.post('/truenas', async (req, res) => {
 
     // ── Boot pool ──
     const bootPool = bootState ? {
-      name:    bootState.name,
-      status:  bootState.status,
-      healthy: bootState.healthy,
-      size:    bootState.size,
+      name:      bootState.name,
+      status:    bootState.status,
+      healthy:   bootState.healthy,
+      size:      bootState.size,
       allocated: bootState.allocated,
     } : null;
 
     // ── SMART results (recent failures/warnings only) ──
-    const smartAlerts = (smartResults || [])
+    const smartAlerts = smartResults
       .filter(r => r.status !== 'SUCCESS' && r.status !== 'RUNNING')
       .slice(0, 5)
       .map(r => ({ disk: r.disk, type: r.type, status: r.status, description: r.description }));
 
     res.json({
       ok:          true,
-      realtime:    realtime || null,   // { cpuPct, cpuTemp, memUsed, memTotal } from WS
-      info:        info || {},
+      realtime:    realtime || null,
+      info,
       pools:       poolList,
-      alerts:      (alerts || []).filter(a => a.level !== 'INFO'),
-      services:    services || [],
+      alerts:      alerts.filter(a => a.level !== 'INFO'),
+      services,
       disks:       diskSummary,
       datasets:    rootDatasets,
       interfaces:  netIfaces,

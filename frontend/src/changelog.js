@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.7",date:"Apr 2026",items:[
+    "Fix: TrueNAS integration migrated from deprecated REST API (/api/v2.0/) to JSON-RPC 2.0 over WebSocket -- eliminates the deprecation warning TrueNAS shows in the live view.",
+    "Perf: All TrueNAS data (pools, disks, services, apps, datasets, etc.) now fetched in a single WebSocket connection instead of 12 separate HTTP requests.",
+    "Fix: Realtime stats (CPU/RAM) now tries JSON-RPC 2.0 WebSocket first, falls back to legacy DDP protocol for older TrueNAS installs.",
+  ]},
   {v:"v5.46.6",date:"Apr 2026",items:[
     "Fix: Neumorphic nodes now use pure canvas material (var(--bg)) -- outer elevation shadow does all the lifting, no color trickery.",
     "Fix: Neumorphic node header uses a subtle tonal shift (color-mix 7% black) instead of inset shadows -- cleaner, more authentic single-material feel.",
