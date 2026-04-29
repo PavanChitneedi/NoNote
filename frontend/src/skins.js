@@ -178,70 +178,117 @@ body.skin-neon-tokyo [style*="border-left: 1px solid var(--border)"] { border-le
 
   neumorphic: {
     name:"Neumorphic", icon:"⬜", nav:"icon-dock",
-    concept:"Soft clay. Every element extruded from or pressed into one seamless surface.",
+    concept:"Soft clay. Elements pushed out of or pressed into a single material.",
     tags:["3D","Tactile","Soft"],
+    defaultTheme:"clay",
+    defaultAccent:{accent:"#5b8dee",accent2:"#2563eb"},
+    accentOptions:[
+      {name:"Blue",    accent:"#5b8dee", accent2:"#2563eb"},
+      {name:"Purple",  accent:"#9b7dea", accent2:"#7c3aed"},
+      {name:"Teal",    accent:"#2eb8a0", accent2:"#0f766e"},
+      {name:"Rose",    accent:"#e878a8", accent2:"#be185d"},
+      {name:"Amber",   accent:"#e8a030", accent2:"#d97706"},
+    ],
     vars:{
-      /* ── Own palette — always wins over theme ── */
-      "--bg":"#e0e5ec","--bg2":"#eaeff6","--bg3":"#d5dae3",
-      "--node-bg":"#e0e5ec","--canvas-dot":"#c8cfd9",
-      "--border":"transparent","--border2":"transparent",
-      "--text":"#2d3748","--text2":"#4a5568","--text3":"#718096","--text4":"#a0aec0",
-      "--shadow":"rgba(163,177,198,0.5)",
-      "--accent":"#5b8dee","--accent2":"#2563eb",
-      "--success":"#48bb78","--danger":"#fc8181",
-      /* ── Personality ── */
       "--font-ui":"'Nunito','Poppins',system-ui,sans-serif",
       "--font-node":"'Nunito',system-ui,sans-serif",
       "--font-weight-ui":"700","--font-weight-node":"600",
       "--letter-space":"0em","--line-height":"1.65",
       "--radius-xs":"6px","--radius-sm":"10px","--radius-md":"14px","--radius-lg":"18px",
-      "--radius-node":"16px","--radius-btn":"10px",
+      "--radius-node":"16px","--radius-btn":"8px",
       "--transition-all":"all 0.14s ease",
       "--topbar-bg":"var(--bg)","--topbar-border":"none","--topbar-blur":"none",
       "--sidebar-bg":"var(--bg)","--sidebar-border":"none",
     },
     bodyClass:"skin-neumorphic",
-    css:`/* ════ NEUMORPHIC SKIN v6 — Self-contained palette ════
-   Surface: #e0e5ec | Dark shadow: #a3b1c6 | Light shadow: #ffffff
-   No color-mix, no theme overrides — one material, one truth.
-*/
+    css:`/* ════════════════════════════════════════════════════════════
+   NEUMORPHIC SKIN  v5.0 — Restored premium quality
+   ════════════════════════════════════════════════════════════
+   Key fix: hilight = color-mix(35% bg, 65% white) → near-white
+   This matches original #f4faff highlight on clay theme.
+   Shadow offsets restored to 8px (was 5px) for strong depth.
+   ════════════════════════════════════════════════════════════ */
 
-/* ── SHADOW TOKENS ──────────────────────────────────────────── */
+/* ── TOKEN LAYER — all on body so color-mix inherits --bg ─────── */
 body.skin-neumorphic {
-  --ns-d: #a3b1c6;
-  --ns-l: #ffffff;
-  --nEl:  9px  9px 22px var(--ns-d), -7px -7px 16px var(--ns-l);
-  --nEm:  6px  6px 14px var(--ns-d), -5px -5px 10px var(--ns-l);
-  --nEs:  4px  4px  9px var(--ns-d), -3px -3px  6px var(--ns-l);
-  --nEx:  2px  2px  5px var(--ns-d), -2px -2px  3px var(--ns-l);
-  --nIl: inset 5px 5px 12px var(--ns-d), inset -4px -4px  8px var(--ns-l);
-  --nIm: inset 4px 4px  9px var(--ns-d), inset -3px -3px  6px var(--ns-l);
-  --nIs: inset 2px 2px  6px var(--ns-d), inset -2px -2px  4px var(--ns-l);
-  --nIx: inset 1px 1px  4px var(--ns-d), inset -1px -1px  3px var(--ns-l);
+  /* Shadow colors: skin-owned, computed from theme's --bg */
+  --neu-shadow:  color-mix(in srgb, var(--bg) 82%, black);   /* ~18% black */
+  --neu-hilight: color-mix(in srgb, var(--bg) 35%, white);   /* ~65% white → near-white */
+
+  /* Elevation tokens — restored to original intensity (8px offset) */
+  --nEl:  9px  9px 22px var(--neu-shadow), -7px -7px 16px var(--neu-hilight);  /* cards/modals  */
+  --nEm:  6px  6px 14px var(--neu-shadow), -5px -5px 10px var(--neu-hilight);  /* standard buttons */
+  --nEs:  4px  4px  9px var(--neu-shadow), -3px -3px  6px var(--neu-hilight);  /* small buttons    */
+  --nEx:  2px  2px  5px var(--neu-shadow), -2px -2px  3px var(--neu-hilight);  /* micro elements   */
+
+  --nIl:  inset 5px 5px 12px var(--neu-shadow), inset -4px -4px  8px var(--neu-hilight);
+  --nIm:  inset 4px 4px  9px var(--neu-shadow), inset -3px -3px  6px var(--neu-hilight);
+  --nIs:  inset 2px 2px  6px var(--neu-shadow), inset -2px -2px  4px var(--neu-hilight);
+  --nIx:  inset 1px 1px  4px var(--neu-shadow), inset -1px -1px  3px var(--neu-hilight);
+
+  /* Radius */
   --nRl: 16px; --nRm: 12px; --nRs: 8px; --nRx: 6px;
+
+  /* Node shadows — defined here so they see --neu-shadow on body */
   --shadow-node:     var(--nEl);
   --shadow-node-sel: var(--nEl), 0 0 0 2px var(--accent)55;
+
   background: var(--bg);
   color: var(--text2);
 }
 
-/* ── GLOBAL RESET ───────────────────────────────────────────── */
+/* DARK THEME OVERRIDE ─────────────────────────────────────────── */
+/* Dark neumorphic principle: highlight must stay CLOSE to bg hue  */
+/* color-mix(85% bg, 15% white) → +35 RGB above bg (subtle depth) */
+/* NOT 38% bg — that gives near-white gray that glows unnaturally  */
+body.skin-neumorphic[data-theme="dark"],
+body.skin-neumorphic[data-theme="midnight"],
+body.skin-neumorphic[data-theme="forest"],
+body.skin-neumorphic[data-theme="ocean"],
+body.skin-neumorphic[data-theme="amber"],
+body.skin-neumorphic[data-theme="violet"] {
+  --neu-shadow:  color-mix(in srgb, var(--bg) 72%, black);
+  --neu-hilight: color-mix(in srgb, var(--bg) 78%, white);  /* stay close to bg, subtle lift */
+  /* Wider blur compensates for lower contrast on dark surfaces */
+  --nEl:  10px 10px 26px var(--neu-shadow), -7px -7px 20px var(--neu-hilight);
+  --nEm:   7px  7px 18px var(--neu-shadow), -5px -5px 13px var(--neu-hilight);
+  --nEs:   4px  4px 11px var(--neu-shadow), -3px -3px  8px var(--neu-hilight);
+  --nEx:   2px  2px  6px var(--neu-shadow), -2px -2px  4px var(--neu-hilight);
+  --nIl:  inset 5px 5px 14px var(--neu-shadow), inset -4px -4px 10px var(--neu-hilight);
+  --nIm:  inset 4px 4px 10px var(--neu-shadow), inset -3px -3px  7px var(--neu-hilight);
+  --nIs:  inset 2px 2px  7px var(--neu-shadow), inset -2px -2px  5px var(--neu-hilight);
+  --nIx:  inset 1px 1px  4px var(--neu-shadow), inset -1px -1px  3px var(--neu-hilight);
+}
+
+/* ── GLOBAL RESET ─────────────────────────────────────────────── */
 body.skin-neumorphic * { border-color: transparent !important; }
+/* bg2/bg3 flattening — scoped to avoid overriding fixed backdrops */
 body.skin-neumorphic [style*="background: var(--bg3)"]:not([style*="position: fixed"]):not([style*="position:fixed"]) { background: var(--bg) !important; }
 body.skin-neumorphic [style*="background:var(--bg3)"]:not([style*="position: fixed"]):not([style*="position:fixed"]) { background: var(--bg) !important; }
+/* Protect canvas grid */
 body.skin-neumorphic [style*="radial-gradient"] {
-  background-image: radial-gradient(circle, #c8cfd9 1.2px, transparent 1.2px) !important;
+  background-image: radial-gradient(circle, var(--canvas-dot) 1.2px, transparent 1.2px) !important;
   background-size: 28px 28px !important; background-position: center !important;
-  background-color: #e0e5ec !important;
+  background-color: var(--bg) !important;
 }
-
-/* ── NODES ──────────────────────────────────────────────────── */
-body.skin-neumorphic .nn-node { background: #e0e5ec !important; }
+/* Node cards: pure canvas material — outer --nEl shadow does the lifting */
+body.skin-neumorphic .nn-node {
+  background: var(--bg) !important;
+}
+/* Header: subtly darker tonal band — no shadows, just a slight material shift */
 body.skin-neumorphic .nn-node > div:first-child {
-  background: #d5dae3 !important; border: none !important; box-shadow: none !important;
+  background: color-mix(in srgb, var(--bg) 93%, black) !important; border: none !important; box-shadow: none !important;
+}
+body.skin-neumorphic[data-theme="dark"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="midnight"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="forest"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="ocean"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="amber"] .nn-node > div:first-child,
+body.skin-neumorphic[data-theme="violet"] .nn-node > div:first-child {
+  background: color-mix(in srgb, var(--bg) 90%, black) !important; box-shadow: none !important;
 }
 
-/* ── RADIUS NORMALISATION (inline styles) ───────────────────── */
+/* ── FILLET INLINE RADII ──────────────────────────────────────── */
 body.skin-neumorphic [style*="borderRadius:20"],body.skin-neumorphic [style*="borderRadius: 20"],
 body.skin-neumorphic [style*="borderRadius:18"],body.skin-neumorphic [style*="borderRadius: 18"],
 body.skin-neumorphic [style*="borderRadius:16"],body.skin-neumorphic [style*="borderRadius: 16"],
@@ -255,44 +302,62 @@ body.skin-neumorphic [style*="borderRadius:3"],body.skin-neumorphic [style*="bor
 body.skin-neumorphic [style*="borderRadius: 2"],body.skin-neumorphic [style*="borderRadius:1"],
 body.skin-neumorphic [style*="borderRadius:0"],body.skin-neumorphic [style*="borderRadius: 0"]{border-radius:var(--nRx)!important}
 
-/* ── BUTTONS ────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════
+   COMPONENTS — state machine: raised → +hover → inset active
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── BUTTONS ─────────────────────────────────────────────────── */
 body.skin-neumorphic button {
-  background: #e0e5ec !important; border: none !important;
-  border-radius: var(--nRs) !important; box-shadow: var(--nEs) !important;
-  color: var(--text2) !important; font-weight: 600 !important;
+  background: var(--bg) !important;
+  border: none !important;
+  border-radius: var(--nRs) !important;
+  box-shadow: var(--nEs) !important;
+  color: var(--text2) !important;
+  font-weight: 600 !important;
   transition: box-shadow .14s ease, transform .12s ease, color .12s ease !important;
 }
 body.skin-neumorphic button:not([disabled]):hover {
-  box-shadow: var(--nEm) !important; color: var(--text) !important; transform: translateY(-1px) !important;
+  box-shadow: var(--nEm) !important;
+  color: var(--text) !important;
+  transform: translateY(-1px) !important;
 }
 body.skin-neumorphic button:not([disabled]):active {
-  box-shadow: var(--nIs) !important; transform: translateY(0) !important;
+  box-shadow: var(--nIs) !important;
+  transform: translateY(0) !important;
 }
 body.skin-neumorphic button:focus-visible {
-  outline: 2px solid var(--accent) !important; outline-offset: 2px !important;
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px !important;
   box-shadow: var(--nEs), 0 0 0 3px var(--accent)33 !important;
 }
-body.skin-neumorphic button:disabled, body.skin-neumorphic button[disabled] {
-  box-shadow: var(--nEx) !important; opacity: 0.4 !important;
-  cursor: not-allowed !important; transform: none !important;
+body.skin-neumorphic button:disabled,
+body.skin-neumorphic button[disabled] {
+  box-shadow: var(--nEx) !important;
+  opacity: 0.4 !important;
+  cursor: not-allowed !important;
+  transform: none !important;
 }
-/* Accent-active state: inset + tinted */
+/* Accent-active: inset + tinted text */
 body.skin-neumorphic button[style*="background: var(--accent2)"],
 body.skin-neumorphic button[style*="background:var(--accent2)"] {
-  background: #e0e5ec !important; box-shadow: var(--nIs) !important; color: var(--accent2) !important; transform: none !important;
+  background: var(--bg) !important; box-shadow: var(--nIs) !important;
+  color: var(--accent2) !important; transform: none !important;
 }
 body.skin-neumorphic button[style*="background: var(--success)"],
 body.skin-neumorphic button[style*="background:var(--success)"] {
-  background: #e0e5ec !important; box-shadow: var(--nIs) !important; color: var(--success) !important; transform: none !important;
+  background: var(--bg) !important; box-shadow: var(--nIs) !important;
+  color: var(--success) !important; transform: none !important;
 }
 body.skin-neumorphic button[style*="background: var(--danger)"],
 body.skin-neumorphic button[style*="background:var(--danger)"] {
-  background: #e0e5ec !important; box-shadow: var(--nIs) !important; color: var(--danger) !important; transform: none !important;
+  background: var(--bg) !important; box-shadow: var(--nIs) !important;
+  color: var(--danger) !important; transform: none !important;
 }
-/* CTA white-text buttons */
+/* CTA (white text) */
 body.skin-neumorphic button[style*="color: #fff"],
 body.skin-neumorphic button[style*="color:#fff"] {
-  background: var(--accent2) !important; box-shadow: var(--nEs) !important; color: #fff !important;
+  background: var(--accent2) !important; box-shadow: var(--nEs) !important;
+  color: #fff !important;
 }
 body.skin-neumorphic button[style*="color: #fff"]:not([disabled]):hover,
 body.skin-neumorphic button[style*="color:#fff"]:not([disabled]):hover {
@@ -308,187 +373,876 @@ body.skin-neumorphic button[style*="background:none"] {
 body.skin-neumorphic button[style*="background: transparent"]:not([disabled]):hover,
 body.skin-neumorphic button[style*="background:transparent"]:not([disabled]):hover,
 body.skin-neumorphic button[style*="background: none"]:not([disabled]):hover {
-  background: #e0e5ec !important; box-shadow: var(--nEx) !important; color: var(--text) !important; transform: none !important;
+  background: var(--bg) !important; box-shadow: var(--nEx) !important;
+  color: var(--text) !important; transform: none !important;
 }
 
-/* ── INPUTS / SELECT / TEXTAREA ─────────────────────────────── */
-body.skin-neumorphic input, body.skin-neumorphic select, body.skin-neumorphic textarea {
-  background: #e0e5ec !important; border: none !important;
+/* ── INPUTS / SELECT / TEXTAREA ───────────────────────────────── */
+body.skin-neumorphic input,
+body.skin-neumorphic select,
+body.skin-neumorphic textarea {
+  background: var(--bg) !important; border: none !important;
   border-radius: var(--nRm) !important; box-shadow: var(--nIm) !important;
   color: var(--text) !important; transition: box-shadow .14s ease !important;
 }
-body.skin-neumorphic input::placeholder, body.skin-neumorphic textarea::placeholder { color: var(--text4) !important; opacity: 1 !important; }
-body.skin-neumorphic input:focus, body.skin-neumorphic select:focus, body.skin-neumorphic textarea:focus {
+body.skin-neumorphic input::placeholder,
+body.skin-neumorphic textarea::placeholder { color: var(--text4) !important; opacity: 1 !important; }
+body.skin-neumorphic input:focus,
+body.skin-neumorphic select:focus,
+body.skin-neumorphic textarea:focus {
   box-shadow: var(--nIl), 0 0 0 2px var(--accent)44 !important; outline: none !important;
 }
-body.skin-neumorphic input:disabled, body.skin-neumorphic select:disabled, body.skin-neumorphic textarea:disabled { opacity: 0.5 !important; }
-body.skin-neumorphic input[type="checkbox"], body.skin-neumorphic input[type="radio"] {
+body.skin-neumorphic input:disabled,
+body.skin-neumorphic select:disabled,
+body.skin-neumorphic textarea:disabled { opacity: 0.5 !important; cursor: not-allowed !important; }
+body.skin-neumorphic input[type="checkbox"],
+body.skin-neumorphic input[type="radio"] {
   -webkit-appearance: none !important; appearance: none !important;
   width: 16px !important; height: 16px !important;
   border-radius: var(--nRx) !important; box-shadow: var(--nIs) !important;
-  cursor: pointer !important; position: relative !important; flex-shrink: 0 !important; background: #e0e5ec !important;
+  cursor: pointer !important; position: relative !important; flex-shrink: 0 !important;
 }
 body.skin-neumorphic input[type="radio"] { border-radius: 50% !important; }
-body.skin-neumorphic input[type="checkbox"]:checked, body.skin-neumorphic input[type="radio"]:checked {
+body.skin-neumorphic input[type="checkbox"]:checked,
+body.skin-neumorphic input[type="radio"]:checked {
   background: var(--accent2) !important; box-shadow: var(--nIx) !important;
 }
 
-/* ── APP TOPBAR ─────────────────────────────────────────────── */
+/* ── APP TOPBAR ───────────────────────────────────────────────── */
 body.skin-neumorphic .nn-topbar {
-  background: #e0e5ec !important; border: none !important; box-shadow: 0 4px 10px var(--ns-d) !important;
+  background: var(--bg) !important; border: none !important;
+  box-shadow: 0 4px 10px var(--neu-shadow) !important;
 }
 body.skin-neumorphic .nn-topbar button {
   box-shadow: none !important; background: transparent !important;
   color: var(--text3) !important; border-radius: 6px !important; transform: none !important;
 }
 body.skin-neumorphic .nn-topbar button:not([disabled]):hover {
-  background: #e0e5ec !important; color: var(--text) !important; box-shadow: var(--nEx) !important; transform: none !important;
+  background: var(--bg) !important; color: var(--text) !important;
+  box-shadow: var(--nEx) !important; transform: none !important;
 }
 
-/* ── CANVAS TOOLBAR ─────────────────────────────────────────── */
+/* ── CANVAS TOOLBAR — unified inset trough ────────────────────── */
 body.skin-neumorphic [data-tut="topbar-row1"] {
-  background: #e0e5ec !important; border: none !important;
-  box-shadow: inset 0 4px 10px var(--ns-d), inset 0 1px 3px var(--ns-l) !important;
+  background: var(--bg) !important; border: none !important;
+  box-shadow: inset 0 4px 10px var(--neu-shadow), inset 0 1px 3px var(--neu-hilight) !important;
 }
 body.skin-neumorphic [data-tut="topbar-row1"] + div {
-  background: #e0e5ec !important; border: none !important; box-shadow: inset 0 -4px 10px var(--ns-d) !important;
+  background: var(--bg) !important; border: none !important;
+  box-shadow: inset 0 -4px 10px var(--neu-shadow) !important;
 }
+/* Toolbar buttons: flat in trough, 6px fixed radius */
 body.skin-neumorphic [data-tut="topbar-row1"] button,
 body.skin-neumorphic [data-tut="topbar-row1"] + div button {
   box-shadow: none !important; background: transparent !important;
-  border-radius: 6px !important; color: var(--text2) !important; font-size: 11px !important; transform: none !important;
+  border-radius: 6px !important; color: var(--text2) !important;
+  font-size: 11px !important; transform: none !important;
 }
 body.skin-neumorphic [data-tut="topbar-row1"] button:not([disabled]):hover,
 body.skin-neumorphic [data-tut="topbar-row1"] + div button:not([disabled]):hover {
-  background: #e0e5ec !important; color: var(--text) !important; box-shadow: var(--nEx) !important; transform: none !important;
+  background: var(--bg) !important; color: var(--text) !important;
+  box-shadow: var(--nEx) !important; transform: none !important;
 }
+/* Active toolbar button: pure neumorphic — inset (pressed into surface), NO color change
+   Depth alone communicates the active state. Same surface color as everything else. */
 body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--accent2)"],
 body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--accent2)"],
 body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--success)"],
 body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--success)"] {
-  box-shadow: var(--nIm) !important; background: #e0e5ec !important;
-  color: var(--text) !important; font-weight: 700 !important; transform: none !important;
+  box-shadow: var(--nIm) !important;   /* medium inset — clearly pressed in */
+  background: var(--bg) !important;    /* same surface, no color change      */
+  color: var(--text) !important;       /* same text, no accent tint           */
+  font-weight: 700 !important;
+  transform: none !important;
 }
+/* Popup/Panel segmented toggle wrapper: inset trough — active pill pops out */
 body.skin-neumorphic [data-tut="topbar-row1"] + div [style*="background: var(--bg3)"][style*="border-radius: var(--radius-md)"][style*="overflow: hidden"] {
-  background: #e0e5ec !important; box-shadow: var(--nIs) !important; border-radius: var(--nRm) !important;
+  background: var(--bg) !important; box-shadow: var(--nIs) !important;
+  border-radius: var(--nRm) !important; overflow: hidden !important;
 }
 body.skin-neumorphic [data-tut="topbar-row1"] button:disabled,
 body.skin-neumorphic [data-tut="topbar-row1"] + div button:disabled,
 body.skin-neumorphic [data-tut="topbar-row1"] button[disabled],
-body.skin-neumorphic [data-tut="topbar-row1"] + div button[disabled] { opacity: 0.35 !important; }
+body.skin-neumorphic [data-tut="topbar-row1"] + div button[disabled] {
+  opacity: 0.35 !important; color: var(--text4) !important;
+}
+body.skin-neumorphic [data-tut="topbar-row1"] [style*="width: 1px"],
+body.skin-neumorphic [data-tut="topbar-row1"] + div [style*="width: 1px"],
 body.skin-neumorphic [style*="width: 1px"][style*="background: var(--border)"] { background: transparent !important; }
 
-/* ── SIDEBAR ────────────────────────────────────────────────── */
+/* ── SIDEBAR ──────────────────────────────────────────────────── */
 body.skin-neumorphic .nn-sidebar,
 body.skin-neumorphic [style*="border-right: 1px solid"] {
-  background: #e0e5ec !important; border: none !important; box-shadow: 5px 0 14px var(--ns-d) !important;
+  background: var(--bg) !important; border: none !important;
+  box-shadow: 5px 0 14px var(--neu-shadow) !important;
 }
-body.skin-neumorphic [style*="border-left: 1px solid"] { border: none !important; box-shadow: -5px 0 14px var(--ns-d) !important; }
-body.skin-neumorphic [style*="border-top: 1px solid"] { border-top: none !important; box-shadow: 0 -3px 8px var(--ns-d) !important; }
-body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"] { border-bottom: none !important; box-shadow: 0 2px 6px var(--ns-d) !important; }
-body.skin-neumorphic [style*="border-bottom: 1px solid var(--border)"] { border-bottom: none !important; box-shadow: 0 1px 4px var(--ns-d) !important; }
+body.skin-neumorphic[data-theme="dark"] .nn-sidebar,
+body.skin-neumorphic[data-theme="midnight"] .nn-sidebar,
+body.skin-neumorphic[data-theme="forest"] .nn-sidebar,
+body.skin-neumorphic[data-theme="ocean"] .nn-sidebar,
+body.skin-neumorphic[data-theme="amber"] .nn-sidebar,
+body.skin-neumorphic[data-theme="violet"] .nn-sidebar { background: var(--node-bg) !important; }
+body.skin-neumorphic [style*="border-left: 1px solid"] { border: none !important; box-shadow: -5px 0 14px var(--neu-shadow) !important; }
+body.skin-neumorphic [style*="border-top: 1px solid"] { border-top: none !important; box-shadow: 0 -3px 8px var(--neu-shadow) !important; }
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"] { border-bottom: none !important; box-shadow: 0 2px 6px var(--neu-shadow) !important; }
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border)"] { border-bottom: none !important; box-shadow: 0 1px 4px var(--neu-shadow) !important; }
 
-/* ── NODE POPUP ─────────────────────────────────────────────── */
+/* ── NODE POPUP (z-index 200) ─────────────────────────────────── */
 body.skin-neumorphic [style*="z-index: 200"] {
-  background: #e0e5ec !important; border: none !important;
-  border-radius: 18px !important; overflow: hidden !important; box-shadow: var(--nEl) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: 18px !important; overflow: hidden !important;
+  box-shadow: var(--nEl) !important;
+}
+body.skin-neumorphic[data-theme="dark"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="midnight"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="forest"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="ocean"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="amber"] [style*="z-index: 200"],
+body.skin-neumorphic[data-theme="violet"] [style*="z-index: 200"] {
+  background: var(--node-bg) !important;
 }
 body.skin-neumorphic [style*="z-index: 200"] > div:first-child {
-  background: #d5dae3 !important; border: none !important; box-shadow: none !important;
+  background: inherit !important; border: none !important; box-shadow: 0 3px 7px var(--neu-shadow) !important;
 }
-body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2) { background: #e0e5ec !important; border: none !important; }
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2) { background: inherit !important; border: none !important; }
 body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) {
-  background: #e0e5ec !important; border: none !important;
-  box-shadow: inset 0 3px 7px var(--ns-d), inset 0 -1px 3px var(--ns-l) !important;
+  background: inherit !important; border: none !important;
+  box-shadow: inset 0 3px 7px var(--neu-shadow), inset 0 -1px 3px var(--neu-hilight) !important;
   padding: 5px 8px !important; gap: 3px !important;
 }
 body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button {
   background: transparent !important; box-shadow: none !important;
-  border-radius: 7px !important; color: var(--text3) !important;
-  padding: 4px 9px !important; font-size: 11px !important; transform: none !important;
+  border: none !important; border-radius: 7px !important;
+  color: var(--text3) !important; padding: 4px 9px !important;
+  font-size: 11px !important; transform: none !important;
 }
 body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button:not([disabled]):hover {
-  background: #e0e5ec !important; color: var(--text) !important; box-shadow: var(--nEx) !important; transform: none !important;
+  background: var(--bg) !important; color: var(--text) !important;
+  box-shadow: var(--nEx) !important; transform: none !important;
 }
 body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="color: var(--accent)"] {
-  background: #e0e5ec !important; box-shadow: var(--nIx) !important; color: var(--accent) !important;
+  background: inherit !important; box-shadow: var(--nIx) !important; color: var(--accent) !important;
 }
-body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow"] { background: #e0e5ec !important; }
+body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow"] { background: inherit !important; }
 
-/* ── MODALS ─────────────────────────────────────────────────── */
+/* ── MODALS ───────────────────────────────────────────────────── */
 body.skin-neumorphic [style*="maxWidth:680"],body.skin-neumorphic [style*="max-width: 680px"],
 body.skin-neumorphic [style*="maxWidth: 680px"],body.skin-neumorphic [style*="maxWidth:520"],
 body.skin-neumorphic [style*="maxWidth:480"],body.skin-neumorphic [style*="maxWidth:440"],
 body.skin-neumorphic [style*="maxWidth:700"],body.skin-neumorphic [style*="maxWidth:800"],
 body.skin-neumorphic [style*="maxWidth:400"] {
-  background: #e0e5ec !important; border: none !important; border-radius: 20px !important; box-shadow: var(--nEl) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: 20px !important; box-shadow: var(--nEl) !important;
 }
+/* rgba() backdrops stay as-is — must not be overridden (they are full-screen dimmers) */
 
-/* ── DROPDOWNS / CONTEXT MENUS ──────────────────────────────── */
+/* ── DROPDOWNS / CONTEXT MENUS ────────────────────────────────── */
 body.skin-neumorphic [style*="z-index: 601"],body.skin-neumorphic [style*="z-index:601"],
 body.skin-neumorphic [style*="z-index: 600"] {
-  background: #e0e5ec !important; border: none !important; border-radius: var(--nRm) !important; box-shadow: var(--nEl) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: var(--nRm) !important; overflow: hidden !important; box-shadow: var(--nEl) !important;
 }
 body.skin-neumorphic [style*="z-index: 501"],body.skin-neumorphic [style*="z-index: 500"] {
-  background: #e0e5ec !important; border: none !important; border-radius: var(--nRm) !important; box-shadow: var(--nEm) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: var(--nRm) !important; overflow: hidden !important; box-shadow: var(--nEm) !important;
 }
 body.skin-neumorphic [style*="z-index: 800"],body.skin-neumorphic [style*="z-index: 900"] {
-  background: #e0e5ec !important; border: none !important; border-radius: 20px !important; box-shadow: var(--nEl) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: 20px !important; box-shadow: var(--nEl) !important;
 }
 body.skin-neumorphic [style*="z-index: 400"] {
-  background: #e0e5ec !important; border: none !important; border-radius: var(--nRm) !important; box-shadow: var(--nEm) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: var(--nRm) !important; box-shadow: var(--nEm) !important;
 }
 
-/* ── CARDS / LIST ROWS ──────────────────────────────────────── */
+/* ── CARDS / LIST ROWS ────────────────────────────────────────── */
 body.skin-neumorphic [style*="background: var(--bg3)"][style*="borderRadius"],
 body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-radius"] {
-  background: #e0e5ec !important; border: none !important; box-shadow: var(--nEs) !important;
+  background: var(--bg) !important; border: none !important; box-shadow: var(--nEs) !important;
 }
 body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="borderRadius"],
 body.skin-neumorphic [style*="border: 1px solid var(--border)"][style*="border-radius"] {
-  border: none !important; background: #e0e5ec !important; box-shadow: var(--nEs) !important;
+  border: none !important; background: var(--bg) !important; box-shadow: var(--nEs) !important;
 }
 body.skin-neumorphic [style*="border: 1px solid var(--border2)"][style*="borderRadius"],
 body.skin-neumorphic [style*="border: 1px solid var(--border2)"][style*="border-radius"] {
-  border: none !important; background: #e0e5ec !important; box-shadow: var(--nEx) !important; margin-bottom: 5px !important;
+  border: none !important; background: var(--bg) !important; box-shadow: var(--nEx) !important; margin-bottom: 5px !important;
 }
 
-/* ── TOGGLE GROUPS ──────────────────────────────────────────── */
+/* ── TOGGLE GROUPS ───────────────────────────────────────────── */
 body.skin-neumorphic [style*="background: var(--bg3)"][style*="padding: 4px"],
 body.skin-neumorphic [style*="background: var(--bg3)"][style*="padding: 6px"],
 body.skin-neumorphic [style*="background: var(--bg3)"][style*="padding:4px"],
 body.skin-neumorphic [style*="background: var(--bg3)"][style*="padding:6px"] {
-  background: #e0e5ec !important; border: none !important; border-radius: var(--nRm) !important; box-shadow: var(--nIs) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: var(--nRm) !important; box-shadow: var(--nIs) !important;
 }
 
-/* ── RICH TEXT EDITOR ───────────────────────────────────────── */
+/* ── RICH TEXT EDITOR ─────────────────────────────────────────── */
 body.skin-neumorphic [style*="flex-direction: column"][style*="overflow: hidden"][style*="border"] {
-  background: #e0e5ec !important; border: none !important; border-radius: var(--nRm) !important; box-shadow: var(--nIm) !important;
+  background: var(--bg) !important; border: none !important;
+  border-radius: var(--nRm) !important; box-shadow: var(--nIm) !important;
 }
 body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-bottom: 1px solid var(--border2)"] {
-  background: #e0e5ec !important; border: none !important; box-shadow: 0 3px 6px var(--ns-d) !important;
+  background: var(--bg) !important; border: none !important; box-shadow: 0 3px 6px var(--neu-shadow) !important;
 }
 body.skin-neumorphic button[style*="height: 22px"],body.skin-neumorphic button[style*="height:22px"] {
-  box-shadow: var(--nEx) !important; border-radius: 5px !important; background: #e0e5ec !important; color: var(--text2) !important;
+  box-shadow: var(--nEx) !important; border-radius: 5px !important;
+  background: var(--bg) !important; color: var(--text2) !important;
 }
-body.skin-neumorphic button[style*="height: 22px"]:not([disabled]):hover { box-shadow: var(--nEs) !important; color: var(--text) !important; transform: none !important; }
-body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--accent2)"] { box-shadow: var(--nIx) !important; background: #e0e5ec !important; color: var(--accent2) !important; }
+body.skin-neumorphic button[style*="height: 22px"]:not([disabled]):hover {
+  box-shadow: var(--nEs) !important; color: var(--text) !important; transform: none !important;
+}
+body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--accent2)"] {
+  box-shadow: var(--nIx) !important; background: var(--bg) !important; color: var(--accent2) !important;
+}
 
-/* ── DASHBOARD MAP CARDS ────────────────────────────────────── */
+/* ── DASHBOARD MAP CARDS ──────────────────────────────────────── */
 body.skin-neumorphic .nn-map-card {
-  background: #e0e5ec !important; border: none !important; border-radius: var(--nRm) !important;
+  background: var(--bg) !important; border: none !important; border-radius: var(--nRm) !important;
   box-shadow: var(--nEs), inset 0 3px 0 var(--ca) !important;
   transition: box-shadow .15s ease, transform .15s ease !important;
 }
 body.skin-neumorphic .nn-map-card:hover {
   box-shadow: var(--nEl), inset 0 3px 0 var(--ca) !important; transform: translateY(-2px) !important;
 }
+body.skin-neumorphic .nn-map-card:hover .nn-card-actions { opacity: 1 !important; }
+body.skin-neumorphic .nn-card-actions { position: relative; z-index: 2; }
 body.skin-neumorphic .nn-card-actions button {
-  background: #e0e5ec !important; box-shadow: var(--nEx) !important; border-radius: var(--nRs) !important; color: var(--text2) !important;
+  background: var(--bg) !important; box-shadow: var(--nEx) !important;
+  border-radius: var(--nRs) !important; color: var(--text2) !important; border: none !important;
 }
-body.skin-neumorphic .nn-card-actions button:not([disabled]):hover { box-shadow: var(--nEs) !important; color: var(--text) !important; transform: translateY(-1px) !important; }
-body.skin-neumorphic .nn-card-actions button:active { box-shadow: var(--nIx) !important; transform: none !important; }`,
-  },
+body.skin-neumorphic .nn-card-actions button:not([disabled]):hover {
+  box-shadow: var(--nEs) !important; color: var(--text) !important; transform: translateY(-1px) !important;
+}
+body.skin-neumorphic .nn-card-actions button:active { box-shadow: var(--nIx) !important; transform: none !important; }
+body.skin-neumorphic .nn-map-list-row {
+  background: var(--bg) !important; border: none !important; border-radius: var(--nRm) !important;
+  box-shadow: var(--nEx) !important; margin-bottom: 5px !important; transition: box-shadow .15s ease !important;
+}
+body.skin-neumorphic .nn-map-list-row:hover { box-shadow: var(--nEs) !important; }
+body.skin-neumorphic .nn-map-list-row button {
+  background: var(--bg) !important; box-shadow: var(--nEx) !important;
+  border-radius: var(--nRx) !important; color: var(--text2) !important; border: none !important;
+}
+body.skin-neumorphic .nn-map-list-row button:not([disabled]):hover {
+  box-shadow: var(--nEs) !important; color: var(--text) !important; transform: translateY(-1px) !important;
+}
+
+/* ── SCROLLBAR ────────────────────────────────────────────────── */
+body.skin-neumorphic ::-webkit-scrollbar { width: 6px; height: 6px; }
+body.skin-neumorphic ::-webkit-scrollbar-track {
+  background: var(--bg); box-shadow: inset 2px 2px 5px var(--neu-shadow); border-radius: 6px;
+}
+body.skin-neumorphic ::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--neu-shadow) 160%, transparent); border-radius: 6px;
+}
+body.skin-neumorphic ::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in srgb, var(--neu-shadow) 200%, transparent);
+}
+
+/* ── MISC PANELS / TOOLTIPS ───────────────────────────────────── */
+body.skin-neumorphic span[style*="borderRadius"],body.skin-neumorphic span[style*="border-radius"] { border-radius: 8px !important; }
+body.skin-neumorphic [style*="pointer-events: none"][style*="white-space: nowrap"] {
+  background: var(--bg) !important; border: none !important;
+  border-radius: 7px !important; box-shadow: var(--nEs) !important;
+}
+body.skin-neumorphic [style*="z-index: 301"],body.skin-neumorphic [style*="z-index: 300"] {
+  background: var(--bg) !important; border: none !important;
+  border-radius: 18px !important; box-shadow: var(--nEl) !important;
+}
+/* ── SVG EDGES — protect from cascade ───────────────────────── */
+body.skin-neumorphic svg path,
+body.skin-neumorphic svg polyline,
+body.skin-neumorphic svg line,
+body.skin-neumorphic svg circle { box-shadow: none !important; }
+body.skin-neumorphic [style*="position: absolute"][style*="inset: 0"] { background: transparent !important; }
+
+/* ── INLINE NODE POPUP — depth hierarchy ─────────────────────── */
+/* Header: bottom shadow seam */
+body.skin-neumorphic [style*="z-index: 200"] > div:first-child {
+  background: var(--bg) !important;
+  box-shadow: 0 3px 8px var(--neu-shadow) !important;
+}
+/* Description row: flat, no border */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2) {
+  background: var(--bg) !important; border-bottom: none !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(2) input {
+  background: transparent !important; box-shadow: none !important; border: none !important;
+}
+/* Tab bar: inset trough */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) {
+  background: var(--bg) !important; border-bottom: none !important;
+  box-shadow: inset 0 2px 6px var(--neu-shadow), inset 0 -1px 3px var(--neu-hilight) !important;
+  padding: 4px 6px !important; gap: 2px !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button {
+  background: transparent !important; box-shadow: none !important;
+  border: none !important; border-radius: 6px !important;
+  color: var(--text3) !important; transform: none !important; border-bottom: none !important;
+  padding: 5px 8px !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button:hover {
+  background: var(--bg) !important; box-shadow: var(--nEx) !important;
+  color: var(--text) !important; transform: none !important;
+}
+/* Active tab: pop from trough */
+body.skin-neumorphic [style*="z-index: 200"] > div:nth-child(3) > button[style*="color: "][style*="2px solid"] {
+  background: var(--bg) !important; box-shadow: var(--nEs) !important;
+  border-bottom: none !important;
+}
+/* Scroll body */
+body.skin-neumorphic [style*="z-index: 200"] > div[style*="flex: 1"][style*="overflow"] {
+  background: var(--bg) !important;
+}
+
+/* ── POPUP PROPERTY INPUTS (stronger inset) ──────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] input[style*="background: var(--bg)"] {
+  background: var(--bg) !important; border: none !important;
+  box-shadow: var(--nIm) !important; border-radius: var(--nRm) !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] textarea[style*="background: var(--bg)"] {
+  background: var(--bg) !important; border: none !important;
+  box-shadow: var(--nIm) !important; border-radius: var(--nRm) !important;
+}
+
+/* ── POPUP INNER CARDS ───────────────────────────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="border-radius"] {
+  background: var(--bg) !important; border: none !important; box-shadow: var(--nEs) !important;
+}
+
+/* ── POPUP NOTES TOGGLE ROW (inset pill) ─────────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="padding: 6px 10px"] {
+  background: var(--bg) !important; border: none !important; box-shadow: var(--nIs) !important;
+  border-radius: var(--nRm) !important;
+}
+
+/* ── POPUP CTA BUTTONS ───────────────────────────────────────── */
+body.skin-neumorphic [style*="z-index: 200"] button[style*="background: var(--accent2)"] {
+  background: var(--accent2) !important; box-shadow: var(--nEs) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   COVERAGE PASS — elements not previously captured
+   Catalogue ref: NEUMORPHIC_CATALOGUE.md
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── NODE INTERNAL BUTTONS (pencil, comment, collapse, add-note) ─ */
+body.skin-neumorphic .nn-pencil-btn,
+body.skin-neumorphic .nn-comment-btn,
+body.skin-neumorphic .nn-collapse-btn,
+body.skin-neumorphic .nn-addnote-btn {
+  background: transparent !important;
+  box-shadow: none !important;
+  border: none !important;
+  color: var(--text4) !important;
+  border-radius: var(--nRx) !important;
+}
+body.skin-neumorphic .nn-pencil-btn:hover,
+body.skin-neumorphic .nn-comment-btn:hover,
+body.skin-neumorphic .nn-collapse-btn:hover,
+body.skin-neumorphic .nn-addnote-btn:hover {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  color: var(--text2) !important;
+  transform: none !important;
+}
+body.skin-neumorphic .nn-pencil-btn:active,
+body.skin-neumorphic .nn-comment-btn:active { box-shadow: var(--nIx) !important; }
+
+/* ── TOOLBAR DROPDOWN PANELS (connection type, layout chooser) ─── */
+/* These use zIndex:501 with bg2 and rgba boxShadow — override */
+body.skin-neumorphic [style*="z-index: 501"][style*="background: var(--bg2)"],
+body.skin-neumorphic [style*="z-index:501"][style*="background:var(--bg2)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Section headers inside those dropdowns (bg3) */
+body.skin-neumorphic [style*="z-index: 501"] [style*="background: var(--bg3)"][style*="letterSpacing"],
+body.skin-neumorphic [style*="z-index: 501"] [style*="background: var(--bg3)"][style*="border-bottom"] {
+  background: var(--bg) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 5px var(--neu-shadow) !important;
+}
+/* Footer row in connection picker (bg3 + border-top) */
+body.skin-neumorphic [style*="z-index: 501"] [style*="background: var(--bg3)"][style*="border-top"] {
+  background: var(--bg) !important;
+  border-top: none !important;
+  box-shadow: 0 -2px 5px var(--neu-shadow) !important;
+}
+/* Layout direction items hover — JS sets bg3, override at CSS level */
+body.skin-neumorphic [style*="z-index: 501"] [style*="cursor: pointer"][style*="border-radius"] {
+  background: var(--bg) !important;
+  transition: box-shadow .12s ease !important;
+}
+body.skin-neumorphic [style*="z-index: 501"] [style*="cursor: pointer"][style*="border-radius"]:hover {
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── QUICK CAPTURE / SEARCH OVERLAY ─────────────────────────────── */
+/* The floating search box (bg2, heavy rgba shadow) */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="z-index"][style*="border-radius"][style*="boxShadow"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Search result rows with hover */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="cursor: pointer"][style*="border-radius: var(--radius-sm)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEs) !important;
+  border: none !important;
+}
+
+/* ── CONNECTION ANCHOR DOTS (midpoint/endpoint handles) ──────────── */
+body.skin-neumorphic .nn-mid-handle circle,
+body.skin-neumorphic [style*="cursor: crosshair"] circle { box-shadow: none !important; }
+/* Anchor indicator dots on node edges */
+body.skin-neumorphic [style*="z-index: 10"][style*="background: var(--accent)"][style*="opacity"] {
+  box-shadow: none !important;
+}
+
+/* ── KBD / KEYBOARD SHORTCUT CHIPS ──────────────────────────────── */
+body.skin-neumorphic kbd {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+  border-radius: var(--nRx) !important;
+  color: var(--text3) !important;
+}
+
+/* ── NODE COLLAB HEADER (bg3 search row) ─────────────────────────── */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="border-bottom: 1px solid var(--border2)"][style*="display: flex"][style*="align-items: center"] {
+  background: var(--bg) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 5px var(--neu-shadow) !important;
+}
+
+/* ── VERSION HISTORY / COLLAB LOG PANELS ─────────────────────────── */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-left: 1px solid"][style*="flexShrink: 0"],
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="borderLeft: 1px solid"][style*="flexShrink: 0"] {
+  background: var(--bg) !important;
+  border-left: none !important;
+  box-shadow: -5px 0 14px var(--neu-shadow) !important;
+}
+/* Row items in version history (hover bg3) */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border-left"] [style*="cursor: pointer"][style*="border-bottom"] {
+  border-bottom: none !important;
+  box-shadow: 0 1px 3px var(--neu-shadow) !important;
+}
+
+/* ── GROUP BOX OVERLAYS ──────────────────────────────────────────── */
+body.skin-neumorphic [style*="position: absolute"][style*="border: 2px solid"] {
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+}
+
+/* ── QUICK CAPTURE / FLOATING INPUT ─────────────────────────────── */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border: 2px solid #6C63FF"] {
+  background: var(--bg) !important;
+  border: none !important;
+  border-radius: var(--nRm) !important;
+  box-shadow: var(--nEl) !important;
+}
+
+/* ── LOGO / TOPBAR BRAND AREA ────────────────────────────────────── */
+/* App topbar brand badge (bg3, borderRadius) */
+body.skin-neumorphic .nn-topbar [style*="background: var(--bg3)"][style*="borderRadius"],
+body.skin-neumorphic .nn-topbar [style*="background:var(--bg3)"][style*="borderRadius"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+}
+
+/* ── OVERRIDES: JS-SET HOVER BACKGROUNDS (neutralize) ───────────── */
+/* These elements use onMouseEnter to set style.background = bg3   */
+/* The CSS specificity approach: we force the neumorphic bg on them */
+/* Runtime JS still runs but our !important wins on the background  */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="cursor: pointer"]:not([style*="borderLeft"]):not([style*="border-left"]):not(.nn-map-card) {
+  background: var(--bg) !important;
+}
+
+/* ── COLLAB / SHARE PANEL HEADERS ────────────────────────────────── */
+body.skin-neumorphic [style*="borderBottom: 1px solid var(--border2)"][style*="background: var(--bg3)"],
+body.skin-neumorphic [style*="border-bottom: 1px solid var(--border2)"][style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  border-bottom: none !important;
+  box-shadow: 0 2px 5px var(--neu-shadow) !important;
+}
+body.skin-neumorphic [style*="borderTop: 1px solid var(--border2)"][style*="background: var(--bg3)"],
+body.skin-neumorphic [style*="border-top: 1px solid var(--border2)"][style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  border-top: none !important;
+  box-shadow: 0 -2px 5px var(--neu-shadow) !important;
+}
+
+/* ── FOOTER INFO ROWS ────────────────────────────────────────────── */
+body.skin-neumorphic [style*="border-top: 1px solid var(--border)"][style*="fontSize: 9"],
+body.skin-neumorphic [style*="borderTop: 1px solid var(--border)"][style*="fontSize: 9"] {
+  border-top: none !important;
+  box-shadow: 0 -2px 6px var(--neu-shadow) !important;
+}
+
+/* ── EDGE/CONNECTION COLOR SWATCHES ──────────────────────────────── */
+body.skin-neumorphic [style*="borderRadius: 50%"][style*="border: 2px solid var(--border)"][style*="cursor: pointer"] {
+  border: none !important;
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── MISC INLINE Z-INDEX 200 BUTTONS (standard raised) ──────────── */
+/* Any button inside popup not caught by tab-specific rules */
+body.skin-neumorphic [style*="z-index: 200"] button[style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  border: none !important;
+}
+body.skin-neumorphic [style*="z-index: 200"] button[style*="borderRadius: 50%"],
+body.skin-neumorphic [style*="z-index: 200"] button[style*="border-radius: 50%"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  border: none !important;
+  border-radius: 50% !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   CATALOGUE PASS v2 — complete coverage from ui-catalogue.md
+   All 66 components mapped. Rules enforced.
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── RULE: box-shadow rgba → neu tokens ─────────────────────────
+   All elements with hardcoded rgba box-shadow get token versions.
+   Selectors based on audit output.                               */
+
+/* Search/find overlay (L3192, L3246) */
+body.skin-neumorphic [style*="z-index"][style*="background: var(--bg2)"][style*="border-radius: var(--radius-md)"][style*="box"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Any remaining bg2 panel with explicit border */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border: 1px solid var(--border)"][style*="border-radius"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+}
+
+/* Floating / absolute panels that have rgba shadows */
+body.skin-neumorphic [style*="position: absolute"][style*="background: var(--bg2)"][style*="border-radius"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+}
+
+/* ── VERSION HISTORY ROW HOVER ───────────────────────────────────
+   VersionHistory.jsx L102: onMouseEnter bg3 override          */
+body.skin-neumorphic [style*="cursor: pointer"][style*="padding"][style*="border-bottom"] {
+  border-bottom: none !important;
+  box-shadow: 0 1px 3px var(--neu-shadow) !important;
+  transition: box-shadow .12s ease !important;
+}
+body.skin-neumorphic [style*="cursor: pointer"][style*="padding"][style*="border-bottom"]:hover {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── THEME PICKER SWATCHES ───────────────────────────────────────
+   ThemePicker.jsx L131: accent shadow + rgba shadow            */
+body.skin-neumorphic [style*="cursor: pointer"][style*="border-radius"][style*="transition"][style*="box-shadow: 0"] {
+  box-shadow: var(--nEx) !important;
+  border: none !important;
+}
+body.skin-neumorphic [style*="cursor: pointer"][style*="border-radius"][style*="box-shadow: 0 4px 20px var(--accent)"] {
+  box-shadow: var(--nIs) !important;
+  border: 2px solid var(--accent) !important;
+}
+
+/* ── ADMIN PANEL ─────────────────────────────────────────────────
+   AdminPanel.jsx L113: modal card rgba shadow                  */
+body.skin-neumorphic [style*="max-height: 88vh"][style*="border-radius"],
+body.skin-neumorphic [style*="maxHeight: 88vh"][style*="borderRadius"] {
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+  background: var(--bg) !important;
+}
+/* Admin toggle thumb (L614: rgba drop shadow) */
+body.skin-neumorphic [style*="border-radius: 50%"][style*="position: absolute"][style*="box-shadow"] {
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── DOC EXPORT MODAL ────────────────────────────────────────────
+   DocExportModal.jsx L410: rgba modal shadow                   */
+body.skin-neumorphic [style*="border-radius: 14"][style*="max-height"][style*="overflow"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── HELP GUIDE / TUTORIAL MODALS ───────────────────────────────
+   HelpGuide.jsx L217, Tutorial.jsx L122                        */
+body.skin-neumorphic [style*="border-radius: 14"][style*="font-family: var(--font-ui)"],
+body.skin-neumorphic [style*="borderRadius: 14"][style*="fontFamily"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── USER PROFILE MODAL ──────────────────────────────────────────
+   UserProfile.jsx L132                                         */
+body.skin-neumorphic [style*="overflow: hidden"][style*="border-radius"][style*="max-height: 80vh"],
+body.skin-neumorphic [style*="overflow: hidden"][style*="borderRadius"][style*="maxHeight: 80vh"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── DASHBOARD MODALS (new map, collab invite) ───────────────────
+   Dashboard.jsx L458, L585, L604                              */
+body.skin-neumorphic [style*="min-width: 340px"][style*="border-radius"],
+body.skin-neumorphic [style*="minWidth: 340"][style*="borderRadius"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+/* Dashboard confirm/invite dialog (L60: rgba shadow) */
+body.skin-neumorphic [style*="padding: 26px"][style*="border-radius"],
+body.skin-neumorphic [style*="padding:26"][style*="borderRadius"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── CANVAS LARGE MODALS (help, history, collab log) ────────────
+   NodeCanvas.jsx L4018, L4068, L4207                          */
+body.skin-neumorphic [style*="width: 440px"][style*="max-width"][style*="border-radius"],
+body.skin-neumorphic [style*="width: 560px"][style*="max-width"][style*="border-radius"],
+body.skin-neumorphic [style*="width: 640"][style*="max-width"][style*="border-radius"],
+body.skin-neumorphic [style*="width: 700"][style*="max-width"][style*="border-radius"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── TOOLTIP / FLOATING LABELS ───────────────────────────────────
+   NodeCanvas.jsx L4549: pointer-events none floating labels   */
+body.skin-neumorphic [style*="pointer-events: none"][style*="border-radius"][style*="box-shadow"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEs) !important;
+  border: none !important;
+}
+
+/* ── AUTOCOMPLETE / MODEL PICKER DROPDOWN ────────────────────────
+   NodeCanvas.jsx L4103, LLMSettings: small dropdown list      */
+body.skin-neumorphic [style*="max-height: 140px"][style*="overflow-y"],
+body.skin-neumorphic [style*="maxHeight: 140"][style*="overflowY"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEm) !important;
+  border: none !important;
+}
+
+/* ── NODE TYPE PICKER (inline popup) ─────────────────────────────
+   NodeCanvas.jsx L5164: bg2 + rgba shadow                     */
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="overflow: hidden"][style*="display: flex"][style*="flex-direction: column"][style*="gap"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEl) !important;
+  border: none !important;
+}
+
+/* ── INLINE NODE EDITOR (L5506 - outer popup card) ──────────────
+   The popup card itself: bg2 + accent border + rgba shadow    */
+body.skin-neumorphic [style*="z-index: 200"][style*="border: 2px solid"],
+body.skin-neumorphic [style*="zIndex: 200"][style*="border: 2px solid"] {
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+  background: var(--bg) !important;
+}
+
+/* ── RICH TEXT EDITOR FORMAT BUTTONS — ACTIVE STATE ─────────────
+   Bold/Italic/etc when active MUST show pressed-in (inset)    */
+body.skin-neumorphic button[style*="height: 22px"][style*="background: var(--bg3)"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+}
+/* The actual active (toggled-on) format buttons                 */
+body.skin-neumorphic button[style*="height: 22px"][style*="fontWeight: 700"][style*="color: var(--text)"] {
+  box-shadow: var(--nIx) !important;
+  background: var(--bg) !important;
+  color: var(--text) !important;
+}
+
+/* ── COLLAB PANEL / AI CHAT PANEL HEADERS ───────────────────────
+   NodeCanvas.jsx L3908, L3931, L3951: bg3 header rows        */
+body.skin-neumorphic [style*="background: var(--bg3)"][style*="padding: 10px 14px"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: 0 3px 7px var(--neu-shadow) !important;
+}
+
+/* ── NOTE ROW IN POPUP (with sensitivity lock icon) ─────────────
+   The note row container with bg3 background                  */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="border-radius: var(--radius-sm)"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEx) !important;
+}
+
+/* ── SEARCH HIGHLIGHT OVERLAY (Tutorial spotlight) ───────────────
+   Tutorial.jsx L166: only the overlay, not the target         */
+/* Leave tutorial spotlight rgba intact — it IS the overlay background */
+
+/* ── AI CHAT MESSAGE BUBBLES ─────────────────────────────────────
+   LLMChat user/assistant bubbles                              */
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="padding: 9px 13px"],
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="padding: 7px 10px"] {
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+}
+/* User bubble (accent tinted) */
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="background: var(--accent2)18"],
+body.skin-neumorphic [style*="border-radius: var(--radius-md)"][style*="background:var(--accent2)18"] {
+  border: none !important;
+  box-shadow: var(--nEs) !important;
+  background: color-mix(in srgb, var(--accent2) 12%, var(--bg)) !important;
+}
+
+/* ── INTEGRATION PANEL FILTER PILLS ─────────────────────────────
+   Live tab filter buttons (All, Disks, etc.)                 */
+body.skin-neumorphic button[style*="border-radius: 10px"][style*="border: 1px solid"] {
+  border: none !important;
+  box-shadow: var(--nEx) !important;
+}
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="border-radius: 10px"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+  color: var(--accent2) !important;
+}
+
+/* ── QUICK CAPTURE FLOATING INPUT (L3891) ────────────────────────
+   bg2 + hardcoded border #6C63FF + rgba shadow                */
+body.skin-neumorphic [style*="border: 2px solid #6C63FF"],
+body.skin-neumorphic [style*="border:2px solid #6C63FF"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+  outline: 2px solid var(--accent2) !important;
+  outline-offset: 2px !important;
+}
+
+/* ── NODE INLINE EDIT INPUT (L2727) ─────────────────────────────
+   The blue accent border input inside node                    */
+body.skin-neumorphic .nn-node input[style*="border: 1px solid"] {
+  border: none !important;
+  box-shadow: none !important;
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 1px !important;
+  border-radius: var(--nRx) !important;
+}
+
+/* ── NOTE TITLE INPUT IN POPUP (bg3 background) ─────────────────
+   L2971: note title with bg3                                  */
+body.skin-neumorphic [style*="z-index: 200"] [style*="background: var(--bg3)"][style*="padding: 4px 8px"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nIs) !important;
+  border-radius: var(--nRx) !important;
+}
+
+/* ── DROP SUGGESTION LIST (node type while typing) ───────────────
+   The floating suggestion list on canvas                      */
+body.skin-neumorphic [style*="background: var(--bg2)"][style*="border: 1px solid var(--accent)"][style*="border-radius: var(--radius-md)"] {
+  background: var(--bg) !important;
+  border: none !important;
+  box-shadow: var(--nEl) !important;
+  outline: 2px solid var(--accent) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BUTTON STATE COVERAGE — full audit v5.44.3
+   Rule: CTA (color:#fff) → keep accent fill + nEs lift
+         Toggle/Tab/Mode (no #fff) → inset depth, same surface
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── GLOBAL: any non-CTA accent2 button → inset ─────────────────
+   CTA buttons are always: background:var(--accent2) + color:#fff
+   Toggles are: background:var(--accent2) without color:#fff       */
+body.skin-neumorphic button[style*="background: var(--accent2)"]:not([style*="color: #fff"]):not([style*="color:#fff"]) {
+  background: var(--bg) !important;
+  box-shadow: var(--nIm) !important;
+  color: var(--text) !important;
+  font-weight: 700 !important;
+  transform: none !important;
+}
+/* Alpha variants (22%, 18% etc) — always toggles, never CTAs */
+body.skin-neumorphic button[style*="background: var(--accent2)2"],
+body.skin-neumorphic button[style*="background: var(--accent)18"],
+body.skin-neumorphic button[style*="background: var(--accent)22"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+  color: var(--text2) !important;
+}
+/* Inactive counterparts (bg3 background on toggle group) */
+body.skin-neumorphic button[style*="background: var(--bg3)"]:not([style*="color: #fff"]) {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  color: var(--text3) !important;
+}
+body.skin-neumorphic button[style*="background: var(--bg3)"]:not([style*="color: #fff"]):hover {
+  box-shadow: var(--nEs) !important;
+  color: var(--text) !important;
+}
+
+/* ── CTA BUTTONS: keep strong accent + elevation ─────────────────
+   These have explicit color:#fff — confirm they stay raised       */
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color: #fff"],
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color:#fff"] {
+  background: var(--accent2) !important;
+  box-shadow: var(--nEs) !important;
+  color: #fff !important;
+}
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color: #fff"]:hover,
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color:#fff"]:hover {
+  box-shadow: var(--nEm) !important;
+  transform: translateY(-1px) !important;
+}
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color: #fff"]:disabled {
+  opacity: 0.5 !important; transform: none !important;
+}
+
+/* ── DIV/LABEL used as toggle (Dashboard tabs, view mode) ────────
+   Non-button elements with accent2 active bg                      */
+body.skin-neumorphic div[style*="background: var(--accent2)"]:not([style*="color: #fff"]),
+body.skin-neumorphic label[style*="background: var(--accent2)"]:not([style*="color: #fff"]) {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+  color: var(--text2) !important;
+}
+body.skin-neumorphic div[style*="background: var(--accent2)18"],
+body.skin-neumorphic div[style*="background: var(--accent2)22"],
+body.skin-neumorphic div[style*="background: var(--accent)18"],
+body.skin-neumorphic div[style*="background: var(--accent)22"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+}
+
+/* ── LiveDashboard filter pills (dynamic color fill) ─────────────
+   These use: background: f===v ? color : 'var(--bg3)'
+   The active state has non-bg3 background + color:#fff            */
+body.skin-neumorphic [style*="fontSize: 9"][style*="fontWeight: 600"][style*="color: #fff"],
+body.skin-neumorphic [style*="fontSize:9"][style*="fontWeight:600"][style*="color: #fff"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIm) !important;
+  color: var(--text) !important;
+}
+
+/* ── DevMode toggle (cyan active) ────────────────────────────────
+   DEV button uses #00e5ff — keep its own character                */
+body.skin-neumorphic button[style*="#00e5ff"] {
+  background: color-mix(in srgb, var(--bg) 92%, #00e5ff) !important;
+  box-shadow: var(--nIs) !important;
+  color: #00e5ff !important;
+  border: none !important;
+}
+`},
 
   sakura: {
     name:"Sakura", icon:"🌸", nav:"icon-dock",

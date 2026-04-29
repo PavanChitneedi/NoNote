@@ -181,7 +181,7 @@ function AppInner() {
 
   const modals = (
     <>
-      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="skins"/>}
+      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}

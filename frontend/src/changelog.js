@@ -1,12 +1,6 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
-  {v:"v5.47.0",date:"Apr 2026",items:[
-    "UX: Appearance modal restructured -- Theme tab removed, color themes now live as a compact strip inside the Skins tab.",
-    "UX: Accent Color picker removed from Skins tab.",
-    "UX: Neumorphic skin completely rewritten from scratch -- self-contained #e0e5ec palette always wins over theme, hardcoded shadow values (#a3b1c6 / #ffffff), no color-mix, no dark theme overrides needed.",
-    "Fix: Neumorphic node header now uses a flat #d5dae3 tonal band -- clean separation without shadow fighting the outer elevation.",
-  ]},
   {v:"v5.46.8",date:"Apr 2026",items:[
     "Fix: Proxmox route accidentally dropped during TrueNAS migration patch -- restored, all 5 integration endpoints working again.",
   ]},
