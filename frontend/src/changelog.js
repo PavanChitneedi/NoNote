@@ -1,6 +1,13 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.3",date:"Apr 2026",items:[
+    "UX: Live view cards (VM/CT guests, storage pools, TrueNAS pools, disks, services, apps) are now uniformly elevated with bg2 background + box shadow for a consistent card hierarchy.",
+  ]},
+  {v:"v5.46.2",date:"Apr 2026",items:[
+    "Fix: Live view DNS error (ENOTFOUND) now shows a clear message telling you to use an IP address instead of a hostname.",
+    "Fix: Added LAN DNS (192.168.0.1) to Docker backend service so local hostnames like proxmox3.pcnlab.top can resolve from inside containers.",
+  ]},
   {v:"v5.46.1",date:"Apr 2026",items:[
     "Fix: Changing node type via the Type tab no longer crashes with React error #31 -- Lucide icon objects are now rendered via NodeIcon instead of as raw children in the confirm dialog.",
   ]},

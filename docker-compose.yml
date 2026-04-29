@@ -66,6 +66,9 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:?required}
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    dns:
+      - 192.168.0.1      # LAN router/DNS -- allows Docker to resolve local hostnames
+      - 1.1.1.1          # Cloudflare fallback
     networks: [internal]
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:3001/health || exit 1"]

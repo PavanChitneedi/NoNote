@@ -74,9 +74,10 @@ function GuestCard({g}){
   const running=g.status==='running';
   const isVM=g._type==='VM';
   return(
-    <div style={{background:'var(--bg)',borderRadius:7,padding:'8px 10px',
-      border:`1px solid ${running?'var(--success)33':'var(--border2)'}`,
-      opacity:running?1:0.6}}>
+    <div style={{background:'var(--bg2)',borderRadius:7,padding:'8px 10px',
+      border:`1px solid ${running?'var(--success)55':'var(--border)'}`,
+      boxShadow:'0 2px 8px rgba(0,0,0,0.10)',
+      opacity:running?1:0.65}}>
       <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
         <span style={{fontSize:9,padding:'1px 5px',borderRadius:3,fontWeight:700,
           background:isVM?'#8E24AA22':'#00897B22',
@@ -179,7 +180,7 @@ function ProxmoxMetrics({ data }) {
                   {activeStorage.map(st=>{
                     const sp=pct(st.used||st.disk_used,st.total);
                     return(
-                      <div key={st.storage} style={{background:'var(--bg)',borderRadius:6,padding:'6px 8px',border:'1px solid var(--border2)'}}>
+                      <div key={st.storage} style={{background:'var(--bg2)',borderRadius:6,padding:'6px 8px',border:'1px solid var(--border)',boxShadow:'0 1px 5px rgba(0,0,0,0.10)'}}>
                         <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
                           <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{st.storage}</span>
                           <span style={{fontSize:9,fontWeight:700,color:sp>85?'#f44336':sp>70?'#ff9800':'var(--success)'}}>{sp}%</span>
@@ -371,8 +372,8 @@ function TrueNASMetrics({ data }) {
             {pools.map(p=>{
               const sp=pct(p.allocated,p.size);
               return(
-                <div key={p.name} style={{background:'var(--bg)',borderRadius:6,padding:'6px 8px',
-                  border:`1px solid ${p.healthy?'var(--success)33':'var(--danger)33'}`}}>
+                <div key={p.name} style={{background:'var(--bg2)',borderRadius:6,padding:'6px 8px',
+                  border:`1px solid ${p.healthy?'var(--success)55':'var(--danger)55'}`,boxShadow:'0 1px 5px rgba(0,0,0,0.10)'}}>
                   <div style={{display:'flex',justifyContent:'space-between',marginBottom:2}}>
                     <span style={{fontSize:10,fontWeight:700,color:'var(--text3)',overflow:'hidden',
                       textOverflow:'ellipsis',whiteSpace:'nowrap',maxWidth:70}}>{p.name}</span>
@@ -452,7 +453,7 @@ function TrueNASMetrics({ data }) {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
             {disks.length===0&&<div style={{fontSize:10,color:'var(--text4)',fontStyle:'italic',gridColumn:'1/-1'}}>No disk data</div>}
             {disks.map((d,i)=>(
-              <div key={i} style={{background:'var(--bg)',borderRadius:7,padding:'8px 10px',border:'1px solid var(--border2)'}}>
+              <div key={i} style={{background:'var(--bg2)',borderRadius:7,padding:'8px 10px',border:'1px solid var(--border)',boxShadow:'0 2px 8px rgba(0,0,0,0.10)'}}>
                 <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
                   <span style={{fontSize:11,fontWeight:700,color:'var(--text)',flex:1}}>{d.name}</span>
                   {d.temp!=null&&<span style={{fontSize:9,fontWeight:700,
@@ -513,8 +514,8 @@ function TrueNASMetrics({ data }) {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6}}>
             {services.map(s=>(
               <div key={s.service} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',
-                background:'var(--bg)',borderRadius:6,
-                border:`1px solid ${s.state==='RUNNING'?'var(--success)33':'var(--border2)'}`}}>
+                background:'var(--bg2)',borderRadius:6,boxShadow:'0 1px 5px rgba(0,0,0,0.10)',
+                border:`1px solid ${s.state==='RUNNING'?'var(--success)55':'var(--border)'}`}}>
                 <span style={{width:7,height:7,borderRadius:'50%',
                   background:s.state==='RUNNING'?'var(--success)':'var(--text4)',flexShrink:0}}/>
                 <span style={{fontSize:10,fontWeight:s.state==='RUNNING'?700:400,flex:1,
@@ -532,8 +533,9 @@ function TrueNASMetrics({ data }) {
             {apps.map((a,i)=>{
               const running=a.state==='RUNNING';
               return(
-                <div key={i} style={{background:'var(--bg)',borderRadius:7,padding:'8px 10px',
-                  border:`1px solid ${running?'var(--success)33':'var(--border2)'}`}}>
+                <div key={i} style={{background:'var(--bg2)',borderRadius:7,padding:'8px 10px',
+                  boxShadow:'0 2px 8px rgba(0,0,0,0.10)',
+                  border:`1px solid ${running?'var(--success)55':'var(--border2)'}`}}>
                   <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
                     <span style={{width:7,height:7,borderRadius:'50%',background:running?'var(--success)':'var(--text4)',flexShrink:0}}/>
                     <span style={{fontSize:11,fontWeight:700,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{a.name}</span>

@@ -218,7 +218,12 @@ router.post('/proxmox', async (req, res) => {
     const diskTemps = await proxmoxDiskTemps(base, h, nodeList.map(n => n.node));
     const nodesWithTemps = details.map(n => ({ ...n, diskTemps: diskTemps[n.node] || {} }));
     res.json({ ok: true, version: vJ.data?.version, nodes: nodesWithTemps });
-  } catch(e) { res.status(502).json({ error: e.message }); }
+  } catch(e) {
+    const msg = e.code === 'ENOTFOUND'
+      ? `Cannot resolve hostname "${e.hostname || ''}" from Docker. Use an IP address instead (e.g. https://192.168.x.x:8006), or add your LAN DNS to docker-compose.yml.`
+      : e.message;
+    res.status(502).json({ error: msg });
+  }
 });
 
 // ── TrueNAS ──────────────────────────────────────────────────
@@ -395,7 +400,12 @@ router.post('/truenas', async (req, res) => {
       bootPool,
       smartAlerts,
     });
-  } catch(e) { res.status(502).json({ error: e.message }); }
+  } catch(e) {
+    const msg = e.code === 'ENOTFOUND'
+      ? `Cannot resolve hostname "${e.hostname || ''}" from Docker. Use an IP address instead.`
+      : e.message;
+    res.status(502).json({ error: msg });
+  }
 });
 
 // ── Unraid ───────────────────────────────────────────────────
@@ -413,7 +423,12 @@ router.post('/unraid', async (req, res) => {
       body: JSON.stringify({ query: gql }),
     });
     res.json({ ok: true, ...(await r.json()) });
-  } catch(e) { res.status(502).json({ error: e.message }); }
+  } catch(e) {
+    const msg = e.code === 'ENOTFOUND'
+      ? `Cannot resolve hostname "${e.hostname || ''}" from Docker. Use an IP address instead.`
+      : e.message;
+    res.status(502).json({ error: msg });
+  }
 });
 
 // ── ESXi / vCenter ───────────────────────────────────────────
@@ -435,7 +450,12 @@ router.post('/esxi', async (req, res) => {
     ]);
     const [hosts, vms] = await Promise.all([hR.json(), vR.json()]);
     res.json({ ok: true, hosts, vms });
-  } catch(e) { res.status(502).json({ error: e.message }); }
+  } catch(e) {
+    const msg = e.code === 'ENOTFOUND'
+      ? `Cannot resolve hostname "${e.hostname || ''}" from Docker. Use an IP address instead.`
+      : e.message;
+    res.status(502).json({ error: msg });
+  }
 });
 
 // ── Generic HTTP probe ────────────────────────────────────────
