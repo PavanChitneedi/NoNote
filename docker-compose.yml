@@ -104,4 +104,7 @@ volumes:
   nginx_logs:
 
 networks:
- 
+  internal:
+    driver: bridge
+  external:
+    driver: bridge
