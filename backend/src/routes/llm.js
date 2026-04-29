@@ -20,7 +20,7 @@ const PROVIDER_PRESETS = {
   anthropic:   { base_url: "https://api.anthropic.com/v1",                 chat_path: "/messages",                     auth: "x-api-key" },
   // Google Gemini
   gemini:      { base_url: "https://generativelanguage.googleapis.com/v1beta", chat_path: "/models/{model}:generateContent", auth: "query" },
-  // Groq (ultra-fast inference — OpenAI-compat)
+  // Groq (ultra-fast inference -- OpenAI-compat)
   groq:        { base_url: "https://api.groq.com/openai/v1",               chat_path: "/chat/completions",             auth: "bearer" },
   // Mistral AI
   mistral:     { base_url: "https://api.mistral.ai/v1",                    chat_path: "/chat/completions",             auth: "bearer" },
@@ -48,18 +48,39 @@ const PROVIDER_PRESETS = {
   custom:      { base_url: "",                                              chat_path: "/chat/completions",             auth: "bearer" },
 };
 
+// ── SSRF guard for probe-models ───────────────────────────────
+// Blocks cloud metadata endpoints and internal Docker service names.
+// Allows: localhost (for host.docker.internal fallback), LAN IPs, public APIs.
+const BLOCKED_HOSTS = new Set(["postgres", "redis", "backend", "frontend", "nginx"]);
+
+function isProbeUrlSafe(rawUrl) {
+  let parsed;
+  try { parsed = new URL(rawUrl); } catch { return false; }
+  if (!["http:", "https:"].includes(parsed.protocol)) return false;
+  const host = parsed.hostname.toLowerCase();
+  // Block cloud metadata (link-local)
+  if (/^169\.254\./.test(host)) return false;
+  // Block internal Docker service names
+  if (BLOCKED_HOSTS.has(host)) return false;
+  return true;
+}
+
 // ── GET /api/llm/presets ──────────────────────────────────────
 router.get("/presets", authenticate, (req, res) => {
   res.json({ presets: Object.keys(PROVIDER_PRESETS) });
 });
 
-// ── GET /api/llm/probe-models — discover models from a local/remote provider
+// ── GET /api/llm/probe-models -- discover models from a local/remote provider
 // Used for Ollama auto-discovery. Query: ?base_url=http://localhost:11434
-// NOTE: backend runs in Docker — "localhost" inside Docker ≠ host machine.
+// NOTE: backend runs in Docker -- "localhost" inside Docker != host machine.
 // We try host.docker.internal as fallback for Docker-on-Linux/Mac setups.
 router.get("/probe-models", authenticate, async (req, res) => {
   const { base_url } = req.query;
   if (!base_url) return res.status(400).json({ error: "base_url required" });
+
+  if (!isProbeUrlSafe(base_url)) {
+    return res.status(400).json({ error: "URL not allowed" });
+  }
 
   const candidates = [base_url];
   if (/localhost|127\.0\.0\.1/.test(base_url)) {
@@ -275,10 +296,18 @@ router.get("/conversations/:id/messages", authenticate, async (req, res) => {
 });
 
 // ── POST /api/llm/conversations/:id/chat ──────────────────────
-// The key endpoint — proxies to the LLM, stores history
+// The key endpoint -- proxies to the LLM, stores history
+const MAX_MSG_LEN     = 12000; // chars (~3000 tokens)
+const MAX_CTX_BYTES   = 50000; // canvas_context JSON size cap
+
 router.post("/conversations/:id/chat", authenticate, async (req, res) => {
   const { message, canvas_context, node_context } = req.body;
   if (!message?.trim()) return res.status(400).json({ error: "Message required" });
+  if (message.length > MAX_MSG_LEN) return res.status(400).json({ error: "Message too long (max 12000 chars)" });
+
+  // Enforce canvas_context size to prevent token exhaustion
+  const ctxJson = canvas_context ? JSON.stringify(canvas_context) : "";
+  if (ctxJson.length > MAX_CTX_BYTES) return res.status(400).json({ error: "Canvas context too large" });
 
   try {
     // Fetch conversation + provider (with key)
@@ -295,7 +324,7 @@ router.post("/conversations/:id/chat", authenticate, async (req, res) => {
     const apiKey = conv.api_key_enc ? decrypt(conv.api_key_enc) : null;
     if (conv.model_override) conv.model = conv.model_override;
 
-    // Load history — fetch generously then trim to fit context budget
+    // Load history -- fetch generously then trim to fit context budget
     const histRes = await query(
       "SELECT role, content FROM llm_messages WHERE conversation_id=$1 ORDER BY created_at ASC LIMIT 60",
       [req.params.id]
@@ -305,27 +334,23 @@ router.post("/conversations/:id/chat", authenticate, async (req, res) => {
     const systemPrompt = buildSystemPrompt(node_context ? { node_context, mapTitle: canvas_context?.mapTitle } : canvas_context);
 
     // ── Token budget: keep total under ~6000 words (~8k tokens) ──
-    // Rough heuristic: 1 token ≈ 0.75 words. Reserve 2048 for response.
+    // Rough heuristic: 1 token ~= 0.75 words. Reserve 2048 for response.
     const WORD_BUDGET = 6000;
     const countWords = (s) => (s || "").split(/\s+/).length;
     let usedWords = countWords(systemPrompt) + countWords(message);
-    // Walk history newest-first, include as many messages as fit
+    // Walk history newest-first; skip messages that are too large rather than stopping
     const histAll = histRes.rows;
     const history = [];
     for (let i = histAll.length - 1; i >= 0; i--) {
       const w = countWords(histAll[i].content);
-      if (usedWords + w > WORD_BUDGET) break;
-      history.unshift(histAll[i]);
-      usedWords += w;
+      if (usedWords + w <= WORD_BUDGET) {
+        history.unshift(histAll[i]);
+        usedWords += w;
+      }
+      // Skip oversized individual messages but continue scanning older ones
     }
 
-    // Save user message
-    await query(
-      "INSERT INTO llm_messages (conversation_id, role, content) VALUES ($1,'user',$2)",
-      [req.params.id, message]
-    );
-
-    // Proxy to LLM
+    // Proxy to LLM -- save messages only after success to avoid orphaned user messages
     let assistantContent, tokensUsed;
     try {
       const result = await callLLM({
@@ -344,8 +369,12 @@ router.post("/conversations/:id/chat", authenticate, async (req, res) => {
       return res.status(502).json({ error: `LLM error: ${llmErr.message}` });
     }
 
-    // Save assistant reply + update conversation timestamp
+    // Save user message + assistant reply in one transaction
     await withTransaction(async (client) => {
+      await client.query(
+        "INSERT INTO llm_messages (conversation_id, role, content) VALUES ($1,'user',$2)",
+        [req.params.id, message]
+      );
       await client.query(
         "INSERT INTO llm_messages (conversation_id, role, content, tokens_used) VALUES ($1,'assistant',$2,$3)",
         [req.params.id, assistantContent, tokensUsed]
@@ -377,6 +406,9 @@ router.delete("/conversations/:id", authenticate, async (req, res) => {
 });
 
 // ── LLM proxy helper ──────────────────────────────────────────
+// Timeout for LLM calls: 90s (supports slow local models; nginx allows 300s)
+const LLM_TIMEOUT_MS = 90_000;
+
 async function callLLM({ provider, base_url, model, api_key, system, history, message }) {
   const messages = [
     ...history.filter(m => m.role !== "system"),
@@ -412,7 +444,10 @@ async function callOpenAICompat({ base_url, model, api_key, system, messages, pr
 }
 
 async function _callOpenAICompatBase({ base_url, model, api_key, system, messages, provider="" }) {
-  const url  = `${base_url.replace(/\/$/, "")}/chat/completions`;
+  // Normalize base_url: ensure /v1 is present (Ollama is often saved without it)
+  let base = base_url.replace(/\/$/, "");
+  if (!base.match(/\/v1(\/|$)/)) base = base + "/v1";
+  const url  = `${base}/chat/completions`;
   const body = {
     model,
     messages: [
@@ -431,7 +466,7 @@ async function _callOpenAICompatBase({ base_url, model, api_key, system, message
     headers["X-Title"] = "NoNote";
   }
 
-  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
+  const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: AbortSignal.timeout(LLM_TIMEOUT_MS) });
   if (!res.ok) {
     const err = await res.text();
     throw new Error(`${res.status}: ${err.slice(0, 200)}`);
@@ -439,7 +474,7 @@ async function _callOpenAICompatBase({ base_url, model, api_key, system, message
   const data = await res.json();
   return {
     content: data.choices?.[0]?.message?.content || "",
-    tokens:  data.usage?.total_tokens,
+    tokens:  data.usage?.total_tokens ?? null,
   };
 }
 
@@ -460,6 +495,7 @@ async function callAnthropic({ base_url, model, api_key, system, messages }) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) {
     const err = await res.text();
@@ -468,7 +504,7 @@ async function callAnthropic({ base_url, model, api_key, system, messages }) {
   const data = await res.json();
   return {
     content: data.content?.[0]?.text || "",
-    tokens:  data.usage?.input_tokens + data.usage?.output_tokens,
+    tokens:  (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0) || null,
   };
 }
 
@@ -488,10 +524,10 @@ async function callGemini({ base_url, model, api_key, system, messages }) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      // Key in header instead of URL query param to avoid logging exposure
       "x-goog-api-key": api_key,
     },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) {
     const err = await res.text();
@@ -500,7 +536,7 @@ async function callGemini({ base_url, model, api_key, system, messages }) {
   const data = await res.json();
   return {
     content: data.candidates?.[0]?.content?.parts?.[0]?.text || "",
-    tokens:  data.usageMetadata?.totalTokenCount,
+    tokens:  data.usageMetadata?.totalTokenCount ?? null,
   };
 }
 
@@ -522,10 +558,11 @@ async function callCohere({ base_url, model, api_key, system, messages }) {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api_key}` },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Cohere ${res.status}: ${(await res.text()).slice(0,200)}`);
   const data = await res.json();
-  return { content: data.message?.content?.[0]?.text || data.text || "", tokens: data.meta?.tokens?.output_tokens };
+  return { content: data.message?.content?.[0]?.text || data.text || "", tokens: data.meta?.tokens?.output_tokens ?? null };
 }
 
 // ── Azure OpenAI (Copilot-compatible) ─────────────────────────
@@ -535,10 +572,11 @@ async function callAzure({ base_url, model, api_key, system, messages }) {
     method: "POST",
     headers: { "Content-Type": "application/json", "api-key": api_key },
     body: JSON.stringify({ model, messages: [{ role:"system", content:system }, ...messages], max_tokens:2048 }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`Azure ${res.status}: ${(await res.text()).slice(0,200)}`);
   const data = await res.json();
-  return { content: data.choices?.[0]?.message?.content || "", tokens: data.usage?.total_tokens };
+  return { content: data.choices?.[0]?.message?.content || "", tokens: data.usage?.total_tokens ?? null };
 }
 
 // ── Hugging Face Inference API ─────────────────────────────────
@@ -551,6 +589,7 @@ async function callHuggingFace({ base_url, model, api_key, system, messages }) {
     method: "POST",
     headers: { "Content-Type": "application/json", "Authorization": `Bearer ${api_key}` },
     body: JSON.stringify({ inputs: prompt, parameters: { max_new_tokens: 1024, return_full_text: false } }),
+    signal: AbortSignal.timeout(LLM_TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`HuggingFace ${res.status}: ${(await res.text()).slice(0,200)}`);
   const data = await res.json();
@@ -558,11 +597,7 @@ async function callHuggingFace({ base_url, model, api_key, system, messages }) {
   return { content: text.trim(), tokens: null };
 }
 
-// ── OpenAI-compatible with provider-specific headers ──────────
-// (overrides the original simpler function — add OpenRouter/Perplexity specific headers)
-async function callOpenAICompatOld() {} // keep reference
-
-// ── System prompt builder — token-optimised ──────────────────
+// ── System prompt builder -- token-optimised ──────────────────
 // Target: ~600-900 tokens for canvas context, never >1200
 const MAX_NODES = 30;   // hard cap
 const MAX_NOTES = 120;  // chars per node note
@@ -578,7 +613,7 @@ function buildSystemPrompt(ctx) {
       .filter(([,v]) => v && !Array.isArray(v) && typeof v !== 'object')
       .slice(0, MAX_PROPS)
       .map(([k,v]) => `${k}: ${String(v).slice(0,80)}`).join(', ');
-    const notes = n.notes ? String(n.notes).slice(0, MAX_NOTES) + (n.notes.length > MAX_NOTES ? '…' : '') : '';
+    const notes = n.notes ? String(n.notes).slice(0, MAX_NOTES) + (n.notes.length > MAX_NOTES ? '...' : '') : '';
     return `You are an expert assistant for NoNote. Focused discussion about one node.
 Node: ${n.title || 'Untitled'} [${n.type}]${props ? ' | ' + props : ''}${notes ? ' | Notes: ' + notes : ''}
 Map: ${ctx.mapTitle || 'Untitled'}
@@ -590,7 +625,7 @@ Be concise. Troubleshoot, document, or advise on this specific component only.`;
   const capped = nodes.slice(0, MAX_NODES);
   const extra  = nodes.length - capped.length;
 
-  // Build node lines — only non-empty, non-array properties
+  // Build node lines -- only non-empty, non-array properties
   const nodeLines = capped.map(n => {
     const props = Object.entries(n.properties || {})
       .filter(([,v]) => v && typeof v === 'string' && v.trim())
@@ -600,11 +635,11 @@ Be concise. Troubleshoot, document, or advise on this specific component only.`;
     return `${n.title}[${n.type}]${props ? ' ' + props : ''}${notes}`;
   });
 
-  // Build edge lines — skip IDs, only named connections or arrows
+  // Build edge lines -- skip IDs, only named connections or arrows
   const edgeLines = edges.slice(0, 40).map(e => {
     const from = capped.find(n => n.id === e.from)?.title || '?';
     const to   = capped.find(n => n.id === e.to)?.title   || '?';
-    return e.label ? `${from}→${to}:${e.label}` : `${from}→${to}`;
+    return e.label ? `${from}->${to}:${e.label}` : `${from}->${to}`;
   });
 
   const lines = [
@@ -617,7 +652,7 @@ Be concise. Troubleshoot, document, or advise on this specific component only.`;
   return lines.join('\n');
 }
 
-// ── POST /api/llm/export-interpret — one-shot LLM call for export ─────
+// ── POST /api/llm/export-interpret -- one-shot LLM call for export ─────
 // Uses the user's default provider or first available provider
 router.post("/export-interpret", authenticate, async (req, res) => {
   const { message } = req.body;

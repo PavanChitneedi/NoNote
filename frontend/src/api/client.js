@@ -121,7 +121,7 @@ export const getConversations = (mapId, nodeId) => apiFetch(`/llm/maps/${mapId}/
 export const createConversation=(mapId,d)  => apiFetch(`/llm/maps/${mapId}/conversations`, { method:"POST", body:JSON.stringify(d) });
 export const deleteConversation=(id)       => apiFetch(`/llm/conversations/${id}`, { method:"DELETE" });
 export const getMessages      = (convId)   => apiFetch(`/llm/conversations/${convId}/messages`);
-export const sendMessage      = (convId,d) => apiFetch(`/llm/conversations/${convId}/chat`, { method:"POST", body:JSON.stringify(d) });
+export const sendMessage      = (convId,d,signal) => apiFetch(`/llm/conversations/${convId}/chat`, { method:"POST", body:JSON.stringify(d), signal });
 
 // Version history
 export const getVersions     = (mapId)           => apiFetch(`/maps/${mapId}/versions`);

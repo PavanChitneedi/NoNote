@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   getLLMProviders, getConversations, createConversation,
   deleteConversation, getMessages, sendMessage, probeLLMModels,
@@ -37,10 +37,11 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
   const convListRef    = useRef(null);
+  const abortRef       = useRef(null);   // AbortController for in-flight LLM request
+  const loadMsgAbortRef = useRef(null);  // AbortController for getMessages (race condition)
 
   useEffect(() => {
     if (!mapId) return;
-    // Load providers and conversations independently — provider failure must not block conversations and vice versa
     getLLMProviders()
       .then(pData => {
         const provs = pData.providers || [];
@@ -48,7 +49,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
         const def = provs.find(p => p.is_default) || provs[0];
         if (def) setSelectedProvider(def.id);
       })
-      .catch(() => {}); // silently ignore — UI shows "Add LLM Provider"
+      .catch(() => {});
 
     getConversations(mapId)
       .then(cData => {
@@ -59,7 +60,6 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
       .catch(e => setError('Failed to load conversations: ' + e.message))
       .finally(() => setLoading(false));
   }, [mapId]);
-
 
   useEffect(() => {
     if (!selectedProvider || !providers.length) return;
@@ -84,12 +84,19 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   }, [messages]);
 
   const openConversation = async (id) => {
+    // Cancel any in-flight message load (race condition fix)
+    if (loadMsgAbortRef.current) loadMsgAbortRef.current.abort();
+    const ctrl = new AbortController();
+    loadMsgAbortRef.current = ctrl;
+
     setActiveConvId(id);
     setMessages([]);
     try {
       const d = await getMessages(id);
-      setMessages(d.messages || []);
-    } catch (e) { setError(e.message); }
+      if (!ctrl.signal.aborted) setMessages(d.messages || []);
+    } catch (e) {
+      if (!ctrl.signal.aborted) setError(e.message);
+    }
   };
 
   const startNewChat = async () => {
@@ -106,6 +113,15 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     } catch (e) { setError(e.message); }
   };
 
+  const stopGeneration = () => {
+    if (abortRef.current) {
+      abortRef.current.abort();
+      abortRef.current = null;
+    }
+    setSending(false);
+    setError("");
+  };
+
   const handleSend = async () => {
     if (!input.trim() || !activeConvId || sending) return;
     const userMsg = input.trim();
@@ -114,11 +130,14 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     setError("");
     if (textareaRef.current) { textareaRef.current.style.height = "auto"; }
 
+    // Set up AbortController for this request
+    const ctrl = new AbortController();
+    abortRef.current = ctrl;
+
     const tempId = `temp_${Date.now()}`;
     setMessages(ms => [...ms, { id: tempId, role: "user", content: userMsg, created_at: new Date().toISOString() }]);
 
     try {
-      // Strip empty properties and truncate notes before sending to reduce token usage
       const canvasContext = {
         mapTitle,
         nodes: nodes.map(n => ({
@@ -130,7 +149,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
         })),
         edges: edges.map(e => ({ from: e.from, to: e.to, label: e.label || undefined })),
       };
-      const d = await sendMessage(activeConvId, { message: userMsg, canvas_context: canvasContext });
+      const d = await sendMessage(activeConvId, { message: userMsg, canvas_context: canvasContext }, ctrl.signal);
+      if (ctrl.signal.aborted) return;
       setMessages(ms => [
         ...ms.filter(m => m.id !== tempId),
         { id: `u_${Date.now()}`,   role: "user",      content: userMsg,    created_at: new Date().toISOString() },
@@ -142,11 +162,18 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
           : c
       ));
     } catch (e) {
+      if (e.name === "AbortError") {
+        setMessages(ms => ms.filter(m => m.id !== tempId));
+        return;
+      }
       setMessages(ms => ms.filter(m => m.id !== tempId));
       setError(e.message);
     } finally {
-      setSending(false);
-      textareaRef.current?.focus();
+      if (!ctrl.signal.aborted) {
+        setSending(false);
+        abortRef.current = null;
+        textareaRef.current?.focus();
+      }
     }
   };
 
@@ -163,13 +190,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
 
   const activeConv = conversations.find(c => c.id === activeConvId);
 
-  // ── Shared styles using CSS vars ──────────────────────────────
-  const iconBtn = {
-    background: "none", border: "none", color: "var(--text4)", cursor: "pointer",
-    fontSize: 16, lineHeight: 1, padding: "4px 6px", borderRadius: "var(--radius-sm)",
-    display: "flex", alignItems: "center", justifyContent: "center",
-    transition: "color .15s, background .15s",
-  };
+  // Token total for active conversation
+  const totalTokens = messages.reduce((sum, m) => sum + (m.tokens_used || 0), 0);
 
   return (
     <>
@@ -229,7 +251,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
           )}
           {probingModels && <div style={{ fontSize: 9, color: "var(--text4)" }}>Detecting models...</div>}
 
-          {/* Conversation pills — horizontal scroll */}
+          {/* Conversation pills -- horizontal scroll */}
           {conversations.length > 0 && (
             <div ref={convListRef} style={{
               display: "flex", gap: 5, overflowX: "auto", paddingBottom: 1,
@@ -240,7 +262,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 return (
                   <div data-ui="llm-chat" data-component="LLMChat" data-page="canvas" data-role="panel" key={c.id}
                     onClick={() => openConversation(c.id)}
-                    title={c.title}
+                    title={c.model_override ? `Model: ${c.model_override}` : `Model: ${c.model}`}
                     style={{
                       display: "flex", alignItems: "center", gap: 4, flexShrink: 0,
                       padding: "3px 6px 3px 8px", borderRadius: 20, cursor: "pointer",
@@ -252,8 +274,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                       maxWidth: 150, transition: "all .12s",
                     }}
                   >
-                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                      title={c.model_override ? `Model: ${c.model_override}` : `Model: ${c.model}`}>
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {PROVIDER_ICONS[c.provider] || "💬"} {c.title}
                     </span>
                     <span
@@ -302,7 +323,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               )}
             </div>
           ) : messages.length === 0 && !loading ? (
-            /* New conversation — suggested prompts */
+            /* New conversation -- suggested prompts */
             <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, textAlign: "center" }}>
               <div style={{ fontSize: 28 }}>✨</div>
               <div style={{ fontSize: 11, color: "var(--text4)", lineHeight: 1.7, maxWidth: 300 }}>
@@ -356,7 +377,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={!activeConvId || sending}
-              placeholder={activeConvId ? "Ask about your architecture… (Enter ↵ to send)" : "Start a new chat first"}
+              placeholder={activeConvId ? "Ask about your architecture… (Enter to send, Shift+Enter newline)" : "Start a new chat first"}
               rows={1}
               style={{
                 flex: 1, background: "var(--bg)", border: "1px solid var(--border)",
@@ -372,21 +393,36 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 e.target.style.height = Math.min(e.target.scrollHeight, 120) + "px";
               }}
             />
-            <button
-              onClick={handleSend}
-              disabled={!activeConvId || !input.trim() || sending}
-              style={{
-                width: 38, height: 38, borderRadius: "var(--radius-md)", border: "none", flexShrink: 0,
-                background: (activeConvId && input.trim() && !sending) ? "var(--accent2)" : "var(--bg3)",
-                color: (activeConvId && input.trim() && !sending) ? "#fff" : "var(--text4)",
-                cursor: (activeConvId && input.trim() && !sending) ? "pointer" : "default",
-                fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
-                transition: "all .15s",
-              }}
-            >↑</button>
+            {sending ? (
+              <button
+                onClick={stopGeneration}
+                title="Stop generation"
+                style={{
+                  width: 38, height: 38, borderRadius: "var(--radius-md)", border: "none", flexShrink: 0,
+                  background: "var(--danger)", color: "#fff",
+                  cursor: "pointer", fontSize: 14,
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .15s",
+                }}
+              >■</button>
+            ) : (
+              <button
+                onClick={handleSend}
+                disabled={!activeConvId || !input.trim()}
+                style={{
+                  width: 38, height: 38, borderRadius: "var(--radius-md)", border: "none", flexShrink: 0,
+                  background: (activeConvId && input.trim()) ? "var(--accent2)" : "var(--bg3)",
+                  color: (activeConvId && input.trim()) ? "#fff" : "var(--text4)",
+                  cursor: (activeConvId && input.trim()) ? "pointer" : "default",
+                  fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
+                  transition: "all .15s",
+                }}
+              >↑</button>
+            )}
           </div>
-          <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 5 }}>
-            📌 {nodes.length} nodes · {edges.length} connections in context · Shift+Enter for newline
+          <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 5, display: "flex", justifyContent: "space-between" }}>
+            <span>📌 {nodes.length} nodes · {edges.length} connections in context</span>
+            {totalTokens > 0 && <span title="Total tokens used in this conversation">{totalTokens.toLocaleString()} tok</span>}
           </div>
         </div>
       </div>
@@ -413,6 +449,10 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
 
 function MessageBubble({ message }) {
   const isUser = message.role === "user";
+  const tokenLabel = message.tokens_used != null
+    ? `${message.tokens_used} tok`
+    : (message.role === "assistant" ? "N/A tok" : null);
+
   return (
     <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexDirection: isUser ? "row-reverse" : "row" }}>
       {/* Avatar */}
@@ -438,7 +478,7 @@ function MessageBubble({ message }) {
         </div>
         <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 2, paddingRight: 2 }}>
           {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-          {message.tokens_used && ` · ${message.tokens_used} tok`}
+          {tokenLabel && ` · ${tokenLabel}`}
         </div>
       </div>
     </div>

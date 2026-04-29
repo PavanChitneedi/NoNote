@@ -1,6 +1,19 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.0",date:"Apr 2026",items:[
+    "Security: SSRF guard on probe-models endpoint -- blocks metadata IPs and internal Docker service names.",
+    "Security: 90s AbortSignal timeout on all LLM provider fetch calls (prevents hung requests).",
+    "Security: Message and canvas context size limits (12k chars / 50k bytes) to prevent token exhaustion.",
+    "Fix: User message now saved only after LLM responds -- eliminates orphaned messages on provider errors.",
+    "Fix: History trimming skips oversized individual messages instead of stopping -- more history included.",
+    "Fix: Stop/cancel button (red square) appears while AI is generating -- aborts the in-flight request.",
+    "Fix: Race condition when rapidly switching conversations no longer clobbers message list.",
+    "Fix: Token count shows N/A for providers that dont report usage (e.g. Ollama).",
+    "UX: Conversation total token count shown in input bar footer.",
+    "UX: nginx proxy_read_timeout raised to 300s for /api/llm/ routes -- supports slow local models.",
+    "Code: Removed dead callOpenAICompatOld stub and unused useCallback import.",
+  ]},
   {v:"v5.45.0",date:"Apr 2026",items:[
     "Feature: AI Chat settings gear (gear) button always visible next to provider dropdown.",
     "Feature: Ollama/LMStudio model picker in chat panel -- probes installed models, switch per-conversation.",
