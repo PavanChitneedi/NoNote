@@ -26,3 +26,6 @@ CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, create
 -- v5.41.2: node-level AI chat conversations
 ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS node_id TEXT DEFAULT NULL;
 CREATE INDEX IF NOT EXISTS idx_llm_conversations_node_id ON llm_conversations(node_id) WHERE node_id IS NOT NULL;
+
+-- v5.45.0: model override per conversation (Ollama multi-model support)
+ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT DEFAULT NULL;
