@@ -2,11 +2,12 @@
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
   {v:"v5.45.0",date:"Apr 2026",items:[
-    "Feature: AI Chat settings gear (⚙) button always visible next to provider dropdown — no more hunting for the settings entry point when providers are already configured.",
-    "Feature: Ollama/LMStudio model picker in chat panel — automatically probes all installed models from your local instance and shows a MODEL dropdown so you can switch models per-conversation without creating a new provider entry.",
-    "Feature: model_override stored per-conversation — each chat remembers which Ollama model it used; pill shows short model name as hint.",
-    "Fix: Docker→Ollama connectivity — added host.docker.internal:host-gateway to docker-compose backend extra_hosts so Linux containers can reach host Ollama. Also extends regex to catch 127.0.0.1 (not just 'localhost') in probe-models and callOpenAICompat fallback chains.",
-    "DB: ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT migration added to init.sql.",
+    "Feature: AI Chat settings gear button always visible -- no longer hidden when providers are configured.",
+    "Feature: Ollama/LMStudio model picker in chat panel -- probes all installed models, lets you switch per-conversation without a new provider entry.",
+    "Feature: model_override stored per-conversation -- each chat remembers which Ollama model it used.",
+    "Fix: Docker to Ollama connectivity -- extra_hosts host.docker.internal:host-gateway added to backend in docker-compose so Linux containers reach host Ollama.",
+    "Fix: probe-models and callOpenAICompat now also replace 127.0.0.1 (not just localhost) in Docker fallback chain.",
+    "DB: ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT migration added.",
   ]},
   {v:"v5.44.4",date:"Apr 2026",items:[
     "Fix: AI Chat 'Failed to fetch conversations' blocking providers from loading -- Promise.all() failed if conversations failed, so providers never loaded → all inputs disabled. Now load independently.",
@@ -789,4 +790,28 @@ export const CHANGELOG = [
     "Inline node editor popup on double-click (4 tabs)",
     "Node type picker in popup",
     "POPUP / PANEL toggle for properties mode",
-    "Rede
+    "Redesigned 2-row topbar with functional grouping",
+    "Command-palette search overlay",]},
+  {v:"v4.25–4.32",date:"2026",items:["Right-click context menu",
+    "Snap-to-grid (Shift+drag)",
+    "Alignment guides during drag",
+    "Status dots on collapsed nodes",
+    "Template library (Homelab, Microservices, Mind Map)",
+    "Comment pins with threaded sidebar",
+    "15 connection styles",
+    "Focus mode (dims non-active nodes)",
+    "Quick capture (Space bar)",
+    "Ctrl+D duplicate",]},
+  {v:"v4.0–4.24",date:"2025–2026",items:["Full-stack app: Node.js + PostgreSQL + Redis + Docker",
+    "60+ node types across 9 categories",
+    "Collision prevention with AABB detection",
+    "Anchor system for connection endpoints",
+    "Version history with restore",
+    "LLM export and AI Chat panel",
+    "Custom node properties and themes",
+    "PNG export",]},
+];
+
+
+// Single source of truth for current version — always the first entry in CHANGELOG
+export const CURRENT_VERSION = CHANGELOG[0].v;
