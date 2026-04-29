@@ -1,6 +1,31 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.44.3",date:"Apr 2026",items:[
+    "Fix: 100% button state audit across all JSX files — all toggle/tab/mode buttons now use neumorphic inset depth instead of blue/accent color fills",
+    "Fix: CTA buttons (Submit/Create/Save/Add/Send with color:#fff) preserved with accent fill + elevation",
+    "Fix: CSS rule: button[style*=accent2]:not([style*=color:#fff]) → inset shadow, same surface, no color",
+    "Fix: tbS() helper (node type tabs) — active=inset, inactive=raised, no color fill",
+    "Fix: NodeAIChat provider pill — neumorphic inset when selected",
+    "Fix: LiveDashboard filter pills + tabs — dynamic color replaced with depth",
+    "Fix: LLMChat conversation pills — active=inset, inactive=raised",
+    "Fix: bg3 inactive buttons globally → nEx raised with var(--bg) surface",
+    "Fix: Alpha accent (22%/18%) used as active tint → nIs inset",
+    "Fix: DevMode toggle — cyan hint via color-mix, not fill",
+  ]},
+  {v:"v5.44.3",date:"Apr 2026",items:[
+    "Audit: Full scan of all 23 JSX files for hardcoded colors, JS hover overrides, rgba shadows, duplicate style keys",
+    "Fix: NodeCanvas tbtn(showChat) used #6C63FF → normalized to var(--accent2)",
+    "Fix: Quick-capture floating input badge hardcoded #6C63FF → var(--accent2)",
+    "Fix: Tutorial.jsx button color #0d1117 → var(--bg)",
+    "Verified clean: 34 LiveDashboard dup-key hits are false positives (ternary expressions)",
+    "Verified clean: 128 NodeCanvas hardcoded hex are node-type design tokens (intentional)",
+    "Verified clean: AppErrorBoundary dark colors intentional (fallback must not depend on theme)",
+    "Verified clean: semantic status/note colors (#22c55e online dot, #FFD93D note badge) kept",
+  ]},
+  {v:"v5.44.2",date:"Apr 2026",items:[
+    "Neumorphic toolbar: active buttons now pure depth-only (no blue/accent color). Pressed button sinks into surface with --nIm inset shadow, same surface color, same text color -- depth alone communicates state.",
+  ]},
   {v:"v5.44.1",date:"Apr 2026",items:[
     "Fix: Toolbar button active states inconsistent -- Connect (#6C63FF), Group (#FF9800), appearance (#6C63FF), templates, collab, export, collapse, share all used hardcoded colors that neumorphic CSS could not target",
     "Fix: Normalized all 9 toolbar tbtn() color params to var(--accent2) -- now neumorphic inset state applies uniformly to ALL active toolbar buttons",

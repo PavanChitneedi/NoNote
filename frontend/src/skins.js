@@ -439,22 +439,22 @@ body.skin-neumorphic [data-tut="topbar-row1"] + div button:not([disabled]):hover
   background: var(--bg) !important; color: var(--text) !important;
   box-shadow: var(--nEx) !important; transform: none !important;
 }
-/* Active toolbar button: stronger inset (nIs not nIx) + bold weight for clarity */
+/* Active toolbar button: pure neumorphic — inset (pressed into surface), NO color change
+   Depth alone communicates the active state. Same surface color as everything else. */
 body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--accent2)"],
-body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--accent2)"] {
-  box-shadow: var(--nIs) !important; background: var(--bg) !important;
-  color: var(--accent2) !important; font-weight: 800 !important;
+body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--accent2)"],
+body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--success)"],
+body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--success)"] {
+  box-shadow: var(--nIm) !important;   /* medium inset — clearly pressed in */
+  background: var(--bg) !important;    /* same surface, no color change      */
+  color: var(--text) !important;       /* same text, no accent tint           */
+  font-weight: 700 !important;
+  transform: none !important;
 }
-/* Popup/Panel segmented toggle wrapper: inset trough */
+/* Popup/Panel segmented toggle wrapper: inset trough — active pill pops out */
 body.skin-neumorphic [data-tut="topbar-row1"] + div [style*="background: var(--bg3)"][style*="border-radius: var(--radius-md)"][style*="overflow: hidden"] {
   background: var(--bg) !important; box-shadow: var(--nIs) !important;
   border-radius: var(--nRm) !important; overflow: hidden !important;
-}
-/* Active success (Edit/View toggle) */
-body.skin-neumorphic [data-tut="topbar-row1"] button[style*="background: var(--success)"],
-body.skin-neumorphic [data-tut="topbar-row1"] + div button[style*="background: var(--success)"] {
-  box-shadow: var(--nIs) !important; background: var(--bg) !important;
-  color: var(--success) !important; font-weight: 800 !important;
 }
 body.skin-neumorphic [data-tut="topbar-row1"] button:disabled,
 body.skin-neumorphic [data-tut="topbar-row1"] + div button:disabled,
@@ -1150,6 +1150,93 @@ body.skin-neumorphic [style*="background: var(--bg2)"][style*="border: 1px solid
   border: none !important;
   box-shadow: var(--nEl) !important;
   outline: 2px solid var(--accent) !important;
+}
+
+/* ════════════════════════════════════════════════════════════════
+   BUTTON STATE COVERAGE — full audit v5.44.3
+   Rule: CTA (color:#fff) → keep accent fill + nEs lift
+         Toggle/Tab/Mode (no #fff) → inset depth, same surface
+   ════════════════════════════════════════════════════════════════ */
+
+/* ── GLOBAL: any non-CTA accent2 button → inset ─────────────────
+   CTA buttons are always: background:var(--accent2) + color:#fff
+   Toggles are: background:var(--accent2) without color:#fff       */
+body.skin-neumorphic button[style*="background: var(--accent2)"]:not([style*="color: #fff"]):not([style*="color:#fff"]) {
+  background: var(--bg) !important;
+  box-shadow: var(--nIm) !important;
+  color: var(--text) !important;
+  font-weight: 700 !important;
+  transform: none !important;
+}
+/* Alpha variants (22%, 18% etc) — always toggles, never CTAs */
+body.skin-neumorphic button[style*="background: var(--accent2)2"],
+body.skin-neumorphic button[style*="background: var(--accent)18"],
+body.skin-neumorphic button[style*="background: var(--accent)22"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+  color: var(--text2) !important;
+}
+/* Inactive counterparts (bg3 background on toggle group) */
+body.skin-neumorphic button[style*="background: var(--bg3)"]:not([style*="color: #fff"]) {
+  background: var(--bg) !important;
+  box-shadow: var(--nEx) !important;
+  color: var(--text3) !important;
+}
+body.skin-neumorphic button[style*="background: var(--bg3)"]:not([style*="color: #fff"]):hover {
+  box-shadow: var(--nEs) !important;
+  color: var(--text) !important;
+}
+
+/* ── CTA BUTTONS: keep strong accent + elevation ─────────────────
+   These have explicit color:#fff — confirm they stay raised       */
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color: #fff"],
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color:#fff"] {
+  background: var(--accent2) !important;
+  box-shadow: var(--nEs) !important;
+  color: #fff !important;
+}
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color: #fff"]:hover,
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color:#fff"]:hover {
+  box-shadow: var(--nEm) !important;
+  transform: translateY(-1px) !important;
+}
+body.skin-neumorphic button[style*="background: var(--accent2)"][style*="color: #fff"]:disabled {
+  opacity: 0.5 !important; transform: none !important;
+}
+
+/* ── DIV/LABEL used as toggle (Dashboard tabs, view mode) ────────
+   Non-button elements with accent2 active bg                      */
+body.skin-neumorphic div[style*="background: var(--accent2)"]:not([style*="color: #fff"]),
+body.skin-neumorphic label[style*="background: var(--accent2)"]:not([style*="color: #fff"]) {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+  color: var(--text2) !important;
+}
+body.skin-neumorphic div[style*="background: var(--accent2)18"],
+body.skin-neumorphic div[style*="background: var(--accent2)22"],
+body.skin-neumorphic div[style*="background: var(--accent)18"],
+body.skin-neumorphic div[style*="background: var(--accent)22"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIs) !important;
+}
+
+/* ── LiveDashboard filter pills (dynamic color fill) ─────────────
+   These use: background: f===v ? color : 'var(--bg3)'
+   The active state has non-bg3 background + color:#fff            */
+body.skin-neumorphic [style*="fontSize: 9"][style*="fontWeight: 600"][style*="color: #fff"],
+body.skin-neumorphic [style*="fontSize:9"][style*="fontWeight:600"][style*="color: #fff"] {
+  background: var(--bg) !important;
+  box-shadow: var(--nIm) !important;
+  color: var(--text) !important;
+}
+
+/* ── DevMode toggle (cyan active) ────────────────────────────────
+   DEV button uses #00e5ff — keep its own character                */
+body.skin-neumorphic button[style*="#00e5ff"] {
+  background: color-mix(in srgb, var(--bg) 92%, #00e5ff) !important;
+  box-shadow: var(--nIs) !important;
+  color: #00e5ff !important;
+  border: none !important;
 }
 `},
 

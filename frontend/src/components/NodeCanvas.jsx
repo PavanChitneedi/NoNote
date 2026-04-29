@@ -3472,7 +3472,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
           {/* ── SIDE PANELS GROUP ── persistent panel toggles ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-            <button onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"#6C63FF"),display:"flex",alignItems:"center",gap:4}} title="AI Chat panel">
+            <button onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="AI Chat panel">
               💬 <span style={{fontSize:10}}>AI Chat</span>
             </button>
             <button onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
@@ -3887,13 +3887,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               {/* Quick Capture */}
               {quickPos&&canEdit&&editMode&&(
                 <div style={{position:"absolute",left:quickPos.x,top:quickPos.y-64,zIndex:100,display:"flex",flexDirection:"column",gap:5}} onClick={e=>e.stopPropagation()}>
-                  <div style={{background:"#6C63FF",color:"#fff",fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"3px 9px",borderRadius:"var(--radius-xs)",alignSelf:"flex-start"}}>⚡ QUICK CAPTURE</div>
+                  <div style={{background:"var(--accent2)",color:"#fff",fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"3px 9px",borderRadius:"var(--radius-xs)",alignSelf:"flex-start"}}>⚡ QUICK CAPTURE</div>
                   <div style={{background:"var(--bg)",border:"none",borderRadius:"var(--radius-md)",padding:"8px 10px",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",outline:"2px solid var(--accent2)",display:"flex",gap:6}}>
                     <input ref={quickInpRef} value={quickText} onChange={e=>setQuickText(e.target.value)}
                       onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")commitCapture();if(e.key==="Escape"){setQuickPos(null);setQuickText("");}}}
                       placeholder="Type a thought, hit Enter…"
                       style={{background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",width:220}}/>
-                    <button onClick={commitCapture} style={{background:"#6C63FF",border:"none",borderRadius:"var(--radius-xs)",color:"#fff",cursor:"pointer",padding:"2px 10px",fontSize:11,fontWeight:700,fontFamily:"var(--font-ui)"}}>↵</button>
+                    <button onClick={commitCapture} style={{background:"var(--accent2)",border:"none",borderRadius:"var(--radius-xs)",color:"#fff",cursor:"pointer",padding:"2px 10px",fontSize:11,fontWeight:700,fontFamily:"var(--font-ui)"}}>↵</button>
                   </div>
                 </div>
               )}
@@ -6170,7 +6170,7 @@ function ExportModal({nodes,edges,mapTitle,exportLLM,onClose}){
   const [copied,setCopied]=useState(false);
   const content=tab==="llm"?exportLLM():JSON.stringify({title:mapTitle,nodes,edges},null,2);
   const copy=()=>{navigator.clipboard.writeText(content);setCopied(true);setTimeout(()=>setCopied(false),2000);};
-  const tbS=(active,color="var(--accent2)")=>({padding:"8px 16px",border:"none",borderRadius:"var(--radius-sm)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"var(--font-ui)",background:active?color:"var(--bg3)",color:active?"#fff":"var(--text3)"});
+  const tbS=(active,color="var(--accent2)")=>({padding:"8px 16px",border:"none",borderRadius:"var(--radius-sm)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"var(--font-ui)",background:"var(--bg)",color:active?"var(--text)":"var(--text3)",boxShadow:active?"inset 2px 2px 6px var(--neu-shadow),inset -1px -1px 4px var(--neu-hilight)":"2px 2px 4px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)",transition:"all .14s"});
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.76)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16}} onClick={onClose}>
       <div style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",padding:20,width:"100%",maxWidth:600,maxHeight:"84vh",display:"flex",flexDirection:"column",gap:14}} onClick={e=>e.stopPropagation()}>

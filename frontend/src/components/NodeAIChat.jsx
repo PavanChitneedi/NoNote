@@ -97,8 +97,9 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
   const pill = (active) => ({
     padding: "3px 10px", borderRadius: 20, cursor: "pointer", fontSize: 10,
     fontFamily: "var(--font-ui)", fontWeight: active ? 700 : 400,
-    background: active ? "var(--accent2)" : "var(--bg3)",
-    color: active ? "#fff" : "var(--text3)",
+    background: "var(--bg)",
+    boxShadow: active ? "inset 2px 2px 5px var(--neu-shadow),inset -1px -1px 3px var(--neu-hilight)" : "2px 2px 4px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)",
+    color: active ? "var(--text)" : "var(--text3)",
     border: `1px solid ${active ? "var(--accent2)" : "var(--border)"}`,
     flexShrink: 0, whiteSpace: "nowrap", transition: "all .12s",
   });

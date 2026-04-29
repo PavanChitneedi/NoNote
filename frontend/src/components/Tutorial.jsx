@@ -196,7 +196,7 @@ export default function Tutorial({ page, onClose }) {
               fontSize:11,fontFamily:"var(--font-ui)",fontWeight:700}}>← Back</button>
           )}
           <button onClick={next} style={{background:ACCENT,border:"none",borderRadius:6,
-            padding:"6px 20px",color:"#0d1117",cursor:"pointer",
+            padding:"6px 20px",color:"var(--bg)",cursor:"pointer",
             fontSize:11,fontFamily:"var(--font-ui)",fontWeight:800}}>
             {isLast ? "Finish ✓" : "Next →"}
           </button>

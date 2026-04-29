@@ -20,7 +20,7 @@ function GuestList({guests, color}){
   return <div>
     <div style={{display:'flex',gap:4,marginBottom:8,flexWrap:'wrap',alignItems:'center'}}>
       {[['all',`All ${guests.length}`],['vm',`VM ${rVM}/${tVM}`],['ct',`CT ${rCT}/${tCT}`],['off','Stopped']].map(([v,l])=>(
-        <button key={v} onClick={()=>setF(v)} style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:8,cursor:'pointer',fontFamily:'var(--font-ui)',fontWeight:600,background:f===v?color:'var(--bg3)',color:f===v?'#fff':'var(--text4)'}}>{l}</button>
+        <button key={v} onClick={()=>setF(v)} style={{fontSize:9,padding:'2px 8px',border:'none',borderRadius:8,cursor:'pointer',fontFamily:'var(--font-ui)',fontWeight:600,background:'var(--bg)',boxShadow:f===v?'inset 2px 2px 5px var(--neu-shadow),inset -1px -1px 3px var(--neu-hilight)':'2px 2px 4px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)',color:f===v?'var(--text)':'var(--text4)'}}>{l}</button>
       ))}
     </div>
     {shown.length===0&&<div style={{fontSize:11,color:'var(--text4)',fontStyle:'italic',textAlign:'center',padding:'8px 0'}}>None</div>}
