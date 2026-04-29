@@ -3874,6 +3874,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     onTabChange={tab=>setNodePopup({nodeId:pn.id,tab})}
                     onClose={()=>setNodePopup(null)}
                     onUpdate={(u)=>updateNode(pn.id,u)}
+                    onUpdateProp={(key,val)=>updateProp(pn.id,key,val)}
                     onUpdateNotes={(notes)=>updateNotes(pn.id,notes)}
                     onChangeType={(newType)=>updateNode(pn.id,{type:newType,properties:{...(DP[newType]||{}),...pn.properties}})}
                     onUpdateCustom={(k,v)=>updateCustom(pn.id,k,v)}
@@ -5466,9 +5467,9 @@ const NODE_INT_TYPES = new Set(['proxmox','unraid','truenas','freenas','esxi','h
 // ── Inline Node Editor — tabbed popup at node ────────────────────
 function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTitle,
   onTabChange, onClose, onUpdate, onUpdateNotes, onChangeType,
-  onUpdateCustom, onDeleteCustom, onAddCustom, onRenameCustom }) {
-  // onUpdateProp for Services/Ports tabs
-  const onUpdateProp = (key, val) => onUpdate({ properties: { ...node.properties, [key]: val } });
+  onUpdateCustom, onDeleteCustom, onAddCustom, onRenameCustom, onUpdateProp: onUpdatePropExt }) {
+  // onUpdateProp: prefer external (functional update from NodeCanvas) to avoid stale closure on live tab
+  const onUpdateProp = onUpdatePropExt || ((key, val) => onUpdate({ properties: { ...node.properties, [key]: val } }));
 
   const t = NT[node.type] || NT.note;
   const nodeEdges = edges.filter(e => e.from === node.id || e.to === node.id);
@@ -5787,7 +5788,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
           <IntegrationPanel
             node={node}
             canEdit={canEdit}
-            onUpdateProp={(key, val) => onUpdate({ properties: { ...node.properties, [key]: val } })}
+            onUpdateProp={onUpdateProp}
           />
         )}
 

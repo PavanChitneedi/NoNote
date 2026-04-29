@@ -340,7 +340,7 @@ router.post(
             `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, z_index)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
              ON CONFLICT (id) DO UPDATE SET
-               title=$4, x=$5, y=$6, w=$7, h=$8,
+               node_type=$3, title=$4, x=$5, y=$6, w=$7, h=$8,
                properties=$9, custom_props=$10, notes=$11, z_index=$12`,
             [nodeId, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
              JSON.stringify(n.properties || {}),

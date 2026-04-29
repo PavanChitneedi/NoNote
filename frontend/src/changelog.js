@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.4",date:"Apr 2026",items:[
+    "Fix: Node type changes now persist on refresh -- ON CONFLICT DO UPDATE in maps.js was missing node_type.",
+    "Fix: Live view integration config (URL, token) no longer disappears on refresh -- stale closure race condition resolved by passing functional updateProp through InlineNodeEditor.",
+    "Fix: Port number in live view URL is now preserved correctly -- no longer silently overwritten by _integration_cache save.",
+  ]},
   {v:"v5.46.3",date:"Apr 2026",items:[
     "UX: Live view cards (VM/CT guests, storage pools, TrueNAS pools, disks, services, apps) are now uniformly elevated with bg2 background + box shadow for a consistent card hierarchy.",
   ]},
