@@ -3,48 +3,39 @@ import { useTheme, THEMES } from "../context/ThemeContext.jsx";
 import { useSkin } from "../context/SkinContext.jsx";
 import { SKINS, SKIN_KEYS } from "../skins.js";
 
-const THEME_GROUPS = ["Dark", "Light"];
-
-// ── ThemeGrid MUST be outside ThemePicker — if defined inside, every render
-// creates a new component type causing React to unmount/remount it, which
-// breaks click events because React re-mounts before the event finishes.
-function ThemeGrid({ selected, onSelect }) {
+// Compact theme chip strip — rendered inside the Skins tab
+function ThemeStrip({ selected, onSelect }) {
+  const groups = ["Dark", "Light"];
   return (
-    <div style={{ display:"flex", flexDirection:"column", gap:14, marginTop:8 }}>
-      {THEME_GROUPS.map(group => {
-        const grouped = Object.entries(THEMES).filter(([,t]) => t.group === group);
+    <div style={{ marginTop:14, padding:"12px 14px", background:"var(--bg3)", border:"1px solid var(--border)", borderRadius:10 }}>
+      <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:10 }}>Color Theme</div>
+      {groups.map(g => {
+        const items = Object.entries(THEMES).filter(([,t]) => t.group === g);
         return (
-          <div key={group}>
-            <div style={{ fontSize:10, fontWeight:700, color:"var(--text4)", letterSpacing:2, marginBottom:8 }}>
-              {group.toUpperCase()}
-            </div>
-            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))", gap:8 }}>
-              {grouped.map(([key, t]) => (
-                <div key={key}
-                  onClick={e => { e.stopPropagation(); onSelect(key); }}
-                  style={{
-                    padding:"10px 12px", borderRadius:"var(--radius-md)", cursor:"pointer",
-                    border:`2px solid ${selected===key?"var(--accent)":"var(--border)"}`,
-                    background: selected===key?"var(--accent2)18":"var(--bg3)",
-                    display:"flex", alignItems:"center", gap:10,
-                    transition:"var(--transition-all)",
-                    userSelect:"none",
-                  }}
-                  onMouseEnter={e => { if(selected!==key) e.currentTarget.style.borderColor="var(--accent)"; }}
-                  onMouseLeave={e => { if(selected!==key) e.currentTarget.style.borderColor="var(--border)"; }}
-                >
-                  <span style={{ fontSize:20 }}>{t.icon}</span>
-                  <div style={{ flex:1 }}>
-                    <div style={{ fontSize:12, fontWeight:600, color:"var(--text)" }}>{t.name}</div>
-                    <div style={{ display:"flex", gap:3, marginTop:5 }}>
-                      {["--bg","--bg2","--accent","--success","--danger"].map(v => (
-                        <div key={v} style={{ width:11, height:11, borderRadius:3, background:t.vars[v], border:"1px solid rgba(0,0,0,.12)" }}/>
+          <div key={g} style={{ marginBottom:8 }}>
+            <div style={{ fontSize:9, fontWeight:700, color:"var(--text4)", letterSpacing:2, marginBottom:6 }}>{g.toUpperCase()}</div>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {items.map(([key, t]) => {
+                const active = selected === key;
+                return (
+                  <button key={key} onClick={e => { e.stopPropagation(); onSelect(key); }}
+                    title={t.name}
+                    style={{
+                      display:"flex", alignItems:"center", gap:5, padding:"4px 9px",
+                      border:`2px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      borderRadius:20, cursor:"pointer", background: active ? "var(--accent2)18" : "var(--bg2)",
+                      transition:"border-color .12s", userSelect:"none",
+                    }}>
+                    <div style={{ display:"flex", gap:2 }}>
+                      {["--bg","--accent","--success"].map(v => (
+                        <div key={v} style={{ width:8, height:8, borderRadius:"50%", background:t.vars[v], border:"1px solid rgba(0,0,0,.12)" }}/>
                       ))}
                     </div>
-                  </div>
-                  {selected===key && <span style={{ color:"var(--accent)", fontSize:16 }}>✓</span>}
-                </div>
-              ))}
+                    <span style={{ fontSize:10, fontWeight:active?700:500, color: active ? "var(--accent)" : "var(--text3)" }}>{t.name}</span>
+                    {active && <span style={{ fontSize:9, color:"var(--accent)" }}>✓</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         );
@@ -57,26 +48,61 @@ export default function ThemePicker({
   onClose,
   canvasTheme,
   setCanvasTheme,
-  defaultTab = "global",
+  defaultTab = "skins",
 }) {
   const { themeName, setThemeName, fontScale, setFontScale } = useTheme();
-  const { skinName, setSkinName, skin, setAccent } = useSkin();
+  const { skinName, setSkinName } = useSkin();
   const [tab, setTab]         = useState(defaultTab);
   const [fontInput, setFontInput] = useState(String(fontScale));
 
   const hasCanvas = canvasTheme !== undefined && setCanvasTheme !== undefined;
   const tabs = [
-    { id:"skins",   label:"✨ Skins" },
-    { id:"global",  label:"🌍 Theme" },
+    { id:"skins",  label:"✨ Skins" },
     ...(hasCanvas ? [{ id:"canvas", label:"🎨 Canvas" }] : []),
-    { id:"text",    label:"🔤 Text Size" },
+    { id:"text",   label:"🔤 Text Size" },
   ];
+
+  // Canvas-only theme grid (still needed for canvas tab)
+  const ThemeGrid = ({ sel, onSel }) => (
+    <div style={{ display:"flex", flexDirection:"column", gap:14, marginTop:8 }}>
+      {["Dark","Light"].map(group => {
+        const grouped = Object.entries(THEMES).filter(([,t]) => t.group === group);
+        return (
+          <div key={group}>
+            <div style={{ fontSize:10, fontWeight:700, color:"var(--text4)", letterSpacing:2, marginBottom:8 }}>{group.toUpperCase()}</div>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(140px, 1fr))", gap:8 }}>
+              {grouped.map(([key, t]) => (
+                <div key={key} onClick={e => { e.stopPropagation(); onSel(key); }}
+                  style={{
+                    padding:"10px 12px", borderRadius:"var(--radius-md)", cursor:"pointer",
+                    border:`2px solid ${sel===key?"var(--accent)":"var(--border)"}`,
+                    background: sel===key?"var(--accent2)18":"var(--bg3)",
+                    display:"flex", alignItems:"center", gap:10, userSelect:"none",
+                  }}>
+                  <span style={{ fontSize:20 }}>{t.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ fontSize:12, fontWeight:600, color:"var(--text)" }}>{t.name}</div>
+                    <div style={{ display:"flex", gap:3, marginTop:5 }}>
+                      {["--bg","--bg2","--accent","--success","--danger"].map(v => (
+                        <div key={v} style={{ width:11, height:11, borderRadius:3, background:t.vars[v], border:"1px solid rgba(0,0,0,.12)" }}/>
+                      ))}
+                    </div>
+                  </div>
+                  {sel===key && <span style={{ color:"var(--accent)", fontSize:16 }}>✓</span>}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div
-      // Only close on clicking the ACTUAL backdrop div, not bubbled events from children
       onClick={e => { if (e.target === e.currentTarget) onClose(); }}
-      data-ui="theme-picker" data-component="ThemePicker" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
+      data-ui="theme-picker" data-component="ThemePicker" data-page="global" data-role="modal"
+      style={{ position:"fixed", inset:0, background:"rgba(0,0,0,.65)", display:"flex", alignItems:"center", justifyContent:"center", zIndex:1200, padding:16 }}>
       <div
         onClick={e => e.stopPropagation()}
         style={{ background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:12, width:"100%", maxWidth:680, height:"88vh", maxHeight:680, display:"flex", flexDirection:"column", overflow:"hidden" }}>
@@ -107,46 +133,36 @@ export default function ThemePicker({
           {tab==="skins" && (() => { try { return (
             <div>
               <div style={{ fontSize:11, color:"var(--text4)", marginBottom:14, lineHeight:1.6 }}>
-                Each skin is a complete visual overhaul — fonts, shapes, shadows, colors, and special effects.
-                Not just a color change.
+                Each skin is a complete visual overhaul — fonts, shapes, shadows, and special effects.
               </div>
               <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
                 {SKIN_KEYS.map(key => {
                   const s = SKINS[key];
                   const active = skinName === key;
-                  // No palette — use neutral preview colors based on skin tags
                   const isDark = (s.tags||[]).some(t=>["Dark","Neon","Technical","Industrial","Bold","Atmospheric"].includes(t));
                   const bg0 = isDark ? "#0d1117" : "#f5f5f0";
                   const bg1 = isDark ? "#161b22" : "#ffffff";
                   const acc = isDark ? "#58a6ff" : "#6366f1";
                   return (
-                    <div key={key}
-                      onClick={() => setSkinName(key)}
+                    <div key={key} onClick={() => setSkinName(key)}
                       style={{
                         borderRadius:8, cursor:"pointer", overflow:"hidden",
                         border:active?"2px solid var(--accent)":"2px solid var(--border)",
-                        background: bg1,
-                        transition:"transform 0.14s, border-color 0.14s, box-shadow 0.14s",
-                        userSelect:"none",
-                        boxShadow: active ? "var(--nIs,inset 2px 2px 6px var(--neu-shadow),-2px -2px 4px var(--neu-hilight))" : "var(--nEx,2px 2px 5px var(--neu-shadow),-2px -2px 3px var(--neu-hilight))",
+                        background: bg1, transition:"transform 0.14s, border-color 0.14s", userSelect:"none",
                       }}
                       onMouseEnter={e => { if(!active){e.currentTarget.style.transform="translateY(-2px)";e.currentTarget.style.borderColor="var(--accent)";}}}
                       onMouseLeave={e => { if(!active){e.currentTarget.style.transform="";e.currentTarget.style.borderColor="rgba(128,128,128,0.25)";}}}
                     >
-                      {/* Mini UI preview */}
                       <div style={{ height:80, background:bg0, position:"relative", overflow:"hidden", padding:"8px 8px 0" }}>
-                        {/* Fake topbar */}
                         <div style={{ height:8, background:bg1, borderRadius:"2px 2px 0 0", marginBottom:4,
                           border:`1px solid ${acc||"#888"}44`, display:"flex", alignItems:"center", gap:2, padding:"0 4px" }}>
                           <div style={{ width:4, height:4, borderRadius:"50%", background:acc, opacity:.8 }}/>
                           <div style={{ flex:1, height:2, background:acc, opacity:.3, borderRadius:1 }}/>
                         </div>
-                        {/* Fake content cards */}
                         <div style={{ display:"flex", gap:3 }}>
                           {[0.9,0.6,0.75].map((op,i)=>(
                             <div key={i} style={{ flex:1, height:28, background:bg1, borderRadius:2,
-                              border:`1px solid ${acc}${Math.floor(op*50).toString(16).padStart(2,'0')}`,
-                              opacity:op }}/>
+                              border:`1px solid ${acc}${Math.floor(op*50).toString(16).padStart(2,'0')}`, opacity:op }}/>
                           ))}
                         </div>
                         {active && (
@@ -155,14 +171,10 @@ export default function ThemePicker({
                             justifyContent:"center", fontSize:10, color:"#fff", fontWeight:800 }}>✓</div>
                         )}
                       </div>
-                      {/* Info */}
                       <div style={{ padding:"8px 10px", background:bg1 }}>
                         <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:4 }}>
                           <span style={{ fontSize:14 }}>{s.icon}</span>
                           <span style={{ fontSize:12, fontWeight:700, color:isDark?"#e6edf3":"#1a1a2e" }}>{s.name}</span>
-                        </div>
-                        <div style={{ display:"flex", gap:3, marginBottom:6 }}>
-                          {/* Tag pills instead of palette dots */}
                         </div>
                         <div style={{ fontSize:9, color:isDark?"#7d8590":"#666", opacity:.65, marginBottom:5, lineHeight:1.4, overflow:"hidden", display:"-webkit-box", WebkitLineClamp:2, WebkitBoxOrient:"vertical" }}>{s.concept||""}</div>
                         <div style={{ display:"flex", gap:4, flexWrap:"wrap", alignItems:"center" }}>
@@ -180,31 +192,9 @@ export default function ThemePicker({
                   );
                 })}
               </div>
-              {/* Description of active */}
-              {/* ── Accent quick-pick for current skin ── */}
-              {skin?.accentOptions && skin.accentOptions.length > 0 && (
-                <div style={{ marginTop:12, padding:"12px 14px", background:"var(--bg3)",
-                  border:"1px solid var(--border)", borderRadius:8 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:8 }}>
-                    Accent Color
-                    <span style={{ fontSize:10, fontWeight:400, color:"var(--text4)", marginLeft:6 }}>curated for this skin</span>
-                  </div>
-                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                    {skin.accentOptions.map(opt => (
-                      <button key={opt.name} onClick={() => setAccent(opt.accent, opt.accent2)}
-                        style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px",
-                          border:"1px solid var(--border)", borderRadius:"var(--radius-sm)",
-                          background:"var(--bg2)", cursor:"pointer", fontFamily:"var(--font-ui)", fontSize:10 }}>
-                        <span style={{ width:12, height:12, borderRadius:"50%", background:opt.accent, flexShrink:0, border:"1px solid rgba(255,255,255,0.2)" }}/>
-                        <span style={{ color:"var(--text3)" }}>{opt.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
-                            <div style={{ marginTop:12, padding:"10px 14px", background:"var(--bg3)",
-                border:"1px solid var(--border)", borderRadius:8 }}>
+              {/* Active skin description */}
+              <div style={{ marginTop:12, padding:"10px 14px", background:"var(--bg3)", border:"1px solid var(--border)", borderRadius:8 }}>
                 <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
                   <span style={{ fontSize:18 }}>{SKINS[skinName]?.icon}</span>
                   <span style={{ fontSize:13, fontWeight:700, color:"var(--text)" }}>{SKINS[skinName]?.name}</span>
@@ -217,16 +207,11 @@ export default function ThemePicker({
                   "{SKINS[skinName]?.concept}"
                 </div>
               </div>
+
+              {/* Compact theme strip */}
+              <ThemeStrip selected={themeName} onSelect={key => setThemeName(key)} />
             </div>
           ); } catch(err) { return <div style={{color:"var(--danger)",padding:16,fontSize:11}}>Error: {err?.message}</div>; } })()}
-
-          {/* ── Global Theme ── */}
-          {tab==="global" && (
-            <>
-              <div style={{ fontSize:12, color:"var(--text3)", marginBottom:8 }}>Applies to the entire app — sidebar, topbar, panels, and canvas.</div>
-              <ThemeGrid selected={themeName} onSelect={key => { setThemeName(key); }} />
-            </>
-          )}
 
           {/* ── Canvas Theme ── */}
           {tab==="canvas" && hasCanvas && (
@@ -246,7 +231,7 @@ export default function ThemePicker({
                 </div>
                 {canvasTheme==="global" && <span style={{ color:"var(--accent)", fontSize:16, marginLeft:"auto" }}>✓</span>}
               </div>
-              <ThemeGrid selected={canvasTheme} onSelect={key => { setCanvasTheme(key); }} />
+              <ThemeGrid sel={canvasTheme} onSel={key => setCanvasTheme(key)} />
             </>
           )}
 
