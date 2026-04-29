@@ -200,6 +200,70 @@ function truenasJsonRpc(baseUrl, token, calls, timeoutMs = 25000) {
   });
 }
 
+// ── Proxmox SMART temperatures ────────────────────────────────
+// Returns { node: { diskPath: tempC } } across all nodes (best-effort, parallel)
+async function proxmoxDiskTemps(base, h, nodes) {
+  const result = {};
+  await Promise.all(nodes.map(async node => {
+    try {
+      const r = await go(`${base}/api2/json/nodes/${node}/disks/list`, { headers: h }, 6000);
+      if (!r.ok) return;
+      const list = (await r.json()).data || [];
+      const temps = {};
+      await Promise.all(list.slice(0, 8).map(async d => {
+        if (!d.devpath) return;
+        try {
+          const sr = await go(`${base}/api2/json/nodes/${node}/disks/smart?disk=${encodeURIComponent(d.devpath)}`, { headers: h }, 5000);
+          if (!sr.ok) return;
+          const smart = (await sr.json()).data || {};
+          const tempAttr = (smart.attributes || []).find(a => a.name === 'Temperature_Celsius' || a.id === 194 || a.id === 190);
+          if (tempAttr) temps[d.devpath] = parseInt(tempAttr.raw?.split(' ')[0] || tempAttr.value);
+          else if (smart.temperature != null) temps[d.devpath] = smart.temperature;
+        } catch {}
+      }));
+      result[node] = temps;
+    } catch {}
+  }));
+  return result;
+}
+
+// ── Proxmox VE ───────────────────────────────────────────────
+router.post('/proxmox', async (req, res) => {
+  const { url, token } = req.body;
+  if (!url || !token) return res.status(400).json({ error: 'url and token required' });
+  if (!isValidToken(token)) return res.status(400).json({ error: 'Invalid token format' });
+  if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
+  const base = url.replace(/\/$/, '');
+  const h = { Authorization: `PVEAPIToken=${token}` };
+  try {
+    const [nR, vR] = await Promise.all([
+      go(`${base}/api2/json/nodes`,   { headers: h }),
+      go(`${base}/api2/json/version`, { headers: h }),
+    ]);
+    const [nJ, vJ] = await Promise.all([nR.json(), vR.json()]);
+    const nodeList = (nJ.data || []).slice(0, 6);
+    const details = await Promise.all(nodeList.map(async n => {
+      const [sR, vmR, lxR, stR] = await Promise.all([
+        go(`${base}/api2/json/nodes/${n.node}/status`,  { headers: h }),
+        go(`${base}/api2/json/nodes/${n.node}/qemu`,    { headers: h }),
+        go(`${base}/api2/json/nodes/${n.node}/lxc`,     { headers: h }),
+        go(`${base}/api2/json/nodes/${n.node}/storage`, { headers: h }),
+      ]);
+      const [s, vms, lxc, storage] = await Promise.all([sR.json(), vmR.json(), lxR.json(), stR.json()]);
+      const cpuTemp = s.data?.cputemp ?? null;
+      return { node: n.node, online: n.status === 'online', status: s.data, cpuTemp, vms: vms.data || [], lxc: lxc.data || [], storage: storage.data || [] };
+    }));
+    const diskTemps = await proxmoxDiskTemps(base, h, nodeList.map(n => n.node));
+    const nodesWithTemps = details.map(n => ({ ...n, diskTemps: diskTemps[n.node] || {} }));
+    res.json({ ok: true, version: vJ.data?.version, nodes: nodesWithTemps });
+  } catch(e) {
+    const msg = e.code === 'ENOTFOUND'
+      ? `Cannot resolve hostname "${e.hostname || ''}" from Docker. Use an IP address instead (e.g. https://192.168.x.x:8006), or add your LAN DNS to docker-compose.yml.`
+      : e.message;
+    res.status(502).json({ error: msg });
+  }
+});
+
 // ── TrueNAS ──────────────────────────────────────────────────
 router.post('/truenas', async (req, res) => {
   const { url, token } = req.body;

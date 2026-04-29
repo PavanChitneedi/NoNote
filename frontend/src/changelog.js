@@ -1,6 +1,9 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.8",date:"Apr 2026",items:[
+    "Fix: Proxmox route accidentally dropped during TrueNAS migration patch -- restored, all 5 integration endpoints working again.",
+  ]},
   {v:"v5.46.7",date:"Apr 2026",items:[
     "Fix: TrueNAS integration migrated from deprecated REST API (/api/v2.0/) to JSON-RPC 2.0 over WebSocket -- eliminates the deprecation warning TrueNAS shows in the live view.",
     "Perf: All TrueNAS data (pools, disks, services, apps, datasets, etc.) now fetched in a single WebSocket connection instead of 12 separate HTTP requests.",
