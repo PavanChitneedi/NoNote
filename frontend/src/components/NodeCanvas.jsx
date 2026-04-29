@@ -5850,7 +5850,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
                   padding: 20, maxWidth: 300, width: '90%' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Change node type?</div>
                   <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 14 }}>
-                    Change to {NT[confirmType]?.icon} {NT[confirmType]?.label}? You can keep or reset existing property values.
+                    Change to <NodeIcon icon={NT[confirmType]?.icon} size={14} color={NT[confirmType]?.color} /> {NT[confirmType]?.label}? You can keep or reset existing property values.
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button onClick={() => { onChangeType(confirmType); setConfirmType(null); onTabChange('props'); }}

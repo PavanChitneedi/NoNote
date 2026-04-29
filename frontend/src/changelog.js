@@ -1,6 +1,9 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.1",date:"Apr 2026",items:[
+    "Fix: Changing node type via the Type tab no longer crashes with React error #31 -- Lucide icon objects are now rendered via NodeIcon instead of as raw children in the confirm dialog.",
+  ]},
   {v:"v5.46.0",date:"Apr 2026",items:[
     "Security: SSRF guard on probe-models endpoint -- blocks metadata IPs and internal Docker service names.",
     "Security: 90s AbortSignal timeout on all LLM provider fetch calls (prevents hung requests).",
