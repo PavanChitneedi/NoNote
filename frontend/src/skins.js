@@ -271,21 +271,13 @@ body.skin-neumorphic [style*="radial-gradient"] {
   background-size: 28px 28px !important; background-position: center !important;
   background-color: var(--bg) !important;
 }
-/* Node cards: subtle surface lift from canvas, header pressed-in */
+/* Node cards: pure canvas material — outer --nEl shadow does the lifting */
 body.skin-neumorphic .nn-node {
-  background: color-mix(in srgb, var(--bg) 65%, white) !important;
+  background: var(--bg) !important;
 }
+/* Header: subtly darker tonal band — no shadows, just a slight material shift */
 body.skin-neumorphic .nn-node > div:first-child {
-  background: var(--bg) !important; border: none !important;
-  box-shadow: inset 0 2px 6px var(--neu-shadow), inset 0 -1px 3px var(--neu-hilight) !important;
-}
-body.skin-neumorphic[data-theme="dark"] .nn-node,
-body.skin-neumorphic[data-theme="midnight"] .nn-node,
-body.skin-neumorphic[data-theme="forest"] .nn-node,
-body.skin-neumorphic[data-theme="ocean"] .nn-node,
-body.skin-neumorphic[data-theme="amber"] .nn-node,
-body.skin-neumorphic[data-theme="violet"] .nn-node {
-  background: color-mix(in srgb, var(--bg) 85%, white) !important;
+  background: color-mix(in srgb, var(--bg) 93%, black) !important; border: none !important; box-shadow: none !important;
 }
 body.skin-neumorphic[data-theme="dark"] .nn-node > div:first-child,
 body.skin-neumorphic[data-theme="midnight"] .nn-node > div:first-child,
@@ -293,8 +285,7 @@ body.skin-neumorphic[data-theme="forest"] .nn-node > div:first-child,
 body.skin-neumorphic[data-theme="ocean"] .nn-node > div:first-child,
 body.skin-neumorphic[data-theme="amber"] .nn-node > div:first-child,
 body.skin-neumorphic[data-theme="violet"] .nn-node > div:first-child {
-  background: var(--bg) !important;
-  box-shadow: inset 0 2px 6px var(--neu-shadow), inset 0 -1px 3px var(--neu-hilight) !important;
+  background: color-mix(in srgb, var(--bg) 90%, black) !important; box-shadow: none !important;
 }
 
 /* ── FILLET INLINE RADII ──────────────────────────────────────── */

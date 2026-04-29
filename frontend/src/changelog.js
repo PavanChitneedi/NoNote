@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.6",date:"Apr 2026",items:[
+    "Fix: Neumorphic nodes now use pure canvas material (var(--bg)) -- outer elevation shadow does all the lifting, no color trickery.",
+    "Fix: Neumorphic node header uses a subtle tonal shift (color-mix 7% black) instead of inset shadows -- cleaner, more authentic single-material feel.",
+  ]},
   {v:"v5.46.5",date:"Apr 2026",items:[
     "Fix: Neumorphic skin nodes are no longer stark white on clay/light themes -- node surface uses color-mix(bg, white) for a subtle material lift.",
     "Fix: Neumorphic skin header and body sections are now visually distinct -- header uses a pressed-in inset shadow effect (bg color), body sits on the raised surface.",
