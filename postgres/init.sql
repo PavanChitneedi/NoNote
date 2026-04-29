@@ -200,3 +200,5 @@ CREATE TABLE IF NOT EXISTS map_changelog (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, created_at DESC);
+
+ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT;

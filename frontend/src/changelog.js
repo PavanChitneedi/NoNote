@@ -2,12 +2,12 @@
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
   {v:"v5.45.0",date:"Apr 2026",items:[
-    "Feature: AI Chat settings gear button always visible -- no longer hidden when providers are configured.",
-    "Feature: Ollama/LMStudio model picker in chat panel -- probes all installed models, lets you switch per-conversation without a new provider entry.",
-    "Feature: model_override stored per-conversation -- each chat remembers which Ollama model it used.",
-    "Fix: Docker to Ollama connectivity -- extra_hosts host.docker.internal:host-gateway added to backend in docker-compose so Linux containers reach host Ollama.",
-    "Fix: probe-models and callOpenAICompat now also replace 127.0.0.1 (not just localhost) in Docker fallback chain.",
-    "DB: ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT migration added.",
+    "Feature: AI Chat settings gear (gear) button always visible next to provider dropdown.",
+    "Feature: Ollama/LMStudio model picker in chat panel -- probes installed models, switch per-conversation.",
+    "Feature: model_override stored per-conversation in DB.",
+    "Fix: Docker to Ollama -- extra_hosts host.docker.internal:host-gateway in docker-compose backend.",
+    "Fix: probe-models and callOpenAICompat fallback regex now also replaces 127.0.0.1.",
+    "DB: ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT.",
   ]},
   {v:"v5.44.4",date:"Apr 2026",items:[
     "Fix: AI Chat 'Failed to fetch conversations' blocking providers from loading -- Promise.all() failed if conversations failed, so providers never loaded → all inputs disabled. Now load independently.",

@@ -10,7 +10,6 @@ const PROVIDER_ICONS = {
   groq: "⚡", mistral: "🌀", ollama: "🦙", custom: "🔧",
 };
 
-// Providers that expose a live model list
 const AUTO_DISCOVER_PROVIDERS = new Set(["ollama", "lmstudio"]);
 
 const SUGGESTED = [
@@ -32,10 +31,9 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   const [showSettings, setShowSettings]   = useState(false);
   const [error, setError]                 = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
-  // Model override: for Ollama/LMStudio, probe and pick any installed model
-  const [availableModels, setAvailableModels]   = useState([]);
-  const [selectedModel, setSelectedModel]       = useState("");
-  const [probingModels, setProbingModels]        = useState(false);
+  const [availableModels, setAvailableModels] = useState([]);
+  const [selectedModel, setSelectedModel]     = useState("");
+  const [probingModels, setProbingModels]      = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
   const convListRef    = useRef(null);
@@ -63,18 +61,13 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   }, [mapId]);
 
 
-  // When provider changes, probe for models if it's a local runner (Ollama/LMStudio)
   useEffect(() => {
     if (!selectedProvider || !providers.length) return;
     const prov = providers.find(p => p.id === selectedProvider);
     if (!prov || !AUTO_DISCOVER_PROVIDERS.has(prov.provider)) {
-      setAvailableModels([]);
-      setSelectedModel("");
-      return;
+      setAvailableModels([]); setSelectedModel(""); return;
     }
-    setProbingModels(true);
-    setAvailableModels([]);
-    setSelectedModel("");
+    setProbingModels(true); setAvailableModels([]); setSelectedModel("");
     probeLLMModels(prov.base_url)
       .then(d => {
         const models = d.models || [];
@@ -82,9 +75,10 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
         if (models.includes(prov.model)) setSelectedModel(prov.model);
         else if (models.length > 0) setSelectedModel(models[0]);
       })
-      .catch(() => { setAvailableModels([]); })
+      .catch(() => setAvailableModels([]))
       .finally(() => setProbingModels(false));
   }, [selectedProvider, providers]);
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -207,7 +201,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 ))}
               </select>
             )}
-            <button onClick={startNewChat} disabled={!selectedProvider} title="New conversation" style={{
+            <button onClick={startNewChat} disabled={!selectedProvider} style={{
               padding: "6px 12px", background: selectedProvider ? "var(--accent2)" : "var(--bg3)",
               border: "none", borderRadius: "var(--radius-sm)", color: selectedProvider ? "#fff" : "var(--text4)",
               fontSize: 10, fontWeight: 700, letterSpacing: 0.5, cursor: selectedProvider ? "pointer" : "default",
@@ -218,11 +212,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
               color: "var(--text3)", cursor: "pointer", fontSize: 14,
               display: "flex", alignItems: "center", justifyContent: "center",
-              transition: "color .15s, border-color .15s",
-            }}
-              onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
-              onMouseLeave={e => { e.currentTarget.style.color = "var(--text3)"; e.currentTarget.style.borderColor = "var(--border)"; }}
-            >&#9881;</button>
+            }}>⚙</button>
           </div>
 
           {availableModels.length > 0 && (
@@ -237,9 +227,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               </select>
             </div>
           )}
-          {probingModels && (
-            <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 2 }}>&#128269; Detecting models…</div>
-          )}
+          {probingModels && <div style={{ fontSize: 9, color: "var(--text4)" }}>Detecting models...</div>}
 
           {/* Conversation pills — horizontal scroll */}
           {conversations.length > 0 && (
@@ -267,7 +255,6 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                     <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
                       title={c.model_override ? `Model: ${c.model_override}` : `Model: ${c.model}`}>
                       {PROVIDER_ICONS[c.provider] || "💬"} {c.title}
-                      {c.model_override && <span style={{ fontSize: 8, opacity: 0.7 }}> ({c.model_override.split(":")[0]})</span>}
                     </span>
                     <span
                       onClick={e => handleDeleteConv(c.id, e)}

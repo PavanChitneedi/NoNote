@@ -56,30 +56,27 @@ router.get("/presets", authenticate, (req, res) => {
 // ── GET /api/llm/probe-models — discover models from a local/remote provider
 // Used for Ollama auto-discovery. Query: ?base_url=http://localhost:11434
 // NOTE: backend runs in Docker — "localhost" inside Docker ≠ host machine.
-// docker-compose now maps host.docker.internal → host-gateway so that works on Linux.
-// We also try 172.17.0.1 (bridge default) as last resort.
+// We try host.docker.internal as fallback for Docker-on-Linux/Mac setups.
 router.get("/probe-models", authenticate, async (req, res) => {
   const { base_url } = req.query;
   if (!base_url) return res.status(400).json({ error: "base_url required" });
 
-  // Build candidate URLs: original + Docker host fallbacks
   const candidates = [base_url];
-  if (base_url.includes("localhost") || base_url.includes("127.0.0.1")) {
+  if (/localhost|127\.0\.0\.1/.test(base_url)) {
     candidates.push(base_url.replace(/localhost|127\.0\.0\.1/, "host.docker.internal"));
     candidates.push(base_url.replace(/localhost|127\.0\.0\.1/, "172.17.0.1"));
   }
-  // Deduplicate
   const seen = new Set();
-  const uniqueCandidates = candidates.filter(u => { if (seen.has(u)) return false; seen.add(u); return true; });
+  const uniqueCandidates = candidates.filter(u => !seen.has(u) && seen.add(u));
 
   const tryFetch = async (url, path) => {
     const full = url.replace(/\/v1\/?$/, "").replace(/\/?$/, "") + path;
-    const r = await fetch(full, { signal: AbortSignal.timeout(5000) });
+    const r = await fetch(full, { signal: AbortSignal.timeout(4000) });
     if (!r.ok) throw new Error(`${r.status}`);
     return r.json();
   };
 
-  // Try Ollama /api/tags on each candidate (returns full model list with sizes)
+  // Try Ollama /api/tags on each candidate
   for (const url of uniqueCandidates) {
     try {
       const data = await tryFetch(url, "/api/tags");
@@ -221,8 +218,7 @@ router.get("/maps/:mapId/conversations", authenticate, async (req, res) => {
     const { node_id } = req.query;
     const { rows } = await query(
       `SELECT c.id, c.title, c.created_at, c.updated_at, c.node_id,
-              c.model_override,
-              p.name as provider_name, p.model, p.provider
+              c.model_override, p.name as provider_name, p.model, p.provider
        FROM llm_conversations c
        JOIN llm_providers p ON p.id = c.provider_id
        WHERE c.map_id=$1 AND c.user_id=$2
@@ -297,8 +293,6 @@ router.post("/conversations/:id/chat", authenticate, async (req, res) => {
 
     const conv = convRes.rows[0];
     const apiKey = conv.api_key_enc ? decrypt(conv.api_key_enc) : null;
-    // model_override lets users pick a different Ollama model per-conversation
-    // without creating a separate provider entry for each model.
     if (conv.model_override) conv.model = conv.model_override;
 
     // Load history — fetch generously then trim to fit context budget
@@ -399,9 +393,7 @@ async function callLLM({ provider, base_url, model, api_key, system, history, me
 }
 
 async function callOpenAICompat({ base_url, model, api_key, system, messages, provider="" }) {
-  // Docker on Linux: "localhost" inside the container points to the container itself,
-  // not the host machine. docker-compose maps host.docker.internal → host-gateway
-  // so that resolves correctly. 172.17.0.1 is the bridge default as last resort.
+  // Docker: if base_url has localhost, also try host.docker.internal
   const baseUrls = [base_url];
   if (/localhost|127\.0\.0\.1/.test(base_url)) {
     baseUrls.push(base_url.replace(/localhost|127\.0\.0\.1/, "host.docker.internal"));
@@ -632,4 +624,25 @@ router.post("/export-interpret", authenticate, async (req, res) => {
   if (!message) return res.status(400).json({ error: "message required" });
 
   try {
-    const { rows } = await 
+    const { rows } = await query(
+      `SELECT provider, base_url, model, api_key_enc
+       FROM llm_providers WHERE user_id=$1
+       ORDER BY is_default DESC, created_at ASC LIMIT 1`,
+      [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "No LLM provider configured. Add one in Settings." });
+    const p = rows[0];
+    const api_key = p.api_key_enc ? decrypt(p.api_key_enc) : "";
+    const result = await callLLM({
+      provider: p.provider, base_url: p.base_url, model: p.model,
+      api_key, system: "You are a technical documentation writer. Respond only with valid JSON as instructed.",
+      history: [], message,
+    });
+    res.json({ response: result.content });
+  } catch (err) {
+    console.error("[llm] export-interpret error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+export default router;
