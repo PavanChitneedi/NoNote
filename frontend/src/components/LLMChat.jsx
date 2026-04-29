@@ -10,7 +10,7 @@ const PROVIDER_ICONS = {
   groq: "⚡", mistral: "🌀", ollama: "🦙", custom: "🔧",
 };
 
-// Providers that expose a live model list (local runners)
+// Providers that expose a live model list
 const AUTO_DISCOVER_PROVIDERS = new Set(["ollama", "lmstudio"]);
 
 const SUGGESTED = [
@@ -32,9 +32,9 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   const [showSettings, setShowSettings]   = useState(false);
   const [error, setError]                 = useState("");
   const [selectedProvider, setSelectedProvider] = useState("");
-  // Model override: for Ollama/LMStudio, let user pick any installed model per-chat
+  // Model override: for Ollama/LMStudio, probe and pick any installed model
   const [availableModels, setAvailableModels]   = useState([]);
-  const [selectedModel, setSelectedModel]       = useState("");    // "" = use provider default
+  const [selectedModel, setSelectedModel]       = useState("");
   const [probingModels, setProbingModels]        = useState(false);
   const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
@@ -62,7 +62,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
       .finally(() => setLoading(false));
   }, [mapId]);
 
-  // When selected provider changes, probe for models if it's a local runner
+
+  // When provider changes, probe for models if it's a local runner (Ollama/LMStudio)
   useEffect(() => {
     if (!selectedProvider || !providers.length) return;
     const prov = providers.find(p => p.id === selectedProvider);
@@ -71,7 +72,6 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
       setSelectedModel("");
       return;
     }
-    // Probe available models from this Ollama/LMStudio instance
     setProbingModels(true);
     setAvailableModels([]);
     setSelectedModel("");
@@ -79,17 +79,12 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
       .then(d => {
         const models = d.models || [];
         setAvailableModels(models);
-        // Pre-select the model stored on this provider, if it's in the list
         if (models.includes(prov.model)) setSelectedModel(prov.model);
         else if (models.length > 0) setSelectedModel(models[0]);
       })
-      .catch(() => {
-        // Probe failed — not a blocker, user can still chat with stored model
-        setAvailableModels([]);
-      })
+      .catch(() => { setAvailableModels([]); })
       .finally(() => setProbingModels(false));
   }, [selectedProvider, providers]);
-
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -107,7 +102,6 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     if (!selectedProvider) { setError("Select a provider first."); return; }
     setError("");
     try {
-      // Pass model_override if user selected a model different from provider default
       const prov = providers.find(p => p.id === selectedProvider);
       const model_override = (selectedModel && selectedModel !== prov?.model) ? selectedModel : null;
       const d = await createConversation(mapId, { provider_id: selectedProvider, title: "New Chat", model_override });
@@ -192,7 +186,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
           padding: "8px 12px", borderBottom: "1px solid var(--border2)",
           background: "var(--bg2)", flexShrink: 0, display: "flex", flexDirection: "column", gap: 7,
         }}>
-          {/* Provider + New Chat + Settings gear */}
+          {/* Provider + New Chat */}
           <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
             {providers.length === 0 ? (
               <button onClick={() => setShowSettings(true)} style={{
@@ -219,7 +213,6 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               fontSize: 10, fontWeight: 700, letterSpacing: 0.5, cursor: selectedProvider ? "pointer" : "default",
               fontFamily: "var(--font-ui)", flexShrink: 0, transition: "all .15s",
             }}>+ NEW</button>
-            {/* Settings gear — always visible so users can manage providers */}
             <button onClick={() => setShowSettings(true)} title="Manage AI providers" style={{
               width: 30, height: 30, flexShrink: 0, background: "var(--bg3)",
               border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
@@ -229,10 +222,9 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
             }}
               onMouseEnter={e => { e.currentTarget.style.color = "var(--accent)"; e.currentTarget.style.borderColor = "var(--accent)"; }}
               onMouseLeave={e => { e.currentTarget.style.color = "var(--text3)"; e.currentTarget.style.borderColor = "var(--border)"; }}
-            >⚙</button>
+            >&#9881;</button>
           </div>
 
-          {/* Model picker — shown for Ollama/LMStudio providers that expose live model list */}
           {availableModels.length > 0 && (
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <span style={{ fontSize: 9, color: "var(--text4)", fontWeight: 700, letterSpacing: 1, flexShrink: 0 }}>MODEL</span>
@@ -241,14 +233,12 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 borderRadius: "var(--radius-sm)", padding: "5px 8px", color: "var(--text)",
                 fontSize: 11, fontFamily: "var(--font-ui)", outline: "none", cursor: "pointer",
               }}>
-                {availableModels.map(m => (
-                  <option key={m} value={m}>{m}</option>
-                ))}
+                {availableModels.map(m => <option key={m} value={m}>{m}</option>)}
               </select>
             </div>
           )}
           {probingModels && (
-            <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 2 }}>🔍 Detecting models…</div>
+            <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 2 }}>&#128269; Detecting models…</div>
           )}
 
           {/* Conversation pills — horizontal scroll */}
@@ -403,4 +393,96 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
                 background: (activeConvId && input.trim() && !sending) ? "var(--accent2)" : "var(--bg3)",
                 color: (activeConvId && input.trim() && !sending) ? "#fff" : "var(--text4)",
                 cursor: (activeConvId && input.trim() && !sending) ? "pointer" : "default",
-                fontSize: 17, disp
+                fontSize: 17, display: "flex", alignItems: "center", justifyContent: "center",
+                transition: "all .15s",
+              }}
+            >↑</button>
+          </div>
+          <div style={{ fontSize: 9, color: "var(--text4)", marginTop: 5 }}>
+            📌 {nodes.length} nodes · {edges.length} connections in context · Shift+Enter for newline
+          </div>
+        </div>
+      </div>
+
+      {showSettings && (
+        <LLMSettings onClose={() => {
+          setShowSettings(false);
+          getLLMProviders().then(d => {
+            setProviders(d.providers || []);
+            if (!selectedProvider && (d.providers || []).length > 0) {
+              setSelectedProvider((d.providers.find(p => p.is_default) || d.providers[0]).id);
+            }
+          }).catch(() => {});
+        }} />
+      )}
+
+      <style>{`
+        @keyframes llmPulse { 0%,100%{opacity:.2;transform:scale(.8)} 50%{opacity:1;transform:scale(1)} }
+        div[style*="overflowX: auto"]::-webkit-scrollbar { display: none; }
+      `}</style>
+    </>
+  );
+}
+
+function MessageBubble({ message }) {
+  const isUser = message.role === "user";
+  return (
+    <div style={{ display: "flex", gap: 8, alignItems: "flex-start", flexDirection: isUser ? "row-reverse" : "row" }}>
+      {/* Avatar */}
+      <div style={{
+        width: 26, height: 26, borderRadius: "50%", flexShrink: 0,
+        background: isUser ? "var(--accent2)22" : "var(--accent)18",
+        border: `1px solid ${isUser ? "var(--accent2)44" : "var(--accent)33"}`,
+        display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12,
+      }}>{isUser ? "👤" : "🤖"}</div>
+
+      {/* Bubble */}
+      <div style={{ maxWidth: "82%", display: "flex", flexDirection: "column", gap: 3, alignItems: isUser ? "flex-end" : "flex-start" }}>
+        <div style={{
+          background: isUser ? "var(--accent2)18" : "var(--bg3)",
+          border: `1px solid ${isUser ? "var(--accent2)33" : "var(--border)"}`,
+          borderRadius: isUser
+            ? "var(--radius-md) 3px var(--radius-md) var(--radius-md)"
+            : "3px var(--radius-md) var(--radius-md) var(--radius-md)",
+          padding: "9px 13px", fontSize: 12, color: "var(--text)",
+          lineHeight: 1.65, wordBreak: "break-word",
+        }}>
+          <FormattedContent content={message.content} />
+        </div>
+        <div style={{ fontSize: 9, color: "var(--text4)", paddingLeft: 2, paddingRight: 2 }}>
+          {new Date(message.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+          {message.tokens_used && ` · ${message.tokens_used} tok`}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FormattedContent({ content }) {
+  if (!content) return null;
+  const parts = content.split(/(```[\s\S]*?```|`[^`]+`|\*\*[^*]+\*\*)/g);
+  return (
+    <>
+      {parts.map((part, i) => {
+        if (part.startsWith("```") && part.endsWith("```")) {
+          const inner = part.slice(3, -3);
+          const langMatch = inner.match(/^[a-z]+\n/);
+          const code = langMatch ? inner.slice(langMatch[0].length) : inner;
+          return (
+            <pre key={i} style={{
+              background: "var(--bg)", border: "1px solid var(--border2)",
+              borderRadius: "var(--radius-sm)", padding: "9px 11px", fontSize: 11,
+              overflowX: "auto", margin: "6px 0", fontFamily: "monospace",
+              color: "var(--accent)", lineHeight: 1.5,
+            }}>{code}</pre>
+          );
+        }
+        if (part.startsWith("`") && part.endsWith("`"))
+          return <code key={i} style={{ background: "var(--bg)", border: "1px solid var(--border2)", borderRadius: "var(--radius-xs)", padding: "1px 5px", fontSize: 11, color: "var(--accent)", fontFamily: "monospace" }}>{part.slice(1, -1)}</code>;
+        if (part.startsWith("**") && part.endsWith("**"))
+          return <strong key={i} style={{ color: "var(--text)", fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
+        return <span key={i}>{part}</span>;
+      })}
+    </>
+  );
+}
