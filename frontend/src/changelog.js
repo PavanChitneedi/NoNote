@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.46.5",date:"Apr 2026",items:[
+    "Fix: Neumorphic skin nodes are no longer stark white on clay/light themes -- node surface uses color-mix(bg, white) for a subtle material lift.",
+    "Fix: Neumorphic skin header and body sections are now visually distinct -- header uses a pressed-in inset shadow effect (bg color), body sits on the raised surface.",
+    "Fix: Dark theme neumorphic nodes use a tighter color-mix ratio for a more natural dark material appearance.",
+  ]},
   {v:"v5.46.4",date:"Apr 2026",items:[
     "Fix: Node type changes now persist on refresh -- ON CONFLICT DO UPDATE in maps.js was missing node_type.",
     "Fix: Live view integration config (URL, token) no longer disappears on refresh -- stale closure race condition resolved by passing functional updateProp through InlineNodeEditor.",
