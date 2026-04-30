@@ -377,7 +377,7 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
       "--transition-all":"all 0.18s ease",
       "--topbar-bg":"var(--bg)","--topbar-border":"none","--topbar-blur":"none",
       "--sidebar-bg":"var(--bg)","--sidebar-border":"none",
-      "--sidebar-w":"160px",
+      "--sidebar-w":"68px",
     },
     bodyClass:"skin-neumorphic",
     css:`
@@ -662,7 +662,118 @@ body.skin-neumorphic kbd{
    DASHBOARD — neumorphic treatment
 ══════════════════════════════════════════════════════════════════════ */
 
-/* ── Dashboard sidebar — compact like Sakura ─────────────────────── */
+/* ── SIDEBAR: ICON-ONLY (Sakura-style icon dock) ─────────────────── */
+/* Shell: narrow 68px, centred column, overflow hidden to clip text   */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"]{
+  width:68px!important;
+  padding:16px 0 12px!important;
+  align-items:center!important;
+  overflow:hidden!important}
+
+/* User block container: centre content, no border — shadow seam instead */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div:first-child{
+  border-bottom:none!important;
+  box-shadow:0 1px 0 var(--neu-s)!important;
+  padding:0 0 14px!important;margin-bottom:12px!important;
+  width:100%!important;display:flex!important;
+  flex-direction:column!important;align-items:center!important;gap:0!important}
+
+/* Avatar + name row: centre, clip name */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gap:10"][style*="marginBottom:10"]{
+  justify-content:center!important;gap:0!important;
+  padding:0!important;margin-bottom:0!important}
+
+/* Hide name + role text div (second child of avatar row) */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gap:10"][style*="marginBottom:10"] > div:last-child{
+  display:none!important}
+
+/* Avatar circle: centred, neumorphic raised pill */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="borderRadius:\"50%\""][style*="width:36"],
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="border-radius:50%"][style*="width:36"]{
+  box-shadow:var(--nEm)!important;
+  margin:0 auto!important;flex-shrink:0!important}
+
+/* Hide stats grid (map count / node count) entirely */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"]{
+  display:none!important}
+
+/* Nav buttons: icon-only square pills */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="borderLeft"]{
+  font-size:0!important;          /* hides the text node */
+  justify-content:center!important;
+  gap:0!important;
+  padding:0!important;
+  width:44px!important;height:44px!important;
+  margin:2px auto!important;
+  display:flex!important;align-items:center!important;
+  border-left:none!important;
+  border-radius:12px!important;
+  box-shadow:none!important;
+  background:transparent!important}
+/* Restore icon emoji size inside buttons */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="borderLeft"] > span{
+  font-size:18px!important}
+/* Active nav: inset clay press */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
+  box-shadow:var(--nIs)!important;
+  background:var(--bg)!important}
+body.skin-neumorphic[data-theme="dark"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="midnight"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="forest"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="ocean"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="amber"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="violet"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
+  background:var(--bg2)!important}
+/* Inactive nav: rise on hover */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="transparent"]:not([style*="var(--accent2)22"]):hover{
+  box-shadow:var(--nEx)!important;background:var(--bg)!important}
+
+/* Hide bottom version / What's new section */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div[style*="borderTop"]{
+  display:none!important}
+
+/* ── Dashboard content area ──────────────────────────────────────── */
+/* Action buttons (+ New Map, Import) */
+body.skin-neumorphic [style*="New Map"],
+body.skin-neumorphic [style*="Import"]{
+  box-shadow:var(--nEm)!important;border:none!important}
+body.skin-neumorphic [style*="New Map"]:hover,
+body.skin-neumorphic [style*="Import"]:hover{box-shadow:var(--nEl)!important}
+
+/* Search bar */
+body.skin-neumorphic input[placeholder*="maps"],
+body.skin-neumorphic input[placeholder*="search"],
+body.skin-neumorphic input[placeholder*="Search"]{
+  box-shadow:var(--nIm)!important;border:none!important}
+
+/* Filter pills active state */
+body.skin-neumorphic [style*="background:var(--accent2)22"],
+body.skin-neumorphic [style*="background: var(--accent2)22"]{
+  background:var(--bg)!important;box-shadow:var(--nIs)!important;border:none!important}
+
+/* ── MAP CARDS ───────────────────────────────────────────────────── */
+body.skin-neumorphic .nn-map-card{
+  box-shadow:var(--nEl),inset 0 3px 0 var(--ca)!important;
+  background:var(--bg2)!important;
+  border:none!important;border-radius:18px!important;
+  transition:box-shadow 0.2s ease,transform 0.15s ease!important}
+body.skin-neumorphic .nn-map-card:hover{
+  box-shadow:10px 10px 28px var(--neu-s),-10px -10px 28px var(--neu-h),inset 0 3px 0 var(--ca)!important;
+  transform:translateY(-3px)!important}
+body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
+body.skin-neumorphic .nn-card-actions button{
+  box-shadow:none!important;background:transparent!important}
+body.skin-neumorphic .nn-card-actions button:hover{
+  box-shadow:var(--nEs)!important;background:var(--bg)!important}
+
+/* ── LIST ROWS ───────────────────────────────────────────────────── */
+body.skin-neumorphic .nn-map-list-row{
+  box-shadow:var(--nEs)!important;border:none!important;
+  border-radius:12px!important;margin-bottom:5px!important;
+  background:var(--bg2)!important}
+body.skin-neumorphic .nn-map-list-row:hover{
+  box-shadow:var(--nEm)!important;transform:translateX(2px)!important}
+`,
 /* Sidebar shell: raised slab on light, bg2 slab on dark */
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"]{
   padding:16px 0!important}

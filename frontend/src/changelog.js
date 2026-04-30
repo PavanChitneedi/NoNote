@@ -1,6 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.48.4",date:"Apr 2026",items:[
+    "UX: Neumorphic dashboard sidebar — icon-only mode (Sakura-style icon dock, 68px wide).",
+    "UX: Sidebar shows avatar only — username, role text, and stats grid (map/node counts) all hidden.",
+    "UX: Nav buttons reduced to icon-only square pills (44×44px). font-size:0 hides text node, emoji icon restored at 18px.",
+    "UX: Active nav item: inset clay press (nIs). Inactive hover: subtle rise (nEx). Border-left indicator removed.",
+    "UX: Version / What's new section hidden to keep dock clean.",
+    "UX: Section dividers replaced with shadow seams (0 1px 0 var(--neu-s)).",
+    "UX: Avatar raised as a neumorphic pill (nEm shadow).",
+  ]},
   {v:"v5.48.3",date:"Apr 2026",items:[
     "UX: Neumorphic dashboard — full neumorphic treatment on map cards, sidebar, search, filters, action buttons.",
     "UX: Dashboard map cards: raised clay (nEl) with inset accent stripe at top. Hover lifts card +3px with deeper shadow. Action buttons (✎ ⋮) flat by default, pop on hover. Node-count badge: inset chip.",
