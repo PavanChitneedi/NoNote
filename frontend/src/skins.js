@@ -380,109 +380,115 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
     },
     bodyClass:"skin-neumorphic",
     css:`
-/* ═══════════════════════════════════════════════════════════════════════════
-   NEUMORPHIC SKIN — Shadow Token System
+/* ═══════════════════════════════════════════════════════════════════════
+   NEUMORPHIC — Three-group shadow calibration
    
-   Three theme groups require fundamentally different shadow strategies:
+   GROUP A  Mid-tone (clay, sepia): both shadow and highlight visible.
+            oklch color-mix — preserves theme hue. Classic dual-shadow.
+   
+   GROUP B  Near-white (light/cream/parchment/rose/softblue/mint):
+            highlight invisible (bg≈white, contrast≈0.02).
+            Force --neu-h:#fff, lean on shadow side with stronger offset.
+   
+   GROUP C  Near-black (dark/midnight/forest/ocean/amber/violet):
+            color-mix shadow invisible (contrast≈0.006).
+            Use rgba() absolutes: shadow rgba(0,0,0,0.65),
+            highlight rgba(255,255,255,0.18) — always visible on dark.
+            DO NOT override --node-bg; nodes use theme's elevated surface.
+═══════════════════════════════════════════════════════════════════════ */
 
-   GROUP A — MID-TONE (clay, sepia):
-     Both shadow and highlight have sufficient contrast. Classic dual-shadow.
-     shadow = color-mix(bg 72%, black) | highlight = color-mix(bg 30%, white)
-
-   GROUP B — NEAR-WHITE (light, cream, parchment, rose, softblue, mint):
-     Highlight contrast ≈ 0.016-0.026 — invisible. Shadow does all the work.
-     shadow = color-mix(bg 75%, black) | highlight = pure white (#fff)
-     Use oklch to preserve warm/cool hue in the shadow.
-
-   GROUP C — NEAR-BLACK (dark, midnight, forest, ocean, amber, violet):
-     Shadow contrast ≈ 0.006-0.020 — invisible. Highlight does all the work.
-     shadow = color-mix(bg 25%, black) | highlight = color-mix(bg 40%, white)
-     Wider blur, shift offsets to lean into highlight direction.
-
-   All tokens: nEl/nEm/nEs/nEx = raised, nIl/nIm/nIs/nIx = inset.
-   oklch colorspace used everywhere — preserves theme hue in shadows.
-═══════════════════════════════════════════════════════════════════════════ */
-
-/* ── GROUP A: MID-TONE BASE (clay, sepia — dual shadow works great) ──────── */
+/* ── GROUP A : MID-TONE BASE (clay, sepia) ──────────────────────────── */
 body.skin-neumorphic{
   --neu-s:color-mix(in oklch,var(--bg) 72%,#000);
   --neu-h:color-mix(in oklch,var(--bg) 30%,#fff);
-  --nEl:8px 8px 20px var(--neu-s),-8px -8px 20px var(--neu-h);
-  --nEm:5px 5px 12px var(--neu-s),-5px -5px 12px var(--neu-h);
-  --nEs:3px 3px 8px var(--neu-s),-3px -3px 8px var(--neu-h);
-  --nEx:2px 2px 5px var(--neu-s),-2px -2px 5px var(--neu-h);
-  --nIl:inset 6px 6px 16px var(--neu-s),inset -6px -6px 16px var(--neu-h);
-  --nIm:inset 4px 4px 10px var(--neu-s),inset -4px -4px 10px var(--neu-h);
-  --nIs:inset 3px 3px 7px var(--neu-s),inset -3px -3px 7px var(--neu-h);
-  --nIx:inset 2px 2px 4px var(--neu-s),inset -2px -2px 4px var(--neu-h);
+  --nEl: 8px  8px 20px var(--neu-s), -8px  -8px 20px var(--neu-h);
+  --nEm: 5px  5px 13px var(--neu-s), -5px  -5px 13px var(--neu-h);
+  --nEs: 3px  3px  8px var(--neu-s), -3px  -3px  8px var(--neu-h);
+  --nEx: 2px  2px  5px var(--neu-s), -2px  -2px  5px var(--neu-h);
+  --nIl: inset  6px  6px 16px var(--neu-s), inset -6px -6px 16px var(--neu-h);
+  --nIm: inset  4px  4px 10px var(--neu-s), inset -4px -4px 10px var(--neu-h);
+  --nIs: inset  3px  3px  7px var(--neu-s), inset -3px -3px  7px var(--neu-h);
+  --nIx: inset  2px  2px  4px var(--neu-s), inset -2px -2px  4px var(--neu-h);
 }
 
-/* ── GROUP B: NEAR-WHITE THEMES — shadow carries all weight ──────────────── */
-/* Highlight is invisible (bg ≈ white). Force to #fff.
-   oklch on shadow preserves the theme hue (rose→pink shadow, mint→green shadow) */
+/* ── GROUP B : NEAR-WHITE — shadow does the heavy lifting ───────────── */
 body.skin-neumorphic[data-theme="light"],
 body.skin-neumorphic[data-theme="cream"],
 body.skin-neumorphic[data-theme="parchment"],
 body.skin-neumorphic[data-theme="rose"],
 body.skin-neumorphic[data-theme="softblue"],
 body.skin-neumorphic[data-theme="mint"]{
-  --neu-s:color-mix(in oklch,var(--bg) 75%,#000);
+  --neu-s:color-mix(in oklch,var(--bg) 74%,#000);
   --neu-h:#fff;
-  --nEl:9px 9px 22px var(--neu-s),-7px -7px 14px var(--neu-h);
-  --nEm:5px 5px 14px var(--neu-s),-4px -4px 8px var(--neu-h);
-  --nEs:3px 3px 9px var(--neu-s),-2px -2px 5px var(--neu-h);
-  --nEx:2px 2px 5px var(--neu-s),-1px -1px 3px var(--neu-h);
-  --nIl:inset 7px 7px 18px var(--neu-s),inset -5px -5px 10px var(--neu-h);
-  --nIm:inset 4px 4px 11px var(--neu-s),inset -3px -3px 6px var(--neu-h);
-  --nIs:inset 3px 3px 8px var(--neu-s),inset -2px -2px 4px var(--neu-h);
-  --nIx:inset 2px 2px 5px var(--neu-s),inset -1px -1px 3px var(--neu-h);
+  --nEl: 9px  9px 22px var(--neu-s), -7px  -7px 14px var(--neu-h);
+  --nEm: 5px  5px 14px var(--neu-s), -4px  -4px  9px var(--neu-h);
+  --nEs: 3px  3px  9px var(--neu-s), -2px  -2px  5px var(--neu-h);
+  --nEx: 2px  2px  5px var(--neu-s), -1px  -1px  3px var(--neu-h);
+  --nIl: inset  7px  7px 18px var(--neu-s), inset -4px -4px 10px var(--neu-h);
+  --nIm: inset  4px  4px 11px var(--neu-s), inset -3px -3px  6px var(--neu-h);
+  --nIs: inset  3px  3px  8px var(--neu-s), inset -2px -2px  4px var(--neu-h);
+  --nIx: inset  2px  2px  5px var(--neu-s), inset -1px -1px  3px var(--neu-h);
 }
 
-/* ── GROUP C: NEAR-BLACK THEMES — highlight carries all weight ───────────── */
-/* Shadow is invisible (bg ≈ black). Highlight does all depth work.
-   Shift offsets so highlight-top-left is dominant. Wider blur for spread. */
+/* ── GROUP C : NEAR-BLACK — rgba absolutes, highlight-dominant ──────── */
+/* rgba shadows always produce visible contrast regardless of bg value.
+   Nodes must NOT be forced to var(--bg) — their --node-bg is already
+   slightly elevated above bg, which provides natural card separation.   */
 body.skin-neumorphic[data-theme="dark"],
 body.skin-neumorphic[data-theme="midnight"],
 body.skin-neumorphic[data-theme="forest"],
 body.skin-neumorphic[data-theme="ocean"],
 body.skin-neumorphic[data-theme="amber"],
 body.skin-neumorphic[data-theme="violet"]{
-  --neu-s:color-mix(in oklch,var(--bg) 25%,#000);
-  --neu-h:color-mix(in oklch,var(--bg) 40%,#fff);
-  --nEl:5px 5px 18px var(--neu-s),-10px -10px 28px var(--neu-h);
-  --nEm:3px 3px 10px var(--neu-s),-6px -6px 16px var(--neu-h);
-  --nEs:2px 2px 6px var(--neu-s),-4px -4px 10px var(--neu-h);
-  --nEx:1px 1px 4px var(--neu-s),-2px -2px 6px var(--neu-h);
-  --nIl:inset 4px 4px 14px var(--neu-s),inset -8px -8px 20px var(--neu-h);
-  --nIm:inset 3px 3px 9px var(--neu-s),inset -5px -5px 13px var(--neu-h);
-  --nIs:inset 2px 2px 6px var(--neu-s),inset -3px -3px 9px var(--neu-h);
-  --nIx:inset 1px 1px 4px var(--neu-s),inset -2px -2px 6px var(--neu-h);
+  --neu-s: rgba(0,0,0,0.65);
+  --neu-h: rgba(255,255,255,0.12);
+  --nEl:  8px  8px 22px var(--neu-s), -10px -10px 26px var(--neu-h);
+  --nEm:  5px  5px 14px var(--neu-s),  -6px  -6px 16px var(--neu-h);
+  --nEs:  3px  3px  9px var(--neu-s),  -4px  -4px 10px var(--neu-h);
+  --nEx:  2px  2px  5px var(--neu-s),  -3px  -3px  6px var(--neu-h);
+  --nIl:  inset  6px  6px 18px var(--neu-s), inset -8px -8px 20px var(--neu-h);
+  --nIm:  inset  4px  4px 11px var(--neu-s), inset -5px -5px 13px var(--neu-h);
+  --nIs:  inset  3px  3px  8px var(--neu-s), inset -4px -4px  9px var(--neu-h);
+  --nIx:  inset  2px  2px  5px var(--neu-s), inset -2px -2px  6px var(--neu-h);
 }
 
-/* ── GLOBAL BORDER REMOVAL ───────────────────────────────────────────────── */
-body.skin-neumorphic *{border-color:transparent!important;outline:none}
+/* ── GLOBAL RESETS ─────────────────────────────────────────────────── */
+body.skin-neumorphic *{border-color:transparent!important}
 body.skin-neumorphic .nn-topbar,
 body.skin-neumorphic .nn-sidebar{border:none!important}
 
-/* ── SURFACE — single shared material ───────────────────────────────────── */
-body.skin-neumorphic,
-body.skin-neumorphic .nn-topbar,
-body.skin-neumorphic .nn-sidebar{background:var(--bg)!important}
-body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-s),0 -1px 4px var(--neu-h)!important}
-body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-s),-2px 0 6px var(--neu-h)!important}
-
-/* bg2/bg3 flattened to same surface (not fixed/absolute overlays) */
-body.skin-neumorphic [style*="background:var(--bg2)"]:not([style*="position:fixed"]):not([style*="position:absolute"]),
-body.skin-neumorphic [style*="background: var(--bg2)"]:not([style*="position:fixed"]):not([style*="position:absolute"]){
-  background:var(--bg)!important}
-body.skin-neumorphic [style*="background:var(--bg3)"]:not([style*="position:fixed"]):not([style*="position:absolute"]){
+/* ── SURFACE — single shared material (light themes only force bg) ─── */
+/* Light themes: everything shares canvas bg — pure neumorphic "clay" */
+body.skin-neumorphic:not([data-theme="dark"]):not([data-theme="midnight"])
+  :not([data-theme="forest"]):not([data-theme="ocean"])
+  :not([data-theme="amber"]):not([data-theme="violet"]) .nn-topbar,
+body.skin-neumorphic:not([data-theme="dark"]):not([data-theme="midnight"])
+  :not([data-theme="forest"]):not([data-theme="ocean"])
+  :not([data-theme="amber"]):not([data-theme="violet"]) .nn-sidebar{
   background:var(--bg)!important}
 
-/* ── CANVAS GRID — protect against bg override ───────────────────────────── */
-body.skin-neumorphic [style*="radial-gradient"][style*="canvas-dot"]{
-  background:radial-gradient(circle,color-mix(in oklch,var(--bg) 65%,#000) 1.2px,var(--bg) 1.2px) 0 0/28px 28px!important}
+/* Dark themes: topbar/sidebar use bg2 (visible elevated surface) */
+body.skin-neumorphic[data-theme="dark"] .nn-topbar,
+body.skin-neumorphic[data-theme="dark"] .nn-sidebar,
+body.skin-neumorphic[data-theme="midnight"] .nn-topbar,
+body.skin-neumorphic[data-theme="midnight"] .nn-sidebar,
+body.skin-neumorphic[data-theme="forest"] .nn-topbar,
+body.skin-neumorphic[data-theme="forest"] .nn-sidebar,
+body.skin-neumorphic[data-theme="ocean"] .nn-topbar,
+body.skin-neumorphic[data-theme="ocean"] .nn-sidebar,
+body.skin-neumorphic[data-theme="amber"] .nn-topbar,
+body.skin-neumorphic[data-theme="amber"] .nn-sidebar,
+body.skin-neumorphic[data-theme="violet"] .nn-topbar,
+body.skin-neumorphic[data-theme="violet"] .nn-sidebar{
+  background:var(--bg2)!important}
 
-/* ── SVG EDGE PROTECTION ─────────────────────────────────────────────────── */
+/* Topbar and sidebar depth seams */
+body.skin-neumorphic .nn-topbar{
+  box-shadow:0 4px 12px var(--neu-s),0 -2px 6px var(--neu-h)!important}
+body.skin-neumorphic .nn-sidebar{
+  box-shadow:4px 0 12px var(--neu-s),-2px 0 6px var(--neu-h)!important}
+
+/* ── SVG PROTECTION ────────────────────────────────────────────────── */
 body.skin-neumorphic svg path,
 body.skin-neumorphic svg line,
 body.skin-neumorphic svg circle,
@@ -490,76 +496,96 @@ body.skin-neumorphic svg polyline,
 body.skin-neumorphic svg polygon{box-shadow:none!important}
 body.skin-neumorphic svg[style*="position:absolute"]{background:transparent!important}
 
-/* ── BUTTON SYSTEM ───────────────────────────────────────────────────────── */
+/* ── CANVAS GRID ───────────────────────────────────────────────────── */
+body.skin-neumorphic [style*="radial-gradient"][style*="canvas-dot"]{
+  background:radial-gradient(circle,var(--canvas-dot,color-mix(in oklch,var(--bg) 65%,#000)) 1.2px,var(--bg) 1.2px) 0 0/28px 28px!important}
+
+/* ── BUTTON SYSTEM ─────────────────────────────────────────────────── */
+/* Default: raised pillow */
 body.skin-neumorphic button{
-  background:var(--bg)!important;
   box-shadow:var(--nEm)!important;
-  border:none!important;
+  background:var(--bg)!important;
   color:var(--text2)!important;
+  border:none!important;
   border-radius:var(--radius-btn)!important;
   transition:box-shadow 0.15s ease!important;
   font-weight:500!important}
+/* Dark themes: buttons on bg2 surface */
+body.skin-neumorphic[data-theme="dark"] button,
+body.skin-neumorphic[data-theme="midnight"] button,
+body.skin-neumorphic[data-theme="forest"] button,
+body.skin-neumorphic[data-theme="ocean"] button,
+body.skin-neumorphic[data-theme="amber"] button,
+body.skin-neumorphic[data-theme="violet"] button{background:var(--bg2)!important}
+/* Hover: rise higher */
 body.skin-neumorphic button:not([disabled]):hover{
   box-shadow:var(--nEl)!important;color:var(--text)!important}
+/* Active: sink in */
 body.skin-neumorphic button:not([disabled]):active{
   box-shadow:var(--nIs)!important}
-body.skin-neumorphic button[disabled]{
-  box-shadow:none!important;opacity:0.4!important}
-
-/* CTA (accent-fill, white text) — keep fill, add depth */
+/* Disabled: flat */
+body.skin-neumorphic button[disabled]{box-shadow:none!important;opacity:0.4!important}
+/* CTA buttons (white text = accent-fill) */
 body.skin-neumorphic button[style*="color:#fff"],
 body.skin-neumorphic button[style*="color: #fff"],
 body.skin-neumorphic button[style*="color:white"]{
   background:var(--accent2)!important;color:#fff!important;
-  box-shadow:var(--nEm),inset 0 1px 0 rgba(255,255,255,.15)!important}
-body.skin-neumorphic button[style*="color:#fff"]:hover,
-body.skin-neumorphic button[style*="color: #fff"]:hover{
-  box-shadow:var(--nEl),inset 0 1px 0 rgba(255,255,255,.2)!important}
-
-/* Active toolbar mode buttons — pressed in, tinted text, no fill */
+  box-shadow:var(--nEm)!important}
+/* Active toolbar/mode buttons: inset + tinted text */
 body.skin-neumorphic button[style*="color:var(--accent)"],
 body.skin-neumorphic button[style*="color: var(--accent)"],
 body.skin-neumorphic button[style*="color:var(--accent2)"],
 body.skin-neumorphic button[style*="color: var(--accent2)"]{
-  box-shadow:var(--nIs)!important;background:var(--bg)!important;font-weight:700!important}
-
-/* Toolbar trough — buttons inside are flat */
+  box-shadow:var(--nIs)!important;font-weight:700!important}
+/* Toolbar trough: unified inset — buttons inside flat */
 body.skin-neumorphic .nn-toolbar-row{
-  background:var(--bg)!important;
   box-shadow:var(--nIm)!important;
-  border-radius:12px!important;padding:4px 8px!important}
+  background:var(--bg)!important;
+  border-radius:12px!important;padding:4px 8px!important;border:none!important}
+body.skin-neumorphic[data-theme="dark"] .nn-toolbar-row,
+body.skin-neumorphic[data-theme="midnight"] .nn-toolbar-row,
+body.skin-neumorphic[data-theme="forest"] .nn-toolbar-row,
+body.skin-neumorphic[data-theme="ocean"] .nn-toolbar-row,
+body.skin-neumorphic[data-theme="amber"] .nn-toolbar-row,
+body.skin-neumorphic[data-theme="violet"] .nn-toolbar-row{background:var(--bg2)!important}
 body.skin-neumorphic .nn-toolbar-row button{
   box-shadow:none!important;background:transparent!important}
 body.skin-neumorphic .nn-toolbar-row button:not([disabled]):hover{
-  box-shadow:var(--nEx)!important;background:var(--bg)!important}
+  box-shadow:var(--nEx)!important}
 body.skin-neumorphic .nn-toolbar-row button[style*="color:var(--accent)"],
 body.skin-neumorphic .nn-toolbar-row button[style*="color:var(--accent2)"]{
-  box-shadow:var(--nIx)!important;background:var(--bg)!important}
-
+  box-shadow:var(--nIx)!important}
 /* Topbar buttons */
 body.skin-neumorphic .nn-topbar button{
-  box-shadow:var(--nEs)!important;background:var(--bg)!important;border-radius:8px!important}
+  box-shadow:var(--nEs)!important;border-radius:8px!important}
 body.skin-neumorphic .nn-topbar button:hover{box-shadow:var(--nEm)!important}
 body.skin-neumorphic .nn-topbar button:active{box-shadow:var(--nIx)!important}
 
-/* ── INPUT SYSTEM — inset wells ──────────────────────────────────────────── */
+/* ── INPUT SYSTEM — inset wells ────────────────────────────────────── */
 body.skin-neumorphic input:not([type=range]):not([type=checkbox]):not([type=radio]),
 body.skin-neumorphic select,
 body.skin-neumorphic textarea{
-  background:var(--bg)!important;
   box-shadow:var(--nIm)!important;
+  background:var(--bg)!important;
   border:none!important;border-radius:var(--radius-sm)!important;
   color:var(--text)!important}
+body.skin-neumorphic[data-theme="dark"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
+body.skin-neumorphic[data-theme="midnight"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
+body.skin-neumorphic[data-theme="forest"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
+body.skin-neumorphic[data-theme="ocean"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
+body.skin-neumorphic[data-theme="amber"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
+body.skin-neumorphic[data-theme="violet"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
+body.skin-neumorphic[data-theme="dark"] select,body.skin-neumorphic[data-theme="midnight"] select,
+body.skin-neumorphic[data-theme="forest"] select,body.skin-neumorphic[data-theme="ocean"] select,
+body.skin-neumorphic[data-theme="amber"] select,body.skin-neumorphic[data-theme="violet"] select,
+body.skin-neumorphic[data-theme="dark"] textarea,body.skin-neumorphic[data-theme="midnight"] textarea,
+body.skin-neumorphic[data-theme="forest"] textarea,body.skin-neumorphic[data-theme="ocean"] textarea,
+body.skin-neumorphic[data-theme="amber"] textarea,body.skin-neumorphic[data-theme="violet"] textarea{
+  background:var(--bg2)!important}
 body.skin-neumorphic input:focus,
 body.skin-neumorphic select:focus,
 body.skin-neumorphic textarea:focus{
   box-shadow:var(--nIm),0 0 0 2px var(--accent)44!important;outline:none!important}
-
-body.skin-neumorphic input[type=range]{background:transparent!important;box-shadow:none!important}
-body.skin-neumorphic input[type=range]::-webkit-slider-runnable-track{
-  background:var(--bg);box-shadow:var(--nIs);height:6px;border-radius:3px}
-body.skin-neumorphic input[type=range]::-webkit-slider-thumb{
-  background:var(--bg);box-shadow:var(--nEs);border-radius:50%;width:18px;height:18px;margin-top:-6px}
 body.skin-neumorphic input[type=checkbox],
 body.skin-neumorphic input[type=radio]{
   appearance:none;width:18px;height:18px;background:var(--bg);
@@ -569,82 +595,67 @@ body.skin-neumorphic input[type=checkbox]:checked,
 body.skin-neumorphic input[type=radio]:checked{
   box-shadow:var(--nIs),inset 0 0 0 4px var(--accent)}
 
-/* ── NODE CARDS ──────────────────────────────────────────────────────────── */
-body.skin-neumorphic .nn-topbar~* [data-nodeid],
-body.skin-neumorphic [class*="node-"]{
-  background:var(--bg)!important;box-shadow:var(--nEl)!important;
-  border:none!important;border-radius:var(--radius-node)!important}
-body.skin-neumorphic [data-selected="true"]{
-  box-shadow:var(--nEm),0 0 0 2px var(--accent)66!important}
-body.skin-neumorphic [class*="node-header"]{
-  background:color-mix(in oklch,var(--bg) 94%,#000)!important;
-  border-radius:var(--radius-node) var(--radius-node) 0 0!important}
+/* ── NODES — shadow only, never override background ───────────────── */
+/* Nodes use --node-bg from ThemeContext (already elevated above canvas).
+   We only override the shadow — this works correctly for all themes.   */
+/* --shadow-node is set to var(--nEl) via vars{} above, so NodeCanvas
+   will automatically use the correct calibrated shadow per theme group. */
 
-/* ── DASHBOARD MAP CARDS ─────────────────────────────────────────────────── */
+/* ── DASHBOARD MAP CARDS ───────────────────────────────────────────── */
 body.skin-neumorphic .nn-map-card{
-  background:var(--bg)!important;border:none!important;border-radius:20px!important;
-  box-shadow:var(--nEl),inset 0 3px 0 var(--ca)!important}
+  box-shadow:var(--nEl),inset 0 3px 0 var(--ca)!important;
+  border:none!important;border-radius:20px!important}
 body.skin-neumorphic .nn-map-card:hover{
-  box-shadow:9px 9px 24px var(--neu-s),-9px -9px 24px var(--neu-h),inset 0 3px 0 var(--ca)!important;
+  box-shadow:10px 10px 26px var(--neu-s),-10px -10px 26px var(--neu-h),inset 0 3px 0 var(--ca)!important;
   transform:translateY(-2px)}
 body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
 body.skin-neumorphic .nn-map-list-row{
-  background:var(--bg)!important;border:none!important;
-  box-shadow:var(--nEs)!important;border-radius:12px!important;margin-bottom:6px}
-body.skin-neumorphic .nn-map-list-row:hover{
-  box-shadow:var(--nEm)!important;background:var(--bg)!important}
+  box-shadow:var(--nEs)!important;border:none!important;
+  border-radius:12px!important;margin-bottom:6px}
+body.skin-neumorphic .nn-map-list-row:hover{box-shadow:var(--nEm)!important}
 
-/* ── MODALS / POPUPS / PANELS ────────────────────────────────────────────── */
+/* ── POPUPS / MODALS / DROPDOWNS ───────────────────────────────────── */
 body.skin-neumorphic [style*="rgba(0,0,0,.7)"],
 body.skin-neumorphic [style*="rgba(0,0,0,.65)"],
 body.skin-neumorphic [style*="rgba(0,0,0,.6)"],
 body.skin-neumorphic [style*="rgba(0,0,0,.55)"],
 body.skin-neumorphic [style*="rgba(0,0,0,.5)"],
 body.skin-neumorphic [style*="rgba(0,0,0,.4)"]{
-  box-shadow:var(--nEl)!important;background:var(--bg)!important;border:none!important}
+  box-shadow:var(--nEl)!important;border:none!important}
 body.skin-neumorphic [style*="position:absolute"][style*="background:var(--bg"],
 body.skin-neumorphic [style*="position:absolute"][style*="background: var(--bg"]{
   box-shadow:var(--nEl)!important;border:none!important;border-radius:16px!important}
 
-/* ── SIDEBAR NODE LIBRARY ────────────────────────────────────────────────── */
-body.skin-neumorphic .nn-sidebar [style*="background:var(--bg3)"],
-body.skin-neumorphic .nn-sidebar [style*="background: var(--bg3)"]{
-  background:var(--bg)!important;
-  box-shadow:inset 0 1px 0 var(--neu-s),inset 0 -1px 0 var(--neu-h)!important}
+/* ── SIDEBAR LIBRARY ───────────────────────────────────────────────── */
 body.skin-neumorphic .nn-sidebar [draggable]{
-  background:var(--bg)!important;box-shadow:var(--nEs)!important;
-  border:none!important;border-radius:10px!important}
+  box-shadow:var(--nEs)!important;border:none!important;border-radius:10px!important}
 body.skin-neumorphic .nn-sidebar [draggable]:hover{box-shadow:var(--nEm)!important}
 body.skin-neumorphic .nn-sidebar [draggable]:active{box-shadow:var(--nIs)!important}
 
-/* ── SCROLLBARS ──────────────────────────────────────────────────────────── */
-body.skin-neumorphic ::-webkit-scrollbar{width:6px;height:6px}
-body.skin-neumorphic ::-webkit-scrollbar-track{
-  background:var(--bg);box-shadow:var(--nIs);border-radius:4px}
-body.skin-neumorphic ::-webkit-scrollbar-thumb{
-  background:color-mix(in oklch,var(--bg) 60%,#000);border-radius:4px}
-body.skin-neumorphic ::-webkit-scrollbar-thumb:hover{
-  background:color-mix(in oklch,var(--bg) 45%,#000)}
-
-/* ── BADGES / CHIPS / PILLS ──────────────────────────────────────────────── */
-body.skin-neumorphic kbd{
-  background:var(--bg)!important;box-shadow:var(--nEs)!important;
-  border:none!important;border-radius:6px!important}
-
-/* Active-state pills/tabs: inset instead of fill */
+/* ── ACTIVE-STATE PILLS / FILTER TABS ─────────────────────────────── */
 body.skin-neumorphic [style*="background:var(--accent)"]:not([style*="color:#fff"]):not([style*="color: #fff"]),
 body.skin-neumorphic [style*="background: var(--accent)"]:not([style*="color:#fff"]):not([style*="color: #fff"]),
 body.skin-neumorphic [style*="background:var(--accent2)"]:not([style*="color:#fff"]):not([style*="color: #fff"]),
 body.skin-neumorphic [style*="background: var(--accent2)"]:not([style*="color:#fff"]):not([style*="color: #fff"]){
-  background:var(--bg)!important;box-shadow:var(--nIs)!important;
+  background:transparent!important;box-shadow:var(--nIs)!important;
   color:var(--accent)!important;border:none!important}
 
-/* Bg3 sections: inset trough */
-body.skin-neumorphic [style*="background:var(--bg2)"]:not([style*="position:fixed"]):not([style*="position:absolute"]),
-body.skin-neumorphic [style*="background: var(--bg2)"]:not([style*="position:fixed"]):not([style*="position:absolute"]){
-  background:var(--bg)!important;box-shadow:var(--nEm)!important;border:none!important}
-body.skin-neumorphic [style*="background:var(--bg3)"]:not([style*="position:fixed"]):not([style*="position:absolute"]){
-  background:var(--bg)!important;box-shadow:var(--nIs)!important;border:none!important}
+/* ── SCROLLBARS ────────────────────────────────────────────────────── */
+body.skin-neumorphic ::-webkit-scrollbar{width:6px;height:6px}
+body.skin-neumorphic ::-webkit-scrollbar-track{box-shadow:var(--nIs);border-radius:4px}
+body.skin-neumorphic ::-webkit-scrollbar-thumb{
+  background:color-mix(in oklch,var(--bg) 60%,#000);border-radius:4px}
+body.skin-neumorphic[data-theme="dark"] ::-webkit-scrollbar-thumb,
+body.skin-neumorphic[data-theme="midnight"] ::-webkit-scrollbar-thumb,
+body.skin-neumorphic[data-theme="forest"] ::-webkit-scrollbar-thumb,
+body.skin-neumorphic[data-theme="ocean"] ::-webkit-scrollbar-thumb,
+body.skin-neumorphic[data-theme="amber"] ::-webkit-scrollbar-thumb,
+body.skin-neumorphic[data-theme="violet"] ::-webkit-scrollbar-thumb{
+  background:rgba(255,255,255,0.15)}
+
+/* ── KBD CHIPS ─────────────────────────────────────────────────────── */
+body.skin-neumorphic kbd{
+  box-shadow:var(--nEs)!important;border:none!important;border-radius:6px!important}
 `,
   },
 };

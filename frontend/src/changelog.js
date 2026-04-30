@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.48.2",date:"Apr 2026",items:[
+    "Fix: Neumorphic skin — critical fix for dark themes and near-white themes.",
+    "Fix: Root cause — skin was overriding node background to var(--bg), making nodes the same colour as the canvas on dark themes (invisible). Now nodes always use their theme's --node-bg (which is already elevated above --bg).",
+    "Fix: Dark themes (dark/midnight/forest/ocean/amber/violet) — color-mix shadows were contrast≈0.006 (invisible). Now uses rgba() absolutes: rgba(0,0,0,0.65) shadow + rgba(255,255,255,0.12) highlight. Always visible on any dark surface.",
+    "Fix: Dark themes — topbar, sidebar, buttons, inputs now use var(--bg2) instead of var(--bg) as surface, creating visible panel separation.",
+    "Fix: Near-white themes — highlight contrast was ≈0.016 (invisible). Now forces --neu-h:#fff and leans on shadow-dominant asymmetric offsets.",
+    "Architecture: GROUP C token override now uses rgba absolutes not color-mix, with highlight-leaning offsets (-10px/-10px) since highlight does all the depth work on dark surfaces.",
+  ]},
   {v:"v5.48.1",date:"Apr 2026",items:[
     "Fix: Neumorphic skin now works correctly on all 13 themes, not just Clay.",
     "Fix: Near-white themes (light/cream/parchment/rose/softblue/mint) — highlight was invisible (contrast 0.016). Now forces --neu-h to #fff (pure white) since bg is already near-white. Shadow asymmetry emphasises the bottom-right direction.",
