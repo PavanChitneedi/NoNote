@@ -181,16 +181,6 @@ export default function ThemePicker({
                 })}
               </div>
               {/* Description of active */}
-style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px",
-                          border:"1px solid var(--border)", borderRadius:"var(--radius-sm)",
-                          background:"var(--bg2)", cursor:"pointer", fontFamily:"var(--font-ui)", fontSize:10 }}>
-                        <span style={{ width:12, height:12, borderRadius:"50%", background:opt.accent, flexShrink:0, border:"1px solid rgba(255,255,255,0.2)" }}/>
-                        <span style={{ color:"var(--text3)" }}>{opt.name}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
 
                             <div style={{ marginTop:12, padding:"10px 14px", background:"var(--bg3)",
                 border:"1px solid var(--border)", borderRadius:8 }}>
