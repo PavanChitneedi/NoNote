@@ -60,7 +60,7 @@ export default function ThemePicker({
   defaultTab = "global",
 }) {
   const { themeName, setThemeName, fontScale, setFontScale } = useTheme();
-  const { skinName, setSkinName, skin, setAccent } = useSkin();
+  const { skinName, setSkinName, skin } = useSkin();
   const [tab, setTab]         = useState(defaultTab);
   const [fontInput, setFontInput] = useState(String(fontScale));
 
@@ -181,18 +181,7 @@ export default function ThemePicker({
                 })}
               </div>
               {/* Description of active */}
-              {/* ── Accent quick-pick for current skin ── */}
-              {skin?.accentOptions && skin.accentOptions.length > 0 && (
-                <div style={{ marginTop:12, padding:"12px 14px", background:"var(--bg3)",
-                  border:"1px solid var(--border)", borderRadius:8 }}>
-                  <div style={{ fontSize:11, fontWeight:700, color:"var(--text)", marginBottom:8 }}>
-                    Accent Color
-                    <span style={{ fontSize:10, fontWeight:400, color:"var(--text4)", marginLeft:6 }}>curated for this skin</span>
-                  </div>
-                  <div style={{ display:"flex", gap:8, flexWrap:"wrap" }}>
-                    {skin.accentOptions.map(opt => (
-                      <button key={opt.name} onClick={() => setAccent(opt.accent, opt.accent2)}
-                        style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px",
+style={{ display:"flex", alignItems:"center", gap:6, padding:"5px 10px",
                           border:"1px solid var(--border)", borderRadius:"var(--radius-sm)",
                           background:"var(--bg2)", cursor:"pointer", fontFamily:"var(--font-ui)", fontSize:10 }}>
                         <span style={{ width:12, height:12, borderRadius:"50%", background:opt.accent, flexShrink:0, border:"1px solid rgba(255,255,255,0.2)" }}/>

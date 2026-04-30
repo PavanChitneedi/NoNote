@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.47.0",date:"Apr 2026",items:[
+    "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
+    "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
+  ]},
   {v:"v5.46.8",date:"Apr 2026",items:[
     "Fix: Proxmox route accidentally dropped during TrueNAS migration patch -- restored, all 5 integration endpoints working again.",
   ]},
@@ -858,5 +862,6 @@ export const CHANGELOG = [
 ];
 
 
+// Single source of truth for current version — always the first entry in CHANGELOG
 // Single source of truth for current version — always the first entry in CHANGELOG
 export const CURRENT_VERSION = CHANGELOG[0].v;

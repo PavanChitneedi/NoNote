@@ -230,7 +230,7 @@ function AppInner() {
     </div>
   );
 
-  // ── ICON DOCK layout (neumorphic, sakura, carbon) ────────────
+  // ── ICON DOCK layout (sakura, carbon) ────────────
   if (navType === "icon-dock") return (
     <div style={{ height:"100vh", background:"var(--bg)", display:"flex", overflow:"hidden" }}>
       {view.page !== "canvas" && (
