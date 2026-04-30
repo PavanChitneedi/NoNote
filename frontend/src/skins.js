@@ -362,8 +362,8 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
   },
 
   neumorphic: {
-    name:"Neumorphic", icon:"-", nav:"top",
-    concept:"Soft clay surfaces. Elements emerge from -- or sink into -- the same single material. Depth without colour.",
+    name:"Neumorphic", icon:"o", nav:"top",
+    concept:"Soft clay surfaces. Elements emerge from or sink into the same single material. Depth without colour.",
     tags:["Soft","3D","Minimal"],
     defaultTheme:"clay",
     vars:{
@@ -382,23 +382,20 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
     bodyClass:"skin-neumorphic",
     css:`
 /* =======================================================================
-   NEUMORPHIC -- Three-group shadow calibration
-   
-   GROUP A  Mid-tone (clay, sepia): both shadow and highlight visible.
-            oklch color-mix -- preserves theme hue. Classic dual-shadow.
-   
+   NEUMORPHIC SKIN -- Three-group shadow calibration
+   GROUP A  Mid-tone (clay, sepia): both shadow + highlight visible.
+            oklch color-mix preserves theme hue. Classic dual-shadow.
    GROUP B  Near-white (light/cream/parchment/rose/softblue/mint):
             highlight invisible (bg~white, contrast~0.02).
-            Force --neu-h:#fff, lean on shadow side with stronger offset.
-   
+            Force --neu-h:#fff, lean on shadow side.
    GROUP C  Near-black (dark/midnight/forest/ocean/amber/violet):
             color-mix shadow invisible (contrast~0.006).
             Use rgba() absolutes: shadow rgba(0,0,0,0.65),
-            highlight rgba(255,255,255,0.18) -- always visible on dark.
+            highlight rgba(255,255,255,0.12) -- always visible on dark.
             DO NOT override --node-bg; nodes use theme's elevated surface.
 ======================================================================= */
 
-/* -- GROUP A : MID-TONE BASE (clay, sepia) ---------------------------- */
+/* -- GROUP A: MID-TONE BASE (clay, sepia) ------------------------------ */
 body.skin-neumorphic{
   --neu-s:color-mix(in oklch,var(--bg) 72%,#000);
   --neu-h:color-mix(in oklch,var(--bg) 30%,#fff);
@@ -412,7 +409,7 @@ body.skin-neumorphic{
   --nIx: inset  2px  2px  4px var(--neu-s), inset -2px -2px  4px var(--neu-h);
 }
 
-/* -- GROUP B : NEAR-WHITE -- shadow does the heavy lifting ------------- */
+/* -- GROUP B: NEAR-WHITE -- shadow does the heavy lifting -------------- */
 body.skin-neumorphic[data-theme="light"],
 body.skin-neumorphic[data-theme="cream"],
 body.skin-neumorphic[data-theme="parchment"],
@@ -431,10 +428,7 @@ body.skin-neumorphic[data-theme="mint"]{
   --nIx: inset  2px  2px  5px var(--neu-s), inset -1px -1px  3px var(--neu-h);
 }
 
-/* -- GROUP C : NEAR-BLACK -- rgba absolutes, highlight-dominant -------- */
-/* rgba shadows always produce visible contrast regardless of bg value.
-   Nodes must NOT be forced to var(--bg) -- their --node-bg is already
-   slightly elevated above bg, which provides natural card separation.   */
+/* -- GROUP C: NEAR-BLACK -- rgba absolutes, highlight-dominant --------- */
 body.skin-neumorphic[data-theme="dark"],
 body.skin-neumorphic[data-theme="midnight"],
 body.skin-neumorphic[data-theme="forest"],
@@ -453,22 +447,14 @@ body.skin-neumorphic[data-theme="violet"]{
   --nIx:  inset  2px  2px  5px var(--neu-s), inset -2px -2px  6px var(--neu-h);
 }
 
-/* -- GLOBAL RESETS --------------------------------------------------- */
+/* -- GLOBAL RESETS ----------------------------------------------------- */
 body.skin-neumorphic *{border-color:transparent!important}
 body.skin-neumorphic .nn-topbar,
 body.skin-neumorphic .nn-sidebar{border:none!important}
 
-/* -- SURFACE -- single shared material (light themes only force bg) --- */
-/* Light themes: everything shares canvas bg -- pure neumorphic "clay" */
-body.skin-neumorphic:not([data-theme="dark"]):not([data-theme="midnight"])
-  :not([data-theme="forest"]):not([data-theme="ocean"])
-  :not([data-theme="amber"]):not([data-theme="violet"]) .nn-topbar,
-body.skin-neumorphic:not([data-theme="dark"]):not([data-theme="midnight"])
-  :not([data-theme="forest"]):not([data-theme="ocean"])
-  :not([data-theme="amber"]):not([data-theme="violet"]) .nn-sidebar{
-  background:var(--bg)!important}
-
-/* Dark themes: topbar/sidebar use bg2 (visible elevated surface) */
+/* -- SURFACE ------------------------------------------------------------ */
+body.skin-neumorphic .nn-topbar,
+body.skin-neumorphic .nn-sidebar{background:var(--bg)!important}
 body.skin-neumorphic[data-theme="dark"] .nn-topbar,
 body.skin-neumorphic[data-theme="dark"] .nn-sidebar,
 body.skin-neumorphic[data-theme="midnight"] .nn-topbar,
@@ -480,68 +466,46 @@ body.skin-neumorphic[data-theme="ocean"] .nn-sidebar,
 body.skin-neumorphic[data-theme="amber"] .nn-topbar,
 body.skin-neumorphic[data-theme="amber"] .nn-sidebar,
 body.skin-neumorphic[data-theme="violet"] .nn-topbar,
-body.skin-neumorphic[data-theme="violet"] .nn-sidebar{
-  background:var(--bg2)!important}
+body.skin-neumorphic[data-theme="violet"] .nn-sidebar{background:var(--bg2)!important}
+body.skin-neumorphic .nn-topbar{box-shadow:0 4px 12px var(--neu-s),0 -2px 6px var(--neu-h)!important}
+body.skin-neumorphic .nn-sidebar{box-shadow:4px 0 12px var(--neu-s),-2px 0 6px var(--neu-h)!important}
 
-/* Topbar and sidebar depth seams */
-body.skin-neumorphic .nn-topbar{
-  box-shadow:0 4px 12px var(--neu-s),0 -2px 6px var(--neu-h)!important}
-body.skin-neumorphic .nn-sidebar{
-  box-shadow:4px 0 12px var(--neu-s),-2px 0 6px var(--neu-h)!important}
-
-/* -- SVG PROTECTION -------------------------------------------------- */
-body.skin-neumorphic svg path,
-body.skin-neumorphic svg line,
-body.skin-neumorphic svg circle,
-body.skin-neumorphic svg polyline,
+/* -- SVG PROTECTION ---------------------------------------------------- */
+body.skin-neumorphic svg path,body.skin-neumorphic svg line,
+body.skin-neumorphic svg circle,body.skin-neumorphic svg polyline,
 body.skin-neumorphic svg polygon{box-shadow:none!important}
 body.skin-neumorphic svg[style*="position:absolute"]{background:transparent!important}
 
-/* -- CANVAS GRID ----------------------------------------------------- */
+/* -- CANVAS GRID ------------------------------------------------------- */
 body.skin-neumorphic [style*="radial-gradient"][style*="canvas-dot"]{
   background:radial-gradient(circle,var(--canvas-dot,color-mix(in oklch,var(--bg) 65%,#000)) 1.2px,var(--bg) 1.2px) 0 0/28px 28px!important}
 
-/* -- BUTTON SYSTEM --------------------------------------------------- */
-/* Default: raised pillow */
+/* -- BUTTONS ----------------------------------------------------------- */
 body.skin-neumorphic button{
-  box-shadow:var(--nEm)!important;
-  background:var(--bg)!important;
-  color:var(--text2)!important;
-  border:none!important;
+  box-shadow:var(--nEm)!important;background:var(--bg)!important;
+  color:var(--text2)!important;border:none!important;
   border-radius:var(--radius-btn)!important;
-  transition:box-shadow 0.15s ease!important;
-  font-weight:500!important}
-/* Dark themes: buttons on bg2 surface */
+  transition:box-shadow 0.15s ease!important;font-weight:500!important}
 body.skin-neumorphic[data-theme="dark"] button,
 body.skin-neumorphic[data-theme="midnight"] button,
 body.skin-neumorphic[data-theme="forest"] button,
 body.skin-neumorphic[data-theme="ocean"] button,
 body.skin-neumorphic[data-theme="amber"] button,
 body.skin-neumorphic[data-theme="violet"] button{background:var(--bg2)!important}
-/* Hover: rise higher */
-body.skin-neumorphic button:not([disabled]):hover{
-  box-shadow:var(--nEl)!important;color:var(--text)!important}
-/* Active: sink in */
-body.skin-neumorphic button:not([disabled]):active{
-  box-shadow:var(--nIs)!important}
-/* Disabled: flat */
+body.skin-neumorphic button:not([disabled]):hover{box-shadow:var(--nEl)!important;color:var(--text)!important}
+body.skin-neumorphic button:not([disabled]):active{box-shadow:var(--nIs)!important}
 body.skin-neumorphic button[disabled]{box-shadow:none!important;opacity:0.4!important}
-/* CTA buttons (white text = accent-fill) */
 body.skin-neumorphic button[style*="color:#fff"],
 body.skin-neumorphic button[style*="color: #fff"],
 body.skin-neumorphic button[style*="color:white"]{
-  background:var(--accent2)!important;color:#fff!important;
-  box-shadow:var(--nEm)!important}
-/* Active toolbar/mode buttons: inset + tinted text */
+  background:var(--accent2)!important;color:#fff!important;box-shadow:var(--nEm)!important}
 body.skin-neumorphic button[style*="color:var(--accent)"],
 body.skin-neumorphic button[style*="color: var(--accent)"],
 body.skin-neumorphic button[style*="color:var(--accent2)"],
 body.skin-neumorphic button[style*="color: var(--accent2)"]{
   box-shadow:var(--nIs)!important;font-weight:700!important}
-/* Toolbar trough: unified inset -- buttons inside flat */
 body.skin-neumorphic .nn-toolbar-row{
-  box-shadow:var(--nIm)!important;
-  background:var(--bg)!important;
+  box-shadow:var(--nIm)!important;background:var(--bg)!important;
   border-radius:12px!important;padding:4px 8px!important;border:none!important}
 body.skin-neumorphic[data-theme="dark"] .nn-toolbar-row,
 body.skin-neumorphic[data-theme="midnight"] .nn-toolbar-row,
@@ -549,27 +513,19 @@ body.skin-neumorphic[data-theme="forest"] .nn-toolbar-row,
 body.skin-neumorphic[data-theme="ocean"] .nn-toolbar-row,
 body.skin-neumorphic[data-theme="amber"] .nn-toolbar-row,
 body.skin-neumorphic[data-theme="violet"] .nn-toolbar-row{background:var(--bg2)!important}
-body.skin-neumorphic .nn-toolbar-row button{
-  box-shadow:none!important;background:transparent!important}
-body.skin-neumorphic .nn-toolbar-row button:not([disabled]):hover{
-  box-shadow:var(--nEx)!important}
+body.skin-neumorphic .nn-toolbar-row button{box-shadow:none!important;background:transparent!important}
+body.skin-neumorphic .nn-toolbar-row button:not([disabled]):hover{box-shadow:var(--nEx)!important}
 body.skin-neumorphic .nn-toolbar-row button[style*="color:var(--accent)"],
-body.skin-neumorphic .nn-toolbar-row button[style*="color:var(--accent2)"]{
-  box-shadow:var(--nIx)!important}
-/* Topbar buttons */
-body.skin-neumorphic .nn-topbar button{
-  box-shadow:var(--nEs)!important;border-radius:8px!important}
+body.skin-neumorphic .nn-toolbar-row button[style*="color:var(--accent2)"]{box-shadow:var(--nIx)!important}
+body.skin-neumorphic .nn-topbar button{box-shadow:var(--nEs)!important;border-radius:8px!important}
 body.skin-neumorphic .nn-topbar button:hover{box-shadow:var(--nEm)!important}
 body.skin-neumorphic .nn-topbar button:active{box-shadow:var(--nIx)!important}
 
-/* -- INPUT SYSTEM -- inset wells -------------------------------------- */
+/* -- INPUTS ------------------------------------------------------------ */
 body.skin-neumorphic input:not([type=range]):not([type=checkbox]):not([type=radio]),
-body.skin-neumorphic select,
-body.skin-neumorphic textarea{
-  box-shadow:var(--nIm)!important;
-  background:var(--bg)!important;
-  border:none!important;border-radius:var(--radius-sm)!important;
-  color:var(--text)!important}
+body.skin-neumorphic select,body.skin-neumorphic textarea{
+  box-shadow:var(--nIm)!important;background:var(--bg)!important;
+  border:none!important;border-radius:var(--radius-sm)!important;color:var(--text)!important}
 body.skin-neumorphic[data-theme="dark"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
 body.skin-neumorphic[data-theme="midnight"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
 body.skin-neumorphic[data-theme="forest"] input:not([type=range]):not([type=checkbox]):not([type=radio]),
@@ -583,57 +539,25 @@ body.skin-neumorphic[data-theme="dark"] textarea,body.skin-neumorphic[data-theme
 body.skin-neumorphic[data-theme="forest"] textarea,body.skin-neumorphic[data-theme="ocean"] textarea,
 body.skin-neumorphic[data-theme="amber"] textarea,body.skin-neumorphic[data-theme="violet"] textarea{
   background:var(--bg2)!important}
-body.skin-neumorphic input:focus,
-body.skin-neumorphic select:focus,
-body.skin-neumorphic textarea:focus{
+body.skin-neumorphic input:focus,body.skin-neumorphic select:focus,body.skin-neumorphic textarea:focus{
   box-shadow:var(--nIm),0 0 0 2px var(--accent)44!important;outline:none!important}
-body.skin-neumorphic input[type=checkbox],
-body.skin-neumorphic input[type=radio]{
+body.skin-neumorphic input[type=checkbox],body.skin-neumorphic input[type=radio]{
   appearance:none;width:18px;height:18px;background:var(--bg);
   box-shadow:var(--nIs);border-radius:4px;cursor:pointer}
 body.skin-neumorphic input[type=radio]{border-radius:50%}
-body.skin-neumorphic input[type=checkbox]:checked,
-body.skin-neumorphic input[type=radio]:checked{
+body.skin-neumorphic input[type=checkbox]:checked,body.skin-neumorphic input[type=radio]:checked{
   box-shadow:var(--nIs),inset 0 0 0 4px var(--accent)}
 
-/* -- NODES -- shadow only, never override background ----------------- */
-/* Nodes use --node-bg from ThemeContext (already elevated above canvas).
-   We only override the shadow -- this works correctly for all themes.   */
-/* --shadow-node is set to var(--nEl) via vars{} above, so NodeCanvas
-   will automatically use the correct calibrated shadow per theme group. */
-
-/* -- DASHBOARD MAP CARDS --------------------------------------------- */
-body.skin-neumorphic .nn-map-card{
-  box-shadow:var(--nEl),inset 0 3px 0 var(--ca)!important;
-  border:none!important;border-radius:20px!important}
-body.skin-neumorphic .nn-map-card:hover{
-  box-shadow:10px 10px 26px var(--neu-s),-10px -10px 26px var(--neu-h),inset 0 3px 0 var(--ca)!important;
-  transform:translateY(-2px)}
-body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-body.skin-neumorphic .nn-map-list-row{
-  box-shadow:var(--nEs)!important;border:none!important;
-  border-radius:12px!important;margin-bottom:6px}
-body.skin-neumorphic .nn-map-list-row:hover{box-shadow:var(--nEm)!important}
-
-/* -- POPUPS / MODALS / DROPDOWNS ------------------------------------- */
-body.skin-neumorphic [style*="rgba(0,0,0,.7)"],
-body.skin-neumorphic [style*="rgba(0,0,0,.65)"],
-body.skin-neumorphic [style*="rgba(0,0,0,.6)"],
-body.skin-neumorphic [style*="rgba(0,0,0,.55)"],
-body.skin-neumorphic [style*="rgba(0,0,0,.5)"],
-body.skin-neumorphic [style*="rgba(0,0,0,.4)"]{
+/* -- POPUPS / MODALS --------------------------------------------------- */
+body.skin-neumorphic [style*="rgba(0,0,0,.7)"],body.skin-neumorphic [style*="rgba(0,0,0,.65)"],
+body.skin-neumorphic [style*="rgba(0,0,0,.6)"],body.skin-neumorphic [style*="rgba(0,0,0,.55)"],
+body.skin-neumorphic [style*="rgba(0,0,0,.5)"],body.skin-neumorphic [style*="rgba(0,0,0,.4)"]{
   box-shadow:var(--nEl)!important;border:none!important}
 body.skin-neumorphic [style*="position:absolute"][style*="background:var(--bg"],
 body.skin-neumorphic [style*="position:absolute"][style*="background: var(--bg"]{
   box-shadow:var(--nEl)!important;border:none!important;border-radius:16px!important}
 
-/* -- SIDEBAR LIBRARY ------------------------------------------------- */
-body.skin-neumorphic .nn-sidebar [draggable]{
-  box-shadow:var(--nEs)!important;border:none!important;border-radius:10px!important}
-body.skin-neumorphic .nn-sidebar [draggable]:hover{box-shadow:var(--nEm)!important}
-body.skin-neumorphic .nn-sidebar [draggable]:active{box-shadow:var(--nIs)!important}
-
-/* -- ACTIVE-STATE PILLS / FILTER TABS ------------------------------- */
+/* -- ACTIVE PILLS / TABS ----------------------------------------------- */
 body.skin-neumorphic [style*="background:var(--accent)"]:not([style*="color:#fff"]):not([style*="color: #fff"]),
 body.skin-neumorphic [style*="background: var(--accent)"]:not([style*="color:#fff"]):not([style*="color: #fff"]),
 body.skin-neumorphic [style*="background:var(--accent2)"]:not([style*="color:#fff"]):not([style*="color: #fff"]),
@@ -641,7 +565,7 @@ body.skin-neumorphic [style*="background: var(--accent2)"]:not([style*="color:#f
   background:transparent!important;box-shadow:var(--nIs)!important;
   color:var(--accent)!important;border:none!important}
 
-/* -- SCROLLBARS ------------------------------------------------------ */
+/* -- SCROLLBARS -------------------------------------------------------- */
 body.skin-neumorphic ::-webkit-scrollbar{width:6px;height:6px}
 body.skin-neumorphic ::-webkit-scrollbar-track{box-shadow:var(--nIs);border-radius:4px}
 body.skin-neumorphic ::-webkit-scrollbar-thumb{
@@ -651,72 +575,45 @@ body.skin-neumorphic[data-theme="midnight"] ::-webkit-scrollbar-thumb,
 body.skin-neumorphic[data-theme="forest"] ::-webkit-scrollbar-thumb,
 body.skin-neumorphic[data-theme="ocean"] ::-webkit-scrollbar-thumb,
 body.skin-neumorphic[data-theme="amber"] ::-webkit-scrollbar-thumb,
-body.skin-neumorphic[data-theme="violet"] ::-webkit-scrollbar-thumb{
-  background:rgba(255,255,255,0.15)}
+body.skin-neumorphic[data-theme="violet"] ::-webkit-scrollbar-thumb{background:rgba(255,255,255,0.15)}
 
-/* -- KBD CHIPS ------------------------------------------------------- */
-body.skin-neumorphic kbd{
-  box-shadow:var(--nEs)!important;border:none!important;border-radius:6px!important}
+/* -- KBD --------------------------------------------------------------- */
+body.skin-neumorphic kbd{box-shadow:var(--nEs)!important;border:none!important;border-radius:6px!important}
 
-/* ======================================================================
+/* =====================================================================
    DASHBOARD -- neumorphic treatment
-====================================================================== */
+===================================================================== */
 
-/* -- SIDEBAR: ICON-ONLY (Sakura-style icon dock) ------------------- */
-/* Shell: narrow 68px, centred column, overflow hidden to clip text   */
+/* -- SIDEBAR: ICON-ONLY DOCK (68px wide, avatar + icon nav only) ------- */
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"]{
-  width:68px!important;
-  padding:16px 0 12px!important;
-  align-items:center!important;
-  overflow:hidden!important}
-
-/* User block container: centre content, no border -- shadow seam instead */
+  width:68px!important;padding:16px 0 12px!important;
+  align-items:center!important;overflow:hidden!important}
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div:first-child{
   border-bottom:none!important;
   box-shadow:0 1px 0 var(--neu-s)!important;
   padding:0 0 14px!important;margin-bottom:12px!important;
   width:100%!important;display:flex!important;
   flex-direction:column!important;align-items:center!important;gap:0!important}
-
-/* Avatar + name row: centre, clip name */
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gap:10"][style*="marginBottom:10"]{
-  justify-content:center!important;gap:0!important;
-  padding:0!important;margin-bottom:0!important}
-
-/* Hide name + role text div (second child of avatar row) */
+  justify-content:center!important;gap:0!important;padding:0!important;margin-bottom:0!important}
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gap:10"][style*="marginBottom:10"] > div:last-child{
   display:none!important}
-
-/* Avatar circle: centred, neumorphic raised pill */
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="borderRadius:\"50%\""][style*="width:36"],
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="border-radius:50%"][style*="width:36"]{
-  box-shadow:var(--nEm)!important;
-  margin:0 auto!important;flex-shrink:0!important}
-
-/* Hide stats grid (map count / node count) entirely */
+  box-shadow:var(--nEm)!important;margin:0 auto!important;flex-shrink:0!important}
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"]{
   display:none!important}
-
-/* Nav buttons: icon-only square pills */
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="borderLeft"]{
-  font-size:0!important;          /* hides the text node */
-  justify-content:center!important;
-  gap:0!important;
-  padding:0!important;
+  font-size:0!important;justify-content:center!important;
+  gap:0!important;padding:0!important;
   width:44px!important;height:44px!important;
-  margin:2px auto!important;
-  display:flex!important;align-items:center!important;
-  border-left:none!important;
-  border-radius:12px!important;
-  box-shadow:none!important;
-  background:transparent!important}
-/* Restore icon emoji size inside buttons */
+  margin:2px auto!important;display:flex!important;align-items:center!important;
+  border-left:none!important;border-radius:12px!important;
+  box-shadow:none!important;background:transparent!important}
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="borderLeft"] > span{
   font-size:18px!important}
-/* Active nav: inset clay press */
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
-  box-shadow:var(--nIs)!important;
-  background:var(--bg)!important}
+  box-shadow:var(--nIs)!important;background:var(--bg)!important}
 body.skin-neumorphic[data-theme="dark"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
 body.skin-neumorphic[data-theme="midnight"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
 body.skin-neumorphic[data-theme="forest"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
@@ -724,189 +621,33 @@ body.skin-neumorphic[data-theme="ocean"] .nn-sidebar[data-page="dashboard"] butt
 body.skin-neumorphic[data-theme="amber"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
 body.skin-neumorphic[data-theme="violet"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
   background:var(--bg2)!important}
-/* Inactive nav: rise on hover */
 body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="transparent"]:not([style*="var(--accent2)22"]):hover{
   box-shadow:var(--nEx)!important;background:var(--bg)!important}
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div[style*="borderTop"]{display:none!important}
 
-/* Hide bottom version / What's new section */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div[style*="borderTop"]{
-  display:none!important}
-
-/* -- Dashboard content area ---------------------------------------- */
-/* Action buttons (+ New Map, Import) */
-body.skin-neumorphic [style*="New Map"],
-body.skin-neumorphic [style*="Import"]{
-  box-shadow:var(--nEm)!important;border:none!important}
-body.skin-neumorphic [style*="New Map"]:hover,
-body.skin-neumorphic [style*="Import"]:hover{box-shadow:var(--nEl)!important}
-
-/* Search bar */
+/* -- DASHBOARD CONTENT ------------------------------------------------- */
 body.skin-neumorphic input[placeholder*="maps"],
-body.skin-neumorphic input[placeholder*="search"],
-body.skin-neumorphic input[placeholder*="Search"]{
-  box-shadow:var(--nIm)!important;border:none!important}
-
-/* Filter pills active state */
+body.skin-neumorphic input[placeholder*="Search"]{box-shadow:var(--nIm)!important;border:none!important}
 body.skin-neumorphic [style*="background:var(--accent2)22"],
 body.skin-neumorphic [style*="background: var(--accent2)22"]{
   background:var(--bg)!important;box-shadow:var(--nIs)!important;border:none!important}
 
-/* -- MAP CARDS ----------------------------------------------------- */
+/* -- MAP CARDS --------------------------------------------------------- */
 body.skin-neumorphic .nn-map-card{
   box-shadow:var(--nEl),inset 0 3px 0 var(--ca)!important;
-  background:var(--bg2)!important;
-  border:none!important;border-radius:18px!important;
+  background:var(--bg2)!important;border:none!important;border-radius:18px!important;
   transition:box-shadow 0.2s ease,transform 0.15s ease!important}
 body.skin-neumorphic .nn-map-card:hover{
   box-shadow:10px 10px 28px var(--neu-s),-10px -10px 28px var(--neu-h),inset 0 3px 0 var(--ca)!important;
   transform:translateY(-3px)!important}
 body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-body.skin-neumorphic .nn-card-actions button{
-  box-shadow:none!important;background:transparent!important}
-body.skin-neumorphic .nn-card-actions button:hover{
-  box-shadow:var(--nEs)!important;background:var(--bg)!important}
+body.skin-neumorphic .nn-card-actions button{box-shadow:none!important;background:transparent!important}
+body.skin-neumorphic .nn-card-actions button:hover{box-shadow:var(--nEs)!important;background:var(--bg)!important}
 
-/* -- LIST ROWS ----------------------------------------------------- */
+/* -- LIST ROWS --------------------------------------------------------- */
 body.skin-neumorphic .nn-map-list-row{
   box-shadow:var(--nEs)!important;border:none!important;
-  border-radius:12px!important;margin-bottom:5px!important;
-  background:var(--bg2)!important}
-body.skin-neumorphic .nn-map-list-row:hover{
-  box-shadow:var(--nEm)!important;transform:translateX(2px)!important}
-`,
-/* Sidebar shell: raised slab on light, bg2 slab on dark */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"]{
-  padding:16px 0!important}
-
-/* Avatar block: remove border, use shadow seam */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div:first-child{
-  border-bottom:none!important;
-  box-shadow:0 1px 0 var(--neu-s);
-  padding:0 12px 14px!important;margin-bottom:10px!important}
-
-/* Avatar circle: raise as a clay button */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="borderRadius:\"50%\""],
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="border-radius:50%"]{
-  box-shadow:var(--nEs)!important}
-
-/* Username: tighter, smaller */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="fontSize:12"][style*="fontWeight:700"]{
-  font-size:11px!important;letter-spacing:0.02em}
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="fontSize:10"][style*="color:RC"]{
-  font-size:9px!important}
-
-/* Stats boxes: inset clay wells */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="background:\"var(--bg3)\""],
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="background: var(--bg3)"],
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div{
-  background:var(--bg)!important;
-  box-shadow:var(--nIs)!important;
-  border:none!important;border-radius:10px!important;
-  padding:8px 8px!important}
-body.skin-neumorphic[data-theme="dark"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
-body.skin-neumorphic[data-theme="midnight"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
-body.skin-neumorphic[data-theme="forest"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
-body.skin-neumorphic[data-theme="ocean"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
-body.skin-neumorphic[data-theme="amber"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
-body.skin-neumorphic[data-theme="violet"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div{
-  background:var(--bg2)!important}
-
-/* Stats numbers: smaller at 160px */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="fontSize:16"][style*="fontWeight:800"]{
-  font-size:14px!important}
-
-/* Nav items: inset when active, flat when inactive */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="borderLeft"]{
-  padding:8px 12px!important;
-  font-size:11px!important;
-  border-left:none!important;
-  border-radius:10px!important;
-  margin:1px 8px!important;width:calc(100% - 16px)!important;
-  box-shadow:none!important}
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
-  background:var(--bg)!important;
-  box-shadow:var(--nIs)!important;
-  color:var(--accent2)!important}
-body.skin-neumorphic[data-theme="dark"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
-body.skin-neumorphic[data-theme="midnight"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
-body.skin-neumorphic[data-theme="forest"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
-body.skin-neumorphic[data-theme="ocean"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
-body.skin-neumorphic[data-theme="amber"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
-body.skin-neumorphic[data-theme="violet"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
-  background:var(--bg2)!important}
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="transparent"]:not([style*="var(--accent2)22"]){
-  box-shadow:none!important;background:transparent!important}
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button:hover{
-  box-shadow:var(--nEx)!important;background:var(--bg)!important}
-
-/* Bottom divider: shadow seam */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div[style*="borderTop"]{
-  border-top:none!important;
-  box-shadow:0 -1px 0 var(--neu-s);
-  padding-top:10px!important}
-
-/* Version button: flat */
-body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="What's new"]{
-  box-shadow:none!important;background:transparent!important;font-size:9px!important}
-
-/* -- Dashboard content area ---------------------------------------- */
-/* Section header "Your Maps" */
-body.skin-neumorphic [style*="Your Maps"],
-body.skin-neumorphic [style*="fontWeight:700"][style*="fontSize:18"],
-body.skin-neumorphic [style*="fontWeight:700"][style*="fontSize:20"]{
-  color:var(--text)!important}
-
-/* Action buttons (+ New Map, Import) */
-body.skin-neumorphic [style*="New Map"],
-body.skin-neumorphic [style*="Import"]{
-  box-shadow:var(--nEm)!important;border:none!important}
-body.skin-neumorphic [style*="New Map"]:hover,
-body.skin-neumorphic [style*="Import"]:hover{
-  box-shadow:var(--nEl)!important}
-
-/* Search bar: inset well */
-body.skin-neumorphic input[placeholder*="maps"],
-body.skin-neumorphic input[placeholder*="search"],
-body.skin-neumorphic input[placeholder*="Search"]{
-  box-shadow:var(--nIm)!important;border:none!important}
-
-/* Filter pills "All(7)" etc: inset when active */
-body.skin-neumorphic [style*="All ("],
-body.skin-neumorphic [style*="background:\"var(--accent2)\""],
-body.skin-neumorphic [style*="background:var(--accent2)22"]{
-  box-shadow:var(--nIs)!important;border:none!important}
-
-/* View-mode grid/list toggle buttons */
-body.skin-neumorphic [title="Grid view"],
-body.skin-neumorphic [title="List view"]{
-  box-shadow:var(--nEs)!important}
-
-/* -- MAP CARDS (dashboard grid) ------------------------------------ */
-/* Card: raised clay with accent-colour inset top stripe */
-body.skin-neumorphic .nn-map-card{
-  box-shadow:var(--nEl),inset 0 3px 0 var(--ca)!important;
-  background:var(--bg2)!important;
-  border:none!important;border-radius:18px!important;
-  transition:box-shadow 0.2s ease,transform 0.15s ease!important}
-/* Hover: card rises further */
-body.skin-neumorphic .nn-map-card:hover{
-  box-shadow:10px 10px 28px var(--neu-s),-10px -10px 28px var(--neu-h),inset 0 3px 0 var(--ca)!important;
-  transform:translateY(-3px)!important}
-body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
-/* Card action buttons (✎ ⋮): flat, reveal on hover */
-body.skin-neumorphic .nn-card-actions button{
-  box-shadow:none!important;background:transparent!important}
-body.skin-neumorphic .nn-card-actions button:hover{
-  box-shadow:var(--nEs)!important;background:var(--bg)!important}
-/* Node-count badge inside card: inset chip */
-body.skin-neumorphic .nn-map-card [style*="nodes"]{
-  box-shadow:var(--nIx)!important;border:none!important}
-
-/* -- LIST ROWS ----------------------------------------------------- */
-body.skin-neumorphic .nn-map-list-row{
-  box-shadow:var(--nEs)!important;border:none!important;
-  border-radius:12px!important;margin-bottom:5px!important;
-  background:var(--bg2)!important}
+  border-radius:12px!important;margin-bottom:5px!important;background:var(--bg2)!important}
 body.skin-neumorphic .nn-map-list-row:hover{
   box-shadow:var(--nEm)!important;transform:translateX(2px)!important}
 `,
