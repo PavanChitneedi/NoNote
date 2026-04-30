@@ -1,4 +1,3 @@
-# NoNote UI Catalogue — Neumorphic System
 **Version:** v5.43.2 | **Updated:** Apr 2026
 **Source of truth** — every change MUST update this file.
 
@@ -56,7 +55,6 @@
 #### 4. Node Anchor Dots (connection targets)
 **Location:** NodeCanvas.jsx L3051
 - Transparent, accent color, crosshair cursor
-- No neumorphic shadow (SVG element)
 
 #### 5. Note Pill / Badge (inside node)
 **Location:** NodeCanvas.jsx L2867

@@ -25,7 +25,6 @@ Skin vars **always win** over theme on their variables. When theme changes, Skin
 | `aurora` | Aurora | top | Inter | midnight |
 | `brutalist` | Brutalist | bottom | Space Grotesk | dark |
 | `neonTokyo` | Neon Tokyo | bottom | Rajdhani | ocean |
-| `neumorphic` | Neumorphic | icon-dock | Nunito | clay |
 | `sakura` | Sakura | icon-dock | Cormorant Garamond | cream |
 | `vapor` | Vapor | editorial | VT323 | violet |
 | `newspaper` | Newspaper | editorial | Playfair Display | parchment |
@@ -39,7 +38,6 @@ All 11 skins work correctly with all 13 themes. Adaptive techniques used:
 
 | Skin | Technique |
 |---|---|
-| **Neumorphic** | `color-mix(in srgb, var(--bg) 78%, #000/fff)` derives shadow colors from any theme bg |
 | **NeonTokyo** | Scanlines use `color-mix(in srgb, var(--text) 5%, transparent)` — readable on light and dark |
 | **Vapor** | Grid lines use `color-mix(in srgb, var(--accent) 18%, transparent)` — always visible |
 | **Carbon** | Texture uses `color-mix(in srgb, var(--text) 4%, transparent)` — visible on both |
@@ -111,7 +109,6 @@ skinKey: {
 | `softblue` | Soft Blue | Airy sky blue |
 | `mint` | Mint | Fresh green |
 | `parchment` | Parchment | Medieval manuscript |
-| `clay` | Clay | Neumorphic default — provides `--neu-dark`/`--neu-light` vars |
 
 ## Adding a New Skin — Checklist
 1. Add entry to `SKINS` in `skins.js`
@@ -126,5 +123,4 @@ skinKey: {
 ## Adding a New Theme — Checklist
 1. Add entry to `THEMES` in `ThemeContext.jsx`
 2. Set all required vars: `--bg`, `--bg2`, `--bg3`, `--border`, `--border2`, `--text`, `--text2`, `--text3`, `--text4`, `--accent`, `--accent2`, `--success`, `--danger`, `--canvas-dot`, `--node-bg`, `--shadow`
-3. For themes intended for Neumorphic: add `--neu-dark`/`--neu-light` (optional — neumorphic now derives these via `color-mix` as fallback)
 4. Test with all 11 skins
