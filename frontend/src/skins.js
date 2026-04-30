@@ -377,6 +377,7 @@ body.skin-pastel-pop [style*="rgba(0,0,0,.7)"],body.skin-pastel-pop [style*="rgb
       "--transition-all":"all 0.18s ease",
       "--topbar-bg":"var(--bg)","--topbar-border":"none","--topbar-blur":"none",
       "--sidebar-bg":"var(--bg)","--sidebar-border":"none",
+      "--sidebar-w":"160px",
     },
     bodyClass:"skin-neumorphic",
     css:`
@@ -656,6 +657,147 @@ body.skin-neumorphic[data-theme="violet"] ::-webkit-scrollbar-thumb{
 /* ── KBD CHIPS ─────────────────────────────────────────────────────── */
 body.skin-neumorphic kbd{
   box-shadow:var(--nEs)!important;border:none!important;border-radius:6px!important}
+
+/* ══════════════════════════════════════════════════════════════════════
+   DASHBOARD — neumorphic treatment
+══════════════════════════════════════════════════════════════════════ */
+
+/* ── Dashboard sidebar — compact like Sakura ─────────────────────── */
+/* Sidebar shell: raised slab on light, bg2 slab on dark */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"]{
+  padding:16px 0!important}
+
+/* Avatar block: remove border, use shadow seam */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div:first-child{
+  border-bottom:none!important;
+  box-shadow:0 1px 0 var(--neu-s);
+  padding:0 12px 14px!important;margin-bottom:10px!important}
+
+/* Avatar circle: raise as a clay button */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="borderRadius:\"50%\""],
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="border-radius:50%"]{
+  box-shadow:var(--nEs)!important}
+
+/* Username: tighter, smaller */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="fontSize:12"][style*="fontWeight:700"]{
+  font-size:11px!important;letter-spacing:0.02em}
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="fontSize:10"][style*="color:RC"]{
+  font-size:9px!important}
+
+/* Stats boxes: inset clay wells */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="background:\"var(--bg3)\""],
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="background: var(--bg3)"],
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div{
+  background:var(--bg)!important;
+  box-shadow:var(--nIs)!important;
+  border:none!important;border-radius:10px!important;
+  padding:8px 8px!important}
+body.skin-neumorphic[data-theme="dark"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
+body.skin-neumorphic[data-theme="midnight"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
+body.skin-neumorphic[data-theme="forest"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
+body.skin-neumorphic[data-theme="ocean"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
+body.skin-neumorphic[data-theme="amber"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div,
+body.skin-neumorphic[data-theme="violet"] .nn-sidebar[data-page="dashboard"] [style*="gridTemplateColumns"] > div{
+  background:var(--bg2)!important}
+
+/* Stats numbers: smaller at 160px */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="fontSize:16"][style*="fontWeight:800"]{
+  font-size:14px!important}
+
+/* Nav items: inset when active, flat when inactive */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="borderLeft"]{
+  padding:8px 12px!important;
+  font-size:11px!important;
+  border-left:none!important;
+  border-radius:10px!important;
+  margin:1px 8px!important;width:calc(100% - 16px)!important;
+  box-shadow:none!important}
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
+  background:var(--bg)!important;
+  box-shadow:var(--nIs)!important;
+  color:var(--accent2)!important}
+body.skin-neumorphic[data-theme="dark"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="midnight"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="forest"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="ocean"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="amber"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"],
+body.skin-neumorphic[data-theme="violet"] .nn-sidebar[data-page="dashboard"] button[style*="var(--accent2)22"]{
+  background:var(--bg2)!important}
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button[style*="transparent"]:not([style*="var(--accent2)22"]){
+  box-shadow:none!important;background:transparent!important}
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] button:hover{
+  box-shadow:var(--nEx)!important;background:var(--bg)!important}
+
+/* Bottom divider: shadow seam */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] > div[style*="borderTop"]{
+  border-top:none!important;
+  box-shadow:0 -1px 0 var(--neu-s);
+  padding-top:10px!important}
+
+/* Version button: flat */
+body.skin-neumorphic .nn-sidebar[data-page="dashboard"] [style*="What's new"]{
+  box-shadow:none!important;background:transparent!important;font-size:9px!important}
+
+/* ── Dashboard content area ──────────────────────────────────────── */
+/* Section header "Your Maps" */
+body.skin-neumorphic [style*="Your Maps"],
+body.skin-neumorphic [style*="fontWeight:700"][style*="fontSize:18"],
+body.skin-neumorphic [style*="fontWeight:700"][style*="fontSize:20"]{
+  color:var(--text)!important}
+
+/* Action buttons (+ New Map, Import) */
+body.skin-neumorphic [style*="New Map"],
+body.skin-neumorphic [style*="Import"]{
+  box-shadow:var(--nEm)!important;border:none!important}
+body.skin-neumorphic [style*="New Map"]:hover,
+body.skin-neumorphic [style*="Import"]:hover{
+  box-shadow:var(--nEl)!important}
+
+/* Search bar: inset well */
+body.skin-neumorphic input[placeholder*="maps"],
+body.skin-neumorphic input[placeholder*="search"],
+body.skin-neumorphic input[placeholder*="Search"]{
+  box-shadow:var(--nIm)!important;border:none!important}
+
+/* Filter pills "All(7)" etc: inset when active */
+body.skin-neumorphic [style*="All ("],
+body.skin-neumorphic [style*="background:\"var(--accent2)\""],
+body.skin-neumorphic [style*="background:var(--accent2)22"]{
+  box-shadow:var(--nIs)!important;border:none!important}
+
+/* View-mode grid/list toggle buttons */
+body.skin-neumorphic [title="Grid view"],
+body.skin-neumorphic [title="List view"]{
+  box-shadow:var(--nEs)!important}
+
+/* ── MAP CARDS (dashboard grid) ──────────────────────────────────── */
+/* Card: raised clay with accent-colour inset top stripe */
+body.skin-neumorphic .nn-map-card{
+  box-shadow:var(--nEl),inset 0 3px 0 var(--ca)!important;
+  background:var(--bg2)!important;
+  border:none!important;border-radius:18px!important;
+  transition:box-shadow 0.2s ease,transform 0.15s ease!important}
+/* Hover: card rises further */
+body.skin-neumorphic .nn-map-card:hover{
+  box-shadow:10px 10px 28px var(--neu-s),-10px -10px 28px var(--neu-h),inset 0 3px 0 var(--ca)!important;
+  transform:translateY(-3px)!important}
+body.skin-neumorphic .nn-map-card:hover .nn-card-actions{opacity:1!important}
+/* Card action buttons (✎ ⋮): flat, reveal on hover */
+body.skin-neumorphic .nn-card-actions button{
+  box-shadow:none!important;background:transparent!important}
+body.skin-neumorphic .nn-card-actions button:hover{
+  box-shadow:var(--nEs)!important;background:var(--bg)!important}
+/* Node-count badge inside card: inset chip */
+body.skin-neumorphic .nn-map-card [style*="nodes"]{
+  box-shadow:var(--nIx)!important;border:none!important}
+
+/* ── LIST ROWS ───────────────────────────────────────────────────── */
+body.skin-neumorphic .nn-map-list-row{
+  box-shadow:var(--nEs)!important;border:none!important;
+  border-radius:12px!important;margin-bottom:5px!important;
+  background:var(--bg2)!important}
+body.skin-neumorphic .nn-map-list-row:hover{
+  box-shadow:var(--nEm)!important;transform:translateX(2px)!important}
 `,
   },
 };

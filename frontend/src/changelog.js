@@ -1,6 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.48.3",date:"Apr 2026",items:[
+    "UX: Neumorphic dashboard — full neumorphic treatment on map cards, sidebar, search, filters, action buttons.",
+    "UX: Dashboard map cards: raised clay (nEl) with inset accent stripe at top. Hover lifts card +3px with deeper shadow. Action buttons (✎ ⋮) flat by default, pop on hover. Node-count badge: inset chip.",
+    "UX: Dashboard list rows: raised nEs surface, translateX on hover for a tactile slide effect.",
+    "UX: Dashboard sidebar narrowed to 160px (--sidebar-w). Compact like Sakura — minimal padding, smaller text.",
+    "UX: Sidebar stats boxes: inset clay wells (nIs) instead of flat bg3 boxes.",
+    "UX: Sidebar nav buttons: borderLeft removed, replaced with inset shadow for active state. Rounded pill shape. Shadow seams replace border lines.",
+    "UX: Search bar, filter pills, view-toggle buttons all neumorphic (inset / raised as appropriate).",
+  ]},
   {v:"v5.48.2",date:"Apr 2026",items:[
     "Fix: Neumorphic skin — critical fix for dark themes and near-white themes.",
     "Fix: Root cause — skin was overriding node background to var(--bg), making nodes the same colour as the canvas on dark themes (invisible). Now nodes always use their theme's --node-bg (which is already elevated above --bg).",
