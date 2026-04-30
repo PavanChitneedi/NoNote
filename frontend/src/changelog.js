@@ -1,6 +1,27 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.48.0",date:"Apr 2026",items:[
+    "Feature: Neumorphic skin — full implementation. Soft clay surfaces: every element raised or sunken from a single shared material.",
+    "Architecture: Token system — --neu-s (shadow) and --neu-h (highlight) derived from --bg via CSS color-mix(). Works with ALL 13 themes automatically.",
+    "Architecture: 8 elevation tokens — nEl/nEm/nEs/nEx (raised levels) and nIl/nIm/nIs/nIx (inset levels) for consistent depth language.",
+    "Architecture: Dark theme overrides (dark/midnight/forest/ocean/amber/violet) use stronger shadow percentages + wider blur for sufficient contrast on very dark surfaces.",
+    "Design: Button state machine — raised(default) → higher-raised(hover) → inset(active) → flat(disabled). Depth only, never background color change.",
+    "Design: Toolbar rows form a unified inset trough; buttons inside are flat and pop subtly on hover.",
+    "Design: Active/selected toolbar mode buttons (Edit/Select/Connect) pressed in with inset shadow + accent text — no fill.",
+    "Design: Inputs and textareas are inset wells (nIm), focused inputs get accent accent ring on top.",
+    "Design: CTA buttons (white text / accent filled) preserve accent background with shadow lift.",
+    "Design: All borders globally removed — depth is communicated only via shadow direction and magnitude.",
+    "Design: Node cards: clay pillow (nEl) with inset colour stripe at top via box-shadow. No separate border element.",
+    "Design: Dashboard map cards use nEl + inset accent top stripe. Hover deepens elevation.",
+    "Design: Scrollbars styled with inset track + subtly darkened thumb matching skin material.",
+    "Design: Canvas dot grid explicitly reconstructed so bg-override never silently kills the pattern.",
+    "Design: SVG edges fully protected from neumorphic cascade (box-shadow:none, transparent bg).",
+    "Design: Sidebar node type draggable cards: small raised pills (nEs), press in on active.",
+    "Design: Filter pills, tabs, active state indicators: inset when selected — no colour fill.",
+    "Design: Login card, modals, dropdowns, context menus all raised from surface (nEl) with no border.",
+    "Design: Topbar — raised slab with bottom shadow seam. Sidebar — raised slab with right shadow seam.",
+  ]},
   {v:"v5.47.0",date:"Apr 2026",items:[
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
