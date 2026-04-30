@@ -16,6 +16,7 @@ _Nothing currently in progress._
 
 ### Skins & Appearance
 - [ ] Vapor skin — VT323 font may not load reliably without Google Fonts CDN; add @import or fallback
+- [ ] Neumorphic skin on dark themes looks flat (physically correct but jarring UX) — consider a "dark clay" variant theme
 - [ ] Aurora skin `color-mix()` in topbar-bg may fail on Safari < 16.4 — verify or add fallback
 - [ ] Skin picker cards — mini preview doesn't show font personality (all cards use system font for the preview)
 - [ ] Add a "Reset to skin defaults" button in Appearance modal that restores defaultTheme + defaultDesign + defaultAccent
@@ -44,6 +45,7 @@ _Nothing currently in progress._
 ## 🟢 Completed (recent)
 
 ### v5.35.4 (Apr 2026)
+- [x] Neumorphic skin: restored dual-shadow effect to exact v5.34.3 look
 - [x] Added Clay theme with `--neu-dark`/`--neu-light` CSS vars
 - [x] Created CLAUDE.md, docs/ARCHITECTURE.md, docs/SKINS.md, docs/FEATURES.md, INSTRUCTIONS.md for handover
 
@@ -72,6 +74,7 @@ _Nothing currently in progress._
 ### v5.34.3 (Apr 2026)
 - [x] Provider order fixed (Theme → Design → Skin)
 - [x] SkinContext vars deferred with setTimeout(0)
+- [x] Clay theme for Neumorphic baseline
 
 ### v5.34.0–5.34.2 (Apr 2026)
 - [x] 11 distinct skins with 4 nav layout types

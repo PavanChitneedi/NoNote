@@ -12,7 +12,7 @@ Self-hosted mind-mapping and network diagram application for homelabbers and sys
 - **Live homelab integration** — connect Proxmox, TrueNAS, Unraid, ESXi nodes to live server data; see VM/container status in real time
 - **Real-time collaboration** — multiple users edit the same map simultaneously via WebSocket
 - **LLM assistant** — ask questions about your map with canvas context awareness
-- **11 visual skins** — from Obsidian (GitHub Dark dev tool) to Vapor (80s vaporwave); any of 13 color themes works with any skin
+- **11 visual skins** — from Obsidian (GitHub Dark dev tool) to Neumorphic (soft clay) to Vapor (80s vaporwave); any of 13 color themes works with any skin
 - **Version history** — save named snapshots, restore any previous state
 
 ---

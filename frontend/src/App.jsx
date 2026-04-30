@@ -181,7 +181,7 @@ function AppInner() {
 
   const modals = (
     <>
-      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="skins"/>}
+      {showAppearance && <ThemePicker onClose={() => setShowAppearance(false)} defaultTab="global"/>}
       {showTutorial && <Tutorial page={view.page==="canvas" ? "canvas" : "dashboard"} onClose={() => setShowTutorial(false)} />}
       {showHelp     && <HelpGuide onClose={() => setShowHelp(false)} />}
       {showProfile    && <UserProfile onClose={() => setShowProfile(false)} />}
@@ -230,7 +230,7 @@ function AppInner() {
     </div>
   );
 
-  // ── ICON DOCK layout (sakura, carbon) ────────────
+  // ── ICON DOCK layout (neumorphic, sakura, carbon) ────────────
   if (navType === "icon-dock") return (
     <div style={{ height:"100vh", background:"var(--bg)", display:"flex", overflow:"hidden" }}>
       {view.page !== "canvas" && (
