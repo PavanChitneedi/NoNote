@@ -1,6 +1,13 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.48.1",date:"Apr 2026",items:[
+    "Fix: Neumorphic skin now works correctly on all 13 themes, not just Clay.",
+    "Fix: Near-white themes (light/cream/parchment/rose/softblue/mint) — highlight was invisible (contrast 0.016). Now forces --neu-h to #fff (pure white) since bg is already near-white. Shadow asymmetry emphasises the bottom-right direction.",
+    "Fix: Dark themes (dark/midnight/forest/ocean/amber/violet) — shadow was invisible (contrast 0.006). Now shadow offset/blur shifted to lean into the highlight direction; highlight does all depth work with wider blur.",
+    "Fix: Switched color-mix() from srgb to oklch colorspace — warm themes (cream/sepia/rose) now get warm-hued shadows instead of cold gray; cool themes (softblue/mint) get cool-hued shadows. Hue is preserved when darkening/lightening.",
+    "Architecture: Three-group token override system — GROUP A (mid-tone: clay, sepia), GROUP B (near-white: 6 themes), GROUP C (near-black: 6 dark themes) — each with calibrated percentages and offset asymmetry.",
+  ]},
   {v:"v5.48.0",date:"Apr 2026",items:[
     "Feature: Neumorphic skin — full implementation. Soft clay surfaces: every element raised or sunken from a single shared material.",
     "Architecture: Token system — --neu-s (shadow) and --neu-h (highlight) derived from --bg via CSS color-mix(). Works with ALL 13 themes automatically.",
