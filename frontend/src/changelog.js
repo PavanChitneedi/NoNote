@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.48.5",date:"Apr 2026",items:[
+    "UX: Neumorphic skin nav changed to icon-dock -- same layout as Sakura skin. 56px vertical icon column from App.jsx replaces the Dashboard-specific sidebar.",
+    "UX: Icon-dock column: raised clay slab with right-side shadow seam. Buttons flat by default, pop on hover (nEm), inset on active (nIs). Avatar circle raised as clay pill (nEm).",
+    "UX: Dashboard sidebar CSS removed -- no longer needed since icon-dock is rendered by App.jsx.",
+    "UX: Dashboard compact nav strip (user pill + Maps/Live tabs + version) styled with neumorphic raised card (nEm).",
+  ]},
   {v:"v5.48.4",date:"Apr 2026",items:[
     "UX: Neumorphic dashboard sidebar — icon-only mode (Sakura-style icon dock, 68px wide).",
     "UX: Sidebar shows avatar only — username, role text, and stats grid (map/node counts) all hidden.",
