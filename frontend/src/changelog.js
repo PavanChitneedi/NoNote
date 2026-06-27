@@ -65,6 +65,13 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.48.1",date:"Jun 2026",items:[
+    "UX: Dashboard groups now shown as tabs (All + one tab per group) instead of inline sections.",
+    "UX: + Group button directly in the tab bar to create a new group.",
+    "UX: Group name shown as a badge on each card/row in the All tab.",
+    "UX: Flat card grid in All view — no section dividers.",
+    "UX: Empty state message is group-aware (shows group name when no maps in that group).",
+  ]},
   {v:"v5.48.0",date:"Jun 2026",items:[
     "Feature: Map groups, colors & icons now sync to server — consistent across all devices and browsers. Existing localStorage data migrates automatically on first load.",
     "Feature: Dashboard sort — Recently edited, Recently created, A→Z, Z→A.",
