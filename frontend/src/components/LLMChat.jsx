@@ -34,7 +34,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   const [availableModels, setAvailableModels] = useState([]);
   const [selectedModel, setSelectedModel]     = useState("");
   const [probingModels, setProbingModels]      = useState(false);
-  const messagesEndRef = useRef(null);
+  const [expanded, setExpanded]           = useState(false);
   const textareaRef    = useRef(null);
   const convListRef    = useRef(null);
   const abortRef       = useRef(null);   // AbortController for in-flight LLM request
@@ -193,9 +193,8 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   // Token total for active conversation
   const totalTokens = messages.reduce((sum, m) => sum + (m.tokens_used || 0), 0);
 
-  return (
-    <>
-      <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }}>
+  const chatContent = (
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", background: "var(--bg)", overflow: "hidden" }}>
 
         {/* ── Controls bar ── */}
         <div style={{
@@ -235,6 +234,12 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
               color: "var(--text3)", cursor: "pointer", fontSize: 14,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>⚙</button>
+            <button onClick={() => setExpanded(e => !e)} title={expanded ? "Collapse" : "Expand chat"} style={{
+              width: 30, height: 30, flexShrink: 0, background: "var(--bg3)",
+              border: "1px solid var(--border)", borderRadius: "var(--radius-sm)",
+              color: "var(--text3)", cursor: "pointer", fontSize: 13,
+              display: "flex", alignItems: "center", justifyContent: "center",
+            }}>{expanded ? "⊡" : "⊞"}</button>
           </div>
 
           {availableModels.length > 0 && (
@@ -426,6 +431,31 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
           </div>
         </div>
       </div>
+  );
+
+  return (
+    <>
+      {expanded ? (
+        <div style={{
+          position: "fixed", inset: 0, zIndex: 9990,
+          background: "rgba(0,0,0,0.65)", backdropFilter: "blur(4px)",
+          display: "flex", alignItems: "center", justifyContent: "center",
+        }} onClick={e => { if (e.target === e.currentTarget) setExpanded(false); }}>
+          <div style={{
+            width: "min(900px, 92vw)", height: "min(700px, 88vh)",
+            background: "var(--bg)", borderRadius: "var(--radius-lg)",
+            border: "1px solid var(--border2)", display: "flex", flexDirection: "column",
+            overflow: "hidden", boxShadow: "0 24px 80px rgba(0,0,0,0.6)",
+          }}>
+            {/* Expanded header */}
+            <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--border2)", background: "var(--bg2)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: "var(--text)" }}>💬 AI Chat — {mapTitle || "Canvas"}</span>
+              <button onClick={() => setExpanded(false)} style={{ background: "none", border: "none", color: "var(--text3)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: "0 2px" }}>×</button>
+            </div>
+            <div style={{ flex: 1, overflow: "hidden" }}>{chatContent}</div>
+          </div>
+        </div>
+      ) : chatContent}
 
       {showSettings && (
         <LLMSettings onClose={() => {
