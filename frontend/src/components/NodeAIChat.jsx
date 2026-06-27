@@ -227,8 +227,8 @@ function NodeMsg({ msg }) {
         {isUser ? "👤" : "🤖"}
       </div>
       <div style={{ maxWidth: "85%", display: "flex", flexDirection: "column", gap: 2, alignItems: isUser ? "flex-end" : "flex-start" }}>
-        <div style={{ background: isUser ? "var(--accent2)18" : "var(--bg3)", border: `1px solid ${isUser ? "var(--accent2)33" : "var(--border)"}`, borderRadius: isUser ? "var(--radius-sm) 3px var(--radius-sm) var(--radius-sm)" : "3px var(--radius-sm) var(--radius-sm) var(--radius-sm)", padding: "7px 10px", fontSize: 11, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word", whiteSpace: "pre-wrap" }}>
-          {msg.content}
+        <div style={{ background: isUser ? "var(--accent2)18" : "var(--bg3)", border: `1px solid ${isUser ? "var(--accent2)33" : "var(--border)"}`, borderRadius: isUser ? "var(--radius-sm) 3px var(--radius-sm) var(--radius-sm)" : "3px var(--radius-sm) var(--radius-sm) var(--radius-sm)", padding: "7px 10px", fontSize: 11, color: "var(--text)", lineHeight: 1.6, wordBreak: "break-word" }}>
+          {isUser ? msg.content : <FormattedContent content={msg.content} />}
         </div>
         <div style={{ fontSize: 8, color: "var(--text4)" }}>
           {new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -237,4 +237,63 @@ function NodeMsg({ msg }) {
       </div>
     </div>
   );
+}
+
+function inlineFormat(text, keyPrefix) {
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((p, i) => {
+    const k = `${keyPrefix}-${i}`;
+    if (p.startsWith("**") && p.endsWith("**")) return <strong key={k} style={{ fontWeight: 700 }}>{p.slice(2, -2)}</strong>;
+    if (p.startsWith("*") && p.endsWith("*")) return <em key={k}>{p.slice(1, -1)}</em>;
+    if (p.startsWith("`") && p.endsWith("`")) return <code key={k} style={{ background: "var(--bg)", border: "1px solid var(--border2)", borderRadius: "var(--radius-xs)", padding: "1px 5px", fontSize: 10, color: "var(--accent)", fontFamily: "monospace" }}>{p.slice(1, -1)}</code>;
+    return <span key={k}>{p}</span>;
+  });
+}
+
+function FormattedContent({ content }) {
+  if (!content) return null;
+  const segments = content.split(/(```[\s\S]*?```)/g);
+  const elements = [];
+  let keyIdx = 0;
+  segments.forEach((seg) => {
+    if (seg.startsWith("```") && seg.endsWith("```")) {
+      const inner = seg.slice(3, -3);
+      const langMatch = inner.match(/^[a-zA-Z]+\n/);
+      const code = langMatch ? inner.slice(langMatch[0].length) : inner;
+      elements.push(<pre key={keyIdx++} style={{ background: "var(--bg)", border: "1px solid var(--border2)", borderRadius: "var(--radius-sm)", padding: "7px 9px", fontSize: 10, overflowX: "auto", margin: "6px 0", fontFamily: "monospace", color: "var(--accent)", lineHeight: 1.5, whiteSpace: "pre" }}>{code.trimEnd()}</pre>);
+      return;
+    }
+    const lines = seg.split("\n");
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      if (/^---+$/.test(line.trim())) { elements.push(<hr key={keyIdx++} style={{ border: "none", borderTop: "1px solid var(--border)", margin: "8px 0" }} />); i++; continue; }
+      const hMatch = line.match(/^(#{1,3})\s+(.+)/);
+      if (hMatch) { const sz = { 1: 13, 2: 12, 3: 11 }[hMatch[1].length]; elements.push(<div key={keyIdx++} style={{ fontWeight: 700, fontSize: sz, color: "var(--text)", margin: "7px 0 3px" }}>{inlineFormat(hMatch[2], keyIdx)}</div>); i++; continue; }
+      if (line.startsWith("|")) {
+        const tableLines = [];
+        while (i < lines.length && lines[i].startsWith("|")) { tableLines.push(lines[i]); i++; }
+        const rows = tableLines.filter(l => !/^\|[-| :]+\|$/.test(l.trim())).map(r => r.split("|").slice(1, -1).map(c => c.trim()));
+        if (rows.length) elements.push(<div key={keyIdx++} style={{ overflowX: "auto", margin: "6px 0" }}><table style={{ borderCollapse: "collapse", fontSize: 10, width: "100%" }}><thead><tr>{rows[0].map((c, ci) => <th key={ci} style={{ border: "1px solid var(--border2)", padding: "3px 6px", background: "var(--bg)", color: "var(--text)", textAlign: "left", fontWeight: 700 }}>{inlineFormat(c, `th-${keyIdx}-${ci}`)}</th>)}</tr></thead><tbody>{rows.slice(1).map((row, ri) => <tr key={ri}>{row.map((c, ci) => <td key={ci} style={{ border: "1px solid var(--border2)", padding: "3px 6px", color: "var(--text2)" }}>{inlineFormat(c, `td-${keyIdx}-${ri}-${ci}`)}</td>)}</tr>)}</tbody></table></div>);
+        continue;
+      }
+      if (line.startsWith(">")) { elements.push(<div key={keyIdx++} style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 8, color: "var(--text3)", fontStyle: "italic", margin: "4px 0", fontSize: 11 }}>{inlineFormat(line.replace(/^>\s*/, ""), keyIdx)}</div>); i++; continue; }
+      if (/^[-*]\s/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^[-*]\s/.test(lines[i])) { items.push(lines[i].replace(/^[-*]\s/, "")); i++; }
+        elements.push(<ul key={keyIdx++} style={{ margin: "3px 0", paddingLeft: 16, listStyle: "disc" }}>{items.map((it, li) => <li key={li} style={{ color: "var(--text2)", marginBottom: 1, fontSize: 11, lineHeight: 1.6 }}>{inlineFormat(it, `ul-${keyIdx}-${li}`)}</li>)}</ul>);
+        continue;
+      }
+      if (/^\d+\.\s/.test(line)) {
+        const items = [];
+        while (i < lines.length && /^\d+\.\s/.test(lines[i])) { items.push(lines[i].replace(/^\d+\.\s/, "")); i++; }
+        elements.push(<ol key={keyIdx++} style={{ margin: "3px 0", paddingLeft: 16 }}>{items.map((it, li) => <li key={li} style={{ color: "var(--text2)", marginBottom: 1, fontSize: 11, lineHeight: 1.6 }}>{inlineFormat(it, `ol-${keyIdx}-${li}`)}</li>)}</ol>);
+        continue;
+      }
+      if (line.trim() === "") { elements.push(<div key={keyIdx++} style={{ height: 4 }} />); i++; continue; }
+      elements.push(<div key={keyIdx++} style={{ color: "var(--text2)", fontSize: 11, lineHeight: 1.6, marginBottom: 1 }}>{inlineFormat(line, keyIdx)}</div>);
+      i++;
+    }
+  });
+  return <div style={{ display: "flex", flexDirection: "column" }}>{elements}</div>;
 }

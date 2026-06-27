@@ -485,31 +485,176 @@ function MessageBubble({ message }) {
   );
 }
 
+function inlineFormat(text, keyPrefix) {
+  // Handle inline: **bold**, *italic*, `code`
+  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
+  return parts.map((p, i) => {
+    const k = `${keyPrefix}-${i}`;
+    if (p.startsWith("**") && p.endsWith("**"))
+      return <strong key={k} style={{ fontWeight: 700 }}>{p.slice(2, -2)}</strong>;
+    if (p.startsWith("*") && p.endsWith("*"))
+      return <em key={k}>{p.slice(1, -1)}</em>;
+    if (p.startsWith("`") && p.endsWith("`"))
+      return <code key={k} style={{ background: "var(--bg)", border: "1px solid var(--border2)", borderRadius: "var(--radius-xs)", padding: "1px 5px", fontSize: 11, color: "var(--accent)", fontFamily: "monospace" }}>{p.slice(1, -1)}</code>;
+    return <span key={k}>{p}</span>;
+  });
+}
+
 function FormattedContent({ content }) {
   if (!content) return null;
-  const parts = content.split(/(```[\s\S]*?```|`[^`]+`|\*\*[^*]+\*\*)/g);
-  return (
-    <>
-      {parts.map((part, i) => {
-        if (part.startsWith("```") && part.endsWith("```")) {
-          const inner = part.slice(3, -3);
-          const langMatch = inner.match(/^[a-z]+\n/);
-          const code = langMatch ? inner.slice(langMatch[0].length) : inner;
-          return (
-            <pre key={i} style={{
-              background: "var(--bg)", border: "1px solid var(--border2)",
-              borderRadius: "var(--radius-sm)", padding: "9px 11px", fontSize: 11,
-              overflowX: "auto", margin: "6px 0", fontFamily: "monospace",
-              color: "var(--accent)", lineHeight: 1.5,
-            }}>{code}</pre>
+
+  // Split out fenced code blocks first
+  const segments = content.split(/(```[\s\S]*?```)/g);
+
+  const elements = [];
+  let keyIdx = 0;
+
+  segments.forEach((seg) => {
+    if (seg.startsWith("```") && seg.endsWith("```")) {
+      const inner = seg.slice(3, -3);
+      const langMatch = inner.match(/^[a-zA-Z]+\n/);
+      const lang = langMatch ? langMatch[0].trim() : "";
+      const code = langMatch ? inner.slice(langMatch[0].length) : inner;
+      elements.push(
+        <pre key={keyIdx++} style={{
+          background: "var(--bg)", border: "1px solid var(--border2)",
+          borderRadius: "var(--radius-sm)", padding: "9px 11px", fontSize: 11,
+          overflowX: "auto", margin: "8px 0", fontFamily: "monospace",
+          color: "var(--accent)", lineHeight: 1.5, whiteSpace: "pre",
+        }}>
+          {lang && <div style={{ fontSize: 9, color: "var(--text4)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 1 }}>{lang}</div>}
+          {code.trimEnd()}
+        </pre>
+      );
+      return;
+    }
+
+    // Process line by line
+    const lines = seg.split("\n");
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+
+      // Horizontal rule
+      if (/^---+$/.test(line.trim())) {
+        elements.push(<hr key={keyIdx++} style={{ border: "none", borderTop: "1px solid var(--border)", margin: "10px 0" }} />);
+        i++; continue;
+      }
+
+      // Headings
+      const hMatch = line.match(/^(#{1,3})\s+(.+)/);
+      if (hMatch) {
+        const level = hMatch[1].length;
+        const sizes = { 1: 15, 2: 13, 3: 12 };
+        elements.push(
+          <div key={keyIdx++} style={{ fontWeight: 700, fontSize: sizes[level], color: "var(--text)", margin: `${level === 1 ? 10 : 7}px 0 4px` }}>
+            {inlineFormat(hMatch[2], keyIdx)}
+          </div>
+        );
+        i++; continue;
+      }
+
+      // Table: collect all consecutive table lines
+      if (line.startsWith("|")) {
+        const tableLines = [];
+        while (i < lines.length && lines[i].startsWith("|")) {
+          tableLines.push(lines[i]);
+          i++;
+        }
+        const rows = tableLines.filter(l => !/^\|[-| :]+\|$/.test(l.trim()));
+        const parsed = rows.map(r => r.split("|").slice(1, -1).map(c => c.trim()));
+        if (parsed.length > 0) {
+          elements.push(
+            <div key={keyIdx++} style={{ overflowX: "auto", margin: "8px 0" }}>
+              <table style={{ borderCollapse: "collapse", fontSize: 11, width: "100%" }}>
+                <thead>
+                  <tr>{parsed[0].map((cell, ci) => (
+                    <th key={ci} style={{ border: "1px solid var(--border2)", padding: "4px 8px", background: "var(--bg)", color: "var(--text)", textAlign: "left", fontWeight: 700 }}>
+                      {inlineFormat(cell, `th-${keyIdx}-${ci}`)}
+                    </th>
+                  ))}</tr>
+                </thead>
+                <tbody>
+                  {parsed.slice(1).map((row, ri) => (
+                    <tr key={ri} style={{ background: ri % 2 === 0 ? "transparent" : "var(--bg)22" }}>
+                      {row.map((cell, ci) => (
+                        <td key={ci} style={{ border: "1px solid var(--border2)", padding: "4px 8px", color: "var(--text2)" }}>
+                          {inlineFormat(cell, `td-${keyIdx}-${ri}-${ci}`)}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           );
         }
-        if (part.startsWith("`") && part.endsWith("`"))
-          return <code key={i} style={{ background: "var(--bg)", border: "1px solid var(--border2)", borderRadius: "var(--radius-xs)", padding: "1px 5px", fontSize: 11, color: "var(--accent)", fontFamily: "monospace" }}>{part.slice(1, -1)}</code>;
-        if (part.startsWith("**") && part.endsWith("**"))
-          return <strong key={i} style={{ color: "var(--text)", fontWeight: 700 }}>{part.slice(2, -2)}</strong>;
-        return <span key={i}>{part}</span>;
-      })}
-    </>
-  );
+        continue;
+      }
+
+      // Blockquote
+      if (line.startsWith(">")) {
+        elements.push(
+          <div key={keyIdx++} style={{ borderLeft: "3px solid var(--accent)", paddingLeft: 10, color: "var(--text3)", fontStyle: "italic", margin: "6px 0", fontSize: 11 }}>
+            {inlineFormat(line.replace(/^>\s*/, ""), keyIdx)}
+          </div>
+        );
+        i++; continue;
+      }
+
+      // Unordered list item
+      if (/^[-*]\s/.test(line)) {
+        const listItems = [];
+        while (i < lines.length && /^[-*]\s/.test(lines[i])) {
+          listItems.push(lines[i].replace(/^[-*]\s/, ""));
+          i++;
+        }
+        elements.push(
+          <ul key={keyIdx++} style={{ margin: "4px 0", paddingLeft: 18, listStyle: "disc" }}>
+            {listItems.map((item, li) => (
+              <li key={li} style={{ color: "var(--text2)", marginBottom: 2, fontSize: 12, lineHeight: 1.6 }}>
+                {inlineFormat(item, `ul-${keyIdx}-${li}`)}
+              </li>
+            ))}
+          </ul>
+        );
+        continue;
+      }
+
+      // Ordered list item
+      if (/^\d+\.\s/.test(line)) {
+        const listItems = [];
+        while (i < lines.length && /^\d+\.\s/.test(lines[i])) {
+          listItems.push(lines[i].replace(/^\d+\.\s/, ""));
+          i++;
+        }
+        elements.push(
+          <ol key={keyIdx++} style={{ margin: "4px 0", paddingLeft: 18 }}>
+            {listItems.map((item, li) => (
+              <li key={li} style={{ color: "var(--text2)", marginBottom: 2, fontSize: 12, lineHeight: 1.6 }}>
+                {inlineFormat(item, `ol-${keyIdx}-${li}`)}
+              </li>
+            ))}
+          </ol>
+        );
+        continue;
+      }
+
+      // Empty line → spacing
+      if (line.trim() === "") {
+        elements.push(<div key={keyIdx++} style={{ height: 6 }} />);
+        i++; continue;
+      }
+
+      // Normal paragraph line
+      elements.push(
+        <div key={keyIdx++} style={{ color: "var(--text2)", fontSize: 12, lineHeight: 1.65, marginBottom: 1 }}>
+          {inlineFormat(line, keyIdx)}
+        </div>
+      );
+      i++;
+    }
+  });
+
+  return <div style={{ display: "flex", flexDirection: "column" }}>{elements}</div>;
 }

@@ -65,6 +65,11 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.46.9",date:"Jun 2026",items:[
+    "Fix: AI Chat markdown now renders fully — headings, bullet/numbered lists, tables, blockquotes, bold, italic, inline code, fenced code blocks, horizontal rules.",
+    "Fix: NodeAIChat (node-level AI) gets the same markdown renderer as LLMChat.",
+    "Security: .gitignore expanded to cover all cert/key file extensions; .env and nginx/certs/ untracked from git index.",
+  ]},
   {v:"v5.46.8",date:"Apr 2026",items:[
     "Fix: Proxmox route accidentally dropped during TrueNAS migration patch -- restored, all 5 integration endpoints working again.",
   ]},
