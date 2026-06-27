@@ -405,7 +405,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
           </div>
           {/* Stats row */}
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:6 }}>
-            {[["Maps", maps.length],["Nodes", maps.reduce((a,m)=>a+(m.node_count||0),0)]].map(([l,v])=>(
+            {[["Maps", maps.length],["Nodes", maps.reduce((a,m)=>a+(parseInt(m.node_count)||0),0)]].map(([l,v])=>(
               <div key={l} style={{ background:"var(--bg3)", borderRadius:"var(--radius-sm)", padding:"6px 8px", border:"1px solid var(--border2)" }}>
                 <div style={{ fontSize:16, fontWeight:800, color:"var(--text)", lineHeight:1 }}>{v}</div>
                 <div style={{ fontSize:9, color:"var(--text4)", marginTop:2 }}>{l}</div>
@@ -851,7 +851,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{map.description}</div>}
                         <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",marginTop:4}}>
                           <span style={{fontSize:10,fontWeight:600,color:"var(--ca)",background:"var(--ca)18",
-                            padding:"1px 7px",borderRadius:"var(--radius-xs)"}}>{map.node_count||0} nodes</span>
+                            padding:"1px 7px",borderRadius:"var(--radius-xs)"}}>{parseInt(map.node_count)||0} nodes</span>
                           {grpLabel&&activeGroup==="all"&&(
                             <span style={{fontSize:9,color:"var(--text3)",background:"var(--bg3)",padding:"1px 6px",borderRadius:"var(--radius-xs)",fontWeight:600,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
                               {grpLabel}
@@ -888,7 +888,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         <div style={{fontSize:12,fontWeight:"var(--font-weight-ui,600)",color:"var(--text)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{map.title}</div>
                         {map.description&&<div style={{fontSize:10,color:"var(--text4)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{map.description}</div>}
                       </div>
-                      <span style={{fontSize:10,color:"var(--ca)",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{map.node_count||0} nodes</span>
+                      <span style={{fontSize:10,color:"var(--ca)",fontWeight:600,whiteSpace:"nowrap",flexShrink:0}}>{parseInt(map.node_count)||0} nodes</span>
                       {grpLabel&&activeGroup==="all"&&<span style={{fontSize:9,color:"var(--text3)",background:"var(--bg3)",padding:"1px 6px",borderRadius:4,fontWeight:600,flexShrink:0,maxWidth:70,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{grpLabel}</span>}
                       {map.collab_count>0&&<span style={{fontSize:9,color:"var(--text3)",flexShrink:0}}>👥 {map.collab_count}</span>}
                       {map.is_public&&<span style={{fontSize:9,color:"var(--success)"}}>public</span>}
