@@ -1,6 +1,34 @@
+# Environment & secrets
 .env
+.env.*
+!.env.example
+
+# TLS / certificates
 nginx/certs/
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+*.cer
+*.der
+
+# Dependencies & build output
 node_modules/
 dist/
+
+# Logs
 *.log
+logs/
+
+# OS
 .DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+
+# Docker overrides with real secrets
+docker-compose.override.yml
+
