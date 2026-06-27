@@ -1,8 +1,8 @@
 import React from 'react';
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LiveDashboard from "./LiveDashboard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getMaps, createMap, deleteMap, apiFetch, saveMap, getAccessToken } from "../api/client.js";
+import { getMaps, createMap, deleteMap, apiFetch, saveMap, saveMapMeta, getAccessToken } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
@@ -11,11 +11,10 @@ const MAP_ACCENT_COLORS = ["#6C63FF","#FF6C2F","#0095D5","#16a34a","#E67C1C","#b
 const MAP_ICON_OPTIONS   = ["🗺","🏠","🌐","⚙","🔒","☁","💾","📊","🔌","🧪","🏢","📱","🚀","🎯","📡"];
 const DEFAULT_GROUPS     = ["Personal","Work","Infrastructure","Network","Security","Archive"];
 
-function getMapMeta(id)       { try{return JSON.parse(localStorage.getItem("nn_mm_"+id)||"{}");}catch{return {};} }
-function setMapMeta(id, meta) { localStorage.setItem("nn_mm_"+id, JSON.stringify(meta)); }
-function mapColor(id,idx)     { return getMapMeta(id).color || MAP_ACCENT_COLORS[idx%MAP_ACCENT_COLORS.length]; }
-function mapGroup(id)         { return getMapMeta(id).group || ""; }
-function mapIcon(id)          { return getMapMeta(id).icon  || "🗺"; }
+// Helper: map color/icon/group from server data, with index fallback for color
+function mapColor(map, idx) { return map.color || MAP_ACCENT_COLORS[idx % MAP_ACCENT_COLORS.length]; }
+function mapGroup(map)      { return map.grp  || ""; }
+function mapIcon(map)       { return map.icon || "🗺"; }
 
 // ── Inline Share Modal (shown from dashboard without navigating away) ────
 function ShareModal({ map, onClose }) {
@@ -131,8 +130,10 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
   const [viewMode, setViewMode]   = useState("grid");   // "grid" | "list"
   const [activeGroup, setGroup]   = useState("all");
   const [mapSearch, setMapSearch] = useState("");
-  const [editingMeta, setEditingMeta] = useState(null); // mapId being meta-edited
-  const [, forceUpdate] = useState(0); // re-render after meta change
+  const [sortBy, setSortBy]       = useState("updated"); // "updated"|"created"|"az"|"za"
+  const [editingMeta, setEditingMeta] = useState(null); // map being meta-edited
+  const [editingMetaDraft, setEditingMetaDraft] = useState({}); // local draft before save
+  const [deleteConfirm, setDeleteConfirm] = useState(null); // map to confirm delete
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle]= useState("");
   const [showNew, setShowNew] = useState(false);
@@ -144,8 +145,32 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
   const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
 
   useEffect(() => {
-    getMaps().then(d=>setMaps(d.maps)).catch(e=>setError(e.message)).finally(()=>setLoading(false));
+    getMaps().then(d => {
+      const serverMaps = d.maps || [];
+      // Migrate localStorage meta to server (one-time, then clear)
+      const toMigrate = serverMaps.filter(m => {
+        const local = (() => { try { return JSON.parse(localStorage.getItem("nn_mm_"+m.id)||"{}"); } catch { return {}; } })();
+        return (local.group || local.color || local.icon) && !m.grp && !m.color && !m.icon;
+      });
+      if (toMigrate.length > 0) {
+        Promise.all(toMigrate.map(m => {
+          const local = (() => { try { return JSON.parse(localStorage.getItem("nn_mm_"+m.id)||"{}"); } catch { return {}; } })();
+          return saveMapMeta(m.id, { grp: local.group||"", color: local.color||"", icon: local.icon||"" })
+            .then(() => localStorage.removeItem("nn_mm_"+m.id))
+            .catch(() => {});
+        })).then(() => getMaps().then(d2 => setMaps(d2.maps || [])).catch(()=>{}));
+      }
+      setMaps(serverMaps);
+    }).catch(e=>setError(e.message)).finally(()=>setLoading(false));
   }, []);
+
+  // Update a map's meta locally and persist to server
+  const updateMapMeta = useCallback(async (mapId, patch) => {
+    setMaps(ms => ms.map(m => m.id === mapId ? { ...m, ...patch } : m));
+    const map = maps.find(m => m.id === mapId) || {};
+    const merged = { grp: map.grp||"", color: map.color||"", icon: map.icon||"", ...patch };
+    await saveMapMeta(mapId, merged).catch(() => {});
+  }, [maps]);
 
   const handleCreate = async (e) => {
     e.preventDefault();
@@ -333,10 +358,21 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
     // "cancel" — do nothing
   };
   const handleDelete = async (id, e) => {
-    e.stopPropagation();
-    if (!confirm("Delete this map? This cannot be undone.")) return;
-    await deleteMap(id).catch(()=>{});
-    setMaps(m=>m.filter(x=>x.id!==id));
+    e && e.stopPropagation && e.stopPropagation();
+    const map = maps.find(m => m.id === id);
+    setDeleteConfirm(map);
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    await deleteMap(deleteConfirm.id).catch(()=>{});
+    setMaps(m=>m.filter(x=>x.id!==deleteConfirm.id));
+    setDeleteConfirm(null);
+  };
+
+  const copyMapLink = (mapId) => {
+    const url = `${window.location.origin}/#canvas/${mapId}`;
+    navigator.clipboard.writeText(url).then(() => showToast("Link copied!")).catch(() => showToast("Copy failed", "err"));
   };
 
   return (
@@ -607,9 +643,10 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     {icon:"↗",label:"Open",action:()=>{onOpenMap(menuMap.id);setMenuMap(null);}},
                     {icon:"✎",label:"Rename",action:()=>{setRenaming({id:menuMap.id,title:menuMap.title});setMenuMap(null);}},
                     {icon:"⧉",label:"Duplicate",action:()=>{handleDuplicate(menuMap);setMenuMap(null);}},
+                    {icon:"🔗",label:"Copy link",action:()=>{copyMapLink(menuMap.id);setMenuMap(null);}},
                     {icon:"↙",label:"Export .nonote",action:()=>{handleExportNoNote(menuMap);setMenuMap(null);}},
                     {icon:"👥",label:"Share / Collaborate",action:()=>{setShareMap(menuMap);setMenuMap(null);}},
-                    {icon:"✕",label:"Delete",color:"var(--danger)",action:()=>{handleDelete(menuMap.id,{stopPropagation:()=>{}});setMenuMap(null);}},
+                    {icon:"✕",label:"Delete",color:"var(--danger)",action:()=>{handleDelete(menuMap.id);setMenuMap(null);}},
                   ].map(({icon,label,action,color})=>(
                     <div key={label} onClick={action}
                       style={{display:"flex",alignItems:"center",gap:10,padding:"9px 14px",cursor:"pointer",
@@ -623,16 +660,22 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               </>
             )}
 {(()=>{
-              // Filter + group maps
-              const allGroups = [...new Set(maps.map(m=>mapGroup(m.id)).filter(Boolean))];
-              const filtered  = maps.filter(m=>{
-                const matchGroup = activeGroup==="all" || mapGroup(m.id)===activeGroup;
+              // Filter + group + sort maps
+              const allGroups = [...new Set(maps.map(m=>mapGroup(m)).filter(Boolean))];
+              const sorted = [...maps].sort((a,b) => {
+                if (sortBy==="az") return a.title.localeCompare(b.title);
+                if (sortBy==="za") return b.title.localeCompare(a.title);
+                if (sortBy==="created") return new Date(b.created_at)-new Date(a.created_at);
+                return new Date(b.updated_at)-new Date(a.updated_at); // default: updated
+              });
+              const filtered = sorted.filter(m=>{
+                const matchGroup = activeGroup==="all" || mapGroup(m)===activeGroup;
                 const matchSearch = !mapSearch || m.title.toLowerCase().includes(mapSearch.toLowerCase());
                 return matchGroup && matchSearch;
               });
               const grouped = activeGroup==="all" && !mapSearch
                 ? [...new Set(["", ...allGroups])].reduce((acc,g)=>{
-                    const items=maps.filter(m=>mapGroup(m.id)===(g||""));
+                    const items=sorted.filter(m=>mapGroup(m)===(g||""));
                     if(items.length) acc.push({group:g||"Ungrouped",items});
                     return acc;
                   },[])
@@ -641,11 +684,17 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               return <>
                 {/* ── Toolbar ── */}
                 <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:16,flexWrap:"wrap"}}>
-                  {/* Search */}
-                  <input value={mapSearch} onChange={e=>setMapSearch(e.target.value)} placeholder="Search maps…" data-ui="dashboard-search" data-component="Dashboard" data-page="dashboard" data-role="search-input"
-                    style={{flex:"0 0 200px",padding:"6px 10px",background:"var(--bg3)",
+                  <input value={mapSearch} onChange={e=>setMapSearch(e.target.value)} placeholder="Search maps…"
+                    style={{flex:"0 0 200px",padding:"6px 10px",background:"var(--bg3)",border:"1px solid var(--border2)",
                       borderRadius:"var(--radius-sm)",color:"var(--text)",fontSize:11,outline:"none",fontFamily:"var(--font-ui)"}}/>
-                  {/* Group pills */}
+                  <select value={sortBy} onChange={e=>setSortBy(e.target.value)}
+                    style={{padding:"5px 8px",background:"var(--bg3)",border:"1px solid var(--border2)",borderRadius:"var(--radius-sm)",
+                      color:"var(--text3)",fontSize:11,fontFamily:"var(--font-ui)",outline:"none",cursor:"pointer",flexShrink:0}}>
+                    <option value="updated">Recently edited</option>
+                    <option value="created">Recently created</option>
+                    <option value="az">A → Z</option>
+                    <option value="za">Z → A</option>
+                  </select>
                   <div style={{display:"flex",gap:4,flexWrap:"wrap",flex:1}}>
                     {[["all","All"],...allGroups.map(g=>[g,g])].map(([id,lbl])=>(
                       <button key={id} onClick={()=>setGroup(id)}
@@ -653,18 +702,16 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                           fontFamily:"var(--font-ui)",fontWeight:600,
                           background:activeGroup===id?"var(--accent2)":"var(--bg3)",
                           color:activeGroup===id?"#fff":"var(--text4)"}}>
-                        {lbl} <span style={{opacity:.6}}>({id==="all"?maps.length:maps.filter(m=>mapGroup(m.id)===id).length})</span>
+                        {lbl} <span style={{opacity:.6}}>({id==="all"?maps.length:maps.filter(m=>mapGroup(m)===id).length})</span>
                       </button>
                     ))}
                   </div>
-                  {/* View toggle */}
                   <div style={{display:"flex",gap:2,background:"var(--bg3)",borderRadius:6,padding:2,border:"1px solid var(--border)",flexShrink:0}}>
-                    {[["grid","⊞"],["list","☰"]].map(([v,icon])=>(
+                    {[["grid","⊞"],["list","☰"]].map(([v,ic])=>(
                       <button key={v} onClick={()=>setViewMode(v)}
                         style={{fontSize:14,padding:"3px 8px",border:"none",borderRadius:4,cursor:"pointer",
-                          background:viewMode===v?"var(--accent2)":"transparent",
-                          color:viewMode===v?"#fff":"var(--text4)"}}>
-                        {icon}
+                          background:viewMode===v?"var(--accent2)":"transparent",color:viewMode===v?"#fff":"var(--text4)"}}>
+                        {ic}
                       </button>
                     ))}
                   </div>
@@ -672,63 +719,80 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
 
                 {/* ── Map meta editor modal ── */}
                 {editingMeta&&(()=>{
-                  const meta=getMapMeta(editingMeta);
+                  const m = maps.find(x=>x.id===editingMeta)||{};
+                  const draft = editingMetaDraft;
+                  const grp   = draft.grp   !== undefined ? draft.grp   : (m.grp||"");
+                  const icon  = draft.icon  !== undefined ? draft.icon  : (m.icon||"🗺");
+                  const color = draft.color !== undefined ? draft.color : (m.color||"");
+                  const upd = patch => setEditingMetaDraft(d=>({...d,...patch}));
                   return <div style={{position:"fixed",inset:0,zIndex:800,background:"rgba(0,0,0,.6)",display:"flex",alignItems:"center",justifyContent:"center"}}
-                    onClick={()=>setEditingMeta(null)}>
-                    <div style={{background:"var(--bg)",borderRadius:12,padding:20,width:380,border:"none",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}
+                    onClick={()=>{setEditingMeta(null);setEditingMetaDraft({});}}>
+                    <div style={{background:"var(--bg)",borderRadius:12,padding:20,width:380,boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}
                       onClick={e=>e.stopPropagation()}>
                       <div style={{fontSize:13,fontWeight:700,color:"var(--text)",marginBottom:14}}>Customize Map</div>
-                      {/* Group input */}
                       <div style={{marginBottom:12}}>
                         <div style={{fontSize:10,color:"var(--text4)",marginBottom:4,fontWeight:700}}>GROUP</div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:6}}>
                           {DEFAULT_GROUPS.map(g=>(
-                            <button key={g} onClick={()=>{setMapMeta(editingMeta,{...meta,group:g});forceUpdate(n=>n+1);}}
-                              style={{fontSize:10,padding:"3px 9px",
-                                borderRadius:6,cursor:"pointer",background:meta.group===g?"var(--accent2)":"var(--bg3)",
-                                color:meta.group===g?"#fff":"var(--text3)",fontFamily:"var(--font-ui)"}}>
-                              {g}
-                            </button>
+                            <button key={g} onClick={()=>upd({grp:g})}
+                              style={{fontSize:10,padding:"3px 9px",borderRadius:6,cursor:"pointer",
+                                background:grp===g?"var(--accent2)":"var(--bg3)",
+                                color:grp===g?"#fff":"var(--text3)",fontFamily:"var(--font-ui)"}}>{g}</button>
                           ))}
                         </div>
-                        <input value={meta.group||""} onChange={e=>{setMapMeta(editingMeta,{...meta,group:e.target.value});forceUpdate(n=>n+1);}}
-                          placeholder="Custom group name…"
+                        <input value={grp} onChange={e=>upd({grp:e.target.value})} placeholder="Custom group name…"
                           style={{width:"100%",boxSizing:"border-box",padding:"6px 10px",background:"var(--bg3)",
                             borderRadius:7,color:"var(--text)",fontSize:11,outline:"none"}}/>
                       </div>
-                      {/* Icon picker */}
                       <div style={{marginBottom:12}}>
                         <div style={{fontSize:10,color:"var(--text4)",marginBottom:6,fontWeight:700}}>ICON</div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                           {MAP_ICON_OPTIONS.map(ic=>(
-                            <button key={ic} onClick={()=>{setMapMeta(editingMeta,{...meta,icon:ic});forceUpdate(n=>n+1);}}
-                              style={{fontSize:18,padding:"4px 8px",
-                                borderRadius:7,cursor:"pointer",background:meta.icon===ic?"var(--accent2)22":"var(--bg3)"}}>
-                              {ic}
-                            </button>
+                            <button key={ic} onClick={()=>upd({icon:ic})}
+                              style={{fontSize:18,padding:"4px 8px",borderRadius:7,cursor:"pointer",
+                                background:icon===ic?"var(--accent2)22":"var(--bg3)"}}>{ic}</button>
                           ))}
                         </div>
                       </div>
-                      {/* Color picker */}
                       <div style={{marginBottom:16}}>
                         <div style={{fontSize:10,color:"var(--text4)",marginBottom:6,fontWeight:700}}>ACCENT COLOR</div>
                         <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
                           {MAP_ACCENT_COLORS.map(col=>(
-                            <button key={col} onClick={()=>{setMapMeta(editingMeta,{...meta,color:col});forceUpdate(n=>n+1);}}
-                              style={{width:24,height:24,borderRadius:"50%",background:col,border:`2px solid ${meta.color===col?"white":"transparent"}`,
-                                cursor:"pointer",boxShadow:meta.color===col?"0 0 0 2px "+col:"none"}}>
-                            </button>
+                            <button key={col} onClick={()=>upd({color:col})}
+                              style={{width:24,height:24,borderRadius:"50%",background:col,cursor:"pointer",
+                                border:`2px solid ${color===col?"white":"transparent"}`,
+                                boxShadow:color===col?"0 0 0 2px "+col:"none"}}/>
                           ))}
                         </div>
                       </div>
-                      <button onClick={()=>setEditingMeta(null)}
+                      <button onClick={()=>{updateMapMeta(editingMeta,{grp,icon,color});setEditingMeta(null);setEditingMetaDraft({});}}
                         style={{width:"100%",padding:"8px",background:"var(--accent2)",border:"none",borderRadius:8,
-                          color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>
-                        Done
-                      </button>
+                          color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>Save</button>
                     </div>
                   </div>;
                 })()}
+
+                {/* ── Delete confirm modal ── */}
+                {deleteConfirm&&(
+                  <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.75)",display:"flex",alignItems:"center",justifyContent:"center"}}
+                    onClick={()=>setDeleteConfirm(null)}>
+                    <div style={{background:"var(--bg2)",borderRadius:12,padding:24,width:360,boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))"}}
+                      onClick={e=>e.stopPropagation()}>
+                      <div style={{fontSize:14,fontWeight:700,color:"var(--text)",marginBottom:8}}>Delete map?</div>
+                      <div style={{fontSize:12,color:"var(--text3)",marginBottom:20}}>
+                        <strong style={{color:"var(--text)"}}>{deleteConfirm.title}</strong> will be permanently deleted. This cannot be undone.
+                      </div>
+                      <div style={{display:"flex",gap:8}}>
+                        <button onClick={()=>setDeleteConfirm(null)}
+                          style={{flex:1,padding:"8px",background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:8,
+                            color:"var(--text)",cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>Cancel</button>
+                        <button onClick={confirmDelete}
+                          style={{flex:1,padding:"8px",background:"var(--danger)",border:"none",borderRadius:8,
+                            color:"#fff",fontWeight:700,cursor:"pointer",fontFamily:"var(--font-ui)",fontSize:12}}>Delete</button>
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* ── Groups + Cards ── */}
                 {grouped.map(({group,items})=>(
@@ -743,8 +807,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     {/* Grid view */}
                     {viewMode==="grid"&&<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:10}}>
                       {items.map((map,idx)=>{
-                        const accent=mapColor(map.id,maps.indexOf(map));
-                        const icon=mapIcon(map.id);
+                        const accent=mapColor(map,maps.indexOf(map));
+                        const icon=mapIcon(map);
                         return <div key={map.id}
                           className="nn-map-card" data-ui={`mapcard-${map.id}`} data-component="MapCard" data-page="dashboard" data-role="card"
                           data-tut={maps.indexOf(map)===0?"map-card":undefined}
@@ -761,7 +825,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                                 overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",flex:1,letterSpacing:"var(--letter-space)"}}>{map.title}</div>
                               {/* Inline actions */}
                               <div className="nn-card-actions" style={{display:"flex",gap:1,flexShrink:0,opacity:0,transition:"opacity .15s"}}>
-                                <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
+                                <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);setEditingMetaDraft({});}}
                                   style={{fontSize:11,background:"none",border:"none",color:"var(--text3)",cursor:"pointer",padding:"3px 5px",borderRadius:"var(--radius-xs)"}}
                                   title="Customize">✎</button>
                                 <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}
@@ -794,8 +858,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     {/* List view */}
                     {viewMode==="list"&&<div style={{display:"flex",flexDirection:"column",gap:3}}>
                       {items.map((map,idx)=>{
-                        const accent=mapColor(map.id,maps.indexOf(map));
-                        const icon=mapIcon(map.id);
+                        const accent=mapColor(map,maps.indexOf(map));
+                        const icon=mapIcon(map);
                         return <div key={map.id}
                           className="nn-map-list-row" data-ui={`maprow-${map.id}`} data-component="MapListRow" data-page="dashboard" data-role="list-item"
                           onClick={()=>onOpenMap(map.id)}
@@ -813,7 +877,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                           {map.is_public?<span style={{fontSize:9,color:"var(--success)"}}>public</span>:<span/>}
                           <span style={{fontSize:10,color:"var(--text4)",whiteSpace:"nowrap"}}>{new Date(map.updated_at).toLocaleDateString()}</span>
                           <div style={{display:"flex",gap:2,justifyContent:"flex-end"}}>
-                            <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);}}
+                            <button onClick={e=>{e.stopPropagation();setEditingMeta(map.id);setEditingMetaDraft({});}}
                               style={{fontSize:11,background:"none",border:"none",color:"var(--text4)",cursor:"pointer",padding:"2px 5px"}}
                               title="Customize">✎</button>
                             <button onClick={e=>{e.stopPropagation();const r=e.currentTarget.getBoundingClientRect();setMenuMap({id:map.id,title:map.title,x:r.right-170,y:r.bottom+4});}}

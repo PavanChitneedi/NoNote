@@ -29,3 +29,15 @@ CREATE INDEX IF NOT EXISTS idx_llm_conversations_node_id ON llm_conversations(no
 
 -- v5.45.0: model override per conversation (Ollama multi-model support)
 ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT DEFAULT NULL;
+
+-- v5.48.0: per-user map metadata (group, color, icon) — synced to DB
+CREATE TABLE IF NOT EXISTS map_user_meta (
+  map_id     UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  grp        TEXT NOT NULL DEFAULT '',
+  color      TEXT NOT NULL DEFAULT '',
+  icon       TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (map_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_map_user_meta_user ON map_user_meta(user_id);

@@ -54,10 +54,14 @@ router.get("/", authenticate, async (req, res) => {
               m.owner_id,
               mc.permission,
               (SELECT COUNT(*) FROM map_nodes WHERE map_id = m.id) as node_count,
-              (SELECT COUNT(*) FROM map_collaborators WHERE map_id = m.id) as collab_count
+              (SELECT COUNT(*) FROM map_collaborators WHERE map_id = m.id) as collab_count,
+              COALESCE(mum.grp,   '') as grp,
+              COALESCE(mum.color, '') as color,
+              COALESCE(mum.icon,  '') as icon
        FROM maps m
        JOIN users u ON u.id = m.owner_id
        LEFT JOIN map_collaborators mc ON mc.map_id = m.id AND mc.user_id = $1
+       LEFT JOIN map_user_meta mum ON mum.map_id = m.id AND mum.user_id = $1
        WHERE m.owner_id = $1 OR mc.user_id = $1
          OR (m.is_public AND $2 = ANY(ARRAY['owner','admin']::text[]))
        ORDER BY m.updated_at DESC`,
@@ -67,6 +71,25 @@ router.get("/", authenticate, async (req, res) => {
   } catch (err) {
     console.error("[maps] list error:", err);
     res.status(500).json({ error: "Failed to fetch maps" });
+  }
+});
+
+// ── PATCH /api/maps/:mapId/meta ───────────────────────────────
+router.patch("/:mapId/meta", authenticate, async (req, res) => {
+  try {
+    const { mapId } = req.params;
+    const { grp = "", color = "", icon = "" } = req.body;
+    await query(
+      `INSERT INTO map_user_meta (map_id, user_id, grp, color, icon, updated_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (map_id, user_id) DO UPDATE
+         SET grp=$3, color=$4, icon=$5, updated_at=NOW()`,
+      [mapId, req.user.id, grp, color, icon]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error("[maps] meta error:", err);
+    res.status(500).json({ error: "Failed to save map meta" });
   }
 });
 

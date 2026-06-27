@@ -96,6 +96,7 @@ export const getMaps       = ()           => apiFetch("/maps");
 export const createMap     = (data)       => apiFetch("/maps", { method: "POST", body: JSON.stringify(data) });
 export const getMap        = (id)         => apiFetch(`/maps/${id}`);
 export const updateMap     = (id, data)   => apiFetch(`/maps/${id}`, { method: "PUT", body: JSON.stringify(data) });
+export const saveMapMeta   = (id, data)   => apiFetch(`/maps/${id}/meta`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteMap     = (id)         => apiFetch(`/maps/${id}`, { method: "DELETE" });
 export const saveMap       = (id, data)   => apiFetch(`/maps/${id}/save`, { method: "POST", body: JSON.stringify(data) });
 export const addCollab     = (id, data)   => apiFetch(`/maps/${id}/collaborators`, { method: "POST", body: JSON.stringify(data) });

@@ -155,7 +155,6 @@ const NT = {
   hyperv:      { label:"Hyper-V Host",        color:"#0078D4", icon:Settings,     cat:"Servers" },
   unraid:      { label:"Unraid Server",       color:"#E67C1C", icon:LayoutGrid,   cat:"Servers" },
   truenas:     { label:"TrueNAS",             color:"#0095D5", icon:HardDrive,    cat:"Storage" },
-  freenas:     { label:"FreeNAS (Legacy)",    color:"#1565C0", icon:FolderArchive,cat:"Storage" },
   // ── Virtualisation & Containers ──────────────────────────────
   vm:          { label:"Virtual Machine",     color:"#8E24AA", icon:AppWindow,    cat:"Servers" },
   lxc:         { label:"LXC Container",       color:"#00897B", icon:Component,    cat:"Servers" },
@@ -394,7 +393,6 @@ const DP = {
   hyperv:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",WindowsVersion:"",vSwitches:"",Cluster:"",Services:[{id:"svc1",name:"",type:"VM",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"iDRAC/iLO",type:"iDRAC/iLO",connected:"",ip:""}]},
   unraid:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",OS:"Unraid 7",CPU:"",RAM:"",ArraySize:"",Parity:"",Services:[{id:"svc1",name:"Ubuntu VM",type:"VM",ip:"",port:"",status:"Running",image:"",os:"Ubuntu 22.04",memory:"4GB",cpu:"2",notes:""},{id:"svc2",name:"nginx",type:"LXC",ip:"",port:"80",status:"Running",image:"",os:"Debian",memory:"512MB",cpu:"1",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1 (bonded)",type:"Ethernet",connected:"",ip:""},{id:"mgmt",label:"IPMI",type:"iDRAC/iLO",connected:"",ip:""}]},
   truenas:{IP:"",Domain:"",Subnet:"",Make:"",Model:"",Version:"",Capacity:"",RAID:"RAIDZ2",Shares:"",iSCSI:"",Services:[{id:"svc1",name:"",type:"App",ip:"",port:"",status:"Running",image:"",os:"",memory:"",cpu:"",notes:""}],Ports:[{id:"eth0",label:"eth0",type:"Ethernet",connected:"",ip:""},{id:"eth1",label:"eth1",type:"Ethernet",connected:"",ip:""},{id:"hba1",label:"HBA 1",type:"HBA",connected:"",ip:""}]},
-  freenas:{IP:"",Domain:"",Subnet:"",Version:"",Capacity:"",RAID:"ZFS RAIDZ",Shares:""},
   // Virtualisation & Containers
   vm:{IP:"",OS:"Ubuntu 22.04",RAM:"4GB",CPU:"2",Disk:"50GB",Snapshot:"",Hypervisor:"",Status:"Running"},
   lxc:{IP:"",OS:"Debian",RAM:"512MB",CPU:"1",Disk:"10GB",Unprivileged:"Yes",Status:"Running"},
@@ -1024,7 +1022,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [mapMeta,      setMapMeta]      = useState(null);
   const [nodes,        setNodes]        = useState([]);
   const [edges,        setEdges]        = useState([]);
-  const [editMode,     setEditMode]     = useState(true);   // view vs edit mode
+  const [editMode,     setEditMode]     = useState(canEdit);   // viewers start in view mode
   const [selected,     setSelected]     = useState(new Set()); // set of node ids
   const [selEdge,      setSelEdge]      = useState(null);
   const [mode,         setMode]         = useState("select");
@@ -3149,12 +3147,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             {/* ── Group A: Map resources ── */}
             <button onClick={()=>setShowTemplates(v=>!v)}
               style={tbtn(showTemplates,"var(--accent2)")} title="Templates — start from a preset">📋</button>
-            <button onClick={()=>setShowVersions(true)}
-              style={tbtn(false)} data-tut="history" title="Version History (V)">🕐</button>
-            <button onClick={()=>{setShowCollabLog(v=>!v);
-                if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`)
-                  .then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}}
-              style={tbtn(showCollabLog,"var(--accent2)")} title="Change log — who changed what">📝</button>
+            <button onClick={()=>{setShowVersions(true);if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}}
+              style={tbtn(showVersions||showCollabLog,"var(--accent2)")} data-tut="history" title="History — versions & activity (V)">🕐 History</button>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
@@ -3283,7 +3277,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               style={{fontSize:12,color:"var(--text4)",cursor:"help",padding:"0 4px",lineHeight:1}}>⌨</span>}
 
             <button onClick={()=>setShowHelp(true)} style={tbtn(false)} title="Help & Documentation">❓</button>
-            <button onClick={()=>setShowTutorial(true)} style={tbtn(false,"var(--accent)")} title="Interactive Tutorial">🎓</button>
+            <button onClick={()=>setShowTutorial(true)} style={tbtn(false,"var(--accent)")} title="Take a guided tour of the canvas">🎓 Tour</button>
 
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
@@ -3472,7 +3466,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
           {/* ── SIDE PANELS GROUP ── persistent panel toggles ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
-            <button onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="AI Chat panel">
+            <button onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="AI Chat — full canvas context (all nodes &amp; edges)">
               💬 <span style={{fontSize:10}}>AI Chat</span>
             </button>
             <button onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
@@ -4241,7 +4235,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       {showExport&&<ExportModal nodes={nodes} edges={edges} mapTitle={mapMeta?.title} exportLLM={exportLLM} onClose={()=>setShowExport(false)}/>}
 
-      {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)}/>}
+      {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)} collabLog={collabLog}/>}
       {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)} canvasTheme={canvasTheme} setCanvasTheme={t=>{setCanvasTheme(t);localStorage.setItem(`nn_canvas_${mapId}`,t);}} defaultTab="global"/>}
 
       <style>{`
@@ -5481,12 +5475,12 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
   const hasIntegration = !!(node.properties?._integration?.url || NODE_INT_TYPES.has(node.type));
   const TABS = [
     { id: 'notes',    label: '📝 Notes'      },
-    { id: 'props',    label: '⚙ Properties'  },
+    { id: 'props',    label: '⚙ Props'       },
     ...(hasServices ? [{ id: 'services', label: `🔧 Services (${node.properties.Services.length})` }] : []),
     ...(hasPorts    ? [{ id: 'ports',    label: `🔌 Ports (${node.properties.Ports.length})`       }] : []),
     ...(hasIntegration ? [{ id: 'live',  label: '📡 Live' }] : []),
-    { id: 'ai',       label: '🤖 AI'          },
-    { id: 'type',     label: '🏷 Type'        },
+    { id: 'ai',       label: '🤖 Ask AI'     },
+    { id: 'type',     label: '🏷 Type'       },
     { id: 'conns',    label: `🔗 Links (${nodeEdges.length})` },
   ];
 
@@ -5534,19 +5528,25 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
       </div>
 
       {/* Tab bar */}
-      <div style={{ display: 'flex', borderBottom: '1px solid var(--border2)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border2)', flexShrink: 0, overflowX: 'auto' }}>
         {TABS.map(tb => (
           <button key={tb.id} onClick={() => onTabChange(tb.id)}
-            style={{ flex: 1, padding: '7px 4px', border: 'none', cursor: 'pointer',
+            style={{ flexShrink: 0, padding: '7px 8px', border: 'none', cursor: 'pointer',
               fontSize: 10, fontWeight: 700, fontFamily: 'var(--font-ui)',
               background: tab === tb.id ? 'var(--bg)' : 'var(--bg2)',
               color: tab === tb.id ? t.color : 'var(--text4)',
               borderBottom: tab === tb.id ? `2px solid ${t.color}` : '2px solid transparent',
+              whiteSpace: 'nowrap',
             }}>
             {tb.label}
           </button>
         ))}
       </div>
+      {(!hasServices || !hasPorts || !hasIntegration) && (
+        <div style={{ fontSize: 9, color: 'var(--text4)', padding: '3px 14px', background: 'var(--bg2)', fontStyle: 'italic', flexShrink: 0 }}>
+          {[!hasServices && 'Services', !hasPorts && 'Ports', !hasIntegration && 'Live'].filter(Boolean).join(', ')} tab{(!hasServices && !hasPorts && !hasIntegration) || (!hasServices && !hasPorts) || (!hasServices && !hasIntegration) || (!hasPorts && !hasIntegration) ? 's' : ''} hidden — not applicable to this node type
+        </div>
+      )}
 
       {/* Tab content */}
       <div style={{ flex: 1, overflow: 'auto', padding: '12px 14px', userSelect: 'text', pointerEvents: 'all' }}>
@@ -5785,11 +5785,18 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
 
         {/* ── LIVE TAB ── */}
         {tab === 'live' && (
-          <IntegrationPanel
-            node={node}
-            canEdit={canEdit}
-            onUpdateProp={onUpdateProp}
-          />
+          <>
+            {!node.properties?.IP && !node.properties?._integration?.url && (
+              <div style={{ background:'var(--accent2)11', border:'1px solid var(--accent2)33', borderRadius:'var(--radius-sm)', padding:'10px 12px', marginBottom:10, fontSize:11, color:'var(--text3)', lineHeight:1.6 }}>
+                💡 Set the <strong style={{color:'var(--accent)'}}>IP address</strong> in the <button onClick={()=>onTabChange('props')} style={{background:'none',border:'none',color:'var(--accent2)',cursor:'pointer',fontFamily:'var(--font-ui)',fontSize:11,fontWeight:700,padding:0,textDecoration:'underline'}}>Properties tab</button> first, then return here to connect.
+              </div>
+            )}
+            <IntegrationPanel
+              node={node}
+              canEdit={canEdit}
+              onUpdateProp={onUpdateProp}
+            />
+          </>
         )}
 
         {/* ── TYPE TAB ── */}
@@ -5880,7 +5887,12 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
 
         {/* ── AI TAB ── */}
         {tab === 'ai' && mapId && (
-          <NodeAIChat node={node} mapId={mapId} mapTitle={mapTitle} />
+          <div style={{ display:'flex', flexDirection:'column', height:'100%' }}>
+            <div style={{ fontSize:10, color:'var(--text4)', padding:'6px 14px 0', fontStyle:'italic' }}>
+              Asking AI about this node only — use the 💬 AI Chat button in the topbar for full-canvas context.
+            </div>
+            <NodeAIChat node={node} mapId={mapId} mapTitle={mapTitle} />
+          </div>
         )}
         {tab === 'ai' && !mapId && (
           <div style={{ padding: 16, fontSize: 11, color: 'var(--text4)', textAlign: 'center' }}>Map ID not available</div>
