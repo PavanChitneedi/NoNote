@@ -35,6 +35,7 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
   const [selectedModel, setSelectedModel]     = useState("");
   const [probingModels, setProbingModels]      = useState(false);
   const [expanded, setExpanded]           = useState(false);
+  const messagesEndRef = useRef(null);
   const textareaRef    = useRef(null);
   const convListRef    = useRef(null);
   const abortRef       = useRef(null);   // AbortController for in-flight LLM request
