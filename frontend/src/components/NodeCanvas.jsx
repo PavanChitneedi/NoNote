@@ -2832,7 +2832,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
 
             {/* node_notes preview on canvas card */}
-            {(node.node_notes||"").trim() && (
+            {((node.node_notes||"").trim() || (Array.isArray(node.notes)&&node.notes.length>0)) && (
               <div style={{marginTop:4,borderTop:`1px solid ${t.color}20`,paddingTop:4,display:"flex",alignItems:"flex-start",gap:4}}>
                 {node.notes_private
                   ? <span title="Private notes" style={{fontSize:9,color:"var(--danger)",flexShrink:0}}>🔒</span>
@@ -2841,7 +2841,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 {!node.notes_private && (
                   <span style={{fontSize:9,color:"var(--text4)",lineHeight:1.4,overflow:"hidden",
                     display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
-                    {(node.node_notes||"").replace(/^#+\s*/gm,"").replace(/\*\*/g,"").replace(/---/g,"").trim().slice(0,120)}
+                    {((node.node_notes||"").trim() ||
+                      (Array.isArray(node.notes)?node.notes:[]).map(nt=>(nt.title?`${nt.title}: `:"")+((nt.content||"").replace(/<[^>]+>/g,"").trim())).join(" · ")
+                    ).replace(/^#+\s*/gm,"").replace(/\*\*/g,"").replace(/---/g,"").trim().slice(0,120)}
                   </span>
                 )}
               </div>
@@ -4373,11 +4375,30 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
 // ── NodeNotesTab ───────────────────────────────────────────────
 function NodeNotesTab({ node, canEdit, t, onUpdate }) {
   const [preview, setPreview] = React.useState(false);
-  const [draft,   setDraft]   = React.useState(node.node_notes || '');
+
+  // Build initial value: prefer node_notes, fall back to legacy notes[]
+  const getInitialDraft = (n) => {
+    if (n.node_notes && n.node_notes.trim()) return n.node_notes;
+    // Legacy fallback
+    try {
+      const arr = Array.isArray(n.notes) ? n.notes
+        : JSON.parse(typeof n.notes === 'string' ? n.notes : '[]');
+      if (Array.isArray(arr) && arr.length > 0) {
+        return arr.map(nt => {
+          const title = (nt.title || '').trim();
+          const content = (nt.content || '').replace(/<[^>]+>/g, '').trim();
+          return title ? `### ${title}\n${content}` : content;
+        }).filter(Boolean).join('\n\n');
+      }
+    } catch {}
+    return '';
+  };
+
+  const [draft, setDraft] = React.useState(() => getInitialDraft(node));
   const saveTimer = React.useRef(null);
 
-  // Sync draft when node changes
-  React.useEffect(() => { setDraft(node.node_notes || ''); }, [node.id]);
+  // Sync when node changes
+  React.useEffect(() => { setDraft(getInitialDraft(node)); }, [node.id]);
 
   const save = (text, priv) => {
     clearTimeout(saveTimer.current);
