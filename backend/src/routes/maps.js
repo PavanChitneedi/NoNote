@@ -158,33 +158,13 @@ router.get(
 
       if (!mapRes.rows[0]) return res.status(404).json({ error: "Map not found" });
 
-      // Normalize corrupted notes (fix old double-serialization bug)
-      // node_notes is the new field; notes is legacy (kept for migration only)
-      const nodes = nodesRes.rows.map(n => {
-        const legacyNotes = normalizeNotes(n.notes);
-        let node_notes = n.node_notes || '';
-
-        // Auto-migrate: if node_notes empty but old notes[] has content, convert now
-        if (!node_notes.trim() && legacyNotes && legacyNotes !== '[]') {
-          try {
-            const arr = JSON.parse(legacyNotes);
-            if (Array.isArray(arr) && arr.length > 0) {
-              node_notes = arr.map(nt => {
-                const title = (nt.title || '').trim();
-                const content = (nt.content || '').replace(/<[^>]+>/g, '').trim();
-                return title ? `### ${title}\n${content}` : content;
-              }).filter(Boolean).join('\n\n');
-            }
-          } catch {}
-        }
-
-        return {
-          ...n,
-          notes: legacyNotes,
-          node_notes,
-          notes_private: n.notes_private || false,
-        };
-      });
+      // node_notes is the new field; notes is legacy (kept so frontend can migrate per-entry)
+      const nodes = nodesRes.rows.map(n => ({
+        ...n,
+        notes: normalizeNotes(n.notes),
+        node_notes:    n.node_notes    || '',
+        notes_private: n.notes_private || false,
+      }));
 
       res.json({
         map:           mapRes.rows[0],

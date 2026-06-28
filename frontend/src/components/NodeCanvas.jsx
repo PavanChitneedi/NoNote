@@ -431,11 +431,12 @@ const DP = {
 
 const mkNode = (type, x, y) => ({
   id: makeId(), type, x, y,
-  w: type==="group" ? GRP_W : DEF_W,
-  h: type==="group" ? GRP_H : DEF_H,
+  w: type==="group" ? GRP_W : type==="note" ? 240 : DEF_W,
+  h: type==="group" ? GRP_H : type==="note" ? 160 : DEF_H,
   title: NT[type]?.label || "Node",
   description: "", showNotes: false,
-  notes: [], collapsed: false,
+  notes: [], node_notes: "", notes_private: false,
+  collapsed: false,
   properties: { ...(DP[type]||{}) }, customProps: {},
 });
 
@@ -1315,7 +1316,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       setMapMeta(data.map);
       const ns=data.nodes.map(n=>({
         id:n.id,type:n.node_type,x:n.x,y:n.y,w:n.w,h:n.h,
-        title:n.title,description:n.description||"",showNotes:false,notes:parseNotes(n.notes),collapsed:false,
+        title:n.title,description:n.description||"",showNotes:false,notes:parseNotes(n.notes),
+        node_notes:n.node_notes||"",notes_private:n.notes_private||false,
+        collapsed:false,
         properties:{...(DP[n.node_type||n.type]||{}),...(n.properties||{})},customProps:n.custom_props||{},
       }));
       const es=data.edges.map(e=>({
@@ -1326,7 +1329,65 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         midOff:e.mid_off||null,
       }));
       if(Array.isArray(data.groupBoxes)) setGroupBoxes(data.groupBoxes);
-      setNodes(ns); setEdges(es); pushHistory(ns,es);
+
+      // ── Notes migration: old notes[] → individual note nodes (one per entry) ──
+      const extraNodes=[], extraEdges=[];
+      const patchedNs=ns.map(n=>{
+        let parsed=[];
+        try{ parsed=JSON.parse(parseNotes(n.notes)); }catch{}
+        if(!Array.isArray(parsed)||parsed.length===0) return n;
+        if(n.node_notes&&n.node_notes.trim()) return n; // already migrated
+
+        const toContent=nt=>[
+          (nt.title||"").trim()?`### ${nt.title.trim()}`:"",
+          (nt.content||"").replace(/<[^>]+>/g,"").trim()
+        ].filter(Boolean).join("\n");
+
+        if(n.type==="note"){
+          // First entry stays in this node; rest become sibling note nodes
+          const [first,...rest]=parsed;
+          rest.forEach((nt,i)=>{
+            const c=toContent(nt); if(!c.trim()) return;
+            const newId=makeId();
+            extraNodes.push({id:newId,type:"note",x:n.x+260*(i+1),y:n.y,w:240,h:160,
+              title:"Note",description:"",notes:[],node_notes:c,
+              notes_private:nt.sensitive||false,collapsed:false,properties:{},customProps:{}});
+            // connect to same parents as this note node
+            const parents=es.filter(e=>e.to===n.id||e.from===n.id)
+              .map(e=>e.from===n.id?e.to:e.from);
+            const uniqueParents=[...new Set(parents)];
+            if(uniqueParents.length>0){
+              uniqueParents.forEach(pid=>extraEdges.push({id:makeId(),from:pid,to:newId,label:"",
+                style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null}));
+            }
+          });
+          return {...n,node_notes:toContent(first),notes:[],notes_private:first.sensitive||false};
+        } else {
+          // Non-note node: each note entry → new note node connected to this node
+          parsed.forEach((nt,i)=>{
+            const c=toContent(nt); if(!c.trim()) return;
+            const newId=makeId();
+            extraNodes.push({id:newId,type:"note",x:n.x+n.w+40,y:n.y+i*180,w:240,h:160,
+              title:"Note",description:"",notes:[],node_notes:c,
+              notes_private:nt.sensitive||false,collapsed:false,properties:{},customProps:{}});
+            extraEdges.push({id:makeId(),from:n.id,to:newId,label:"",
+              style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null});
+          });
+          return {...n,node_notes:"",notes:[]};
+        }
+      });
+
+      const finalNs=[...patchedNs,...extraNodes];
+      const finalEs=[...es,...extraEdges];
+
+      if(extraNodes.length>0&&canEdit){
+        setTimeout(()=>saveMap(mapId,{
+          nodes:finalNs.map(n=>({...n,notes:serializeNotes(n.notes)})),
+          edges:finalEs,groupBoxes:data.groupBoxes||[]
+        }),800);
+      }
+
+      setNodes(finalNs); setEdges(finalEs); pushHistory(finalNs,finalEs);
     }).catch(err=>{ console.error('[NodeCanvas] load error:', err); }).finally(()=>setLoading(false));
   },[mapId]);
 
@@ -1738,8 +1799,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           const clickX=(e.clientX-rect.left)*s+el.scrollLeft*s;
           const clickY=(e.clientY-rect.top)*s+el.scrollTop*s;
           const toAnchor=snapToAnchor(toNode,tnw,tnh,clickX,clickY) || {side:"auto"};
+          const fromNode=nodes.find(n=>n.id===drawingEdge.fromId);
+          const isNoteEdge = fromNode?.type==="note" || toNode?.type==="note";
           applyEdges(es=>[...es,{
-            id:makeId(), from:drawingEdge.fromId, to:id, label:"", style:edgeStyle, color:edgeColor,
+            id:makeId(), from:drawingEdge.fromId, to:id, label:"",
+            style: isNoteEdge ? "dashed" : edgeStyle,
+            color: isNoteEdge ? "var(--text4)" : edgeColor,
             fromAnchor:drawingEdge.fromAnchor||{side:"auto"},
             toAnchor,
           }]);
@@ -2687,7 +2752,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         onContextMenu={e=>handleNodeRightClick(e,node.id)}
         onDoubleClick={e=>{
           e.stopPropagation();
-          if(propsMode==='popup') setNodePopup({nodeId:node.id,tab:'notes'});
+          if(node.type==="note") {
+            if(propsMode==='popup') setNodePopup({nodeId:node.id,tab:'notes'});
+            else { setSelectedNode(node.id); setNodePanelTab('notes'); }
+          } else if(propsMode==='popup') setNodePopup({nodeId:node.id,tab:'notes'});
           else if(canEdit&&editMode) setEditingTitle(node.id);
         }}
         style={{
@@ -2829,24 +2897,46 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         </div>
         {/* Body */}
         {!isGroup&&(
-          <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
+          <div style={{padding: node.type==="note" ? "10px 12px" : "var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
 
-            {/* node_notes preview on canvas card */}
-            {((node.node_notes||"").trim() || (Array.isArray(node.notes)&&node.notes.length>0)) && (
-              <div style={{marginTop:4,borderTop:`1px solid ${t.color}20`,paddingTop:4,display:"flex",alignItems:"flex-start",gap:4}}>
-                {node.notes_private
-                  ? <span title="Private notes" style={{fontSize:9,color:"var(--danger)",flexShrink:0}}>🔒</span>
-                  : <span style={{fontSize:9,color:t.color,flexShrink:0}}>📝</span>
-                }
-                {!node.notes_private && (
-                  <span style={{fontSize:9,color:"var(--text4)",lineHeight:1.4,overflow:"hidden",
-                    display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
-                    {((node.node_notes||"").trim() ||
-                      (Array.isArray(node.notes)?node.notes:[]).map(nt=>(nt.title?`${nt.title}: `:"")+((nt.content||"").replace(/<[^>]+>/g,"").trim())).join(" · ")
-                    ).replace(/^#+\s*/gm,"").replace(/\*\*/g,"").replace(/---/g,"").trim().slice(0,120)}
-                  </span>
+            {node.type==="note" ? (
+              /* ── NOTE NODE: full content inline ── */
+              <div>
+                {node.notes_private && (
+                  <div style={{fontSize:9,color:"var(--danger)",marginBottom:4}}>🔒 Private</div>
                 )}
+                {(()=>{
+                  const content = (node.node_notes||"").trim() ||
+                    (Array.isArray(node.notes)?node.notes:[]).map(nt=>
+                      ((nt.title?`### ${nt.title}\n`:"")+((nt.content||"").replace(/<[^>]+>/g,"").trim()))
+                    ).filter(Boolean).join("\n\n");
+                  if(!content) return (
+                    <span style={{fontSize:10,color:"var(--text4)",fontStyle:"italic"}}>
+                      Double-click to add notes…
+                    </span>
+                  );
+                  // Render markdown inline
+                  return <FormattedContent content={content}/>;
+                })()}
               </div>
+            ) : (
+              /* ── OTHER NODES: 2-line preview strip ── */
+              ((node.node_notes||"").trim() || (Array.isArray(node.notes)&&node.notes.length>0)) && (
+                <div style={{marginTop:4,borderTop:`1px solid ${t.color}20`,paddingTop:4,display:"flex",alignItems:"flex-start",gap:4}}>
+                  {node.notes_private
+                    ? <span title="Private notes" style={{fontSize:9,color:"var(--danger)",flexShrink:0}}>🔒</span>
+                    : <span style={{fontSize:9,color:t.color,flexShrink:0}}>📝</span>
+                  }
+                  {!node.notes_private && (
+                    <span style={{fontSize:9,color:"var(--text4)",lineHeight:1.4,overflow:"hidden",
+                      display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                      {((node.node_notes||"").trim() ||
+                        (Array.isArray(node.notes)?node.notes:[]).map(nt=>(nt.title?`${nt.title}: `:"")+((nt.content||"").replace(/<[^>]+>/g,"").trim())).join(" · ")
+                      ).replace(/^#+\s*/gm,"").replace(/\*\*/g,"").replace(/---/g,"").trim().slice(0,120)}
+                    </span>
+                  )}
+                </div>
+              )
             )}
           </div>
         )}

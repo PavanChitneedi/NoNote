@@ -408,28 +408,8 @@ async function runMigrations() {
     "ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS node_notes TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS notes_private BOOLEAN NOT NULL DEFAULT false",
     "CREATE INDEX IF NOT EXISTS idx_map_nodes_notes_fts ON map_nodes USING gin(to_tsvector('english', coalesce(node_notes,'')))",
-    // v5.49.0 migrate old notes[] JSON to node_notes (idempotent — only where node_notes is empty and notes has data)
-    `UPDATE map_nodes SET node_notes = (
-      SELECT string_agg(
-        CASE WHEN (note->>'title') IS NOT NULL AND (note->>'title') != ''
-          THEN '### ' || (note->>'title') || E'\n' || coalesce(note->>'content','')
-          ELSE coalesce(note->>'content','')
-        END,
-        E'\n\n'
-        ORDER BY ordinality
-      )
-      FROM jsonb_array_elements(
-        CASE WHEN notes ~ '^\\s*\\[' THEN notes::jsonb ELSE '[]'::jsonb END
-      ) WITH ORDINALITY AS t(note, ordinality)
-      WHERE (note->>'content') IS NOT NULL AND (note->>'content') != ''
-    ), notes_private = (
-      notes ~ '^\\s*\\[' AND
-      EXISTS (
-        SELECT 1 FROM jsonb_array_elements(notes::jsonb) n
-        WHERE (n->>'sensitive')::boolean = true
-      )
-    )
-    WHERE node_notes = '' AND notes != '' AND notes != '[]' AND notes ~ '^\\s*\\['`,
+    // v5.49.0 node notes redesign — migration handled client-side on map load (one note node per entry)
+    "SELECT 1", // placeholder — no-op
   ];
   let applied = 0;
   for (const sql of migrations) {

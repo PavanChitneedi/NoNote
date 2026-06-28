@@ -65,6 +65,23 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.49.2",date:"Jun 2026",items:[
+    "Fix: Migration now creates one note node per note entry instead of concatenating into one.",
+    "Fix: Note nodes with multiple notes split into sibling note nodes connected to same parents.",
+    "Fix: Non-note nodes with N notes create N separate note nodes, each connected back via dashed edge.",
+    "Fix: Backend no longer concatenates notes — migration is fully client-side on map open.",
+    "Fix: Migration auto-saves after creating note nodes so the result persists.",
+  ]},
+  {v:"v5.49.1",date:"Jun 2026",items:[
+    "Feature: Note nodes show full content inline on the canvas — no clicking needed.",
+    "Feature: Connecting to/from a note node auto-applies a dashed grey edge (no arrowhead).",
+    "Feature: Note nodes default to 240×160px to fit content.",
+    "Feature: Double-clicking a note node opens the Notes tab directly.",
+    "Feature: Note nodes initialized with node_notes field.",
+    "Fix: React.useState/useEffect/useRef → named imports (was crashing canvas).",
+    "Fix: node_notes and notes_private now included in map load mapping.",
+    "Fix: Legacy notes[] auto-migrated to node_notes on map load (backend + frontend fallback).",
+  ]},
   {v:"v5.49.0",date:"Jun 2026",items:[
     "Feature: Notes redesigned — single freeform markdown textarea per node, replaces the multi-note list.",
     "Feature: Notes are public by default. One 🔒 toggle to make private (hidden from viewers in canvas + search).",
