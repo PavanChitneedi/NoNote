@@ -64,12 +64,15 @@ CREATE TABLE map_nodes (
   properties    JSONB NOT NULL DEFAULT '{}',
   custom_props  JSONB NOT NULL DEFAULT '{}',
   notes         TEXT NOT NULL DEFAULT '',
+  node_notes    TEXT NOT NULL DEFAULT '',
+  notes_private BOOLEAN NOT NULL DEFAULT false,
   z_index       INTEGER NOT NULL DEFAULT 0,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_map_nodes_map_id ON map_nodes(map_id);
+CREATE INDEX idx_map_nodes_notes_fts ON map_nodes USING gin(to_tsvector('english', coalesce(node_notes,'')));
 
 -- ── Map edges ─────────────────────────────────────────────────
 CREATE TABLE map_edges (
@@ -201,3 +204,14 @@ CREATE TABLE IF NOT EXISTS map_changelog (
 );
 CREATE INDEX IF NOT EXISTS idx_map_changelog_map ON map_changelog(map_id, created_at DESC);
 
+-- ── Per-user map metadata (group, color, icon) ───────────────
+CREATE TABLE IF NOT EXISTS map_user_meta (
+  map_id     UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+  user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  grp        TEXT NOT NULL DEFAULT '',
+  color      TEXT NOT NULL DEFAULT '',
+  icon       TEXT NOT NULL DEFAULT '',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (map_id, user_id)
+);
+CREATE INDEX IF NOT EXISTS idx_map_user_meta_user ON map_user_meta(user_id);

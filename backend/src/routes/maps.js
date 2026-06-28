@@ -159,9 +159,12 @@ router.get(
       if (!mapRes.rows[0]) return res.status(404).json({ error: "Map not found" });
 
       // Normalize corrupted notes (fix old double-serialization bug)
+      // node_notes is the new field; notes is legacy (kept for migration only)
       const nodes = nodesRes.rows.map(n => ({
         ...n,
         notes: normalizeNotes(n.notes),
+        node_notes:    n.node_notes    || '',
+        notes_private: n.notes_private || false,
       }));
 
       res.json({
@@ -262,14 +265,14 @@ router.post(
 
         // 2. Batch-insert nodes (single query with multiple value rows)
         if (origNodes.rows.length > 0) {
-          const nodeCols = "(id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,z_index)";
+          const nodeCols = "(id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,node_notes,notes_private,z_index)";
           const nodeVals = [], nodePlaceholders = [];
           let pi = 1;
           for (const n of origNodes.rows) {
-            nodePlaceholders.push(`($${pi},$${pi+1},$${pi+2},$${pi+3},$${pi+4},$${pi+5},$${pi+6},$${pi+7},$${pi+8},$${pi+9},$${pi+10},$${pi+11})`);
+            nodePlaceholders.push(`($${pi},$${pi+1},$${pi+2},$${pi+3},$${pi+4},$${pi+5},$${pi+6},$${pi+7},$${pi+8},$${pi+9},$${pi+10},$${pi+11},$${pi+12},$${pi+13})`);
             nodeVals.push(nodeIdMap[n.id], newId, n.node_type, n.title, n.x, n.y, n.w, n.h,
-              n.properties, n.custom_props, n.notes, n.z_index);
-            pi += 12;
+              n.properties, n.custom_props, n.notes, n.node_notes||'', n.notes_private||false, n.z_index);
+            pi += 14;
           }
           await client.query(
             `INSERT INTO map_nodes ${nodeCols} VALUES ${nodePlaceholders.join(",")}`,
@@ -360,15 +363,18 @@ router.post(
         for (const n of nodes || []) {
           const nodeId = idMap[n.id];
           await client.query(
-            `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, z_index)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+            `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, node_notes, notes_private, z_index)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
              ON CONFLICT (id) DO UPDATE SET
                node_type=$3, title=$4, x=$5, y=$6, w=$7, h=$8,
-               properties=$9, custom_props=$10, notes=$11, z_index=$12`,
+               properties=$9, custom_props=$10, notes=$11, node_notes=$12, notes_private=$13, z_index=$14`,
             [nodeId, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
              JSON.stringify(n.properties || {}),
              JSON.stringify(n.customProps || n.custom_props || {}),
-             typeof n.notes === 'string' ? n.notes : JSON.stringify(Array.isArray(n.notes) ? n.notes : []), n.z_index || 0]
+             typeof n.notes === 'string' ? n.notes : JSON.stringify(Array.isArray(n.notes) ? n.notes : []),
+             n.node_notes || '',
+             n.notes_private || false,
+             n.z_index || 0]
           );
         }
 
@@ -509,6 +515,57 @@ router.get(
       res.json(result.rows);
     } catch (err) {
       res.status(500).json({ error: "Failed to fetch changelog" });
+    }
+  }
+);
+
+// ── GET /api/maps/:mapId/search?q=... ─────────────────────────
+router.get(
+  "/:mapId/search",
+  authenticate,
+  async (req, res, next) => { const fn = await mapPermission("viewer"); fn(req, res, next); },
+  async (req, res) => {
+    try {
+      const { q = "" } = req.query;
+      if (!q.trim()) return res.json({ results: [] });
+      const canSeePrivate = ["owner","admin","editor"].includes(req.user.role);
+      const { rows } = await query(
+        `SELECT id, node_type, title, node_notes, notes_private, properties, custom_props, x, y
+         FROM map_nodes
+         WHERE map_id = $1
+           AND (
+             title ILIKE $2
+             OR (node_notes ILIKE $2 AND (NOT notes_private OR $3))
+             OR properties::text ILIKE $2
+             OR custom_props::text ILIKE $2
+           )
+         LIMIT 50`,
+        [req.params.mapId, `%${q}%`, canSeePrivate]
+      );
+      // Build snippets for each match
+      const term = q.toLowerCase();
+      const snippet = (text, len=120) => {
+        if (!text) return null;
+        const idx = text.toLowerCase().indexOf(term);
+        if (idx < 0) return null;
+        const start = Math.max(0, idx - 40);
+        return (start > 0 ? "…" : "") + text.slice(start, start + len) + (start + len < text.length ? "…" : "");
+      };
+      const results = rows.map(n => {
+        const hits = [];
+        if (n.title?.toLowerCase().includes(term)) hits.push({ field: "Title", snippet: n.title });
+        if (n.node_notes && n.node_notes.toLowerCase().includes(term) && (canSeePrivate || !n.notes_private))
+          hits.push({ field: "Notes", snippet: snippet(n.node_notes) });
+        const propsStr = JSON.stringify(n.properties || {});
+        if (propsStr.toLowerCase().includes(term)) hits.push({ field: "Properties", snippet: snippet(propsStr) });
+        const customStr = JSON.stringify(n.custom_props || {});
+        if (customStr.toLowerCase().includes(term)) hits.push({ field: "Custom fields", snippet: snippet(customStr) });
+        return { id: n.id, type: n.node_type, title: n.title, x: n.x, y: n.y, notes_private: n.notes_private, hits };
+      }).filter(r => r.hits.length > 0);
+      res.json({ results });
+    } catch (err) {
+      console.error("[maps] search error:", err);
+      res.status(500).json({ error: "Search failed" });
     }
   }
 );

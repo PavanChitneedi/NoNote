@@ -2286,11 +2286,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       ns.forEach(n=>{
         out+=`**${n.title}** _(${NT[n.type]?.label||n.type})_\n`;
         [...Object.entries(n.properties||{}),...Object.entries(n.customProps||{})].filter(([,v])=>v).forEach(([k,v])=>{out+=`- ${k}: ${v}\n`;});
-        const noteArr=Array.isArray(n.notes)?n.notes:[];
-        noteArr.forEach(nt=>{
-          if(nt.sensitive) out+=`- Note: [REDACTED — sensitive]\n`;
-          else if(stripHtml(nt.content)) out+=`- Note${nt.title?` (${nt.title})`:""}:  ${stripHtml(nt.content)}\n`;
-        });
+        if(n.node_notes && n.node_notes.trim()) {
+          if(n.notes_private) out+=`- Notes: [PRIVATE]\n`;
+          else out+=`- Notes:\n${n.node_notes.split('\n').map(l=>`  ${l}`).join('\n')}\n`;
+        }
         out+="\n";
       });
     });
@@ -2364,17 +2363,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       // ── Notes ─────────────────────────────────────────────────────
       if(inNotes){
-        // Handle both array format and legacy string format
-        if(Array.isArray(node.notes)){
-          node.notes.forEach((nt,i)=>{
-            if(nt.sensitive) return; // skip sensitive notes
-            // Always search title regardless of whether it's empty
-            chk(nt.title?`Note: ${nt.title}`:`Note ${i+1} title`, nt.title);
-            chk(nt.title?`Note: ${nt.title} content`:`Note ${i+1}`, nt.content);
+        const nn = node.node_notes || '';
+        if(nn && !(node.notes_private && !canEdit)) {
+          const idx2 = nn.toLowerCase().indexOf(q);
+          if(idx2 >= 0) hits.push({
+            field: node.notes_private ? "Notes 🔒" : "Notes",
+            snippet: nn.slice(Math.max(0,idx2-30), idx2+q.length+60),
+            matchStart: Math.max(0,idx2-30)>0?idx2+30:idx2,
+            matchLen: q.length,
           });
-        } else if(typeof node.notes==="string"&&node.notes.trim()){
-          // Legacy plain-string notes
-          chk("Notes", node.notes);
         }
       }
 
@@ -2416,7 +2413,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     }
 
     return nodeResults;
-  },[nodes, edges, searchQuery, searchField]);
+  },[nodes, edges, searchQuery, searchField, canEdit]);
 
   const scrollToNode = (nodeId) => {
     const node = nodes.find(n=>n.id===nodeId);
@@ -2834,205 +2831,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {!isGroup&&(
           <div style={{padding:"var(--node-body-pad)",fontSize:12,color:"var(--text3)",lineHeight:"var(--line-height)"}}>
 
-            <div style={{display:"flex",alignItems:"center",gap:4,marginTop:3}}>
-              {(Array.isArray(node.notes)?node.notes:[]).length>0&&(
-                <button onMouseDown={e=>e.stopPropagation()}
-                  onClick={e=>{e.stopPropagation();updateNode(node.id,{showNotes:!node.showNotes});}}
-                  style={{display:"flex",alignItems:"center",gap:3,background:"none",
-                    borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
-                    color:node.showNotes?t.color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0}}>
-                  {node.showNotes?"▲":"▼"} {(Array.isArray(node.notes)?node.notes:[]).length} note{(Array.isArray(node.notes)?node.notes:[]).length!==1?"s":""}
-                </button>
-              )}
-              {(Array.isArray(node.notes)?node.notes:[]).some(n=>n.sensitive)&&(
-                <span title="Contains sensitive notes" style={{fontSize:10,color:"var(--danger)"}}>🔒</span>
-              )}
-              {canEdit&&editMode&&(
-                <button onMouseDown={e=>e.stopPropagation()}
-                  onClick={e=>{
-                    e.stopPropagation();
-                    const newNote={id:Math.random().toString(36).slice(2),title:"",content:"",sensitive:false,editing:true};
-                    const arr=[...(Array.isArray(node.notes)?node.notes:[]),newNote];
-                    updateNotes(node.id,arr);
-                    updateNode(node.id,{showNotes:true,expandedNoteIds:[...(node.expandedNoteIds||[]),newNote.id]});
-                    // Auto-focus the new note's title field
-                    setTimeout(()=>setInlineEditField({noteId:newNote.id,field:'noteTitle'}),60);
-                  }}
-                  title="Add note (opens editor)"
-                  style={{display:"flex",alignItems:"center",gap:2,background:"none",
-                    borderRadius:10,padding:"1px 7px",cursor:"pointer",fontSize:9,fontWeight:700,
-                    color:"var(--text4)",fontFamily:"var(--font-ui)",flexShrink:0,opacity:0,transition:"opacity .15s"}}
-                  className="nn-addnote-btn">
-                  + note
-                </button>
-              )}
-            </div>
-            {node.showNotes&&(()=>{
-              const noteArr=(Array.isArray(node.notes)?node.notes:[]).filter(nt=>!nt.sensitive||canEdit);
-              if(!noteArr.length) return null;
-              // Per-node expanded state stored in a transient set (just use a local state-like approach)
-              // We'll store expanded notes in node.expandedNotes (array of ids) via updateNode
-              const expandedSet=new Set(node.expandedNoteIds||[]);
-              const allExpanded=noteArr.every(nt=>expandedSet.has(nt.id));
-              return(
-                <div style={{marginTop:6,borderTop:`1px solid ${t.color}20`,paddingTop:4}}>
-                  {/* Expand-all button */}
-                  <div style={{display:"flex",alignItems:"center",justifyContent:"flex-end",marginBottom:3}}>
-                    <button onMouseDown={e=>e.stopPropagation()}
-                      onClick={e=>{
-                        e.stopPropagation();
-                        const newSet=allExpanded?new Set():new Set(noteArr.map(n=>n.id));
-                        updateNode(node.id,{expandedNoteIds:[...newSet]});
-                      }}
-                      style={{fontSize:8,background:"none",borderRadius:3,
-                        color:"var(--text4)",cursor:"pointer",padding:"0 5px",fontFamily:"var(--font-ui)"}}>
-                      {allExpanded?"▲ Collapse all":"▼ Expand all"}
-                    </button>
-                  </div>
-                  {noteArr.map(nt=>{
-                    const isExpanded=expandedSet.has(nt.id);
-                    return(
-                      <div key={nt.id} style={{marginBottom:4,borderRadius:4,overflow:"hidden",
-                        border:`1px solid ${t.color}20`,background:`${t.color}08`}}>
-                        {/* Note title row — always visible, click to expand */}
-                        <div style={{display:"flex",alignItems:"center",gap:4,padding:"3px 6px",
-                          cursor:"pointer",userSelect:"none"}}
-                          onMouseDown={e=>e.stopPropagation()}
-                          onClick={e=>{
-                            if(e.target.tagName==="BUTTON"||e.target.tagName==="INPUT") return;
-                            e.stopPropagation();
-                            const newSet=new Set(expandedSet);
-                            if(isExpanded) newSet.delete(nt.id); else newSet.add(nt.id);
-                            updateNode(node.id,{expandedNoteIds:[...newSet]});
-                          }}>
-                          <span style={{fontSize:8,color:t.color,flexShrink:0}}>
-                            {isExpanded?"▾":"▸"}
-                          </span>
-                          {inlineEditField?.noteId===nt.id&&inlineEditField?.field==='noteTitle'?(
-                            <input autoFocus value={nt.title||""}
-                              onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
-                              onChange={e=>{
-                                e.stopPropagation();
-                                const arr=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,title:e.target.value}:n);
-                                updateNotes(node.id,arr);
-                              }}
-                              onBlur={()=>setInlineEditField(null)}
-                              onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape"||e.key==="Enter")setInlineEditField(null);}}
-                              style={{flex:1,background:"none",border:"none",borderBottom:"1px solid var(--accent)",
-                                outline:"none",fontSize:10,fontWeight:600,color:"var(--text2)",fontFamily:"var(--font-ui)",padding:"0"}}
-                            />
-                          ):(
-                            <div style={{display:"flex",alignItems:"center",gap:2,flex:1,minWidth:0}}>
-                              <span style={{fontSize:10,fontWeight:600,color:"var(--text2)",flex:1,
-                                overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                                {nt.sensitive?"🔒 Sensitive":nt.title||"Untitled note"}
-                              </span>
-                              {canEdit&&editMode&&!nt.sensitive&&(
-                                <>
-                                  <button className="nn-pencil-btn"
-                                    onMouseDown={e=>e.stopPropagation()}
-                                    onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteTitle'});}}
-                                    title="Edit note title"
-                                    style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
-                                      flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
-                                  <button className="nn-pencil-btn"
-                                    onMouseDown={e=>e.stopPropagation()}
-                                    onClick={e=>{
-                                      e.stopPropagation();
-                                      const arr=(Array.isArray(node.notes)?node.notes:[]).filter(n=>n.id!==nt.id);
-                                      updateNotes(node.id,arr);
-                                    }}
-                                    title="Delete note"
-                                    style={{background:"none",border:"none",cursor:"pointer",padding:"0 1px",
-                                      flexShrink:0,opacity:0,transition:"opacity .15s",fontSize:10,color:"var(--danger)",lineHeight:1}}>✕</button>
-                                </>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                        {/* Note content — only when expanded, click ✎ to edit */}
-                        {isExpanded&&!nt.sensitive&&(
-                          <div style={{borderTop:`1px solid ${t.color}15`}}>
-                            {inlineEditField?.noteId===nt.id&&inlineEditField?.field==='noteContent'?(
-                              <div style={{position:"relative"}}>
-                                <textarea autoFocus id={`nt-edit-${nt.id}`} value={stripHtml(nt.content)||""}
-                                  onMouseDown={e=>e.stopPropagation()} onClick={e=>e.stopPropagation()}
-                                  onChange={e=>{
-                                    e.stopPropagation();
-                                    const arr=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,content:e.target.value}:n);
-                                    updateNotes(node.id,arr);
-                                  }}
-                                  onBlur={()=>setInlineEditField(null)}
-                                  onKeyDown={e=>{e.stopPropagation();if(e.key==="Escape")setInlineEditField(null);}}
-                                  placeholder="Write note content…"
-                                  rows={3}
-                                  style={{width:"100%",boxSizing:"border-box",padding:"4px 8px",background:"var(--bg3)",
-                                    border:"none",outline:"1px solid var(--accent)",resize:"vertical",
-                                    fontSize:10,color:"var(--text2)",fontFamily:"var(--font-ui)",lineHeight:1.55,
-                                    borderRadius:0}}
-                                />
-                                {/* Mini format bar */}
-                                <div style={{display:"flex",gap:1,padding:"1px 3px",
-                                  background:"var(--bg2)",
-                                  borderRadius:3,position:"absolute",top:-22,left:0,zIndex:10,
-                                  boxShadow:"var(--shadow-node, 4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))"}}>
-                                  {[["B","bold"],["I","italic"],["U","underline"],["S","strikethrough"],["—","insertHorizontalRule"]].map(([lbl,cmd])=>(
-                                    <button key={cmd}
-                                      onMouseDown={e=>{
-                                        e.preventDefault();e.stopPropagation();
-                                        // Wrap selected text with markdown-style tags
-                                        const ta=document.getElementById(`nt-edit-${nt.id}`);
-                                        if(!ta) return;
-                                        const s=ta.selectionStart, e2=ta.selectionEnd, val=ta.value;
-                                        if(s===e2) return;
-                                        const sel=val.slice(s,e2);
-                                        const wrap={bold:"**",italic:"_",underline:"__",strikethrough:"~~",insertHorizontalRule:""}[cmd];
-                                        let newVal;
-                                        if(cmd==="insertHorizontalRule") newVal=val.slice(0,s)+"\n---\n"+val.slice(e2);
-                                        else newVal=val.slice(0,s)+wrap+sel+wrap+val.slice(e2);
-                                        const arr2=(Array.isArray(node.notes)?node.notes:[]).map(n=>n.id===nt.id?{...n,content:newVal}:n);
-                                        updateNotes(node.id,arr2);
-                                        setTimeout(()=>{ta.selectionStart=s+wrap.length;ta.selectionEnd=e2+wrap.length;ta.focus();},0);
-                                      }}
-                                      style={{background:"none",border:"none",cursor:"pointer",
-                                        padding:"0 4px",fontSize:lbl==="B"?11:10,
-                                        fontWeight:lbl==="B"?"700":"400",
-                                        fontStyle:lbl==="I"?"italic":"normal",
-                                        textDecoration:lbl==="U"?"underline":lbl==="S"?"line-through":"none",
-                                        color:"var(--text2)",lineHeight:"18px",borderRadius:2,
-                                        minWidth:18,textAlign:"center"}}
-                                      title={cmd}>
-                                      {lbl}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            ):(
-                              <div style={{position:"relative",padding:"3px 8px 6px"}}>
-                                <div style={{fontSize:10,color:"var(--text3)",lineHeight:1.55,paddingRight:16}}
-                                  dangerouslySetInnerHTML={{__html:nt.content||"<em style='color:var(--text4)'>Empty — click ✎ to add content</em>"}}/>
-                                {canEdit&&editMode&&(
-                                  <button className="nn-pencil-btn"
-                                    onMouseDown={e=>e.stopPropagation()}
-                                    onClick={e=>{e.stopPropagation();setInlineEditField({noteId:nt.id,field:'noteContent'});}}
-                                    title="Edit note content"
-                                    style={{position:"absolute",top:4,right:4,background:"none",border:"none",
-                                      cursor:"pointer",padding:"0",opacity:0,transition:"opacity .15s",
-                                      fontSize:9,color:"var(--text4)",lineHeight:1}}>✎</button>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })()}
+            {/* node_notes preview on canvas card */}
+            {(node.node_notes||"").trim() && (
+              <div style={{marginTop:4,borderTop:`1px solid ${t.color}20`,paddingTop:4,display:"flex",alignItems:"flex-start",gap:4}}>
+                {node.notes_private
+                  ? <span title="Private notes" style={{fontSize:9,color:"var(--danger)",flexShrink:0}}>🔒</span>
+                  : <span style={{fontSize:9,color:t.color,flexShrink:0}}>📝</span>
+                }
+                {!node.notes_private && (
+                  <span style={{fontSize:9,color:"var(--text4)",lineHeight:1.4,overflow:"hidden",
+                    display:"-webkit-box",WebkitLineClamp:2,WebkitBoxOrient:"vertical"}}>
+                    {(node.node_notes||"").replace(/^#+\s*/gm,"").replace(/\*\*/g,"").replace(/---/g,"").trim().slice(0,120)}
+                  </span>
+                )}
+              </div>
+            )}
           </div>
         )}
-        {/* Anchor dots in connect mode */}
+                {/* Anchor dots in connect mode */}
         {mode==="connect"&&canEdit&&!isCollapsed&&(()=>{
           const nw2=collW(node), nh2=collH(node);
           const hCount=Math.max(3,Math.min(7,Math.floor(nw2/60)));
@@ -4554,6 +4370,105 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
     </div>
   );
 }
+// ── NodeNotesTab ───────────────────────────────────────────────
+function NodeNotesTab({ node, canEdit, t, onUpdate }) {
+  const [preview, setPreview] = React.useState(false);
+  const [draft,   setDraft]   = React.useState(node.node_notes || '');
+  const saveTimer = React.useRef(null);
+
+  // Sync draft when node changes
+  React.useEffect(() => { setDraft(node.node_notes || ''); }, [node.id]);
+
+  const save = (text, priv) => {
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      onUpdate({ node_notes: text, notes_private: priv ?? node.notes_private ?? false });
+    }, 600);
+  };
+
+  const appendTimestamp = () => {
+    const ts = new Date().toLocaleString('en-GB', { day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit' });
+    const header = `\n\n---\n### ${ts}\n`;
+    const newVal = (draft.trimEnd()) + header;
+    setDraft(newVal);
+    save(newVal, node.notes_private);
+  };
+
+  const isPrivate = node.notes_private || false;
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', height:'100%', gap:0 }}>
+      {/* Toolbar */}
+      <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8, flexShrink:0 }}>
+        <span style={{ fontSize:10, color:'var(--text4)', fontWeight:700, letterSpacing:1, flex:1 }}>NOTES</span>
+        {canEdit && (
+          <button onClick={appendTimestamp} title="Add timestamp entry"
+            style={{ fontSize:10, background:'var(--bg3)', border:'1px solid var(--border)', borderRadius:4,
+              color:'var(--text3)', cursor:'pointer', padding:'2px 8px', fontFamily:'var(--font-ui)' }}>
+            + Entry
+          </button>
+        )}
+        <button onClick={() => setPreview(p => !p)} title={preview ? "Edit" : "Preview"}
+          style={{ fontSize:10, background: preview ? 'var(--accent2)' : 'var(--bg3)',
+            border:'1px solid var(--border)', borderRadius:4,
+            color: preview ? '#fff' : 'var(--text3)', cursor:'pointer', padding:'2px 8px', fontFamily:'var(--font-ui)' }}>
+          {preview ? '✎ Edit' : '👁 Preview'}
+        </button>
+      </div>
+
+      {/* Private toggle */}
+      <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:8, padding:'5px 8px',
+        background: isPrivate ? 'var(--danger)11' : 'var(--bg3)',
+        border:`1px solid ${isPrivate ? 'var(--danger)44' : 'var(--border)'}`,
+        borderRadius:'var(--radius-sm)', flexShrink:0 }}>
+        <span style={{ fontSize:10, color: isPrivate ? 'var(--danger)' : 'var(--text3)', flex:1 }}>
+          {isPrivate ? '🔒 Private — only editors & above can see' : '🌐 Public — visible to everyone'}
+        </span>
+        {canEdit && (
+          <button onClick={() => { onUpdate({ notes_private: !isPrivate }); }}
+            style={{ background: isPrivate ? 'var(--danger)' : 'var(--bg)',
+              border:`1.5px solid ${isPrivate ? 'var(--danger)' : 'var(--border)'}`,
+              borderRadius:10, width:32, height:18, cursor:'pointer', position:'relative',
+              transition:'background .15s', flexShrink:0 }}>
+            <div style={{ position:'absolute', top:2, left: isPrivate ? 14 : 2, width:12, height:12,
+              borderRadius:'50%', background: isPrivate ? '#fff' : 'var(--text4)', transition:'left .15s' }}/>
+          </button>
+        )}
+      </div>
+
+      {/* Content */}
+      {preview ? (
+        <div style={{ flex:1, overflow:'auto', padding:'8px', background:'var(--bg3)',
+          borderRadius:'var(--radius-sm)', fontSize:12, lineHeight:1.7,
+          color:'var(--text2)', border:'1px solid var(--border)' }}>
+          {draft.trim() ? <FormattedContent content={draft} /> :
+            <span style={{ color:'var(--text4)', fontStyle:'italic' }}>Nothing written yet.</span>}
+        </div>
+      ) : (
+        <textarea
+          value={draft}
+          onChange={e => { setDraft(e.target.value); save(e.target.value, isPrivate); }}
+          readOnly={!canEdit}
+          placeholder={canEdit
+            ? "Write anything — steps, observations, commands, decisions…\nClick '+ Entry' to add a timestamped section."
+            : "No notes yet."}
+          style={{ flex:1, resize:'none', background:'var(--bg3)', border:'1px solid var(--border)',
+            borderRadius:'var(--radius-sm)', padding:'8px 10px', color:'var(--text)',
+            fontSize:12, fontFamily:'var(--font-ui)', lineHeight:1.7, outline:'none',
+            minHeight:180, width:'100%', boxSizing:'border-box' }}
+        />
+      )}
+
+      {/* Last saved hint */}
+      {node.updated_at && (
+        <div style={{ fontSize:9, color:'var(--text4)', marginTop:4, textAlign:'right', flexShrink:0 }}>
+          Last saved {new Date(node.updated_at).toLocaleString()}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Props Panel ───────────────────────────────────────────────
 // ── Editable custom property key with duplicate detection ────────────────
 function CustomKeyInput({ propKey, node, canEdit, onRename, style }) {
@@ -5553,47 +5468,12 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
 
         {/* ── NOTES TAB ── */}
         {tab === 'notes' && (
-          <div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
-              <span style={{ fontSize: 10, color: 'var(--text4)', fontWeight: 700, letterSpacing: 1, flex: 1 }}>NOTES</span>
-              {canEdit && <button onClick={() => {
-                const newNote = { id: Math.random().toString(36).slice(2), title: '', content: '', sensitive: false };
-                onUpdateNotes([...(Array.isArray(node.notes) ? node.notes : []), newNote]);
-              }} style={{ fontSize: 10, background: 'var(--accent2)', border: 'none', borderRadius: 4,
-                color: '#fff', cursor: 'pointer', padding: '3px 10px', fontFamily: 'var(--font-ui)', fontWeight: 700 }}>
-                + ADD NOTE
-              </button>}
-            </div>
-            {/* Notes toggle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10,
-              padding: '6px 10px', background: 'var(--bg3)', borderRadius: 'var(--radius-sm)' }}>
-              <span style={{ fontSize: 10, color: 'var(--text3)', flex: 1 }}>Show notes on node canvas</span>
-              <button onClick={() => onUpdate({ showNotes: !node.showNotes })}
-                style={{ background: node.showNotes ? t.color : 'var(--bg)', border: `1.5px solid ${t.color}`,
-                  borderRadius: 10, width: 32, height: 18, cursor: 'pointer', position: 'relative',
-                  transition: 'background .15s', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: 2, left: node.showNotes ? 14 : 2, width: 12, height: 12,
-                  borderRadius: '50%', background: node.showNotes ? '#fff' : t.color, transition: 'left .15s' }}/>
-              </button>
-            </div>
-            {(Array.isArray(node.notes) ? node.notes : []).map((nt, idx) => (
-              <NoteCard key={nt.id} note={nt} canEdit={canEdit}
-                onChange={updated => {
-                  const arr = [...(Array.isArray(node.notes) ? node.notes : [])];
-                  arr[idx] = updated;
-                  onUpdateNotes(arr);
-                }}
-                onDelete={() => {
-                  onUpdateNotes((Array.isArray(node.notes) ? node.notes : []).filter((_, i) => i !== idx));
-                }}
-              />
-            ))}
-            {!(Array.isArray(node.notes) ? node.notes : []).length && (
-              <div style={{ textAlign: 'center', padding: '20px 0', color: 'var(--text4)', fontSize: 11, fontStyle: 'italic' }}>
-                No notes yet. Click + ADD NOTE.
-              </div>
-            )}
-          </div>
+          <NodeNotesTab
+            node={node}
+            canEdit={canEdit}
+            t={t}
+            onUpdate={onUpdate}
+          />
         )}
 
         {/* ── PROPERTIES TAB ── */}

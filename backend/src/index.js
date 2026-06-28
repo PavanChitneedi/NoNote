@@ -388,6 +388,48 @@ async function runMigrations() {
       ('max_maps_per_user','0'),
       ('session_timeout_hours','720')
     ON CONFLICT(key) DO NOTHING`,
+    // v5.41.2 node-level AI chat
+    "ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS node_id TEXT DEFAULT NULL",
+    "CREATE INDEX IF NOT EXISTS idx_llm_conversations_node_id ON llm_conversations(node_id) WHERE node_id IS NOT NULL",
+    // v5.45.0 model override per conversation
+    "ALTER TABLE llm_conversations ADD COLUMN IF NOT EXISTS model_override TEXT DEFAULT NULL",
+    // v5.48.0 per-user map metadata
+    `CREATE TABLE IF NOT EXISTS map_user_meta (
+      map_id     UUID NOT NULL REFERENCES maps(id) ON DELETE CASCADE,
+      user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      grp        TEXT NOT NULL DEFAULT '',
+      color      TEXT NOT NULL DEFAULT '',
+      icon       TEXT NOT NULL DEFAULT '',
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      PRIMARY KEY (map_id, user_id)
+    )`,
+    "CREATE INDEX IF NOT EXISTS idx_map_user_meta_user ON map_user_meta(user_id)",
+    // v5.49.0 node notes redesign
+    "ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS node_notes TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS notes_private BOOLEAN NOT NULL DEFAULT false",
+    "CREATE INDEX IF NOT EXISTS idx_map_nodes_notes_fts ON map_nodes USING gin(to_tsvector('english', coalesce(node_notes,'')))",
+    // v5.49.0 migrate old notes[] JSON to node_notes (idempotent — only where node_notes is empty and notes has data)
+    `UPDATE map_nodes SET node_notes = (
+      SELECT string_agg(
+        CASE WHEN (note->>'title') IS NOT NULL AND (note->>'title') != ''
+          THEN '### ' || (note->>'title') || E'\n' || coalesce(note->>'content','')
+          ELSE coalesce(note->>'content','')
+        END,
+        E'\n\n'
+        ORDER BY ordinality
+      )
+      FROM jsonb_array_elements(
+        CASE WHEN notes ~ '^\\s*\\[' THEN notes::jsonb ELSE '[]'::jsonb END
+      ) WITH ORDINALITY AS t(note, ordinality)
+      WHERE (note->>'content') IS NOT NULL AND (note->>'content') != ''
+    ), notes_private = (
+      notes ~ '^\\s*\\[' AND
+      EXISTS (
+        SELECT 1 FROM jsonb_array_elements(notes::jsonb) n
+        WHERE (n->>'sensitive')::boolean = true
+      )
+    )
+    WHERE node_notes = '' AND notes != '' AND notes != '[]' AND notes ~ '^\\s*\\['`,
   ];
   let applied = 0;
   for (const sql of migrations) {
