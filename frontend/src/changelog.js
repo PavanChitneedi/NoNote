@@ -65,6 +65,15 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.52.0",date:"Jun 2026",items:[
+    "Overhaul: Complete theme system rebuilt from scratch. 8 new themes: Slate (Linear), Arctic (Vercel), Amber (Bear), Sakura (Craft), Midnight (Raycast), Emerald (Supabase), Rose (Superhuman), Void (Warp).",
+    "Overhaul: Complete skin system rebuilt. 5 new skins: Clean (default, Linear/Notion), Rounded (Craft.do, warm+human), Sharp (Warp/VSCode, developer), Glass (Arc/Raycast, frosted), Editorial (Notion/Bear, reading-first).",
+    "Overhaul: ThemePicker redesigned — two tabs: Color (8 theme cards with mini node preview) and Personality (5 skin cards with font+radius preview). Suggests matching theme per skin.",
+    "Overhaul: index.html CSS tokens completely rewritten — clean 8px grid, proper motion tokens, Arctic defaults.",
+    "Overhaul: skins.js reduced from 634 lines to clean 200 lines. All old skins removed.",
+    "Font: System font stacks — Inter for Clean/Glass, Nunito for Rounded, JetBrains Mono for Sharp, Georgia for Editorial. No external requests.",
+    "Default: Arctic theme + Clean skin. Professional, light, crisp.",
+  ]},
   {v:"v5.51.1",date:"Jun 2026",items:[
     "Theme: Arctic is now the default — cool blue-white (#f4f7fb bg, #3b82f6 accent, #1e293b text). Crisp, clean, easy to read.",
     "Theme: Arctic added as first option in ThemePicker. Obsidian and all other moods still available.",

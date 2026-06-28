@@ -16,71 +16,51 @@
   <!-- Fonts: system stack only — no external requests (homelab/offline safe) -->
   <style>
     :root {
-      /* ── Warm dark defaults (Obsidian mood) ── */
+      /* ── Arctic theme defaults (overridden by ThemeProvider) ── */
       --bg:#f4f7fb; --bg2:#ffffff; --bg3:#e8eef6;
       --border:#e2e8f0; --border2:#eef2f8;
       --text:#1e293b; --text2:#475569; --text3:#94a3b8; --text4:#cbd5e1;
       --accent:#3b82f6; --accent2:#2563eb;
-      --success:#10b981; --danger:#ef4444;
-      --canvas-dot:#dde5f0;
-      --node-bg:#ffffff;
-      --shadow:rgba(15,23,42,0.08);
+      --success:#10b981; --danger:#ef4444; --warn:#f59e0b;
+      --canvas-dot:#dde5f0; --node-bg:#ffffff; --shadow:rgba(15,23,42,0.08);
 
-      /* ── Typography ── */
-      --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
-      --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
-      --font-node: var(--font-ui);
+      /* ── Clean skin defaults (overridden by SkinProvider) ── */
+      --font-ui: 'Inter','Segoe UI Variable',system-ui,-apple-system,sans-serif;
+      --font-node: 'Inter',system-ui,sans-serif;
+      --font-mono: ui-monospace,'Cascadia Code','Fira Code',Consolas,monospace;
       --font-weight-ui: 500;
       --font-weight-node: 600;
-      --app-font-size: 13px;
-      --line-height: 1.6;
       --letter-space: 0.01em;
+      --line-height: 1.6;
+      --app-font-size: 13px;
 
       /* ── Spacing — 8px grid ── */
-      --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px;
+      --sp-xs:4px; --sp-sm:8px; --sp-md:16px; --sp-lg:24px;
 
-      /* ── Radii — warm/rounded ── */
-      --radius-xs: 5px;
-      --radius-sm: 8px;
-      --radius-md: 12px;
-      --radius-lg: 16px;
-      --radius-node: 14px;
-      --radius-btn: 8px;
+      /* ── Radii ── */
+      --radius-xs:5px; --radius-sm:8px; --radius-md:12px;
+      --radius-lg:16px; --radius-node:12px; --radius-btn:8px;
 
       /* ── Layout ── */
-      --topbar-h: 80px;
-      --node-header-h: 48px;
-      --node-pad: 10px 12px;
-      --node-body-pad: 6px 12px 10px;
-      --node-border-w: 1.5px;
-      --btn-pad: 6px 12px;
-      --sidebar-w: 184px;
-      --props-w: 280px;
+      --topbar-h:80px; --node-header-h:48px;
+      --node-pad:10px 12px; --node-body-pad:6px 12px 10px;
+      --node-border-w:1px; --btn-pad:6px 12px;
+      --sidebar-w:184px; --props-w:280px;
+      --topbar-bg:var(--bg2); --topbar-border:1px solid var(--border);
+      --topbar-blur:none; --sidebar-bg:var(--bg2);
+      --sidebar-border:1px solid var(--border);
 
-      /* ── Shadows — warm tinted, layered ── */
-      --shadow-node:
-        0 1px 3px rgba(15,23,42,0.08),
-        0 4px 16px rgba(15,23,42,0.06),
-        0 0 0 1px rgba(15,23,42,0.04);
-      --shadow-node-hover:
-        0 3px 8px rgba(15,23,42,0.12),
-        0 8px 28px rgba(15,23,42,0.1),
-        0 0 0 1px rgba(15,23,42,0.06);
-      --shadow-node-sel:
-        0 0 0 2px #3b82f6,
-        0 0 16px rgba(59,130,246,0.15),
-        0 8px 32px rgba(15,23,42,0.12);
-      --shadow-panel:
-        0 4px 24px rgba(15,23,42,0.1),
-        0 0 0 1px rgba(15,23,42,0.05);
+      /* ── Shadows (light mode defaults) ── */
+      --shadow-node: 0 1px 3px rgba(15,23,42,0.08), 0 4px 16px rgba(15,23,42,0.06), 0 0 0 1px rgba(15,23,42,0.04);
+      --shadow-node-hover: 0 3px 8px rgba(15,23,42,0.12), 0 8px 28px rgba(15,23,42,0.1);
+      --shadow-node-sel: 0 0 0 2px #3b82f6, 0 0 16px rgba(59,130,246,0.15), 0 8px 32px rgba(15,23,42,0.12);
+      --shadow-panel: 0 4px 24px rgba(15,23,42,0.1), 0 0 0 1px rgba(15,23,42,0.05);
 
       /* ── Motion ── */
       --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
       --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-      --t-fast: 120ms;
-      --t-mid: 180ms;
-      --t-slow: 280ms;
-      --transition-all: all var(--t-fast) var(--ease-out);
+      --t-fast:120ms; --t-mid:180ms; --t-slow:280ms;
+      --transition-all: all 0.14s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }

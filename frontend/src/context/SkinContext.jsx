@@ -5,7 +5,7 @@ const SkinContext = createContext(null);
 
 export function SkinProvider({ children }) {
   const [skinName, setSkinRaw] = useState(
-    () => localStorage.getItem("nn_skin") || "obsidian"
+    () => localStorage.getItem("nn_skin") || "clean"
   );
   const styleRef = useRef(null);
   const firstMount = useRef(true);
@@ -27,7 +27,7 @@ export function SkinProvider({ children }) {
   };
 
   useEffect(() => {
-    const skin = SKINS[skinName] || SKINS.obsidian;
+    const skin = SKINS[skinName] || SKINS.clean;
 
     if (!styleRef.current) {
       styleRef.current = document.createElement("style");
@@ -48,7 +48,7 @@ export function SkinProvider({ children }) {
 
   useEffect(() => {
     const reapply = () => {
-      const skin = SKINS[skinName] || SKINS.obsidian;
+      const skin = SKINS[skinName] || SKINS.clean;
       setTimeout(() => applyPersonality(skin), 0);
     };
     window.addEventListener("nn-theme-changed", reapply);
@@ -62,7 +62,7 @@ export function SkinProvider({ children }) {
   return (
     <SkinContext.Provider value={{
       skinName, setSkinName,
-      skin: SKINS[skinName] || SKINS.obsidian,
+      skin: SKINS[skinName] || SKINS.clean,
     }}>
       {children}
     </SkinContext.Provider>
