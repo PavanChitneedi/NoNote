@@ -65,6 +65,17 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.50.0",date:"Jun 2026",items:[
+    "Feature: Note nodes with 2+ notes connected to same parent stack into one card — collapsed by default, expand to see accordion of all notes.",
+    "Feature: Stack shows parent node name as context, note count badge, and preview of first 3 titles.",
+    "Feature: Expanded stack shows accordion rows — click row to read content, click ✎ to edit.",
+    "Feature: Dragging stack moves all grouped note nodes together.",
+    "Feature: Single dashed edge shown to stack when collapsed; all edges shown when expanded.",
+    "Feature: Note node with 2+ parents renders standalone — never grouped.",
+    "Feature: Migration now uses old note title as note node title instead of burying it as ### heading.",
+    "Feature: Description field hidden for note node type — not relevant for notes.",
+    "Fix: FormattedContent defined in NodeCanvas for inline markdown rendering.",
+  ]},
   {v:"v5.49.4",date:"Jun 2026",items:[
     "Fix: FormattedContent not defined in NodeCanvas — added local definition so note nodes render markdown inline.",
   ]},

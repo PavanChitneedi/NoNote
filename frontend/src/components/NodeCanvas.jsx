@@ -1058,6 +1058,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [snapGuides,     setSnapGuides]     = useState([]);    // [{x1,y1,x2,y2}] alignment guides
   const [editingNotes,   setEditingNotes]   = useState(null);  // nodeId being edited
   const [inlineEditField,setInlineEditField]= useState(null); // {nodeId, field: 'title'|'desc'|noteId}
+  const [expandedStacks,  setExpandedStacks]  = useState(new Set()); // set of parentNodeId whose stack is expanded
+  const [expandedStackRows,setExpandedStackRows]=useState(new Set()); // set of noteNodeId whose row is expanded
   // Feature: Focus mode
   const [focusMode,      setFocusMode]      = useState(false);
   const [focusEnabled,   setFocusEnabled]   = useState(true);  // global toggle
@@ -1315,10 +1317,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     getMap(mapId).then(data=>{
       setMapMeta(data.map);
 
-      const toContent=nt=>[
-        (nt.title||"").trim()?`### ${nt.title.trim()}`:"",
-        (nt.content||"").replace(/<[^>]+>/g,"").trim()
-      ].filter(Boolean).join("\n");
+      const toContent=nt=>(nt.content||"").replace(/<[^>]+>/g,"").trim();
+      const toTitle=nt=>(nt.title||"").trim()||"Note";
 
       // Parse raw notes from server BEFORE mapping, for migration
       const rawNotesByNodeId={};
@@ -1367,19 +1367,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             const c=toContent(nt); if(!c.trim()) return;
             const newId=makeId();
             extraNodes.push({id:newId,type:"note",x:n.x+260*(i+1),y:n.y,w:240,h:160,
-              title:"Note",description:"",notes:[],node_notes:c,
+              title:toTitle(nt),description:"",notes:[],node_notes:c,
               notes_private:nt.sensitive||false,collapsed:false,properties:{},customProps:{}});
             const parents=[...new Set(es.filter(e=>e.to===n.id||e.from===n.id).map(e=>e.from===n.id?e.to:e.from))];
             parents.forEach(pid=>extraEdges.push({id:makeId(),from:pid,to:newId,label:"",
               style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null}));
           });
-          return {...n,node_notes:toContent(first),notes:[],notes_private:first.sensitive||false};
+          return {...n,title:toTitle(first)||n.title,node_notes:toContent(first),notes:[],notes_private:first.sensitive||false};
         } else {
           parsed.forEach((nt,i)=>{
             const c=toContent(nt); if(!c.trim()) return;
             const newId=makeId();
             extraNodes.push({id:newId,type:"note",x:n.x+n.w+40,y:n.y+i*180,w:240,h:160,
-              title:"Note",description:"",notes:[],node_notes:c,
+              title:toTitle(nt),description:"",notes:[],node_notes:c,
               notes_private:nt.sensitive||false,collapsed:false,properties:{},customProps:{}});
             extraEdges.push({id:makeId(),from:n.id,to:newId,label:"",
               style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null});
@@ -2580,9 +2580,38 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-20}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
           stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
       })()}
-      {edges.map(edge=>{
+      {(()=>{
+        // For stacked notes: suppress all but the first edge to the parent when collapsed
+        const suppressedEdgeIds = new Set();
+        // We need to recompute stacks here for edge filtering
+        const _noteParents = {};
+        edges.forEach(e => {
+          const fn=nodes.find(n=>n.id===e.from), tn=nodes.find(n=>n.id===e.to);
+          if(tn?.type==='note'&&fn?.type!=='note'){_noteParents[e.to]=_noteParents[e.to]||[];_noteParents[e.to].push(e.from);}
+          if(fn?.type==='note'&&tn?.type!=='note'){_noteParents[e.from]=_noteParents[e.from]||[];_noteParents[e.from].push(e.to);}
+        });
+        const _stacks={};
+        nodes.forEach(n=>{
+          if(n.type!=='note') return;
+          const parents=_noteParents[n.id]||[];
+          if(parents.length===1){const pid=parents[0];_stacks[pid]=_stacks[pid]||[];_stacks[pid].push(n);}
+        });
+        Object.entries(_stacks).forEach(([pid,notes])=>{
+          if(notes.length<2) return;
+          const isExpanded=expandedStacks.has(pid);
+          if(!isExpanded){
+            // Keep only the first note's edge, suppress rest
+            notes.slice(1).forEach(n=>{
+              edges.filter(e=>(e.from===pid&&e.to===n.id)||(e.to===pid&&e.from===n.id))
+                .forEach(e=>suppressedEdgeIds.add(e.id));
+            });
+          }
+        });
+        return edges.map(edge=>{
+        return edges.map(edge=>{
         const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
         if(!f||!t) return null;
+        if(suppressedEdgeIds.has(edge.id)) return null;
         const result=getEdgePath(f,t,edge); const {path,fp,tp}=result;
         const mid=result.mid||{x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
         const isSel=selEdge===edge.id;
@@ -2728,11 +2757,196 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             })()}
           </g>
         );
-      })}
+        }); // end edges.map
+      })()}
     </svg>
   );
 
-  const renderNodes = () => nodes.map(node=>{
+  const renderNodes = () => {
+    // ── Compute note stacks ──────────────────────────────────
+    // A note node joins a stack only if it has EXACTLY ONE non-note parent
+    const noteParents = {}; // noteId → [parentId, ...]
+    edges.forEach(e => {
+      const fromNode = nodes.find(n=>n.id===e.from);
+      const toNode   = nodes.find(n=>n.id===e.to);
+      if (toNode?.type==='note' && fromNode?.type!=='note') {
+        noteParents[e.to] = noteParents[e.to] || [];
+        noteParents[e.to].push(e.from);
+      }
+      if (fromNode?.type==='note' && toNode?.type!=='note') {
+        noteParents[e.from] = noteParents[e.from] || [];
+        noteParents[e.from].push(e.to);
+      }
+    });
+
+    // Group: parentId → [noteNode, ...] where note has exactly 1 non-note parent
+    const stacks = {}; // parentId → noteNode[]
+    nodes.forEach(n => {
+      if (n.type !== 'note') return;
+      const parents = noteParents[n.id] || [];
+      if (parents.length === 1) {
+        const pid = parents[0];
+        stacks[pid] = stacks[pid] || [];
+        stacks[pid].push(n);
+      }
+    });
+
+    // Only stack if 2+ notes share a parent
+    const stackedNoteIds = new Set();
+    const activeStacks = {}; // parentId → noteNode[]
+    Object.entries(stacks).forEach(([pid, notes]) => {
+      if (notes.length >= 2) {
+        activeStacks[pid] = notes;
+        notes.forEach(n => stackedNoteIds.add(n.id));
+      }
+    });
+
+    // Render stacks (one per parent group)
+    const stackElements = Object.entries(activeStacks).map(([parentId, stackNotes]) => {
+      const parentNode = nodes.find(n=>n.id===parentId);
+      const isExpanded = expandedStacks.has(parentId);
+      // Position: average of all notes in stack
+      const avgX = stackNotes.reduce((s,n)=>s+n.x,0)/stackNotes.length;
+      const avgY = stackNotes.reduce((s,n)=>s+n.y,0)/stackNotes.length;
+
+      const toggleStack = (e) => {
+        e.stopPropagation();
+        setExpandedStacks(prev => {
+          const next = new Set(prev);
+          next.has(parentId) ? next.delete(parentId) : next.add(parentId);
+          return next;
+        });
+      };
+
+      const handleStackDrag = (clientX, clientY) => {
+        // Move all notes in stack together
+        stackNotes.forEach(n => startDrag(clientX, clientY, n.id));
+      };
+
+      const isFocused = focusMode && stackNotes.some(n=>selected.has(n.id));
+      const focusDim = focusMode && !isFocused ? '0.15' : '1';
+      const t = NT.note;
+
+      return (
+        <div key={`stack-${parentId}`}
+          style={{
+            position:'absolute', left:avgX, top:avgY,
+            width:240, zIndex:5,
+            opacity:focusDim, transition:'opacity .2s',
+          }}>
+          {/* Stack card */}
+          <div
+            onMouseDown={e=>{ e.stopPropagation(); if(!isExpanded) startDrag(e.clientX,e.clientY,stackNotes[0].id); }}
+            style={{
+              background:'var(--node-bg)',
+              border:`var(--node-border-w) solid ${t.color}65`,
+              borderRadius:'var(--radius-node)',
+              boxShadow:'var(--shadow-node)',
+              overflow:'hidden',
+              cursor: isExpanded ? 'default' : 'grab',
+              // Stack visual: offset shadows underneath
+              '--stack-shadow': `3px 3px 0 1px ${t.color}22`,
+            }}>
+            {/* Stack header */}
+            <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:'7px 10px 6px',
+              display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}
+              onClick={toggleStack}>
+              <span style={{fontSize:14}}>📝</span>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:11,fontWeight:700,color:'var(--text)',
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                  {stackNotes.length} notes
+                </div>
+                {parentNode && (
+                  <div style={{fontSize:9,color:`${t.color}99`,overflow:'hidden',
+                    textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    → {parentNode.title}
+                  </div>
+                )}
+              </div>
+              <span style={{fontSize:10,color:'var(--text4)',flexShrink:0}}>
+                {isExpanded ? '▲' : '▼'}
+              </span>
+            </div>
+
+            {/* Collapsed: stacked card preview lines */}
+            {!isExpanded && (
+              <div style={{padding:'6px 10px',display:'flex',flexDirection:'column',gap:2}}>
+                {stackNotes.slice(0,3).map((n,i)=>(
+                  <div key={n.id} style={{fontSize:10,color:'var(--text4)',
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
+                    opacity:1-(i*0.25)}}>
+                    {n.title||'Note'}
+                  </div>
+                ))}
+                {stackNotes.length>3&&(
+                  <div style={{fontSize:9,color:'var(--text4)',opacity:.4}}>
+                    +{stackNotes.length-3} more…
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Expanded: accordion rows */}
+            {isExpanded && (
+              <div style={{maxHeight:400,overflowY:'auto'}}>
+                {stackNotes.map((n,i)=>{
+                  const rowExpanded = expandedStackRows.has(n.id);
+                  return (
+                    <div key={n.id} style={{borderBottom:i<stackNotes.length-1?`1px solid ${t.color}18`:'none'}}>
+                      {/* Row header */}
+                      <div style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',
+                        cursor:'pointer',background:rowExpanded?`${t.color}08`:'transparent'}}
+                        onClick={e=>{
+                          e.stopPropagation();
+                          setExpandedStackRows(prev=>{
+                            const next=new Set(prev);
+                            next.has(n.id)?next.delete(n.id):next.add(n.id);
+                            return next;
+                          });
+                        }}>
+                        <span style={{fontSize:9,color:t.color,flexShrink:0}}>{rowExpanded?'▾':'▸'}</span>
+                        <span style={{fontSize:11,fontWeight:600,color:'var(--text)',flex:1,
+                          overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {n.title||'Note'}
+                        </span>
+                        {n.notes_private&&<span style={{fontSize:9,color:'var(--danger)',flexShrink:0}}>🔒</span>}
+                        {canEdit&&editMode&&(
+                          <button onClick={e=>{e.stopPropagation();setNodePopup({nodeId:n.id,tab:'notes'});}}
+                            style={{background:'none',border:'none',color:'var(--text4)',cursor:'pointer',
+                              fontSize:10,padding:'0 2px',flexShrink:0}}
+                            title="Edit">✎</button>
+                        )}
+                      </div>
+                      {/* Row content */}
+                      {rowExpanded&&n.node_notes&&(
+                        <div style={{padding:'0 10px 8px 22px',fontSize:10,color:'var(--text3)',
+                          lineHeight:1.6,borderTop:`1px solid ${t.color}10`}}>
+                          <FormattedContent content={n.node_notes}/>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Pseudo-stack depth lines behind card */}
+          <div style={{position:'absolute',top:3,left:3,right:-3,bottom:-3,
+            background:'var(--node-bg)',border:`1px solid ${t.color}35`,
+            borderRadius:'var(--radius-node)',zIndex:-1}}/>
+          <div style={{position:'absolute',top:6,left:6,right:-6,bottom:-6,
+            background:'var(--node-bg)',border:`1px solid ${t.color}20`,
+            borderRadius:'var(--radius-node)',zIndex:-2}}/>
+        </div>
+      );
+    });
+
+    // ── Render individual nodes (skip stacked ones) ──────────
+    const nodeElements = nodes.map(node=>{
+      // Skip note nodes that belong to an active stack
+      if (node.type==='note' && stackedNoteIds.has(node.id)) return null;
     const t=NT[node.type]||NT.note;
     const isSel=selected.has(node.id);
     const isGroup=node.type==="group";
@@ -2979,7 +3193,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       </div>
     );
-  });
+    }); // end nodeElements map
+
+    return [...stackElements, ...nodeElements.filter(Boolean)];
+  };
 
   return (
     <div style={{display:"flex",flexDirection:"column",height:"100vh",background:"var(--bg)",overflow:"hidden",fontFamily:"var(--font-ui)"}}>
@@ -5593,7 +5810,8 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
           cursor: 'pointer', fontSize: 18, lineHeight: 1, padding: '0 2px', flexShrink: 0 }}>×</button>
       </div>
 
-      {/* Description field */}
+      {/* Description field — hidden for note nodes */}
+      {node.type !== 'note' && (
       <div style={{ padding: '8px 14px', borderBottom: '1px solid var(--border2)', flexShrink: 0 }}>
         <input
           value={node.description || ''}
@@ -5604,6 +5822,7 @@ function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTi
             fontSize: 11, color: 'var(--text3)', fontStyle: node.description ? 'normal' : 'italic' }}
         />
       </div>
+      )}
 
       {/* Tab bar */}
       <div style={{ display: 'flex', borderBottom: '1px solid var(--border2)', flexShrink: 0, overflowX: 'auto' }}>
