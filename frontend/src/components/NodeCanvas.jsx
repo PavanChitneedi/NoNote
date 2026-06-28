@@ -4374,12 +4374,10 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
 }
 // ── NodeNotesTab ───────────────────────────────────────────────
 function NodeNotesTab({ node, canEdit, t, onUpdate }) {
-  const [preview, setPreview] = React.useState(false);
+  const [preview, setPreview] = useState(false);
 
-  // Build initial value: prefer node_notes, fall back to legacy notes[]
   const getInitialDraft = (n) => {
     if (n.node_notes && n.node_notes.trim()) return n.node_notes;
-    // Legacy fallback
     try {
       const arr = Array.isArray(n.notes) ? n.notes
         : JSON.parse(typeof n.notes === 'string' ? n.notes : '[]');
@@ -4394,11 +4392,10 @@ function NodeNotesTab({ node, canEdit, t, onUpdate }) {
     return '';
   };
 
-  const [draft, setDraft] = React.useState(() => getInitialDraft(node));
-  const saveTimer = React.useRef(null);
+  const [draft, setDraft] = useState(() => getInitialDraft(node));
+  const saveTimer = useRef(null);
 
-  // Sync when node changes
-  React.useEffect(() => { setDraft(getInitialDraft(node)); }, [node.id]);
+  useEffect(() => { setDraft(getInitialDraft(node)); }, [node.id]);
 
   const save = (text, priv) => {
     clearTimeout(saveTimer.current);
