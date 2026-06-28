@@ -165,6 +165,17 @@ const NT = {
 // sidebar category order
 const SIDEBAR_CATS = ["Notes","Planning","Knowledge","General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
 
+// Intent-based grouping for sidebar
+const INTENT_GROUPS = [
+  { id:"capture",  label:"📝 Capture",        cats:["Notes","Knowledge","Planning"] },
+  { id:"infra",    label:"🏗 Infrastructure",  cats:["Servers","Storage"] },
+  { id:"network",  label:"🌐 Network",         cats:["Network"] },
+  { id:"devices",  label:"💻 Devices",         cats:["Computers","Mobile & IoT"] },
+  { id:"services", label:"☁ Services",         cats:["Cloud","Software"] },
+  { id:"security", label:"🔒 Security",        cats:["Security"] },
+  { id:"organize", label:"🗂 Organize",         cats:["General"] },
+];
+
 // ── Highlight matched text (returns JSX spans) ────────────────
 function highlightText(text, query) {
   if(!query||!text) return text||"";
@@ -1400,6 +1411,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       }
 
       setNodes(finalNs); setEdges(finalEs); pushHistory(finalNs,finalEs);
+
+      // "Where was I" — pulse the most recently edited node for 3s
+      if(finalNs.length>0){
+        const lastEdited = [...finalNs].sort((a,b)=>new Date(b.updated_at||0)-new Date(a.updated_at||0))[0];
+        if(lastEdited?.id){
+          setTimeout(()=>{
+            const el=document.querySelector(`[data-ui="node-${lastEdited.id}"]`);
+            if(el){el.classList.add("nn-last-edited");setTimeout(()=>el.classList.remove("nn-last-edited"),4000);}
+          },600);
+        }
+      }
     }).catch(err=>{ console.error('[NodeCanvas] load error:', err); }).finally(()=>setLoading(false));
   },[mapId]);
 
@@ -1910,6 +1932,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setSelected(new Set([node.id])); setSelEdge(null);
     setShowSidebar(false);
     if(window.innerWidth<768) setShowProps(true);
+    // Pop-in animation
+    setTimeout(()=>{
+      const el=document.querySelector(`[data-ui="node-${node.id}"]`);
+      if(el){el.classList.add("nn-node-new");setTimeout(()=>el.classList.remove("nn-node-new"),200);}
+    },16);
   },[zoom,applyNodes,canEdit]);
 
   // ── Delete ─────────────────────────────────────────────────
@@ -2758,7 +2785,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </g>
         );
         }); // end edges.map
-      })()}
+      })()
+    }
     </svg>
   );
 
@@ -2832,7 +2860,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           style={{
             position:'absolute', left:avgX, top:avgY,
             width:240, zIndex:5,
-            opacity:focusDim, transition:'opacity .2s',
+            opacity:focusMode&&!isFocused?0.08:1, filter:focusMode&&!isFocused?'blur(1.5px)':'none', transition:'opacity .25s,filter .25s',
           }}>
           {/* Stack card */}
           <div
@@ -2957,7 +2985,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const focusDim=focusMode&&!isFocused?"0.15":"1";
 
     if(isCollapsed) return(
-      <div key={`fc-${node.id}`} style={{opacity:focusDim,transition:"opacity .2s"}}>
+      <div key={`fc-${node.id}`} style={{opacity:focusMode&&!isFocused?0.08:1,filter:focusMode&&!isFocused?'blur(1.5px)':'none',transition:'opacity .25s,filter .25s'}}>
         <CollapsedNode node={node} t={t} isSel={isSel}
           canEdit={canEdit&&editMode} mode={mode}
           onMouseDown={e=>{e.stopPropagation();startDrag(e.clientX,e.clientY,node.id);}}
@@ -2985,10 +3013,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           else if(canEdit&&editMode) setEditingTitle(node.id);
         }}
         style={{
-          opacity:focusDim,transition:"opacity .2s,border-color .12s,box-shadow .12s",
+          opacity: focusMode ? (isFocused ? 1 : 0.08) : 1,
+          filter: focusMode && !isFocused ? "blur(1.5px)" : "none",
+          transition:"opacity .25s, filter .25s, transform var(--t-fast) var(--ease-out), box-shadow var(--t-fast) var(--ease-out)",
           position:"absolute",left:node.x,top:node.y,width:nw,minHeight:nh,
           background:isGroup?`${t.color}10`:"var(--node-bg)",
-          border:`var(--node-border-w) ${isGroup?"dashed":"solid"} ${isSel?"var(--accent)":`${t.color}65`}`,
+          border:`1px solid ${isSel ? "var(--accent)" : "var(--border)"}`,
+          borderTop: isGroup ? `1px dashed ${t.color}65` : `3px solid ${t.color}`,
           borderRadius:"var(--radius-node)",
           boxShadow:isSel?"var(--shadow-node-sel)":"var(--shadow-node)",
           cursor:mode==="connect"?"crosshair":canEdit&&editMode?"grab":"default",
@@ -2997,7 +3028,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           outlineOffset:searchHitIds.has(node.id)&&!isSel?"2px":"0",
         }}>
         {/* Header */}
-        <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:"7px 10px 5px"}}>
+        <div style={{background:`${t.color}10`,borderBottom:`1px solid ${t.color}18`,padding:"8px 10px 6px"}}>
 
           {/* ── Row 1: icon + title + comment + collapse in ONE line ── */}
           <div style={{display:"flex",alignItems:"center",gap:5,minHeight:22}}>
@@ -3810,7 +3841,20 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             flex:1,overflow:"auto",position:"relative",
             cursor:mode==="connect"?"crosshair":dragging?"grabbing":"default",
             background: canvasBgStyle,
-          }}>
+          }}
+          className="nn-canvas-vignette">
+          {/* Empty state */}
+          {nodes.length===0&&!loading&&(
+            <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",
+              alignItems:"center",justifyContent:"center",gap:12,pointerEvents:"none",zIndex:1}}>
+              <div style={{fontSize:40,opacity:.15}}>⬡</div>
+              <div style={{fontSize:14,color:"var(--text4)",fontWeight:600,opacity:.5}}>
+                Press <kbd style={{background:"var(--bg3)",border:"1px solid var(--border)",
+                  borderRadius:5,padding:"2px 7px",fontSize:12,fontFamily:"var(--font-mono)"}}>Space</kbd> to capture a thought
+              </div>
+              <div style={{fontSize:11,color:"var(--text4)",opacity:.35}}>or drag a node type from the sidebar</div>
+            </div>
+          )}
           <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
             <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
 
@@ -4018,20 +4062,54 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
               {/* Quick Capture */}
               {quickPos&&canEdit&&editMode&&(
-                <div style={{position:"absolute",left:quickPos.x,top:quickPos.y-64,zIndex:100,display:"flex",flexDirection:"column",gap:5}} onClick={e=>e.stopPropagation()}>
-                  <div style={{background:"var(--accent2)",color:"#fff",fontSize:10,fontWeight:700,letterSpacing:1.5,padding:"3px 9px",borderRadius:"var(--radius-xs)",alignSelf:"flex-start"}}>⚡ QUICK CAPTURE</div>
-                  <div style={{background:"var(--bg)",border:"none",borderRadius:"var(--radius-md)",padding:"8px 10px",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",outline:"2px solid var(--accent2)",display:"flex",gap:6}}>
+                <div style={{position:"absolute",left:quickPos.x,top:quickPos.y,zIndex:100,
+                  display:"flex",flexDirection:"column",gap:8}} onClick={e=>e.stopPropagation()}>
+                  <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",
+                    color:"var(--accent)",opacity:.7}}>⚡ QUICK CAPTURE</div>
+                  <div style={{background:"var(--bg2)",borderRadius:"var(--radius-md)",
+                    padding:"12px 14px",boxShadow:"var(--shadow-panel)",
+                    border:"1.5px solid var(--accent)",display:"flex",gap:8,width:320}}>
                     <input ref={quickInpRef} value={quickText} onChange={e=>setQuickText(e.target.value)}
                       onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")commitCapture();if(e.key==="Escape"){setQuickPos(null);setQuickText("");}}}
-                      placeholder="Type a thought, hit Enter…"
-                      style={{background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:12,fontFamily:"var(--font-ui)",width:220}}/>
-                    <button onClick={commitCapture} style={{background:"var(--accent2)",border:"none",borderRadius:"var(--radius-xs)",color:"#fff",cursor:"pointer",padding:"2px 10px",fontSize:11,fontWeight:700,fontFamily:"var(--font-ui)"}}>↵</button>
+                      placeholder="Type a thought and hit Enter…"
+                      style={{background:"none",border:"none",outline:"none",color:"var(--text)",
+                        fontSize:14,fontFamily:"var(--font-ui)",flex:1}}/>
+                    <button onClick={commitCapture} style={{background:"var(--accent)",border:"none",
+                      borderRadius:"var(--radius-sm)",color:"#fff",cursor:"pointer",
+                      padding:"4px 12px",fontSize:12,fontWeight:700}}>↵</button>
                   </div>
+                  <div style={{fontSize:9,color:"var(--text4)",opacity:.6}}>Esc to cancel</div>
                 </div>
               )}
 
             </div>
           </div>
+
+          {/* Clutter indicator — bottom left of canvas area */}
+          {nodes.length>0&&(()=>{
+            const connectedIds=new Set(edges.flatMap(e=>[e.from,e.to]));
+            const isolated=nodes.filter(n=>n.type!=="group"&&!connectedIds.has(n.id)).length;
+            const stacks=Object.values(nodes.reduce((acc,n)=>{
+              if(n.type!=="note") return acc;
+              // just count note nodes for stack indicator
+              acc.count=(acc.count||0)+1; return acc;
+            },{})).length;
+            return(
+              <div style={{position:"absolute",bottom:16,left:16,zIndex:20,
+                opacity:0,transition:"opacity .2s",}}
+                onMouseEnter={e=>e.currentTarget.style.opacity="1"}
+                onMouseLeave={e=>e.currentTarget.style.opacity="0"}>
+                <div style={{background:"var(--bg2)",border:"1px solid var(--border)",
+                  borderRadius:"var(--radius-sm)",padding:"5px 10px",fontSize:10,
+                  color:"var(--text4)",display:"flex",gap:10}}>
+                  <span>{nodes.filter(n=>n.type!=="group").length} nodes</span>
+                  {isolated>0&&<span style={{color:"var(--danger)",opacity:.7}}>· {isolated} isolated</span>}
+                  <span style={{opacity:.5}}>· {edges.length} connections</span>
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
 
         {/* Right panels */}

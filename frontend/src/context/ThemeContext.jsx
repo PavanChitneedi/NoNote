@@ -1,177 +1,90 @@
-import { createContext, useContext, useState, useEffect } from "react";
-
-// ── Improved color palettes — researched, elegant, cohesive ──
+// ── 6 Mood Presets — complete, opinionated, warm ─────────────
 export const THEMES = {
-  // ── DARK ─────────────────────────────────────────────────
-  dark: {
-    name:"Dark", icon:"🌑", group:"Dark",
+  obsidian: {
+    name:"Obsidian", icon:"⬡", mood:"dark",
+    desc:"Focused, warm dark. Default.",
     vars:{
-      "--bg":"#0d1117","--bg2":"#161b22","--bg3":"#21262d",
-      "--border":"#30363d","--border2":"#21262d",
-      "--text":"#e6edf3","--text2":"#c9d1d9","--text3":"#7d8590","--text4":"#484f58",
-      "--accent":"#58a6ff","--accent2":"#1f6feb",
-      "--success":"#3fb950","--danger":"#f85149",
-      "--canvas-dot":"#21262d","--node-bg":"#161b22","--shadow":"rgba(0,0,0,0.5)",
+      "--bg":"#0e0e12","--bg2":"#17171e","--bg3":"#1f1f28",
+      "--border":"#2a2a38","--border2":"#1f1f28",
+      "--text":"#eaeaf0","--text2":"#b8b8cc","--text3":"#6e6e8a","--text4":"#42425a",
+      "--accent":"#7b8cff","--accent2":"#5c6ef0",
+      "--success":"#4ade80","--danger":"#f87171",
+      "--canvas-dot":"#2a2a38","--node-bg":"#17171e","--shadow":"rgba(0,0,0,0.5)",
     },
   },
-  midnight: {
-    name:"Midnight", icon:"🌌", group:"Dark",
+  warm: {
+    name:"Warm", icon:"🕯", mood:"light",
+    desc:"Cream tones, easy on the eyes.",
     vars:{
-      "--bg":"#070c14","--bg2":"#0e1520","--bg3":"#162035",
-      "--border":"#1e3050","--border2":"#162035",
-      "--text":"#cdd9f4","--text2":"#8dacd8","--text3":"#4a6ea8","--text4":"#2a3e60",
-      "--accent":"#7aa2f7","--accent2":"#3d6fda",
-      "--success":"#73daca","--danger":"#f7768e",
-      "--canvas-dot":"#162035","--node-bg":"#0e1520","--shadow":"rgba(0,0,0,0.7)",
+      "--bg":"#faf7f2","--bg2":"#f5f0e8","--bg3":"#ede6d8",
+      "--border":"#d4c9b8","--border2":"#e8e0d0",
+      "--text":"#2d2820","--text2":"#4a4238","--text3":"#8a7d6e","--text4":"#b8aa98",
+      "--accent":"#7c5cfc","--accent2":"#6244e8",
+      "--success":"#22a65a","--danger":"#dc3545",
+      "--canvas-dot":"#d4c9b8","--node-bg":"#f5f0e8","--shadow":"rgba(0,0,0,0.12)",
     },
   },
-  forest: {
-    name:"Forest", icon:"🌲", group:"Dark",
+  vibrant: {
+    name:"Vibrant", icon:"⚡", mood:"dark",
+    desc:"High contrast, energetic.",
     vars:{
-      "--bg":"#091410","--bg2":"#0f1c16","--bg3":"#162c1e",
-      "--border":"#284035","--border2":"#1e3028",
-      "--text":"#c8e0cc","--text2":"#90b898","--text3":"#4e8060","--text4":"#2a4a34",
-      "--accent":"#73daca","--accent2":"#2ac3a4",
-      "--success":"#73daca","--danger":"#f7768e",
-      "--canvas-dot":"#162c1e","--node-bg":"#0f1c16","--shadow":"rgba(0,0,0,0.6)",
+      "--bg":"#08080f","--bg2":"#0f0f1a","--bg3":"#16162a",
+      "--border":"#2d2d55","--border2":"#16162a",
+      "--text":"#f0f0ff","--text2":"#c0c0e8","--text3":"#7070a8","--text4":"#404070",
+      "--accent":"#a78bfa","--accent2":"#7c3aed",
+      "--success":"#34d399","--danger":"#fb7185",
+      "--canvas-dot":"#2d2d55","--node-bg":"#0f0f1a","--shadow":"rgba(0,0,0,0.6)",
     },
   },
-  ocean: {
-    name:"Ocean", icon:"🌊", group:"Dark",
+  minimal: {
+    name:"Minimal", icon:"○", mood:"light",
+    desc:"Pure whitespace, zero distraction.",
     vars:{
-      "--bg":"#030b18","--bg2":"#071428","--bg3":"#0c2040",
-      "--border":"#0d3060","--border2":"#0a2040",
-      "--text":"#b8d8f4","--text2":"#6aaad8","--text3":"#3070a0","--text4":"#1a4870",
-      "--accent":"#00b8d9","--accent2":"#0090b0",
-      "--success":"#2bd4a0","--danger":"#ff5e85",
-      "--canvas-dot":"#0c2040","--node-bg":"#071428","--shadow":"rgba(0,0,0,0.7)",
-    },
-  },
-  amber: {
-    name:"Amber", icon:"🔥", group:"Dark",
-    vars:{
-      "--bg":"#0e0a06","--bg2":"#181208","--bg3":"#241c0e",
-      "--border":"#3a2a14","--border2":"#2a1e0c",
-      "--text":"#f0d8a8","--text2":"#d4b878","--text3":"#9a7840","--text4":"#5a4820",
-      "--accent":"#f0a830","--accent2":"#c88020",
-      "--success":"#68c880","--danger":"#e05040",
-      "--canvas-dot":"#241c0e","--node-bg":"#181208","--shadow":"rgba(0,0,0,0.7)",
-    },
-  },
-  violet: {
-    name:"Violet", icon:"💜", group:"Dark",
-    vars:{
-      "--bg":"#07040f","--bg2":"#0e0820","--bg3":"#160e30",
-      "--border":"#2a1850","--border2":"#1e1040",
-      "--text":"#d8c8f8","--text2":"#b098e8","--text3":"#7058b8","--text4":"#402888",
-      "--accent":"#bd93f9","--accent2":"#8b5cf6",
-      "--success":"#50fa7b","--danger":"#ff5555",
-      "--canvas-dot":"#160e30","--node-bg":"#0e0820","--shadow":"rgba(0,0,0,0.8)",
-    },
-  },
-
-  // ── LIGHT ────────────────────────────────────────────────
-  light: {
-    name:"Light", icon:"☀️", group:"Light",
-    vars:{
-      "--bg":"#f8f9fc","--bg2":"#ffffff","--bg3":"#f1f3f8",
-      "--border":"#dde1ea","--border2":"#eaedf4",
-      "--text":"#0f1824","--text2":"#2d3a4a","--text3":"#6b7888","--text4":"#9faab8",
-      "--accent":"#2563eb","--accent2":"#1d4ed8",
-      "--success":"#059669","--danger":"#dc2626",
-      "--canvas-dot":"#dde1ea","--node-bg":"#ffffff","--shadow":"rgba(0,0,0,0.08)",
-    },
-  },
-  cream: {
-    name:"Cream", icon:"🍦", group:"Light",
-    vars:{
-      "--bg":"#fdf7ee","--bg2":"#fffbf5","--bg3":"#f5edde",
-      "--border":"#e0cebc","--border2":"#eadece",
-      "--text":"#28180a","--text2":"#4a3020","--text3":"#8a6a48","--text4":"#b89a78",
-      "--accent":"#c2622a","--accent2":"#9e4e22",
-      "--success":"#2d7a3a","--danger":"#c42828",
-      "--canvas-dot":"#c8b89e","--node-bg":"#fffbf5","--shadow":"rgba(0,0,0,0.07)",
-    },
-  },
-  sepia: {
-    name:"Sepia", icon:"📜", group:"Light",
-    vars:{
-      "--bg":"#f2e8da","--bg2":"#f9f3e8","--bg3":"#e8dece",
-      "--border":"#c4a882","--border2":"#d4b892",
-      "--text":"#1e1408","--text2":"#3c2a18","--text3":"#7a5e3c","--text4":"#a8886a",
-      "--accent":"#7c4f1e","--accent2":"#5a3a14",
-      "--success":"#2d5a1e","--danger":"#8b1c1c",
-      "--canvas-dot":"#c4a882","--node-bg":"#f9f3e8","--shadow":"rgba(0,0,0,0.09)",
-    },
-  },
-  rose: {
-    name:"Rose", icon:"🌸", group:"Light",
-    vars:{
-      "--bg":"#fef5f7","--bg2":"#fff9fa","--bg3":"#fce8ed",
-      "--border":"#f0c8d4","--border2":"#f8dce4",
-      "--text":"#28080e","--text2":"#4a1420","--text3":"#9a3a50","--text4":"#c87888",
-      "--accent":"#e11d48","--accent2":"#be1238",
-      "--success":"#059669","--danger":"#dc2626",
-      "--canvas-dot":"#dba8b8","--node-bg":"#fff9fa","--shadow":"rgba(0,0,0,0.07)",
-    },
-  },
-  softblue: {
-    name:"Soft Blue", icon:"🩵", group:"Light",
-    vars:{
-      "--bg":"#eff6ff","--bg2":"#f8fbff","--bg3":"#dbeafe",
-      "--border":"#bfdbfe","--border2":"#dbeafe",
-      "--text":"#0c1a3a","--text2":"#1e3060","--text3":"#4a6898","--text4":"#7a98c8",
-      "--accent":"#2563eb","--accent2":"#1d4ed8",
-      "--success":"#059669","--danger":"#dc2626",
-      "--canvas-dot":"#90b8ee","--node-bg":"#f8fbff","--shadow":"rgba(0,0,0,0.07)",
-    },
-  },
-  mint: {
-    name:"Mint", icon:"🌿", group:"Light",
-    vars:{
-      "--bg":"#f0faf5","--bg2":"#f8fffc","--bg3":"#dcfce7",
-      "--border":"#a8e6bf","--border2":"#d4f4e0",
-      "--text":"#082018","--text2":"#143a28","--text3":"#3d7a58","--text4":"#6aaa88",
-      "--accent":"#16a34a","--accent2":"#15803d",
+      "--bg":"#ffffff","--bg2":"#f8f8f8","--bg3":"#f0f0f0",
+      "--border":"#e0e0e0","--border2":"#f0f0f0",
+      "--text":"#1a1a1a","--text2":"#3a3a3a","--text3":"#888888","--text4":"#bbbbbb",
+      "--accent":"#3b82f6","--accent2":"#1d4ed8",
       "--success":"#16a34a","--danger":"#dc2626",
-      "--canvas-dot":"#80c8a0","--node-bg":"#f8fffc","--shadow":"rgba(0,0,0,0.07)",
+      "--canvas-dot":"#e8e8e8","--node-bg":"#ffffff","--shadow":"rgba(0,0,0,0.08)",
     },
   },
-  clay: {
-    name:"Clay", icon:"⬜", group:"Light",
+  cozy: {
+    name:"Cozy", icon:"🍂", mood:"dark",
+    desc:"Soft, warm, low-stress.",
     vars:{
-      "--bg":"#dde4ef","--bg2":"#e8edf5","--bg3":"#d0d8e8",
-      "--border":"#c8d0e0","--border2":"#d4dcea",
-      "--text":"#2d3a4e","--text2":"#3d4f68","--text3":"#7888a0","--text4":"#a8b8cc",
-      "--accent":"#5b8dee","--accent2":"#2563eb",
-      "--success":"#27ae60","--danger":"#e74c3c",
-      "--canvas-dot":"#b0bdd0","--node-bg":"#f4f7ff","--shadow":"rgba(190,199,216,0.8)",
+      "--bg":"#1a1410","--bg2":"#221c16","--bg3":"#2c2418",
+      "--border":"#3d3020","--border2":"#2c2418",
+      "--text":"#f0e8d8","--text2":"#c8b898","--text3":"#8a7058","--text4":"#554535",
+      "--accent":"#f59e0b","--accent2":"#d97706",
+      "--success":"#4ade80","--danger":"#f87171",
+      "--canvas-dot":"#3d3020","--node-bg":"#221c16","--shadow":"rgba(0,0,0,0.5)",
     },
   },
-    parchment: {
-    name:"Parchment", icon:"📄", group:"Light",
+  terminal: {
+    name:"Terminal", icon:"▶", mood:"dark",
+    desc:"Monospace, green accent, power user.",
     vars:{
-      "--bg":"#faf8f3","--bg2":"#ffffff","--bg3":"#f2ede4",
-      "--border":"#d8cdb8","--border2":"#e8e0d0",
-      "--text":"#1a1410","--text2":"#3a2e24","--text3":"#7a6a56","--text4":"#a89a84",
-      "--accent":"#8b6914","--accent2":"#6b4e0c",
-      "--success":"#3a6e28","--danger":"#9e2020",
-      "--canvas-dot":"#c0b09a","--node-bg":"#ffffff","--shadow":"rgba(0,0,0,0.06)",
+      "--bg":"#020a02","--bg2":"#061006","--bg3":"#0a180a",
+      "--border":"#1a3a1a","--border2":"#0a180a",
+      "--text":"#d4f4d4","--text2":"#a0c8a0","--text3":"#508050","--text4":"#2a5028",
+      "--accent":"#4ade80","--accent2":"#16a34a",
+      "--success":"#4ade80","--danger":"#f87171",
+      "--canvas-dot":"#1a3a1a","--node-bg":"#061006","--shadow":"rgba(0,0,0,0.7)",
     },
   },
 };
 
-const ThemeContext = createContext(null);
+export const THEME_KEYS = Object.keys(THEMES);
 
 export function ThemeProvider({ children }) {
   const [themeName, setThemeName] = useState(
-    () => localStorage.getItem("nm_theme") || "dark"
+    () => localStorage.getItem("nm_theme") || "obsidian"
   );
   const [fontScale, setFontScaleRaw] = useState(
     () => parseInt(localStorage.getItem("nm_fontscale") || "100", 10)
   );
 
-  const theme = THEMES[themeName] || THEMES.dark;
+  const theme = THEMES[themeName] || THEMES.obsidian;
 
   // Listen for skin-driven theme switches
   useEffect(() => {

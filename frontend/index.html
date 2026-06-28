@@ -16,31 +16,73 @@
   <!-- Fonts: system stack only — no external requests (homelab/offline safe) -->
   <style>
     :root {
-      /* Theme defaults */
-      --bg:#0d1117; --bg2:#161b22; --bg3:#21262d;
-      --border:#30363d; --border2:#21262d;
-      --text:#e6edf3; --text2:#c9d1d9; --text3:#7d8590; --text4:#484f58;
-      --accent:#58a6ff; --accent2:#1f6feb;
-      --success:#3fb950; --danger:#f78166;
-      --canvas-dot:#21262d; --node-bg:#161b22; --shadow:rgba(0,0,0,0.5);
-      /* Design defaults */
-      --font-ui: 'Segoe UI', system-ui, -apple-system, sans-serif;
-      --font-node: ui-monospace, 'Cascadia Code', 'Fira Code', 'Consolas', monospace;
-      --font-weight-ui:700;
-      --font-weight-node:600;
-      --radius-xs:4px; --radius-sm:6px; --radius-md:8px;
-      --radius-lg:10px; --radius-node:10px; --radius-btn:6px;
-      --topbar-h:76px; --node-header-h:50px;
-      --node-pad:8px 10px; --node-body-pad:6px 10px 8px;
-      --node-border-w:2px; --btn-pad:5px 10px;
-      --sidebar-w:178px; --props-w:268px;
-      --letter-space:0.3px;
-      --shadow-node:0 2px 12px rgba(0,0,0,0.4);
-      --shadow-node-sel:0 0 0 3px rgba(88,166,255,0.25),0 6px 28px rgba(0,0,0,0.5);
-      --transition-all:all 0.12s;
-      --line-height:1.5;
-      --app-font-size:13px;
+      /* ── Warm dark defaults (Obsidian mood) ── */
+      --bg:#0e0e12; --bg2:#17171e; --bg3:#1f1f28;
+      --border:#2a2a38; --border2:#1f1f28;
+      --text:#eaeaf0; --text2:#b8b8cc; --text3:#6e6e8a; --text4:#42425a;
+      --accent:#7b8cff; --accent2:#5c6ef0;
+      --success:#4ade80; --danger:#f87171;
+      --canvas-dot:#2a2a38;
+      --node-bg:#17171e;
+      --shadow:rgba(0,0,0,0.5);
+
+      /* ── Typography ── */
+      --font-ui: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+      --font-node: var(--font-ui);
+      --font-weight-ui: 500;
+      --font-weight-node: 600;
+      --app-font-size: 13px;
+      --line-height: 1.6;
+      --letter-space: 0.01em;
+
+      /* ── Spacing — 8px grid ── */
+      --sp-xs: 4px; --sp-sm: 8px; --sp-md: 16px; --sp-lg: 24px;
+
+      /* ── Radii — warm/rounded ── */
+      --radius-xs: 5px;
+      --radius-sm: 8px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-node: 14px;
+      --radius-btn: 8px;
+
+      /* ── Layout ── */
+      --topbar-h: 80px;
+      --node-header-h: 48px;
+      --node-pad: 10px 12px;
+      --node-body-pad: 6px 12px 10px;
+      --node-border-w: 1.5px;
+      --btn-pad: 6px 12px;
+      --sidebar-w: 184px;
+      --props-w: 280px;
+
+      /* ── Shadows — warm tinted, layered ── */
+      --shadow-node:
+        0 1px 3px rgba(0,0,0,0.3),
+        0 4px 16px rgba(0,0,0,0.25),
+        0 0 0 1px rgba(255,255,255,0.04);
+      --shadow-node-hover:
+        0 3px 8px rgba(0,0,0,0.35),
+        0 8px 28px rgba(0,0,0,0.3),
+        0 0 0 1px rgba(255,255,255,0.06);
+      --shadow-node-sel:
+        0 0 0 2px var(--accent),
+        0 0 16px rgba(123,140,255,0.2),
+        0 8px 32px rgba(0,0,0,0.4);
+      --shadow-panel:
+        0 4px 24px rgba(0,0,0,0.4),
+        0 0 0 1px rgba(255,255,255,0.05);
+
+      /* ── Motion ── */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+      --t-fast: 120ms;
+      --t-mid: 180ms;
+      --t-slow: 280ms;
+      --transition-all: all var(--t-fast) var(--ease-out);
     }
+
     *, *::before, *::after { box-sizing:border-box; margin:0; padding:0; }
     html, body, #root { height:100%; width:100%; overflow:hidden; }
     body {
@@ -50,22 +92,111 @@
       line-height:var(--line-height);
       letter-spacing:var(--letter-space);
       -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
     }
-    ::-webkit-scrollbar { width:5px; height:5px; }
-    ::-webkit-scrollbar-track { background:var(--bg); }
-    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:3px; }
+
+    /* ── Scrollbars ── */
+    ::-webkit-scrollbar { width:4px; height:4px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:var(--border); border-radius:99px; }
+    ::-webkit-scrollbar-thumb:hover { background:var(--text4); }
+
+    /* ── Base elements ── */
     input, textarea, button, select { font-family:var(--font-ui); }
-    button { transition:var(--transition-all); }
-    button:hover:not(:disabled) { opacity:0.85; }
-    button:disabled { opacity:0.4; cursor:not-allowed !important; }
+    button { transition:var(--transition-all); cursor:pointer; }
+    button:active:not(:disabled) { transform:scale(0.96); }
+    button:disabled { opacity:0.35; cursor:not-allowed !important; }
+
+    /* ── Node card lift on hover ── */
+    .nn-node {
+      transition: transform var(--t-fast) var(--ease-out),
+                  box-shadow var(--t-fast) var(--ease-out),
+                  opacity 0.2s;
+    }
+    .nn-node:hover {
+      transform: translateY(-2px);
+      z-index: 10;
+    }
+    .nn-node:hover .nn-collapse-btn { opacity:0.8 !important; }
+    .nn-node:hover .nn-card-actions { opacity:1 !important; }
+
+    /* ── Node pop-in animation ── */
+    @keyframes nn-node-in {
+      from { opacity:0; transform:scale(0.88) translateY(4px); }
+      to   { opacity:1; transform:scale(1) translateY(0); }
+    }
+    .nn-node-new { animation: nn-node-in 160ms var(--ease-spring) forwards; }
+
+    /* ── Panel slide-in ── */
+    @keyframes nn-slide-in-right {
+      from { opacity:0; transform:translateX(16px); }
+      to   { opacity:1; transform:translateX(0); }
+    }
+    @keyframes nn-slide-in-up {
+      from { opacity:0; transform:translateY(12px); }
+      to   { opacity:1; transform:translateY(0); }
+    }
+    @keyframes nn-fade-in {
+      from { opacity:0; }
+      to   { opacity:1; }
+    }
+    .nn-panel-in { animation: nn-slide-in-right 180ms var(--ease-out) forwards; }
+    .nn-modal-in { animation: nn-slide-in-up 200ms var(--ease-spring) forwards; }
+
+    /* ── Collab / pulse animations ── */
     @keyframes nn-collab-pulse {
-    0%,100% { box-shadow: 0 0 0 2px transparent; }
-    50%      { box-shadow: 0 0 0 4px rgba(255,255,255,.15); }
-  }
-  @keyframes nn-pulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,.4); }
-    50%      { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
-  }
+      0%,100% { box-shadow: 0 0 0 2px transparent; }
+      50%      { box-shadow: 0 0 0 4px rgba(255,255,255,.15); }
+    }
+    @keyframes nn-pulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(123,140,255,.5); }
+      50%      { box-shadow: 0 0 0 6px rgba(123,140,255,0); }
+    }
+    @keyframes nn-where-was-i {
+      0%   { box-shadow: 0 0 0 0 rgba(123,140,255,.7); }
+      50%  { box-shadow: 0 0 0 10px rgba(123,140,255,.15); }
+      100% { box-shadow: 0 0 0 0 rgba(123,140,255,0); }
+    }
+
+    /* ── Canvas dot grid ── */
+    .nn-canvas-grid {
+      background-image: radial-gradient(circle, var(--canvas-dot) 1.2px, transparent 1.2px);
+      background-size: 24px 24px;
+    }
+
+    /* ── Canvas vignette ── */
+    .nn-canvas-vignette::after {
+      content:'';
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      background: radial-gradient(ellipse at center,
+        transparent 60%,
+        rgba(0,0,0,0.18) 100%);
+      z-index:0;
+    }
+
+    /* ── Focus mode blur ── */
+    .nn-focus-dim {
+      filter: blur(1.5px);
+      opacity: 0.12 !important;
+      transition: filter 0.25s, opacity 0.25s;
+    }
+    .nn-focus-bright {
+      filter: none;
+      opacity: 1 !important;
+    }
+
+    /* ── Pill buttons ── */
+    .nn-pill {
+      border-radius: 99px !important;
+      padding: 5px 14px !important;
+    }
+
+    /* ── "Where was I" last-edited pulse ── */
+    .nn-last-edited {
+      animation: nn-where-was-i 1.2s var(--ease-out) 3;
+    }
 </style>
 </head>
 <body>
