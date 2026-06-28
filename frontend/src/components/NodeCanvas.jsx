@@ -2785,8 +2785,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </g>
         );
         }); // end edges.map
-      })()
-    }
+      })()}
     </svg>
   );
 
