@@ -65,6 +65,9 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.49.4",date:"Jun 2026",items:[
+    "Fix: FormattedContent not defined in NodeCanvas — added local definition so note nodes render markdown inline.",
+  ]},
   {v:"v5.49.3",date:"Jun 2026",items:[
     "Fix: Migration now correctly reads raw notes[] from server before mapping — was reading already-parsed empty array.",
     "Fix: Migration no longer gated on canEdit — saves via authenticated API which enforces permissions.",
