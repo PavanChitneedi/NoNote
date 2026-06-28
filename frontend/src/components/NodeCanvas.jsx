@@ -2540,8 +2540,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // Build inline canvas background style (overrides CSS vars when a canvas theme is set)
   const canvasBgStyle = canvasBg
-    ? `radial-gradient(circle,${canvasDot} 1px,transparent 1px) center/28px 28px ${canvasBg}`
-    : "radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--bg)";
+    ? `radial-gradient(circle,${canvasDot||"rgba(0,0,0,0.12)"} 1.5px,transparent 1.5px) 0 0/24px 24px ${canvasBg}`
+    : "radial-gradient(circle,var(--canvas-dot) 1.5px,transparent 1.5px) 0 0/24px 24px var(--bg)";
 
   // ── Search hit IDs for canvas highlight ──────────────────────
   const searchHitIds = useMemo(()=>new Set(searchResults.map(r=>r.node.id)),[searchResults]);
@@ -3844,6 +3844,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             flex:1,overflow:"auto",position:"relative",
             cursor:mode==="connect"?"crosshair":dragging?"grabbing":"default",
             background: canvasBgStyle,
+            backgroundAttachment: "local",
           }}
           className="nn-canvas-vignette">
           {/* Empty state */}

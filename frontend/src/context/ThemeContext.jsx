@@ -30,7 +30,7 @@ export const THEMES = {
       "--text":"#1e293b","--text2":"#475569","--text3":"#94a3b8","--text4":"#cbd5e1",
       "--accent":"#3b82f6","--accent2":"#2563eb",
       "--success":"#10b981","--danger":"#ef4444","--warn":"#f59e0b",
-      "--canvas-dot":"#dde5f0","--node-bg":"#ffffff","--shadow":"rgba(15,23,42,0.08)",
+      "--canvas-dot":"#c8d8ee","--node-bg":"#ffffff","--shadow":"rgba(15,23,42,0.08)",
     },
   },
 
@@ -58,7 +58,7 @@ export const THEMES = {
       "--text":"#2d1f1a","--text2":"#7a5c52","--text3":"#b8948a","--text4":"#d4b8b2",
       "--accent":"#e8614c","--accent2":"#c94a37",
       "--success":"#34a853","--danger":"#ea4335","--warn":"#fbbc04",
-      "--canvas-dot":"#e0cfc8","--node-bg":"#ffffff","--shadow":"rgba(45,31,26,0.08)",
+      "--canvas-dot":"#d0b8b0","--node-bg":"#ffffff","--shadow":"rgba(45,31,26,0.08)",
     },
   },
 
@@ -100,7 +100,7 @@ export const THEMES = {
       "--text":"#2d0f1a","--text2":"#7a3a52","--text3":"#b87a8a","--text4":"#ddb4be",
       "--accent":"#e8305a","--accent2":"#c4204a",
       "--success":"#34a853","--danger":"#ea4335","--warn":"#fbbc04",
-      "--canvas-dot":"#f0d0d8","--node-bg":"#ffffff","--shadow":"rgba(45,15,26,0.08)",
+      "--canvas-dot":"#e0b8c4","--node-bg":"#ffffff","--shadow":"rgba(45,15,26,0.08)",
     },
   },
 

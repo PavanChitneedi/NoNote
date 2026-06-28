@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.52.0",date:"Jun 2026",items:[
+    "Overhaul: Complete theme system rebuilt — 8 new themes: Slate, Arctic, Amber, Sakura, Midnight, Emerald, Rose, Void.",
+    "Overhaul: Complete skin system rebuilt — 5 new skins: Clean (default), Rounded, Sharp, Glass, Editorial.",
+    "Overhaul: ThemePicker redesigned — Color tab and Personality tab with live mini previews.",
+    "Default: Arctic theme + Clean skin. Crisp, light, professional.",
+    "Fix: Canvas dot grid background now renders correctly.",
+    "Fix: Canvas scroll no longer shows white/grey gaps.",
+  ]},
   {v:"v5.48.5",date:"Apr 2026",items:[
     "UX: Neumorphic skin nav changed to icon-dock -- same layout as Sakura skin. 56px vertical icon column from App.jsx replaces the Dashboard-specific sidebar.",
     "UX: Icon-dock column: raised clay slab with right-side shadow seam. Buttons flat by default, pop on hover (nEm), inset on active (nIs). Avatar circle raised as clay pill (nEm).",
