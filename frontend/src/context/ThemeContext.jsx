@@ -4,9 +4,21 @@ const ThemeContext = createContext({});
 
 // ── 6 Mood Presets — complete, opinionated, warm ─────────────
 export const THEMES = {
+  arctic: {
+    name:"Arctic", icon:"❄", mood:"light",
+    desc:"Cool blue-white, crisp and clean.",
+    vars:{
+      "--bg":"#f4f7fb","--bg2":"#ffffff","--bg3":"#e8eef6",
+      "--border":"#e2e8f0","--border2":"#eef2f8",
+      "--text":"#1e293b","--text2":"#475569","--text3":"#94a3b8","--text4":"#cbd5e1",
+      "--accent":"#3b82f6","--accent2":"#2563eb",
+      "--success":"#10b981","--danger":"#ef4444",
+      "--canvas-dot":"#dde5f0","--node-bg":"#ffffff","--shadow":"rgba(15,23,42,0.08)",
+    },
+  },
   obsidian: {
     name:"Obsidian", icon:"⬡", mood:"dark",
-    desc:"Focused, warm dark. Default.",
+    desc:"Focused, warm dark.",
     vars:{
       "--bg":"#0e0e12","--bg2":"#17171e","--bg3":"#1f1f28",
       "--border":"#2a2a38","--border2":"#1f1f28",
@@ -82,13 +94,13 @@ export const THEME_KEYS = Object.keys(THEMES);
 
 export function ThemeProvider({ children }) {
   const [themeName, setThemeName] = useState(
-    () => localStorage.getItem("nm_theme") || "obsidian"
+    () => localStorage.getItem("nm_theme") || "arctic"
   );
   const [fontScale, setFontScaleRaw] = useState(
     () => parseInt(localStorage.getItem("nm_fontscale") || "100", 10)
   );
 
-  const theme = THEMES[themeName] || THEMES.obsidian;
+  const theme = THEMES[themeName] || THEMES.arctic;
 
   // Listen for skin-driven theme switches
   useEffect(() => {

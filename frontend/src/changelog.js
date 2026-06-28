@@ -65,6 +65,13 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.51.1",date:"Jun 2026",items:[
+    "Theme: Arctic is now the default — cool blue-white (#f4f7fb bg, #3b82f6 accent, #1e293b text). Crisp, clean, easy to read.",
+    "Theme: Arctic added as first option in ThemePicker. Obsidian and all other moods still available.",
+    "Fix: index.html root CSS vars updated to Arctic so initial paint matches the theme.",
+    "Fix: Shadow tokens updated for light mode — warm dark rgba replaced with cool slate rgba.",
+    "Fix: Browser meta theme-color updated to Arctic background.",
+  ]},
   {v:"v5.51.0",date:"Jun 2026",items:[
     "Fix: Build error in v5.50.0 — JSX syntax in edge IIFE resolved.",
     "Overhaul: Design tokens — warmer backgrounds, better shadows with warm tint, 8px grid, larger radii (nodes 14px, panels 12px).",
