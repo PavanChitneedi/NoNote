@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useTheme, THEMES, THEME_KEYS, THEME_GROUPS } from "../context/ThemeContext.jsx";
-import { useSkin, SKINS, SKIN_KEYS } from "../context/SkinContext.jsx";
+import { useTheme, THEMES, THEME_GROUPS } from "../context/ThemeContext.jsx";
+import { useSkin } from "../context/SkinContext.jsx";
+import { SKINS, SKIN_KEYS } from "../skins.js";
 
 export default function ThemePicker({ onClose }) {
   const { themeName, setThemeName } = useTheme();
