@@ -2566,76 +2566,36 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const saveMsgColor=saveState==="saved"?"var(--success)":saveState==="error"?"var(--danger)":"var(--text3)";
 
   // ── Render helpers ──────────────────────────────────────────────
-  const renderEdges = () => (
-    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
-      <defs>
-        {/* Forward markers (markerEnd) */}
-        <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
-          <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
-        </marker>
-        <marker id="nn-tk" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
-          <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
-        </marker>
-        <marker id="nn-dbl" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto" markerUnits="strokeWidth">
-          <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-          <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-        </marker>
-        {/* Reverse markers (markerStart) — auto-start-reverse flips direction */}
-        <marker id="nn-arr-r" markerWidth="10" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
-          <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
-        </marker>
-        <marker id="nn-tk-r" markerWidth="8" markerHeight="7" refX="0" refY="3.5" orient="auto-start-reverse" markerUnits="strokeWidth">
-          <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
-        </marker>
-        <marker id="nn-dbl-r" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
-          <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-          <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
-        </marker>
-      </defs>
-      {drawingEdge&&(()=>{
-        const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
-        const fw=collW(fn), fh=collH(fn);
-        const fp=rectEdgePoint(fn,fw,fh,drawingEdge.mouseX,drawingEdge.mouseY);
-        const eps=2; let ndx=0,ndy=0;
-        if(Math.abs(fp.y-fn.y)<eps) ndy=-1;
-        else if(Math.abs(fp.y-(fn.y+fh))<eps) ndy=1;
-        else if(Math.abs(fp.x-fn.x)<eps) ndx=-1;
-        else ndx=1;
-        const dist=Math.sqrt((drawingEdge.mouseX-fp.x)**2+(drawingEdge.mouseY-fp.y)**2);
-        const ctrl=Math.max(50,dist*0.4);
-        const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
-        return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-20}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
-          stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
-      })()}
-      {(()=>{
-        // For stacked notes: suppress all but the first edge to the parent when collapsed
-        const suppressedEdgeIds = new Set();
-        // We need to recompute stacks here for edge filtering
-        const _noteParents = {};
-        edges.forEach(e => {
-          const fn=nodes.find(n=>n.id===e.from), tn=nodes.find(n=>n.id===e.to);
-          if(tn?.type==='note'&&fn?.type!=='note'){_noteParents[e.to]=_noteParents[e.to]||[];_noteParents[e.to].push(e.from);}
-          if(fn?.type==='note'&&tn?.type!=='note'){_noteParents[e.from]=_noteParents[e.from]||[];_noteParents[e.from].push(e.to);}
+  const renderEdges = () => {
+    // Compute suppressed edges for stacks
+    // For stacked notes: suppress all but the first edge to the parent when collapsed
+    const suppressedEdgeIds = new Set();
+    // We need to recompute stacks here for edge filtering
+    const _noteParents = {};
+    edges.forEach(e => {
+      const fn=nodes.find(n=>n.id===e.from), tn=nodes.find(n=>n.id===e.to);
+      if(tn?.type==='note'&&fn?.type!=='note'){_noteParents[e.to]=_noteParents[e.to]||[];_noteParents[e.to].push(e.from);}
+      if(fn?.type==='note'&&tn?.type!=='note'){_noteParents[e.from]=_noteParents[e.from]||[];_noteParents[e.from].push(e.to);}
+    });
+    const _stacks={};
+    nodes.forEach(n=>{
+      if(n.type!=='note') return;
+      const parents=_noteParents[n.id]||[];
+      if(parents.length===1){const pid=parents[0];_stacks[pid]=_stacks[pid]||[];_stacks[pid].push(n);}
+    });
+    Object.entries(_stacks).forEach(([pid,notes])=>{
+      if(notes.length<2) return;
+      const isExpanded=expandedStacks.has(pid);
+      if(!isExpanded){
+        // Keep only the first note's edge, suppress rest
+        notes.slice(1).forEach(n=>{
+          edges.filter(e=>(e.from===pid&&e.to===n.id)||(e.to===pid&&e.from===n.id))
+        .forEach(e=>suppressedEdgeIds.add(e.id));
         });
-        const _stacks={};
-        nodes.forEach(n=>{
-          if(n.type!=='note') return;
-          const parents=_noteParents[n.id]||[];
-          if(parents.length===1){const pid=parents[0];_stacks[pid]=_stacks[pid]||[];_stacks[pid].push(n);}
-        });
-        Object.entries(_stacks).forEach(([pid,notes])=>{
-          if(notes.length<2) return;
-          const isExpanded=expandedStacks.has(pid);
-          if(!isExpanded){
-            // Keep only the first note's edge, suppress rest
-            notes.slice(1).forEach(n=>{
-              edges.filter(e=>(e.from===pid&&e.to===n.id)||(e.to===pid&&e.from===n.id))
-                .forEach(e=>suppressedEdgeIds.add(e.id));
-            });
-          }
-        });
-        return edges.map(edge=>{
-        return edges.map(edge=>{
+      }
+    });
+
+    const edgeElements = edges.map(edge=>{
         const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
         if(!f||!t) return null;
         if(suppressedEdgeIds.has(edge.id)) return null;
@@ -2785,9 +2745,53 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           </g>
         );
         }); // end edges.map
+    return (
+
+    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
+      <defs>
+        {/* Forward markers (markerEnd) */}
+        <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+          <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
+        </marker>
+        <marker id="nn-tk" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+          <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
+        </marker>
+        <marker id="nn-dbl" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto" markerUnits="strokeWidth">
+          <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+          <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+        </marker>
+        {/* Reverse markers (markerStart) — auto-start-reverse flips direction */}
+        <marker id="nn-arr-r" markerWidth="10" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+          <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
+        </marker>
+        <marker id="nn-tk-r" markerWidth="8" markerHeight="7" refX="0" refY="3.5" orient="auto-start-reverse" markerUnits="strokeWidth">
+          <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
+        </marker>
+        <marker id="nn-dbl-r" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+          <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+          <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
+        </marker>
+      </defs>
+      {drawingEdge&&(()=>{
+        const fn=nodes.find(n=>n.id===drawingEdge.fromId); if(!fn) return null;
+        const fw=collW(fn), fh=collH(fn);
+        const fp=rectEdgePoint(fn,fw,fh,drawingEdge.mouseX,drawingEdge.mouseY);
+        const eps=2; let ndx=0,ndy=0;
+        if(Math.abs(fp.y-fn.y)<eps) ndy=-1;
+        else if(Math.abs(fp.y-(fn.y+fh))<eps) ndy=1;
+        else if(Math.abs(fp.x-fn.x)<eps) ndx=-1;
+        else ndx=1;
+        const dist=Math.sqrt((drawingEdge.mouseX-fp.x)**2+(drawingEdge.mouseY-fp.y)**2);
+        const ctrl=Math.max(50,dist*0.4);
+        const c1x=fp.x+ndx*ctrl, c1y=fp.y+ndy*ctrl;
+        return <path d={`M ${fp.x} ${fp.y} C ${c1x} ${c1y}, ${drawingEdge.mouseX} ${drawingEdge.mouseY-20}, ${drawingEdge.mouseX} ${drawingEdge.mouseY}`}
+          stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
       })()}
+      {edgeElements}
+
     </svg>
   );
+  };
 
   const renderNodes = () => {
     // ── Compute note stacks ──────────────────────────────────
