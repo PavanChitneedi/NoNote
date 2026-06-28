@@ -65,6 +65,11 @@ export const CHANGELOG = [
     "Remove: Neumorphic skin removed entirely (skin entry, all CSS, all body.skin-neumorphic rules).",
     "Remove: Accent Color picker removed from Skins tab (accentOptions, defaultAccent, setAccent, nn_skin_accent localStorage).",
   ]},
+  {v:"v5.49.3",date:"Jun 2026",items:[
+    "Fix: Migration now correctly reads raw notes[] from server before mapping — was reading already-parsed empty array.",
+    "Fix: Migration no longer gated on canEdit — saves via authenticated API which enforces permissions.",
+    "Fix: Double-serialized notes unwrapped before migration.",
+  ]},
   {v:"v5.49.2",date:"Jun 2026",items:[
     "Fix: Migration now creates one note node per note entry instead of concatenating into one.",
     "Fix: Note nodes with multiple notes split into sibling note nodes connected to same parents.",

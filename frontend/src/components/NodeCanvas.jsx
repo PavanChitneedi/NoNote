@@ -1314,6 +1314,31 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setLoading(true);
     getMap(mapId).then(data=>{
       setMapMeta(data.map);
+
+      const toContent=nt=>[
+        (nt.title||"").trim()?`### ${nt.title.trim()}`:"",
+        (nt.content||"").replace(/<[^>]+>/g,"").trim()
+      ].filter(Boolean).join("\n");
+
+      // Parse raw notes from server BEFORE mapping, for migration
+      const rawNotesByNodeId={};
+      data.nodes.forEach(n=>{
+        if(!n.node_notes||!n.node_notes.trim()){
+          // Only migrate if node_notes is empty — raw notes[] still has data
+          try{
+            const raw=n.notes;
+            let arr=[];
+            if(typeof raw==='string'&&raw.trim().startsWith('[')) arr=JSON.parse(raw);
+            else if(Array.isArray(raw)) arr=raw;
+            // Unwrap double-serialization
+            if(arr.length===1&&typeof arr[0]?.content==='string'&&arr[0].content.trim().startsWith('[')){
+              try{ arr=JSON.parse(arr[0].content); }catch{}
+            }
+            if(Array.isArray(arr)&&arr.length>0) rawNotesByNodeId[n.id]=arr;
+          }catch{}
+        }
+      });
+
       const ns=data.nodes.map(n=>({
         id:n.id,type:n.node_type,x:n.x,y:n.y,w:n.w,h:n.h,
         title:n.title,description:n.description||"",showNotes:false,notes:parseNotes(n.notes),
@@ -1333,18 +1358,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       // ── Notes migration: old notes[] → individual note nodes (one per entry) ──
       const extraNodes=[], extraEdges=[];
       const patchedNs=ns.map(n=>{
-        let parsed=[];
-        try{ parsed=JSON.parse(parseNotes(n.notes)); }catch{}
-        if(!Array.isArray(parsed)||parsed.length===0) return n;
-        if(n.node_notes&&n.node_notes.trim()) return n; // already migrated
-
-        const toContent=nt=>[
-          (nt.title||"").trim()?`### ${nt.title.trim()}`:"",
-          (nt.content||"").replace(/<[^>]+>/g,"").trim()
-        ].filter(Boolean).join("\n");
+        const parsed=rawNotesByNodeId[n.id];
+        if(!parsed||parsed.length===0) return n;
 
         if(n.type==="note"){
-          // First entry stays in this node; rest become sibling note nodes
           const [first,...rest]=parsed;
           rest.forEach((nt,i)=>{
             const c=toContent(nt); if(!c.trim()) return;
@@ -1352,18 +1369,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             extraNodes.push({id:newId,type:"note",x:n.x+260*(i+1),y:n.y,w:240,h:160,
               title:"Note",description:"",notes:[],node_notes:c,
               notes_private:nt.sensitive||false,collapsed:false,properties:{},customProps:{}});
-            // connect to same parents as this note node
-            const parents=es.filter(e=>e.to===n.id||e.from===n.id)
-              .map(e=>e.from===n.id?e.to:e.from);
-            const uniqueParents=[...new Set(parents)];
-            if(uniqueParents.length>0){
-              uniqueParents.forEach(pid=>extraEdges.push({id:makeId(),from:pid,to:newId,label:"",
-                style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null}));
-            }
+            const parents=[...new Set(es.filter(e=>e.to===n.id||e.from===n.id).map(e=>e.from===n.id?e.to:e.from))];
+            parents.forEach(pid=>extraEdges.push({id:makeId(),from:pid,to:newId,label:"",
+              style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null}));
           });
           return {...n,node_notes:toContent(first),notes:[],notes_private:first.sensitive||false};
         } else {
-          // Non-note node: each note entry → new note node connected to this node
           parsed.forEach((nt,i)=>{
             const c=toContent(nt); if(!c.trim()) return;
             const newId=makeId();
@@ -1380,7 +1391,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const finalNs=[...patchedNs,...extraNodes];
       const finalEs=[...es,...extraEdges];
 
-      if(extraNodes.length>0&&canEdit){
+      // Always save migration if notes were converted (role check deferred to saveMap auth)
+      if(extraNodes.length>0){
         setTimeout(()=>saveMap(mapId,{
           nodes:finalNs.map(n=>({...n,notes:serializeNotes(n.notes)})),
           edges:finalEs,groupBoxes:data.groupBoxes||[]
