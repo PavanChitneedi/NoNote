@@ -1,3 +1,7 @@
+import { createContext, useContext, useState, useEffect } from "react";
+
+const ThemeContext = createContext({});
+
 // ── 6 Mood Presets — complete, opinionated, warm ─────────────
 export const THEMES = {
   obsidian: {

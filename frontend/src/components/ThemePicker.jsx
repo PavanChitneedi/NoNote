@@ -1,6 +1,4 @@
-import { useTheme } from "../context/ThemeContext.jsx";
-import { useSkin } from "../context/SkinContext.jsx";
-import { THEMES, THEME_KEYS } from "../context/ThemeContext.jsx";
+import { useTheme, THEMES, THEME_KEYS } from "../context/ThemeContext.jsx";
 
 const ACCENT_COLORS = [
   "#7b8cff","#a78bfa","#f59e0b","#f87171","#4ade80",
