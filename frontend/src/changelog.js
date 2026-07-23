@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.54.0",date:"Jul 2026",items:[
+    "New: Workflow Audit — a new Workflow Task node type (frequency, duration, tools, steps, automation status) plus an AI analysis layer that finds repeated manual work worth automating.",
+    "New: Workflow Audit report — run from the canvas ⋯ menu. Suggestions are biased toward your stack (cron, bash, n8n, Proxmox API, Home Assistant) with a concrete first step and a copy-ready snippet per finding.",
+    "New: Automatable tasks can be stamped as a small ⚡ badge directly on the canvas node — click it anytime to re-see the suggestion and copy the snippet, without re-running the audit.",
+    "Improved: llmExport.js extended with a workflow-specific prompt builder and a lightweight monthly time-cost estimate per task, shared between the report and the badge popup.",
+  ]},
   {v:"v5.53.0",date:"Jul 2026",items:[
     "New: Think / Build canvas modes — Think strips the UI down to pure thought capture; Build keeps the full diagramming toolkit. Toggle in the toolbar, remembered across sessions.",
     "New: Instant idea capture — double-click any empty canvas spot to create a thought and start typing. Enter adds a sibling, Tab adds a linked child. Zero decisions before capturing.",

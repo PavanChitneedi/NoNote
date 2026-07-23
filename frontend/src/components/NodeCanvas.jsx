@@ -7,6 +7,7 @@ import NodeAIChat     from "./NodeAIChat.jsx";
 import Tutorial       from "./Tutorial.jsx";
 import HelpGuide      from "./HelpGuide.jsx";
 import DocExportModal  from "./DocExportModal.jsx";
+import WorkflowAuditPanel from "./WorkflowAuditPanel.jsx";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 import { buildLLMText, copyText } from "../utils/llmExport.js";
 import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,Pin,Brain,
@@ -50,6 +51,8 @@ export const NT = {
   warning:     { label:"Warning",             color:"#EF5350", icon:AlertTriangle,cat:"Notes" },
   tip:         { label:"Tip",                 color:"#26A69A", icon:Sparkles,     cat:"Notes" },
   codeblock:   { label:"Code Block",          color:"#78909C", icon:Code2,        cat:"Notes" },
+  // ── Workflow (Workflow Audit feature) ──────────────────────────
+  workflow_task: { label:"Workflow Task",     color:"#FF7043", icon:Repeat,       cat:"Workflow" },
   // ── Planning ─────────────────────────────────────────────────
   task:        { label:"Task",                color:"#29B6F6", icon:Square,       cat:"Planning" },
   checklist:   { label:"Checklist",           color:"#26C6DA", icon:ClipboardList,cat:"Planning" },
@@ -166,7 +169,7 @@ export const NT = {
   compose:     { label:"Docker Compose",      color:"#003F8E", icon:Layers2,      cat:"Software" },
 }
 // sidebar category order
-const SIDEBAR_CATS = ["Notes","Planning","Knowledge","General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
+const SIDEBAR_CATS = ["Notes","Planning","Workflow","Knowledge","General","Network","Computers","Servers","Storage","Mobile & IoT","Cloud","Software","Security"];
 
 // Intent-based grouping for sidebar
 const INTENT_GROUPS = [
@@ -299,6 +302,7 @@ function serializeNotes(notes) {
 }
 
 const DP = {
+  workflow_task:{Frequency:"Weekly",Duration:"15 min",Tools:"",Steps:"",Automation:"Manual"},
   note:{Content:""},
   heading:{Level:"H1",Subtitle:""},
   user:{Role:"",Email:"",Team:""},
@@ -1135,6 +1139,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const cmdInpRef = useRef(null);
   // Copy-for-AI toast
   const [aiToast,      setAiToast]      = useState(null);
+  // Workflow Audit — report panel + badge popup
+  const [showWorkflowAudit, setShowWorkflowAudit] = useState(false);
+  const [auditBadgePopup,   setAuditBadgePopup]   = useState(null); // {nodeId,x,y}
   // Recently used node types — surfaced at top of sidebar
   const [recentTypes,  setRecentTypes]  = useState(()=>{try{return JSON.parse(localStorage.getItem("nn_recent_types")||"[]");}catch{return [];}});
   const noteRecentType=(t)=>{setRecentTypes(prev=>{const n=[t,...prev.filter(x=>x!==t)].slice(0,8);localStorage.setItem("nn_recent_types",JSON.stringify(n));return n;});};
@@ -3156,6 +3163,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               )}
             </div>
 
+            {/* Workflow Audit badge — set by AI analysis, click reveals suggestion */}
+            {node.customProps?._auditBadge&&(
+              <button
+                onMouseDown={e=>e.stopPropagation()}
+                onClick={e=>{e.stopPropagation();setAuditBadgePopup({nodeId:node.id,x:e.clientX,y:e.clientY});}}
+                title="Flagged automatable by Workflow Audit — click for suggestion"
+                style={{background:"var(--warning,#FF9800)22",border:"1px solid var(--warning,#FF9800)77",
+                  borderRadius:4,cursor:"pointer",padding:"1px 4px",flexShrink:0,lineHeight:1,
+                  fontSize:9,color:"var(--warning,#FF9800)",display:"flex",alignItems:"center",gap:2}}>
+                ⚡
+              </button>
+            )}
+
             {/* Comment icon */}
             <button className="nn-comment-btn"
               onMouseDown={e=>e.stopPropagation()}
@@ -3496,6 +3516,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   {[
                     [<HistoryIcon size={13}/>,"History & versions","V",()=>{setShowVersions(true);if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}],
                     [<ClipboardList size={13}/>,"Templates","",()=>setShowTemplates(true)],
+                    [<Zap size={13}/>,"Workflow Audit","",()=>setShowWorkflowAudit(true)],
                     [<Palette size={13}/>,"Appearance","",()=>setShowAppearance(true)],
                     [<HelpCircle size={13}/>,"Help & docs","",()=>setShowHelp(true)],
                     [<GraduationCap size={13}/>,"Guided tour","",()=>setShowTutorial(true)],
@@ -4649,6 +4670,36 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)} collabLog={collabLog}/>}
       {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)}/>}
+      {showWorkflowAudit&&<WorkflowAuditPanel nodes={nodes} mapTitle={mapMeta?.title} updateCustom={updateCustom} onClose={()=>setShowWorkflowAudit(false)}/>}
+
+      {/* ── Audit badge popup — click ⚡ on a node ── */}
+      {auditBadgePopup&&(()=>{
+        const n=nodes.find(x=>x.id===auditBadgePopup.nodeId);
+        const b=n?.customProps?._auditBadge;
+        if(!b) return null;
+        return(<>
+          <div style={{position:"fixed",inset:0,zIndex:940}} onClick={()=>setAuditBadgePopup(null)}/>
+          <div style={{position:"fixed",left:Math.min(auditBadgePopup.x,window.innerWidth-320),top:auditBadgePopup.y+8,zIndex:941,
+            width:300,background:"var(--bg2)",border:"1px solid var(--accent)55",borderRadius:"var(--radius-md)",
+            boxShadow:"var(--shadow-panel)",padding:12}}>
+            <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}>
+              <Sparkles size={12} style={{color:"var(--accent)"}}/>
+              <span style={{fontSize:11,fontWeight:700,color:"var(--text)"}}>Workflow Audit suggestion</span>
+            </div>
+            <div style={{fontSize:11,color:"var(--text2)",marginBottom:6}}>{b.reason}</div>
+            {b.suggestion&&<div style={{fontSize:11,color:"var(--text3)",marginBottom:b.snippet?8:0}}>→ {b.suggestion}</div>}
+            {b.snippet&&(
+              <div style={{position:"relative"}}>
+                <pre style={{background:"var(--bg)",borderRadius:"var(--radius-sm)",padding:"7px 9px",fontSize:10,
+                  color:"var(--text)",overflow:"auto",margin:0,fontFamily:"monospace",maxHeight:100}}>{b.snippet}</pre>
+                <button onClick={async()=>{const ok=await copyText(b.snippet);setAiToast(ok?"✓ Snippet copied":"Copy failed");setTimeout(()=>setAiToast(null),1800);}}
+                  style={{position:"absolute",top:5,right:5,background:"var(--bg3)",border:"1px solid var(--border)",
+                    borderRadius:4,cursor:"pointer",padding:"2px 5px",color:"var(--text3)",fontSize:9}}>Copy</button>
+              </div>
+            )}
+          </div>
+        </>);
+      })()}
 
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}

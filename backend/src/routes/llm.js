@@ -680,4 +680,39 @@ router.post("/export-interpret", authenticate, async (req, res) => {
   }
 });
 
+router.post("/workflow-audit", authenticate, async (req, res) => {
+  const { message } = req.body;
+  if (!message) return res.status(400).json({ error: "message required" });
+  if (message.length > 16000) return res.status(400).json({ error: "Too many workflow tasks for one audit — split across maps." });
+
+  try {
+    const { rows } = await query(
+      `SELECT provider, base_url, model, api_key_enc
+       FROM llm_providers WHERE user_id=$1
+       ORDER BY is_default DESC, created_at ASC LIMIT 1`,
+      [req.user.id]
+    );
+    if (!rows.length) return res.status(404).json({ error: "No LLM provider configured. Add one in Settings." });
+    const p = rows[0];
+    const api_key = p.api_key_enc ? decrypt(p.api_key_enc) : "";
+    const result = await callLLM({
+      provider: p.provider, base_url: p.base_url, model: p.model,
+      api_key,
+      system: "You are a homelab automation advisor. Analyze recurring manual tasks and identify which are worth automating. Respond only with valid JSON exactly as instructed — no prose, no markdown fences.",
+      history: [], message,
+    });
+    let parsed;
+    try {
+      const cleaned = result.content.replace(/```json|```/g, "").trim();
+      parsed = JSON.parse(cleaned);
+    } catch {
+      return res.status(502).json({ error: "AI response wasn't valid JSON — try again." });
+    }
+    res.json({ findings: Array.isArray(parsed.findings) ? parsed.findings : [] });
+  } catch (err) {
+    console.error("[llm] workflow-audit error:", err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 export default router;
