@@ -2623,6 +2623,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setSelected(new Set([nodeId]));
     setSelEdge(null);
   };
+  // Canvas world size — grows with actual content so background/guides never
+  // stop short of nodes placed past the old fixed 4000x3000 box.
+  const canvasW = useMemo(()=>Math.max(4000, ...nodes.map(n=>(n.x||0)+(n.w||DEF_W)))+400,[nodes]);
+  const canvasH = useMemo(()=>Math.max(3000, ...nodes.map(n=>(n.y||0)+(n.h||DEF_H)))+400,[nodes]);
   const canvasBg = canvasTheme!=="global"&&THEMES[canvasTheme]
     ? THEMES[canvasTheme].vars["--bg"]
     : undefined; // undefined = use CSS var
@@ -4072,16 +4076,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               <div style={{fontSize:11,color:"var(--text4)",opacity:.35}}>or drag a node type from the sidebar</div>
             </div>
           )}
-          <div style={{width:4000*zoom,height:3000*zoom,position:"relative",background:canvasBgStyle}}>
-            <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
+          <div style={{width:canvasW*zoom,height:canvasH*zoom,position:"relative",background:canvasBgStyle}}>
+            <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:canvasW,height:canvasH,position:"relative"}}>
 
               {/* Snap alignment guides */}
               {snapGuides.length>0&&(
                 <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible",zIndex:2}}>
                   {snapGuides.map((g,i)=>(
                     g.x!==undefined
-                      ? <line key={i} x1={g.x} y1={0} x2={g.x} y2={3000} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
-                      : <line key={i} x1={0} y1={g.y} x2={4000} y2={g.y} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
+                      ? <line key={i} x1={g.x} y1={0} x2={g.x} y2={canvasH} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
+                      : <line key={i} x1={0} y1={g.y} x2={canvasW} y2={g.y} stroke="var(--accent)" strokeWidth={1} strokeDasharray="4,4" opacity={0.7}/>
                   ))}
                 </svg>
               )}
@@ -4256,7 +4260,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 const nw=collW(pn), nh=collH(pn);
                 const popW=520;
                 let px=pn.x, py=pn.y+nh+10;
-                if(px+popW>4000) px=Math.max(0,pn.x+nw-popW);
+                if(px+popW>canvasW) px=Math.max(0,pn.x+nw-popW);
                 return(
                   <InlineNodeEditor
                     key={pn.id} node={pn} x={px} y={py}

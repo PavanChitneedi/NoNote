@@ -1,6 +1,9 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.54.3",date:"Jul 2026",items:[
+    "Fix: dot-grid background still cut off mid-canvas — the canvas world was hardcoded to 4000×3000 while node content could extend further. Canvas size now grows with actual content, so the grid always covers everything.",
+  ]},
   {v:"v5.54.2",date:"Jul 2026",items:[
     "Fix: canvas dot-grid background painted gray in only part of the screen, reverting to white on scroll — moved the background off the scroll container onto the canvas content itself, which fixes a Chrome repaint bug with the old approach.",
   ]},
