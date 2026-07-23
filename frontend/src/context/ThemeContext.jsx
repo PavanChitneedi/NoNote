@@ -137,6 +137,34 @@ export const THEMES = {
       "--canvas-dot":"rgba(255,255,255,0.035)","--node-bg":"#282828","--shadow":"rgba(0,0,0,0.18)",
     },
   },
+
+  // 10/11. Neutral Industrial — Proxmox/TrueNAS/DSM/Home Assistant lineage.
+  // Materials-based muted accents (slate/olive/moss/copper/sand/burgundy), not LEDs.
+  // Two independent entries (Dark + Light) — pick whichever fits your setup.
+  neutralIndustrialDark: {
+    name:"Neutral Industrial", icon:"◫", group:"Dark",
+    desc:"Engineering-grade neutral — like Proxmox or TrueNAS",
+    vars:{
+      "--bg":"#111111","--bg2":"#181818","--bg3":"#2A2A2A",
+      "--border":"#2E2E2E","--border2":"#272727",
+      "--text":"#E7E7E7","--text2":"#A4A4A4","--text3":"#707070","--text4":"#505050",
+      "--accent":"#7A818C","--accent2":"#606773",
+      "--success":"#5E7B63","--danger":"#8A4F54","--warn":"#A56A43",
+      "--canvas-dot":"rgba(255,255,255,0.035)","--node-bg":"#232323","--shadow":"rgba(0,0,0,0.18)",
+    },
+  },
+  neutralIndustrialLight: {
+    name:"Neutral Industrial Light", icon:"◧", group:"Light",
+    desc:"Engineering-grade neutral — like Proxmox or TrueNAS",
+    vars:{
+      "--bg":"#FAFAFA","--bg2":"#F4F5F7","--bg3":"#F1F2F4",
+      "--border":"#E0E2E6","--border2":"#E7E8EB",
+      "--text":"#1A1A1A","--text2":"#4D4D4D","--text3":"#7A7A7A","--text4":"#A0A0A0",
+      "--accent":"#6B7280","--accent2":"#565D68",
+      "--success":"#5F8066","--danger":"#A65A5F","--warn":"#B26F47",
+      "--canvas-dot":"rgba(0,0,0,0.05)","--node-bg":"#FFFFFF","--shadow":"rgba(0,0,0,0.15)",
+    },
+  },
 };
 
 export const THEME_KEYS = Object.keys(THEMES);

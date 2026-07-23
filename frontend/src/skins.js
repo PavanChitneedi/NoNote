@@ -265,6 +265,55 @@ body.skin-industrial .nn-node { transition: box-shadow 0.16s ease-out, border-co
 body.skin-industrial .nn-node:hover { transform: none; }
     `.trim(),
   },
+
+  // 7. Neutral Industrial — Proxmox/TrueNAS/DSM/Home Assistant lineage.
+  // Flat, dense, near-zero shadow. Category color lives in thin left-borders
+  // and dots, never in large surfaces or buttons.
+  neutralIndustrial: {
+    name: "Neutral Industrial", icon: "◫", nav: "top",
+    desc: "Flat and dense — like Proxmox, TrueNAS, or DSM",
+    defaultTheme: "neutralIndustrialDark",
+    vars: {
+      "--font-ui":   "'Inter', 'Segoe UI Variable', system-ui, -apple-system, sans-serif",
+      "--font-node": "'Inter', 'Segoe UI Variable', system-ui, sans-serif",
+      "--font-mono": "ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace",
+      "--font-weight-ui": "500", "--font-weight-node": "600",
+      "--letter-space": "0", "--line-height": "1.5",
+      "--radius-xs": "4px", "--radius-sm": "6px", "--radius-md": "6px",
+      "--radius-lg": "12px", "--radius-node": "10px", "--radius-btn": "6px",
+      "--shadow-node": "0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,0.15)",
+      "--shadow-node-hover": "0 0 0 1px var(--border2), 0 2px 6px rgba(0,0,0,0.18)",
+      "--shadow-node-sel": "0 0 0 2px var(--accent), 0 1px 2px rgba(0,0,0,0.15)",
+      "--shadow-panel": "0 0 0 1px var(--border), 0 2px 6px rgba(0,0,0,0.18)",
+      "--transition-all": "all 0.16s ease-out",
+      "--topbar-bg": "var(--bg2)", "--topbar-border": "1px solid var(--border)",
+      "--topbar-blur": "none", "--sidebar-bg": "var(--bg2)",
+      "--sidebar-border": "1px solid var(--border)",
+    },
+    bodyClass: "skin-neutral-industrial",
+    css: `
+body.skin-neutral-industrial input:focus, body.skin-neutral-industrial textarea:focus, body.skin-neutral-industrial select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: none !important;
+  outline: 1px solid var(--accent);
+}
+body.skin-neutral-industrial button:not([disabled]) {
+  background: var(--bg3); border: 1px solid var(--border); color: var(--text2);
+}
+body.skin-neutral-industrial button:not([disabled]):hover { background: var(--bg3); border-color: var(--border2); }
+body.skin-neutral-industrial button:not([disabled]):active { transform: none; }
+body.skin-neutral-industrial .nn-map-card {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--ca, var(--accent));
+  border-radius: 10px;
+  box-shadow: none;
+  transition: border-color 0.16s ease-out, background 0.16s ease-out;
+}
+body.skin-neutral-industrial .nn-map-card:hover { border-color: var(--border2); background: var(--bg3); transform: none; }
+body.skin-neutral-industrial .nn-node { transition: box-shadow 0.16s ease-out, border-color 0.16s ease-out; box-shadow: 0 0 0 1px var(--border); }
+body.skin-neutral-industrial .nn-node:hover { transform: none; }
+    `.trim(),
+  },
 };
 
 export const SKIN_KEYS = Object.keys(SKINS);

@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.55.1",date:"Jul 2026",items:[
+    "New: Neutral Industrial theme (dark + light) — muted, materials-based palette (slate/olive/moss/copper/sand/burgundy accents) inspired by Proxmox, TrueNAS, DSM, and Home Assistant. No existing theme changed.",
+    "New: Neutral Industrial skin — 6/6/10/12px radius scale, near-zero shadows, flat neutral buttons (no blue), thin left-border category indicators instead of colored surfaces.",
+  ]},
   {v:"v5.55.0",date:"Jul 2026",items:[
     "New: Industrial Dark theme — a primary long-session dark theme (desktop-software feel: GitHub Desktop / VS Code / Obsidian lineage), ~90% grayscale with accent used only for meaning. Doesn't replace or change any existing theme.",
     "New: Industrial skin — thin borders instead of shadows, 8/8/12/16px radius scale, no glow, minimal 160ms motion. Pairs with Industrial Dark by default, works with any theme.",
