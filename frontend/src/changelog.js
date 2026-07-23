@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.54.1",date:"Jul 2026",items:[
+    "Fix: Workflow Audit now models real workflows — link Workflow Task nodes with edges to form a step-by-step chain, instead of cramming steps into one text field.",
+    "Improved: audit report and node badges show step position (\"step 2 of 3\") and per-workflow total time cost.",
+    "Removed: the \"Steps\" text field on Workflow Task — steps are now the linked nodes themselves.",
+  ]},
   {v:"v5.54.0",date:"Jul 2026",items:[
     "New: Workflow Audit — a new Workflow Task node type (frequency, duration, tools, steps, automation status) plus an AI analysis layer that finds repeated manual work worth automating.",
     "New: Workflow Audit report — run from the canvas ⋯ menu. Suggestions are biased toward your stack (cron, bash, n8n, Proxmox API, Home Assistant) with a concrete first step and a copy-ready snippet per finding.",

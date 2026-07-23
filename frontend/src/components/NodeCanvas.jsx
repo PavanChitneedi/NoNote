@@ -302,7 +302,7 @@ function serializeNotes(notes) {
 }
 
 const DP = {
-  workflow_task:{Frequency:"Weekly",Duration:"15 min",Tools:"",Steps:"",Automation:"Manual"},
+  workflow_task:{Frequency:"Weekly",Duration:"15 min",Tools:"",Automation:"Manual"},
   note:{Content:""},
   heading:{Level:"H1",Subtitle:""},
   user:{Role:"",Email:"",Team:""},
@@ -4670,7 +4670,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
       {showVersions&&<VersionHistory mapId={mapId} nodes={nodes} edges={edges} mapTitle={mapMeta?.title} onRestore={handleRestore} onClose={()=>setShowVersions(false)} collabLog={collabLog}/>}
       {showAppearance&&<ThemePicker onClose={()=>setShowAppearance(false)}/>}
-      {showWorkflowAudit&&<WorkflowAuditPanel nodes={nodes} mapTitle={mapMeta?.title} updateCustom={updateCustom} onClose={()=>setShowWorkflowAudit(false)}/>}
+      {showWorkflowAudit&&<WorkflowAuditPanel nodes={nodes} edges={edges} mapTitle={mapMeta?.title} updateCustom={updateCustom} onClose={()=>setShowWorkflowAudit(false)}/>}
 
       {/* ── Audit badge popup — click ⚡ on a node ── */}
       {auditBadgePopup&&(()=>{
