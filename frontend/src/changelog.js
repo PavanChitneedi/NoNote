@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.55.2",date:"Jul 2026",items:[
+    "New: full sidebar nav to match the Neutral Industrial reference — Overview (Maps, Live Dashboard, Activity), Workspace (Capture, AI Context, Templates, Imports), Manage (Tags, Groups, Settings, Users). Every item wired to a real, existing action — no placeholder pages.",
+    "New: Activity view — real per-map created/updated log, click through to the map.",
+    "New: Settings sidebar item opens Appearance (theme/skin picker); Users opens the existing Admin panel.",
+    "Improved: map card left-border accent thickened to match the reference more closely.",
+  ]},
   {v:"v5.55.1",date:"Jul 2026",items:[
     "New: Neutral Industrial theme (dark + light) — muted, materials-based palette (slate/olive/moss/copper/sand/burgundy accents) inspired by Proxmox, TrueNAS, DSM, and Home Assistant. No existing theme changed.",
     "New: Neutral Industrial skin — 6/6/10/12px radius scale, near-zero shadows, flat neutral buttons (no blue), thin left-border category indicators instead of colored surfaces.",

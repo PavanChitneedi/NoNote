@@ -1,6 +1,7 @@
 import React from 'react';
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import LiveDashboard from "./LiveDashboard.jsx";
+import ThemePicker from "./ThemePicker.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch, saveMap, saveMapMeta, getAccessToken } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
@@ -155,6 +156,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
   const [aiBusy,      setAiBusy]      = useState(false);
   const [dashCmdK,    setDashCmdK]    = useState(false);
   const [dashCmdQ,    setDashCmdQ]    = useState("");
+  // Sidebar: Settings opens the existing Appearance picker; Imports triggers the real file input.
+  const [showSettings, setShowSettings] = useState(false);
+  const importInputRef = useRef(null);
 
   // Copy one map as AI context
   const copyMapForAI = async (mapId, title) => {
@@ -490,17 +494,40 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
           </div>
         </div>
 
-        {/* Nav items */}
-        {[["maps","🗺","Maps"],["live","📡","Live Dashboard"]].map(([id,icon,label])=>(
-          <button key={id} onClick={()=>{ setDashTab(id); window.location.hash=id==="live"?"live":"dashboard"; }}
-            style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 18px",
-              border:"none", cursor:"pointer", fontFamily:"var(--font-ui)", fontWeight:600,
-              fontSize:12, textAlign:"left", transition:"all .1s",
-              background: dashTab===id ? "var(--accent2)22" : "transparent",
-              color: dashTab===id ? "var(--accent2)" : "var(--text3)",
-              borderLeft: dashTab===id ? "3px solid var(--accent2)" : "3px solid transparent" }}>
-            <span style={{ fontSize:14 }}>{icon}</span>{label}
-          </button>
+        {/* Nav items — sectioned, every item wired to a real action */}
+        {[
+          { section:"OVERVIEW", items:[
+            ["maps","🗺","Maps",()=>{ setDashTab("maps"); window.location.hash="dashboard"; }],
+            ["live","📡","Live Dashboard",()=>{ setDashTab("live"); window.location.hash="live"; }],
+            ["activity","📈","Activity",()=>{ setDashTab("activity"); window.location.hash="dashboard"; }],
+          ]},
+          { section:"WORKSPACE", items:[
+            ["capture","⚡","Capture",()=>setCaptureOpen(true)],
+            ["aicontext","✨","AI Context",()=>{setAiPickOpen(true);setAiPick(new Set());}],
+            ["templates","📄","Templates",()=>setShowNew(true)],
+            ["imports","⬇","Imports",()=>importInputRef.current?.click()],
+          ]},
+          { section:"MANAGE", items:[
+            ["tags","🏷","Tags",()=>{ setDashTab("maps"); window.location.hash="dashboard"; }],
+            ["groups","👥","Groups",()=>{ setDashTab("maps"); window.location.hash="dashboard"; }],
+            ["settings","⚙","Settings",()=>setShowSettings(true)],
+            ["users","🛡","Users",()=>onOpenAdmin?.()],
+          ]},
+        ].map(({section,items})=>(
+          <div key={section} style={{marginBottom:4}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:1.2,color:"var(--text4)",padding:"10px 18px 4px"}}>{section}</div>
+            {items.map(([id,icon,label,action])=>(
+              <button key={id} onClick={action}
+                style={{ display:"flex", alignItems:"center", gap:10, padding:"9px 18px", width:"100%",
+                  border:"none", cursor:"pointer", fontFamily:"var(--font-ui)", fontWeight:600,
+                  fontSize:12, textAlign:"left", transition:"all .1s",
+                  background: dashTab===id ? "var(--accent2)22" : "transparent",
+                  color: dashTab===id ? "var(--accent2)" : "var(--text3)",
+                  borderLeft: dashTab===id ? "3px solid var(--accent2)" : "3px solid transparent" }}>
+                <span style={{ fontSize:14 }}>{icon}</span>{label}
+              </button>
+            ))}
+          </div>
         ))}
 
         <div style={{ flex:1 }}/>
@@ -647,7 +674,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
         {skinNav === "top" && (
           <div style={{ marginBottom:18, display:"flex", alignItems:"center", justifyContent:"space-between" }}>
             <div style={{ fontSize:16, fontWeight:"var(--font-weight-ui,800)", color:"var(--text)", letterSpacing:"var(--letter-space)" }}>
-              {dashTab==="maps" ? "Your Maps" : "Live Dashboard"}
+              {dashTab==="maps" ? "Your Maps" : dashTab==="activity" ? "Activity" : "Live Dashboard"}
             </div>
           </div>
         )}
@@ -703,13 +730,34 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
           {/* Import .nonote */}
           <label data-tut="import" style={{ padding:"9px 15px", background:"var(--bg2)",  borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
             ↙ Import .nonote
-            <input type="file" accept=".nonote,.json" style={{ display:"none" }} onChange={handleImportFile}/>
+            <input ref={importInputRef} type="file" accept=".nonote,.json" style={{ display:"none" }} onChange={handleImportFile}/>
           </label>
         </div>}
 
         {/* Map grid */}
         {dashTab==="live" ? (
           <LiveDashboard maps={maps} />
+        ) : dashTab==="activity" ? (
+          <div>
+            {maps.length===0 ? (
+              <div style={{ textAlign:"center", color:"var(--text4)", fontSize:13, padding:50 }}>No activity yet.</div>
+            ) : [...maps].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).map(m=>{
+              const created = new Date(m.created_at).getTime()===new Date(m.updated_at).getTime();
+              return (
+                <div key={m.id} onClick={()=>onOpenMap(m.id)}
+                  style={{ display:"flex", alignItems:"center", gap:10, padding:"10px 12px", cursor:"pointer",
+                    borderBottom:"1px solid var(--border2)" }}
+                  onMouseEnter={e=>e.currentTarget.style.background="var(--bg2)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <span style={{width:6,height:6,borderRadius:"50%",background:mapColor(m,maps.indexOf(m)),flexShrink:0}}/>
+                  <span style={{fontSize:12,color:"var(--text2)",flex:1}}>
+                    <b style={{color:"var(--text)"}}>{m.title}</b> was {created?"created":"updated"}
+                  </span>
+                  <span style={{fontSize:10,color:"var(--text4)"}}>{new Date(m.updated_at).toLocaleString()}</span>
+                </div>
+              );
+            })}
+          </div>
         ) : loading ? (
           <div style={{ textAlign:"center", color:"var(--text4)", fontSize:13, padding:50 }}>Loading maps…</div>
         ) : maps.length===0 ? (
@@ -1078,6 +1126,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
       </>)}
 
       {/* ── Dashboard Ctrl+K — jump to any map ── */}
+      {showSettings&&<ThemePicker onClose={()=>setShowSettings(false)}/>}
+
       {dashCmdK&&(()=>{
         const q=dashCmdQ.trim().toLowerCase();
         const hits=maps.filter(m=>!q||m.title.toLowerCase().includes(q)).slice(0,9);

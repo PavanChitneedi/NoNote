@@ -304,7 +304,7 @@ body.skin-neutral-industrial button:not([disabled]):hover { background: var(--bg
 body.skin-neutral-industrial button:not([disabled]):active { transform: none; }
 body.skin-neutral-industrial .nn-map-card {
   border: 1px solid var(--border);
-  border-left: 2px solid var(--ca, var(--accent));
+  border-left: 3px solid var(--ca, var(--accent));
   border-radius: 10px;
   box-shadow: none;
   transition: border-color 0.16s ease-out, background 0.16s ease-out;
