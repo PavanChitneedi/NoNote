@@ -4057,10 +4057,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           style={{
             flex:1,overflow:"auto",position:"relative",
             cursor:mode==="connect"?"crosshair":dragging?"grabbing":"default",
-            background: canvasBgStyle,
-            backgroundAttachment: "local",
+            background: canvasBg||"var(--bg)",
           }}
-          className="nn-canvas-vignette">
+          >
           {/* Empty state */}
           {nodes.length===0&&!loading&&(
             <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",
@@ -4073,7 +4072,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               <div style={{fontSize:11,color:"var(--text4)",opacity:.35}}>or drag a node type from the sidebar</div>
             </div>
           )}
-          <div style={{width:4000*zoom,height:3000*zoom,position:"relative"}}>
+          <div style={{width:4000*zoom,height:3000*zoom,position:"relative",background:canvasBgStyle}}>
             <div style={{transform:`scale(${zoom})`,transformOrigin:"0 0",width:4000,height:3000,position:"relative"}}>
 
               {/* Snap alignment guides */}

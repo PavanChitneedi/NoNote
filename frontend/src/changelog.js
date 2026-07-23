@@ -1,6 +1,9 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.54.2",date:"Jul 2026",items:[
+    "Fix: canvas dot-grid background painted gray in only part of the screen, reverting to white on scroll — moved the background off the scroll container onto the canvas content itself, which fixes a Chrome repaint bug with the old approach.",
+  ]},
   {v:"v5.54.1",date:"Jul 2026",items:[
     "Fix: Workflow Audit now models real workflows — link Workflow Task nodes with edges to form a step-by-step chain, instead of cramming steps into one text field.",
     "Improved: audit report and node badges show step position (\"step 2 of 3\") and per-workflow total time cost.",
