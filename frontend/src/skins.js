@@ -220,6 +220,51 @@ body.skin-editorial .nn-node { transition: transform 0.16s ease-out, box-shadow 
 body.skin-editorial .nn-node:hover { transform: translateY(-1px); }
     `.trim(),
   },
+
+  // 6. Industrial — GitHub Desktop / VS Code / Obsidian lineage. Borders over
+  // shadows, thin accents over pills, subtle motion. Built to disappear.
+  industrial: {
+    name: "Industrial", icon: "▤", nav: "top",
+    desc: "Desktop-software feel — thin borders, no glow, no clutter",
+    defaultTheme: "industrialDark",
+    vars: {
+      "--font-ui":   "'Inter', 'Segoe UI Variable', system-ui, -apple-system, sans-serif",
+      "--font-node": "'Inter', 'Segoe UI Variable', system-ui, sans-serif",
+      "--font-mono": "ui-monospace, 'Cascadia Code', 'Fira Code', Consolas, monospace",
+      "--font-weight-ui": "500", "--font-weight-node": "600",
+      "--letter-space": "-0.005em", "--line-height": "1.55",
+      "--radius-xs": "5px", "--radius-sm": "8px", "--radius-md": "8px",
+      "--radius-lg": "16px", "--radius-node": "12px", "--radius-btn": "8px",
+      "--shadow-node": "0 0 0 1px var(--border), 0 1px 2px rgba(0,0,0,0.18)",
+      "--shadow-node-hover": "0 0 0 1px var(--border2), 0 2px 6px rgba(0,0,0,0.18)",
+      "--shadow-node-sel": "0 0 0 2px var(--accent), 0 2px 6px rgba(0,0,0,0.18)",
+      "--shadow-panel": "0 0 0 1px var(--border), 0 2px 6px rgba(0,0,0,0.18)",
+      "--transition-all": "all 0.16s ease-out",
+      "--topbar-bg": "var(--bg2)", "--topbar-border": "1px solid var(--border)",
+      "--topbar-blur": "none", "--sidebar-bg": "var(--bg2)",
+      "--sidebar-border": "1px solid var(--border)",
+    },
+    bodyClass: "skin-industrial",
+    css: `
+body.skin-industrial input:focus, body.skin-industrial textarea:focus, body.skin-industrial select:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent)22 !important;
+  outline: none;
+}
+body.skin-industrial button:not([disabled]):hover { background: var(--bg3) !important; }
+body.skin-industrial button:not([disabled]):active { transform: none; }
+body.skin-industrial .nn-map-card {
+  border: 1px solid var(--border);
+  border-left: 2px solid var(--ca, var(--accent));
+  border-radius: 8px;
+  box-shadow: none;
+  transition: border-color 0.16s ease-out, background 0.16s ease-out;
+}
+body.skin-industrial .nn-map-card:hover { border-color: var(--border2); background: var(--bg3); transform: none; }
+body.skin-industrial .nn-node { transition: box-shadow 0.16s ease-out, border-color 0.16s ease-out; }
+body.skin-industrial .nn-node:hover { transform: none; }
+    `.trim(),
+  },
 };
 
 export const SKIN_KEYS = Object.keys(SKINS);

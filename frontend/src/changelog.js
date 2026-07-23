@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.55.0",date:"Jul 2026",items:[
+    "New: Industrial Dark theme — a primary long-session dark theme (desktop-software feel: GitHub Desktop / VS Code / Obsidian lineage), ~90% grayscale with accent used only for meaning. Doesn't replace or change any existing theme.",
+    "New: Industrial skin — thin borders instead of shadows, 8/8/12/16px radius scale, no glow, minimal 160ms motion. Pairs with Industrial Dark by default, works with any theme.",
+  ]},
   {v:"v5.54.3",date:"Jul 2026",items:[
     "Fix: dot-grid background still cut off mid-canvas — the canvas world was hardcoded to 4000×3000 while node content could extend further. Canvas size now grows with actual content, so the grid always covers everything.",
   ]},

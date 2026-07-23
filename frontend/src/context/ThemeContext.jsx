@@ -121,6 +121,22 @@ export const THEMES = {
       "--canvas-dot":"rgba(255,255,255,0.025)","--node-bg":"#06060a","--shadow":"rgba(0,0,0,0.8)",
     },
   },
+
+  // 9. Industrial Dark — primary long-session dark theme. Desktop-software feel
+  // (GitHub Desktop / VS Code / Obsidian lineage), not a light theme inverted.
+  // ~90% grayscale, accent used only for meaning (selection, focus, links, actions).
+  industrialDark: {
+    name:"Industrial Dark", icon:"▤", group:"Dark",
+    desc:"Premium desktop feel — built for 8–12hr sessions",
+    vars:{
+      "--bg":"#0F0F10","--bg2":"#171717","--bg3":"#1D1D1D",
+      "--border":"#2E2E2E","--border2":"#242424",
+      "--text":"#ECECEC","--text2":"#B6B6B6","--text3":"#878787","--text4":"#5F5F5F",
+      "--accent":"#4F7DF3","--accent2":"#3F68D1",
+      "--success":"#3FA76F","--danger":"#D45B5B","--warn":"#D8A031",
+      "--canvas-dot":"rgba(255,255,255,0.035)","--node-bg":"#282828","--shadow":"rgba(0,0,0,0.18)",
+    },
+  },
 };
 
 export const THEME_KEYS = Object.keys(THEMES);
