@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.56.0",date:"Jul 2026",items:[
+    "New: map detail panel — click a card (Detailed style) to see Nodes, Connections, Created, Updated, Author, and Visibility, with an Open Map button to actually navigate. Double-click a card still opens it directly.",
+    "New: card style toggle — Compact (original) or Detailed (thicker accent border, visibility dot + label, matches the reference image). Switch anytime next to the grid/list toggle; choice is remembered.",
+  ]},
   {v:"v5.55.2",date:"Jul 2026",items:[
     "New: full sidebar nav to match the Neutral Industrial reference — Overview (Maps, Live Dashboard, Activity), Workspace (Capture, AI Context, Templates, Imports), Manage (Tags, Groups, Settings, Users). Every item wired to a real, existing action — no placeholder pages.",
     "New: Activity view — real per-map created/updated log, click through to the map.",

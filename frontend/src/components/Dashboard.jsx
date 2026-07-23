@@ -19,6 +19,13 @@ const DEFAULT_GROUPS     = ["Personal","Work","Infrastructure","Network","Securi
 function mapColor(map, idx) { return map.color || MAP_ACCENT_COLORS[idx % MAP_ACCENT_COLORS.length]; }
 function mapGroup(map)      { return map.grp  || ""; }
 function mapIcon(map)       { return map.icon || "🗺"; }
+// Real, derived visibility label — no fabricated states.
+function mapVisibility(map) {
+  if (mapGroup(map) === "Archive") return "Archived";
+  if (map.is_public) return "Public";
+  if (map.collab_count > 0) return "Shared";
+  return "Personal";
+}
 
 // ── Inline Share Modal (shown from dashboard without navigating away) ────
 function ShareModal({ map, onClose }) {
@@ -159,6 +166,21 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
   // Sidebar: Settings opens the existing Appearance picker; Imports triggers the real file input.
   const [showSettings, setShowSettings] = useState(false);
   const importInputRef = useRef(null);
+  // Card style — 'compact' (original) or 'detailed' (matches the reference image)
+  const [cardStyle, setCardStyle] = useState(()=>localStorage.getItem("nn_card_style")||"detailed");
+  const setCardStylePersist = (s) => { setCardStyle(s); localStorage.setItem("nn_card_style", s); };
+  // Map detail panel — click a card to select it, "Open Map" actually navigates
+  const [selectedMapId, setSelectedMapId] = useState(null);
+  const [selectedMapDetail, setSelectedMapDetail] = useState(null); // { edgeCount } fetched lazily
+  useEffect(()=>{
+    if(selectedMapId && !maps.some(m=>m.id===selectedMapId)) setSelectedMapId(null);
+  },[maps, selectedMapId]);
+  useEffect(()=>{
+    if(!selectedMapId){ setSelectedMapDetail(null); return; }
+    let cancelled=false;
+    getMap(selectedMapId).then(d=>{ if(!cancelled) setSelectedMapDetail({ edgeCount:(d.edges||[]).length }); }).catch(()=>{});
+    return ()=>{ cancelled=true; };
+  },[selectedMapId]);
 
   // Copy one map as AI context
   const copyMapForAI = async (mapId, title) => {
@@ -544,7 +566,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
       </div>}
 
       {/* ── Main content ── */}
-      <div style={{ flex:1, overflowY:"auto", padding:"24px 28px", minWidth:0 }}>
+      <div style={{ flex:1, overflowY:"auto", padding:"24px 28px", minWidth:0,
+        paddingRight: (cardStyle==="detailed"&&selectedMapId) ? 340 : 28,
+        transition:"padding-right .18s cubic-bezier(0.16,1,0.3,1)" }}>
 
         {/* ── Compact nav header for non-sidebar skins ── */}
         {skinNav !== "top" && (
@@ -887,6 +911,17 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         </button>
                       ))}
                     </div>
+                    {viewMode==="grid"&&(
+                      <div title="Card style" style={{display:"flex",gap:1,background:"var(--bg3)",borderRadius:5,padding:2,border:"1px solid var(--border)"}}>
+                        {[["compact","Compact"],["detailed","Detailed"]].map(([v,lbl])=>(
+                          <button key={v} onClick={()=>setCardStylePersist(v)}
+                            style={{fontSize:10,fontWeight:700,padding:"3px 9px",border:"none",borderRadius:3,cursor:"pointer",
+                              background:cardStyle===v?"var(--accent2)":"transparent",color:cardStyle===v?"#fff":"var(--text4)"}}>
+                            {lbl}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div style={{height:14}}/>
@@ -974,16 +1009,20 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     const accent=mapColor(map,maps.indexOf(map));
                     const icon=mapIcon(map);
                     const grpLabel=mapGroup(map);
+                    const visLabel=mapVisibility(map);
                     return <div key={map.id}
                       className="nn-map-card" data-ui={`mapcard-${map.id}`} data-component="MapCard" data-page="dashboard" data-role="card"
                       data-tut={maps.indexOf(map)===0?"map-card":undefined}
-                      onClick={()=>onOpenMap(map.id)}
+                      onClick={()=>cardStyle==="detailed"?setSelectedMapId(map.id):onOpenMap(map.id)}
+                      onDoubleClick={()=>cardStyle==="detailed"&&onOpenMap(map.id)}
                       onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
                       style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",
                         cursor:"pointer",position:"relative",overflow:"hidden",
+                        border: cardStyle==="detailed" ? `1px solid ${selectedMapId===map.id?accent:"var(--border2)"}` : (selectedMapId===map.id?`1px solid ${accent}`:"1px solid transparent"),
+                        borderLeft: cardStyle==="detailed" ? `3px solid ${accent}` : undefined,
                         transition:"var(--transition-all)","--ca":accent}}>
-                      {/* Group badge — top-left accent strip */}
-                      {grpLabel&&activeGroup==="all"&&(
+                      {/* Group badge — top-left accent strip (compact style only; detailed uses the left border) */}
+                      {cardStyle==="compact"&&grpLabel&&activeGroup==="all"&&(
                         <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:accent,opacity:.7}}/>
                       )}
                       <div style={{padding:"11px 12px 10px"}}>
@@ -1003,27 +1042,82 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         </div>
                         {map.description&&<div style={{fontSize:10,color:"var(--text4)",marginBottom:6,
                           overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{map.description}</div>}
-                        <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",marginTop:4}}>
-                          <span style={{fontSize:10,fontWeight:600,color:"var(--ca)",background:"var(--ca)18",
-                            padding:"1px 7px",borderRadius:"var(--radius-xs)"}}>{parseInt(map.node_count)||0} nodes</span>
-                          {grpLabel&&activeGroup==="all"&&(
-                            <span style={{fontSize:9,color:"var(--text3)",background:"var(--bg3)",padding:"1px 6px",borderRadius:"var(--radius-xs)",fontWeight:600,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
-                              {grpLabel}
-                            </span>
-                          )}
-                          {map.permission&&map.owner_id!==user?.id&&(
-                            <span style={{fontSize:9,color:"var(--accent)",background:"var(--accent)18",padding:"1px 6px",borderRadius:"var(--radius-xs)",fontWeight:600}}>👁</span>
-                          )}
-                          {(map.owner_id===user?.id||!map.permission)&&map.collab_count>0&&(
-                            <span style={{fontSize:9,color:"var(--text3)",background:"var(--bg3)",padding:"1px 6px",borderRadius:"var(--radius-xs)",fontWeight:600}}>👥 {map.collab_count}</span>
-                          )}
-                          {map.is_public&&<span style={{fontSize:9,color:"var(--success)",background:"var(--success)18",padding:"1px 6px",borderRadius:"var(--radius-xs)"}}>public</span>}
-                          <span style={{marginLeft:"auto",fontSize:9,color:"var(--text4)"}}>{new Date(map.updated_at).toLocaleDateString()}</span>
-                        </div>
+                        {cardStyle==="compact"?(
+                          <div style={{display:"flex",alignItems:"center",gap:5,flexWrap:"wrap",marginTop:4}}>
+                            <span style={{fontSize:10,fontWeight:600,color:"var(--ca)",background:"var(--ca)18",
+                              padding:"1px 7px",borderRadius:"var(--radius-xs)"}}>{parseInt(map.node_count)||0} nodes</span>
+                            {grpLabel&&activeGroup==="all"&&(
+                              <span style={{fontSize:9,color:"var(--text3)",background:"var(--bg3)",padding:"1px 6px",borderRadius:"var(--radius-xs)",fontWeight:600,maxWidth:80,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>
+                                {grpLabel}
+                              </span>
+                            )}
+                            {map.permission&&map.owner_id!==user?.id&&(
+                              <span style={{fontSize:9,color:"var(--accent)",background:"var(--accent)18",padding:"1px 6px",borderRadius:"var(--radius-xs)",fontWeight:600}}>👁</span>
+                            )}
+                            {(map.owner_id===user?.id||!map.permission)&&map.collab_count>0&&(
+                              <span style={{fontSize:9,color:"var(--text3)",background:"var(--bg3)",padding:"1px 6px",borderRadius:"var(--radius-xs)",fontWeight:600}}>👥 {map.collab_count}</span>
+                            )}
+                            {map.is_public&&<span style={{fontSize:9,color:"var(--success)",background:"var(--success)18",padding:"1px 6px",borderRadius:"var(--radius-xs)"}}>public</span>}
+                            <span style={{marginLeft:"auto",fontSize:9,color:"var(--text4)"}}>{new Date(map.updated_at).toLocaleDateString()}</span>
+                          </div>
+                        ):(
+                          <>
+                            <div style={{fontSize:10,color:"var(--text3)",marginBottom:8,display:"flex",alignItems:"center",gap:4}}>
+                              <span style={{opacity:.7}}>⌘</span> {parseInt(map.node_count)||0} nodes
+                            </div>
+                            <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
+                              <span style={{width:6,height:6,borderRadius:"50%",background:accent,flexShrink:0}}/>
+                              <span style={{fontSize:10,color:"var(--text3)",fontWeight:600}}>{visLabel}</span>
+                              <span style={{marginLeft:"auto",fontSize:9,color:"var(--text4)"}}>{new Date(map.updated_at).toLocaleDateString()}</span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>;
                   })}
                 </div>}
+
+                {/* ── Map detail panel — click a card to select; double-click or Open Map to navigate ── */}
+                {cardStyle==="detailed"&&selectedMapId&&(()=>{
+                  const m = maps.find(x=>x.id===selectedMapId);
+                  if(!m) return null;
+                  const accent = mapColor(m, maps.indexOf(m));
+                  return (
+                    <div style={{ position:"fixed", top:0, right:0, bottom:0, width:320, background:"var(--bg2)",
+                      borderLeft:"1px solid var(--border2)", padding:20, overflowY:"auto", zIndex:60,
+                      animation:"nnFadeUp .18s cubic-bezier(0.16,1,0.3,1) both" }}>
+                      <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}>
+                        <span style={{fontSize:18}}>{mapIcon(m)}</span>
+                        <div style={{fontSize:15,fontWeight:700,color:"var(--text)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</div>
+                        <button onClick={()=>{setEditingMeta(m.id);setEditingMetaDraft({});}} title="Customize"
+                          style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:13}}>✎</button>
+                        <button onClick={()=>setSelectedMapId(null)} title="Close"
+                          style={{background:"none",border:"none",color:"var(--text3)",cursor:"pointer",fontSize:15}}>✕</button>
+                      </div>
+                      {m.description&&<div style={{fontSize:12,color:"var(--text2)",marginBottom:16,lineHeight:1.5}}>{m.description}</div>}
+                      {[
+                        ["Nodes", parseInt(m.node_count)||0],
+                        ["Connections", selectedMapDetail?selectedMapDetail.edgeCount:"…"],
+                        ["Created", new Date(m.created_at).toLocaleDateString()],
+                        ["Updated", new Date(m.updated_at).toLocaleDateString()],
+                        ["Author", m.owner_name||"—"],
+                        ["Visibility", mapVisibility(m)],
+                      ].map(([lbl,val])=>(
+                        <div key={lbl} style={{display:"flex",justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid var(--border2)",fontSize:12}}>
+                          <span style={{color:"var(--text3)"}}>{lbl}</span>
+                          <span style={{color:"var(--text)",fontWeight:600}}>{val}</span>
+                        </div>
+                      ))}
+                      <button onClick={()=>onOpenMap(m.id)}
+                        style={{width:"100%",marginTop:20,padding:"10px",background:accent,border:"none",
+                          borderRadius:"var(--radius-md)",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",
+                          display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
+                        Open Map ↗
+                      </button>
+                    </div>
+                  );
+                })()}
+
 
                 {viewMode==="list"&&<div style={{display:"flex",flexDirection:"column",gap:3}}>
                   {filtered.map((map)=>{
