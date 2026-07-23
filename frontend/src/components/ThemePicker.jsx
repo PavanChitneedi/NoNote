@@ -7,6 +7,7 @@ export default function ThemePicker({ onClose }) {
   const { themeName, setThemeName } = useTheme();
   const { skinName, setSkinName } = useSkin();
   const [tab, setTab] = useState("theme"); // "theme" | "skin"
+  const [showAll, setShowAll] = useState(false); // reveal extra themes/skins
 
   const overlay = {
     position:"fixed",inset:0,zIndex:500,
@@ -52,16 +53,19 @@ export default function ThemePicker({ onClose }) {
               transition:"all 0.14s",
             }}>{label}</button>
           ))}
+          <button onClick={()=>setShowAll(v=>!v)} title="A focused core set is shown by default — reveal every theme & skin"
+            style={{padding:"7px 10px",border:"none",cursor:"pointer",borderRadius:"calc(var(--radius-sm) - 2px)",
+              fontFamily:"var(--font-ui)",fontWeight:600,fontSize:10,
+              background:showAll?"var(--accent2)":"transparent",color:showAll?"#fff":"var(--text4)",
+              transition:"all 0.14s",whiteSpace:"nowrap"}}>{showAll?"Core only":"Show all"}</button>
         </div>
-
-        {/* Theme tab */}
         {tab==="theme"&&(
           <div style={{padding:20}}>
             {["Dark","Light"].map(group=>(
               <div key={group} style={{marginBottom:20}}>
                 <div style={{fontSize:10,fontWeight:700,color:"var(--text3)",letterSpacing:"0.08em",marginBottom:10,textTransform:"uppercase"}}>{group}</div>
                 <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr 1fr",gap:8}}>
-                  {THEME_GROUPS[group].map(key=>{
+                  {THEME_GROUPS[group].filter(k=>showAll||!THEMES[k].extra||themeName===k).map(key=>{
                     const t=THEMES[key];
                     const active=themeName===key;
                     const bg=t.vars["--bg2"];
@@ -109,7 +113,7 @@ export default function ThemePicker({ onClose }) {
         {tab==="skin"&&(
           <div style={{padding:20}}>
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
-              {SKIN_KEYS.map(key=>{
+              {SKIN_KEYS.filter(k=>showAll||!SKINS[k].extra||skinName===k).map(key=>{
                 const s=SKINS[key];
                 const active=skinName===key;
                 return(

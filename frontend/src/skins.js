@@ -91,6 +91,7 @@ body.skin-rounded .nn-node:hover { transform: translateY(-3px); }
 
   // 3. Sharp — Warp / VSCode. Developer tool. Precise, dense, mono.
   sharp: {
+    extra: true,
     name: "Sharp", icon: "◼", nav: "top",
     desc: "Developer tool — like Warp or VSCode",
     defaultTheme: "void",
@@ -180,6 +181,7 @@ body.skin-glass .nn-node:hover { transform: translateY(-2px); }
 
   // 5. Editorial — Notion docs / Bear. Serif titles, calm, reading-first.
   editorial: {
+    extra: true,
     name: "Editorial", icon: "✦", nav: "top",
     desc: "Reading-first — like Notion or Bear",
     defaultTheme: "amber",

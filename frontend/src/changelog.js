@@ -1,6 +1,20 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.53.0",date:"Jul 2026",items:[
+    "New: Think / Build canvas modes — Think strips the UI down to pure thought capture; Build keeps the full diagramming toolkit. Toggle in the toolbar, remembered across sessions.",
+    "New: Instant idea capture — double-click any empty canvas spot to create a thought and start typing. Enter adds a sibling, Tab adds a linked child. Zero decisions before capturing.",
+    "New: Ctrl+K command palette — jump to any node, run any action from the canvas; jump to any map from the dashboard.",
+    "New: Quick Capture → Inbox — press C on the dashboard (or the ⚡ Capture button), type a thought, Enter. It lands in an auto-created Inbox map to file later — or never.",
+    "New: Copy for AI — one-click button on the canvas topbar and in every map card menu copies the whole map as AI-ready context. Paste into any chatbot and just ask.",
+    "New: Multi-map AI export — ✨ AI Context… on the dashboard combines several maps into one context document on your clipboard.",
+    "New: Continue-where-you-left-off strip on the dashboard — your four most recent maps, one click away.",
+    "New: Recently-used node types pinned to the top of the sidebar — your real working set instead of 60 choices.",
+    "Improved: Topbar tiered — six primary actions stay visible; templates, history, import, appearance, help, tour and logout live in one calm ⋯ menu.",
+    "Improved: Notes formatting toolbar shows the essentials (bold, italic, lists, headings); everything else is one ⋯ away.",
+    "Improved: Motion pass — nodes pop in, edges fade in, menus and modals ease in, recent chips lift on hover. Respects reduced-motion preferences.",
+    "Improved: Theme picker shows a focused core set (4 themes, 3 skins) by default — Show all reveals the rest. Nothing removed.",
+  ]},
   {v:"v5.52.0",date:"Jun 2026",items:[
     "Overhaul: Complete theme system rebuilt — 8 new themes: Slate, Arctic, Amber, Sakura, Midnight, Emerald, Rose, Void.",
     "Overhaul: Complete skin system rebuilt — 5 new skins: Clean (default), Rounded, Sharp, Glass, Editorial.",

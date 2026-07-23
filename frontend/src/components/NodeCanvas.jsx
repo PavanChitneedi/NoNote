@@ -8,6 +8,7 @@ import Tutorial       from "./Tutorial.jsx";
 import HelpGuide      from "./HelpGuide.jsx";
 import DocExportModal  from "./DocExportModal.jsx";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
+import { buildLLMText, copyText } from "../utils/llmExport.js";
 import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,Pin,Brain,
   BookOpen,Quote,AlignLeft,HelpCircle,CheckCircle,AlertTriangle,Sparkles,Code2,Square,
   ClipboardList,Target,Flag,Clock,StopCircle,Play,XCircle,CheckCircle2,ExternalLink,
@@ -19,14 +20,16 @@ import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,P
   Thermometer,Camera,Factory,DoorOpen,Wind,Cloud,Braces,ListOrdered,Share2,Package,
   Hexagon,Box,ArrowUpDown,PackageOpen,Link2,Library,Power,Puzzle,Gauge,MessageCircle,
   BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban,
-  Boxes,AppWindow,Component,Layers2,Container,MemoryStick } from "lucide-react";
+  Boxes,AppWindow,Component,Layers2,Container,MemoryStick,
+  MoreHorizontal,History as HistoryIcon,Palette,LogOut,Keyboard,Import,Users,
+  Command,Feather,Hammer,GraduationCap,Copy } from "lucide-react";
 import ThemePicker    from "./ThemePicker.jsx";
 import IntegrationPanel from "./IntegrationPanel.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 
 // ── Node types ────────────────────────────────────────────────
 // ── Node type registry ────────────────────────────────────────
-const NT = {
+export const NT = {
   // ── General ──────────────────────────────────────────────────
   note:        { label:"Note",                color:"#FFD93D", icon:FileText,     cat:"General" },
   heading:     { label:"Heading",             color:"#6C63FF", icon:Type,         cat:"General" },
@@ -1121,6 +1124,20 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // Quick capture
   const [quickPos,     setQuickPos]     = useState(null);
   const [quickText,    setQuickText]    = useState("");
+  // Think / Build canvas mode — Think = frictionless capture, Build = full diagramming
+  const [canvasMode,   setCanvasMode]   = useState(()=>localStorage.getItem("nn_canvas_mode")||"build");
+  const setCanvasModePersist=(m)=>{setCanvasMode(m);localStorage.setItem("nn_canvas_mode",m);};
+  // Topbar overflow ("More") menu
+  const [showMore,     setShowMore]     = useState(false);
+  // Ctrl+K command palette
+  const [showCmdK,     setShowCmdK]     = useState(false);
+  const [cmdQ,         setCmdQ]         = useState("");
+  const cmdInpRef = useRef(null);
+  // Copy-for-AI toast
+  const [aiToast,      setAiToast]      = useState(null);
+  // Recently used node types — surfaced at top of sidebar
+  const [recentTypes,  setRecentTypes]  = useState(()=>{try{return JSON.parse(localStorage.getItem("nn_recent_types")||"[]");}catch{return [];}});
+  const noteRecentType=(t)=>{setRecentTypes(prev=>{const n=[t,...prev.filter(x=>x!==t)].slice(0,8);localStorage.setItem("nn_recent_types",JSON.stringify(n));return n;});};
   // Inline title edit
   const [editingTitle, setEditingTitle] = useState(null);
   // Zoom
@@ -1426,6 +1443,64 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   },[mapId]);
 
   // ── Keyboard shortcuts ────────────────────────────────────
+  // ── Copy for AI — one click, straight to clipboard ─────────
+  const copyForAI=useCallback(async()=>{
+    const ok=await copyText(buildLLMText(mapMeta?.title||"Map",nodesRef.current,edgesRef.current||edges,NT));
+    setAiToast(ok?"✓ AI context copied — paste into any chatbot":"Copy failed");
+    setTimeout(()=>setAiToast(null),2200);
+  },[mapMeta,edges]);
+
+  // ── Frictionless idea creation ─────────────────────────────
+  // Creates an "idea" node at world coords, selects it, opens title edit.
+  const createIdeaAt=useCallback((wx,wy,linkFromId=null)=>{
+    if(!canEdit||!editMode) return null;
+    const cur=nodesRef.current;
+    let ox=0,oy=0;
+    for(let i=0;i<20;i++){
+      const clash=cur.some(n=>Math.abs(n.x-(wx+ox))<(n.w||DEF_W)+16&&Math.abs(n.y-(wy+oy))<(n.h||DEF_H)+16);
+      if(!clash) break;
+      oy+=(DEF_H+24); if(oy>500){oy=0;ox+=(DEF_W+30);}
+    }
+    const node=mkNode("idea",Math.max(0,wx+ox),Math.max(0,wy+oy));
+    node.title="";
+    applyNodes(ns=>[...ns,node]);
+    if(linkFromId){
+      applyEdges(es=>[...es,{id:makeId(),from:linkFromId,to:node.id,label:"",style:"arrow",color:"var(--accent)"}]);
+    }
+    setSelected(new Set([node.id])); setSelEdge(null);
+    setTimeout(()=>{
+      setEditingTitle(node.id);
+      const el=document.querySelector(`[data-ui="node-${node.id}"]`);
+      if(el){el.classList.add("nn-node-new");setTimeout(()=>el.classList.remove("nn-node-new"),260);}
+    },16);
+    return node;
+  },[canEdit,editMode,applyNodes,applyEdges]);
+
+  // Enter = sibling (shares parent if one exists) · Tab = child (linked)
+  const createSibling=useCallback(()=>{
+    const sel=[...selected]; if(sel.length!==1) return;
+    const src=nodesRef.current.find(n=>n.id===sel[0]); if(!src) return;
+    const parentEdge=(edgesRef.current||edges).find(e=>e.to===src.id);
+    createIdeaAt(src.x,src.y+collH(src)+30,parentEdge?parentEdge.from:null);
+  },[selected,edges,createIdeaAt]);
+  const createChild=useCallback(()=>{
+    const sel=[...selected]; if(sel.length!==1) return;
+    const src=nodesRef.current.find(n=>n.id===sel[0]); if(!src) return;
+    createIdeaAt(src.x+(src.w||DEF_W)+70,src.y,src.id);
+  },[selected,createIdeaAt]);
+
+  // ── Jump to a node (used by Ctrl+K palette) ────────────────
+  const jumpToNode=useCallback((id)=>{
+    const n=nodesRef.current.find(x=>x.id===id); if(!n) return;
+    setSelected(new Set([id])); setSelEdge(null);
+    const el=canvasRef.current;
+    if(el){
+      el.scrollTo({left:Math.max(0,n.x*zoom-el.clientWidth/2+(n.w||DEF_W)*zoom/2),
+        top:Math.max(0,n.y*zoom-el.clientHeight/2+(n.h||DEF_H)*zoom/2),behavior:"smooth"});
+    }
+  },[zoom]);
+
+
   useEffect(()=>{
     const h=(e)=>{
       const tag=e.target.tagName;
@@ -1485,6 +1560,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         });
         return;
       }
+      // Ctrl+K — command palette
+      if(mod&&e.code==="KeyK"){e.preventDefault();setShowCmdK(v=>!v);setCmdQ("");return;}
+      // Enter = sibling idea · Tab = child idea (1 node selected, not typing)
+      if(e.code==="Enter"&&!mod&&!e.shiftKey&&canEdit&&editMode&&selected.size===1&&!editingTitle){
+        e.preventDefault();createSibling();return;}
+      if(e.code==="Tab"&&canEdit&&editMode&&selected.size===1&&!editingTitle){
+        e.preventDefault();createChild();return;}
       // N with a node selected = inline note on that node; N alone = add note node
       if(e.code==="KeyN"&&canEdit&&!isInput&&editMode&&selected.size===1){
         e.preventDefault();
@@ -1535,7 +1617,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     };
     window.addEventListener("keydown",h);
     return ()=>window.removeEventListener("keydown",h);
-  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes,nodePopup]);
+  },[quickPos,drawingEdge,canEdit,undo,redo,selected,nodes,boxSel,editingTitle,showSearch,applyNodes,nodePopup,editMode,createSibling,createChild]);
 
   useEffect(()=>{if(quickPos)quickInpRef.current?.focus();},[quickPos]);
 
@@ -1929,6 +2011,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     }
     const node=mkNode(type, baseX+ox, baseY+oy);
     applyNodes(ns=>[...ns,node]);
+    noteRecentType(type);
     setSelected(new Set([node.id])); setSelEdge(null);
     setShowSidebar(false);
     if(window.innerWidth<768) setShowProps(true);
@@ -2380,7 +2463,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   };
 
   // ── LLM export ─────────────────────────────────────────────
-  const exportLLM=()=>{
+  const exportLLM=()=>buildLLMText(mapMeta?.title||"Map",nodes,edges,NT);
+
+  const _exportLLM_legacy=()=>{
     const title=mapMeta?.title||"Map";
     let out=`# ${title}\n_NoNote export · ${new Date().toLocaleString()}_\n\n## Summary\n${nodes.length} components · ${edges.length} connections\n\n## Components\n\n`;
     const cats={};
@@ -2747,7 +2832,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         }); // end edges.map
     return (
 
-    <svg style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
+    <svg className="nn-edges" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
       <defs>
         {/* Forward markers (markerEnd) */}
         <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
@@ -3315,36 +3400,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           {/* ── RIGHT: icon-only app actions ── */}
           <div style={{display:"flex",alignItems:"center",gap:1,flexShrink:0}}>
 
-            {/* ── Group A: Map resources ── */}
-            <button onClick={()=>setShowTemplates(v=>!v)}
-              style={tbtn(showTemplates,"var(--accent2)")} title="Templates — start from a preset">📋</button>
-            <button onClick={()=>{setShowVersions(true);if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}}
-              style={tbtn(showVersions||showCollabLog,"var(--accent2)")} data-tut="history" title="History — versions & activity (V)">🕐 History</button>
+            {/* ── PRIMARY: Copy for AI ── */}
+            <button onClick={copyForAI} data-ui="copy-for-ai"
+              style={{...tbtn(false,"var(--accent)"),display:"flex",alignItems:"center",gap:5,
+                border:"1px solid var(--accent)55",color:"var(--accent)",fontWeight:700,
+                padding:"3px 10px",whiteSpace:"nowrap"}}
+              title="Copy this map as AI context — paste into any chatbot">
+              <Sparkles size={12}/> Copy for AI</button>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
-
-            {/* ── Group B: Import / Export ── */}
-            <label style={{...tbtn(false),cursor:"pointer",padding:"4px 7px"}}
-              title="Import .nonote or JSON file">
-              ↙
-              <input type="file" accept=".nonote,.json" style={{display:"none"}}
-                onChange={e=>{
-                  const f=e.target.files?.[0]; if(!f) return;
-                  const r=new FileReader();
-                  r.onload=ev=>{
-                    try{
-                      const b=JSON.parse(ev.target.result);
-                      if(b.app==="NoNote"&&b.nodes){
-                        const ns=b.nodes.map(n=>({...n,notes:Array.isArray(n.notes)?n.notes:[],collapsed:false}));
-                        applyNodes(()=>ns); applyEdges(()=>b.edges||[]);
-                        alert(`Imported "${b.title}" — ${ns.length} nodes`);
-                      } else { alert("Not a valid .nonote file"); }
-                    } catch{ alert("Could not read file"); }
-                    e.target.value="";
-                  };
-                  r.readAsText(f);
-                }}/>
-            </label>
 
             <div style={{position:"relative"}}>
               <button onClick={()=>setShowExportMenu(v=>!v)}
@@ -3390,38 +3454,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </>)}
             </div>
 
-            <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
-
-            {/* ── Group C: Collaboration ── */}
             <button onClick={()=>{setShowShare(true);
                 if(mapId)apiFetch(`/maps/${mapId}/collaborators`)
                   .then(d=>setShareUsers(Array.isArray(d)?d:[])).catch(()=>{});}}
-              style={tbtn(false,"var(--accent2)")} data-tut="share" title="Share & Collaborate">👥</button>
+              style={tbtn(false,"var(--accent2)")} data-tut="share" title="Share &amp; Collaborate"><Users size={13}/></button>
 
-            <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
+            <button onClick={()=>{setShowSearch(v=>!v);if(!showSearch)setSearchQuery("");}}
+              style={tbtn(showSearch,"var(--accent2)")}
+              data-tut="find" title="Find in map (Ctrl+F)"><Search size={13}/></button>
 
-            {/* ── Group D: Appearance ── */}
-            <div style={{position:"relative"}}>
-              <button onClick={()=>setShowAppMenu(v=>!v)}
-                style={tbtn(showAppMenu,"var(--accent2)")} title="Appearance — themes, canvas style">🎨</button>
-              {showAppMenu&&(<>
-                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowAppMenu(false)}/>
-                <div style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
-                  background:"var(--bg2)",
-                  borderRadius:"var(--radius-md)",boxShadow:"var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight))",
-                  padding:6,minWidth:160}}>
-                  {[["🎨","Theme & Colors"],["🖌","Canvas Style"]].map(([ic,lbl])=>(
-                    <div key={lbl} onClick={()=>{setShowAppearance(true);setShowAppMenu(false);}}
-                      style={{display:"flex",gap:8,alignItems:"center",padding:"7px 10px",
-                        cursor:"pointer",borderRadius:"var(--radius-sm)",fontSize:11,color:"var(--text)"}}
-                      onMouseEnter={e=>e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)"}
-                      onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
-                      {ic} {lbl}
-                    </div>
-                  ))}
-                </div>
-              </>)}
-            </div>
+            <button onClick={()=>{setShowCmdK(true);setCmdQ("");}}
+              style={{...tbtn(showCmdK,"var(--accent2)"),display:"flex",alignItems:"center",gap:3}}
+              title="Command palette (Ctrl+K)"><Command size={12}/><span style={{fontSize:9,opacity:.7}}>K</span></button>
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
@@ -3439,25 +3483,71 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
             <div style={{width:1,height:18,background:"var(--border)",margin:"0 3px",flexShrink:0}}/>
 
-            {/* ── Utilities ── */}
-            <button onClick={()=>{setShowSearch(v=>!v);if(!showSearch)setSearchQuery("");}}
-              style={tbtn(showSearch,"var(--accent2)")}
-              data-tut="find" title="Find in map (Ctrl+F)">🔍</button>
-
-            {!isMobile&&<span title={"Shortcuts:\nCtrl+F  Find\nCtrl+D  Duplicate\nCtrl+Z/Y  Undo/Redo\nCtrl+A  Select all\nCtrl+Enter  Auto-layout\nCtrl+±/0  Zoom\nE  Edit/View\nF2  Rename\nN  Note\nV  History\nC  Connect\nG  Group\nSpace  Quick capture"}
-              style={{fontSize:12,color:"var(--text4)",cursor:"help",padding:"0 4px",lineHeight:1}}>⌨</span>}
-
-            <button onClick={()=>setShowHelp(true)} style={tbtn(false)} title="Help & Documentation">❓</button>
-            <button onClick={()=>setShowTutorial(true)} style={tbtn(false,"var(--accent)")} title="Take a guided tour of the canvas">🎓 Tour</button>
+            {/* ── ⋯ More — everything else, one calm menu ── */}
+            <div style={{position:"relative"}}>
+              <button onClick={()=>setShowMore(v=>!v)} style={tbtn(showMore,"var(--accent2)")}
+                title="More — templates, history, import, appearance, help"><MoreHorizontal size={14}/></button>
+              {showMore&&(<>
+                <div style={{position:"fixed",inset:0,zIndex:500}} onClick={()=>setShowMore(false)}/>
+                <div className="nn-drop" style={{position:"absolute",top:"100%",right:0,marginTop:4,zIndex:501,
+                  background:"var(--bg2)",borderRadius:"var(--radius-md)",
+                  boxShadow:"var(--shadow-panel)",border:"1px solid var(--border2)",
+                  minWidth:200,overflow:"hidden",padding:4}}>
+                  {[
+                    [<HistoryIcon size={13}/>,"History & versions","V",()=>{setShowVersions(true);if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}],
+                    [<ClipboardList size={13}/>,"Templates","",()=>setShowTemplates(true)],
+                    [<Palette size={13}/>,"Appearance","",()=>setShowAppearance(true)],
+                    [<HelpCircle size={13}/>,"Help & docs","",()=>setShowHelp(true)],
+                    [<GraduationCap size={13}/>,"Guided tour","",()=>setShowTutorial(true)],
+                  ].map(([ic,lbl,kbd,act],i)=>(
+                    <div key={i} onClick={()=>{act();setShowMore(false);}}
+                      style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",
+                        fontSize:11,color:"var(--text2)",borderRadius:"var(--radius-sm)"}}
+                      onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                      onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                      <span style={{opacity:.75,display:"flex"}}>{ic}</span>{lbl}
+                      {kbd&&<span style={{marginLeft:"auto",fontSize:9,color:"var(--text4)"}}>{kbd}</span>}
+                    </div>
+                  ))}
+                  <label style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",
+                      fontSize:11,color:"var(--text2)",borderRadius:"var(--radius-sm)"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span style={{opacity:.75,display:"flex"}}><Import size={13}/></span>Import .nonote / JSON
+                    <input type="file" accept=".nonote,.json" style={{display:"none"}}
+                      onChange={e=>{
+                        const f=e.target.files?.[0]; if(!f) return;
+                        const r=new FileReader();
+                        r.onload=ev=>{
+                          try{
+                            const b=JSON.parse(ev.target.result);
+                            if(b.app==="NoNote"&&b.nodes){
+                              const ns=b.nodes.map(n=>({...n,notes:Array.isArray(n.notes)?n.notes:[],collapsed:false}));
+                              applyNodes(()=>ns); applyEdges(()=>b.edges||[]);
+                              alert(`Imported "${b.title}" — ${ns.length} nodes`);
+                            } else { alert("Not a valid .nonote file"); }
+                          } catch{ alert("Could not read file"); }
+                          e.target.value=""; setShowMore(false);
+                        };
+                        r.readAsText(f);
+                      }}/>
+                  </label>
+                  <div style={{height:1,background:"var(--border2)",margin:"4px 6px"}}/>
+                  <div onClick={()=>{logout();}}
+                    style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",
+                      fontSize:11,color:"var(--danger)",borderRadius:"var(--radius-sm)"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--danger)15"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span style={{opacity:.85,display:"flex"}}><LogOut size={13}/></span>Log out
+                  </div>
+                </div>
+              </>)}
+            </div>
 
             <button onClick={()=>setShowChangelog(true)}
               style={{...tbtn(false),fontSize:8,padding:"2px 6px",color:"var(--accent)",
                 border:"1px solid var(--border30,var(--border))",whiteSpace:"nowrap"}}
               title="What's new">{CURRENT_VERSION}✦</button>
-            <button onClick={logout}
-              style={{...tbtn(false),fontSize:9,padding:"2px 8px",color:"var(--danger)",
-                border:"1px solid var(--danger)30",whiteSpace:"nowrap",marginLeft:2}}
-              title="Log out">Logout</button>
           </div>
         </div>
 
@@ -3471,8 +3561,21 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         <div style={{height:36,display:"flex",alignItems:"center",gap:0,padding:"0 8px"}}
           onKeyDown={e=>e.stopPropagation()}>
 
-          {/* ── MODE GROUP ── edit/view + props mode ── */}
+          {/* ── MODE GROUP ── think/build + edit/view + props mode ── */}
           <div style={{display:"flex",alignItems:"center",gap:3,flexShrink:0}}>
+            {/* Think / Build — capture vs. diagram */}
+            <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
+              title="Think — frictionless capture. Build — full diagramming toolkit.">
+              {[["think",<Feather size={11} key="f"/>,"Think"],["build",<Hammer size={11} key="h"/>,"Build"]].map(([m,ic,lbl])=>(
+                <button key={m} onClick={()=>setCanvasModePersist(m)}
+                  style={{display:"flex",alignItems:"center",gap:4,padding:"3px 9px",border:"none",cursor:"pointer",
+                    fontSize:10,fontWeight:700,fontFamily:"var(--font-ui)",
+                    background:canvasMode===m?"var(--accent)":"transparent",
+                    color:canvasMode===m?"#fff":"var(--text4)",transition:"all .15s"}}>
+                  {ic}{lbl}
+                </button>
+              ))}
+            </div>
             {canEdit&&(
               <button onClick={()=>setEditMode(v=>!v)}
                 style={{...tbtn(!editMode,"var(--success)"),minWidth:58}}
@@ -3481,7 +3584,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </button>
             )}
             {/* POPUP / PANEL — how you open node details */}
-            <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
+            {canvasMode!=="think"&&<div style={{display:"flex",alignItems:"center",background:"var(--bg3)",borderRadius:"var(--radius-md)",overflow:"hidden",flexShrink:0}}
               title="How to view node details">
               <button onClick={()=>{setPropsMode('popup');setShowProps(false);setNodePopup(null);}}
                 style={{display:"flex",alignItems:"center",gap:3,padding:"3px 8px",border:"none",cursor:"pointer",
@@ -3509,10 +3612,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </svg>
                 Panel
               </button>
-            </div>
+            </div>}
           </div>
 
-          {editMode&&canEdit&&<>
+          {canvasMode==="think"&&(
+            <span style={{fontSize:10,color:"var(--text4)",marginLeft:12,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+              Double-click: new thought · <b>Enter</b>: sibling · <b>Tab</b>: child · <b>Space</b>: quick capture · <b>Ctrl+K</b>: jump anywhere
+            </span>
+          )}
+
+          {editMode&&canEdit&&canvasMode!=="think"&&<>
             <div style={{width:1,height:20,background:"var(--border)",flexShrink:0,margin:"0 6px"}}/>
 
             {/* ── DRAWING TOOLS GROUP ── what you're creating/arranging ── */}
@@ -3640,16 +3749,90 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <button onClick={()=>setShowChat(v=>!v)} style={{...tbtn(showChat,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="AI Chat — full canvas context (all nodes &amp; edges)">
               💬 <span style={{fontSize:10}}>AI Chat</span>
             </button>
-            <button onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
+            {canvasMode!=="think"&&<button onClick={()=>setShowComments(v=>!v)} style={{...tbtn(showComments,"var(--accent2)"),display:"flex",alignItems:"center",gap:4}} title="Comments panel">
               🗨 <span style={{fontSize:10}}>Comments</span>
               {Object.values(comments).flat().length>0&&(
                 <span style={{fontSize:8,background:"var(--accent)",color:"#fff",borderRadius:10,padding:"0 4px"}}>{Object.values(comments).flat().length}</span>
               )}
-            </button>
+            </button>}
           </div>
         </div>
       </div>
 
+
+      {/* ── Copy-for-AI toast ── */}
+      {aiToast&&(
+        <div className="nn-toast" style={{position:"fixed",bottom:24,left:"50%",transform:"translateX(-50%)",zIndex:950,
+          background:"var(--bg2)",border:"1px solid var(--accent)55",color:"var(--text)",
+          borderRadius:"var(--radius-md)",padding:"9px 16px",fontSize:12,fontWeight:600,
+          boxShadow:"var(--shadow-panel)",display:"flex",alignItems:"center",gap:8}}>
+          <Sparkles size={13} style={{color:"var(--accent)"}}/>{aiToast}
+        </div>
+      )}
+
+      {/* ── Ctrl+K command palette ── */}
+      {showCmdK&&(()=>{
+        const q=cmdQ.trim().toLowerCase();
+        const actions=[
+          ["Switch to "+(canvasMode==="think"?"Build":"Think")+" mode",()=>setCanvasModePersist(canvasMode==="think"?"build":"think")],
+          ["Copy for AI — clipboard context",copyForAI],
+          ["New thought (center of view)",()=>{const el=canvasRef.current;if(el){const s=1/zoom;createIdeaAt((el.scrollLeft+el.clientWidth/2)*s-110,(el.scrollTop+el.clientHeight/2)*s-40);}}],
+          ["Auto-layout",()=>handleAutoLayout(layoutDir)],
+          [globalCollapsed?"Expand all nodes":"Collapse all nodes",globalCollapsed?expandAll:collapseAll],
+          ["Find in map",()=>{setShowSearch(true);setSearchQuery("");}],
+          ["Export…",()=>setShowExportMenu(true)],
+          ["Appearance — theme & skin",()=>setShowAppearance(true)],
+          ["History & versions",()=>setShowVersions(true)],
+          ["Toggle AI chat panel",()=>setShowChat(v=>!v)],
+          ["Back to maps",onBack],
+        ].filter(([lbl])=>!q||lbl.toLowerCase().includes(q));
+        const nodeHits=q?nodes.filter(n=>(n.title||"").toLowerCase().includes(q)).slice(0,8):[];
+        const run=(fn)=>{setShowCmdK(false);setCmdQ("");fn();};
+        const first=nodeHits.length?()=>jumpToNode(nodeHits[0].id):(actions[0]?actions[0][1]:null);
+        return(<>
+          <div style={{position:"fixed",inset:0,zIndex:940,background:"rgba(0,0,0,.4)"}} onClick={()=>{setShowCmdK(false);setCmdQ("");}}/>
+          <div className="nn-modal-in" style={{position:"fixed",top:"18%",left:"50%",transform:"translateX(-50%)",zIndex:941,
+            width:"min(520px,92vw)",background:"var(--bg2)",border:"1px solid var(--border2)",
+            borderRadius:"var(--radius-lg)",boxShadow:"var(--shadow-panel)",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",gap:9,padding:"12px 14px",borderBottom:"1px solid var(--border2)"}}>
+              <Command size={14} style={{color:"var(--accent)",flexShrink:0}}/>
+              <input autoFocus ref={cmdInpRef} value={cmdQ} onChange={e=>setCmdQ(e.target.value)}
+                placeholder="Jump to a node or run an action…"
+                onKeyDown={e=>{e.stopPropagation();
+                  if(e.key==="Escape"){setShowCmdK(false);setCmdQ("");}
+                  if(e.key==="Enter"&&first)run(first);}}
+                style={{flex:1,background:"none",border:"none",outline:"none",color:"var(--text)",
+                  fontSize:14,fontFamily:"var(--font-ui)"}}/>
+              <span style={{fontSize:9,color:"var(--text4)"}}>esc</span>
+            </div>
+            <div style={{maxHeight:320,overflow:"auto",padding:4}}>
+              {nodeHits.length>0&&<div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"7px 12px 3px"}}>NODES</div>}
+              {nodeHits.map(n=>(
+                <div key={n.id} onClick={()=>run(()=>jumpToNode(n.id))}
+                  style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",
+                    fontSize:12,color:"var(--text)",borderRadius:"var(--radius-sm)"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <span style={{width:8,height:8,borderRadius:"50%",background:NT[n.type]?.color||"var(--accent)",flexShrink:0}}/>
+                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{n.title||"Untitled"}</span>
+                  <span style={{marginLeft:"auto",fontSize:9,color:"var(--text4)"}}>{NT[n.type]?.label||n.type}</span>
+                </div>
+              ))}
+              {actions.length>0&&<div style={{fontSize:9,fontWeight:700,letterSpacing:1,color:"var(--text4)",padding:"7px 12px 3px"}}>ACTIONS</div>}
+              {actions.map(([lbl,fn],i)=>(
+                <div key={i} onClick={()=>run(fn)}
+                  style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",
+                    fontSize:12,color:"var(--text2)",borderRadius:"var(--radius-sm)"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <Zap size={12} style={{opacity:.6,flexShrink:0}}/>{lbl}
+                </div>
+              ))}
+              {!nodeHits.length&&!actions.length&&<div style={{padding:"18px 14px",fontSize:11,color:"var(--text4)",textAlign:"center"}}>No matches</div>}
+            </div>
+          </div>
+        </>);
+      })()}
 
       {/* ── Command-palette search overlay ── */}
       {showSearch&&(
@@ -3799,10 +3982,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       {/* ── Main area: sidebar + canvas + right panels ── */}
       <div style={{flex:1,display:"flex",overflow:"hidden",position:"relative"}}>
 
-        {/* Left: Node Library Sidebar */}
-        {!isMobile&&(
+        {/* Left: Node Library Sidebar — hidden in Think mode */}
+        {!isMobile&&canvasMode!=="think"&&(
           <NodeSidebar
-            cats={SIDEBAR_CATS} addNode={addNode} canEdit={canEdit&&editMode}
+            cats={SIDEBAR_CATS} addNode={addNode} canEdit={canEdit&&editMode} recentTypes={recentTypes}
             collapsed={sidebarCollapsed} onToggleCollapse={()=>setSidebarCollapsed(v=>!v)}
             iconOnly={sidebarIconOnly} onToggleIconOnly={()=>setSidebarIconOnly(v=>!v)}
             dense={sidebarDense} onToggleDense={()=>setSidebarDense(v=>!v)}
@@ -3817,6 +4000,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {/* Canvas */}
         <div ref={canvasRef}
           onMouseDown={handleCanvasMouseDown}
+          onDoubleClick={e=>{
+            // Instant idea capture — dbl-click empty canvas, type, done
+            const t=e.target;
+            if(t.closest(".nn-node")) return;
+            if(t.tagName==="path"||t.tagName==="text"||t.closest("circle")||t.closest("polygon")||t.closest("foreignObject")||t.closest("input")||t.closest("button")) return;
+            if(!canEdit||!editMode||mode!=="select") return;
+            const el=canvasRef.current; if(!el) return;
+            const rect=el.getBoundingClientRect(); const s=1/zoom;
+            createIdeaAt((e.clientX-rect.left)*s+el.scrollLeft*s-((DEF_W/2)|0),(e.clientY-rect.top)*s+el.scrollTop*s-20);
+          }}
           onClick={e=>{
             if(e.target.closest(".nn-node")) return;
             if(e.target.tagName==="path"||e.target.tagName==="text") return;
@@ -4460,6 +4653,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       <style>{`
         @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        /* ── Motion pass — things that appear, ease in ── */
+        @keyframes nnPop{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+        @keyframes nnFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        @keyframes nnFade{from{opacity:0}to{opacity:1}}
+        @keyframes nnToast{from{opacity:0;transform:translate(-50%,10px)}to{opacity:1;transform:translate(-50%,0)}}
+        .nn-node{animation:nnPop .18s cubic-bezier(0.16,1,0.3,1) both}
+        .nn-node-new{animation:nnPop .26s cubic-bezier(0.34,1.56,0.64,1) both !important}
+        .nn-drop,.nn-modal-in{animation:nnFadeUp .16s cubic-bezier(0.16,1,0.3,1) both}
+        .nn-toast{animation:nnToast .22s cubic-bezier(0.16,1,0.3,1) both}
+        .nn-edges path,.nn-edges text{animation:nnFade .3s ease both}
+        @media (prefers-reduced-motion: reduce){
+          *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+        }
         .nn-node:hover { z-index: 10; }
         .nn-node:hover .nn-collapse-btn { opacity: 0.8 !important; }
         .nn-node .nn-collapse-btn:hover { opacity: 1 !important; }
@@ -4578,7 +4784,7 @@ function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onCli
 
 // ── Node Sidebar ──────────────────────────────────────────────
 // Modes: full (178px) → compact (136px icons+labels) → icons (48px) → full
-function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly,dense,onToggleDense,onCycleMode}){
+function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly,dense,onToggleDense,onCycleMode,recentTypes=[]}){
   const [search, setSearch]   = useState("");
   const [catOpen, setCatOpen] = useState({});
   const [tooltip, setTooltip] = useState(null);
@@ -4669,6 +4875,34 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
         {visibleCats.length===0&&q&&(
           <div style={{padding:"16px 10px",color:"var(--text4)",fontSize:10,textAlign:"center"}}>
             No nodes match "{search}"
+          </div>
+        )}
+
+        {/* ── Recently used — your real working set, one click away ── */}
+        {!q&&recentTypes.length>0&&(
+          <div>
+            <div style={{display:"flex",alignItems:"center",padding:iconOnly?"4px 0":"4px 8px",
+              background:"var(--bg3)",borderBottom:"1px solid var(--border2)",gap:3}}>
+              {!iconOnly&&<span style={{fontSize:8,fontWeight:700,color:"var(--accent)",letterSpacing:1.5,flex:1}}>RECENT</span>}
+              {iconOnly&&<div style={{width:"100%",height:2,background:"var(--accent)44",margin:"0 4px",borderRadius:1}}/>}
+            </div>
+            <div style={{display:iconOnly||dense?"flex":"block",flexWrap:"wrap",padding:iconOnly?"3px 2px":dense?"3px 4px":0}}>
+              {recentTypes.filter(k=>NT[k]).map(k=>{
+                const t=NT[k], Ic=t.icon;
+                return(
+                  <div key={"rc-"+k} onClick={()=>canEdit&&addNode(k)}
+                    title={t.label}
+                    style={{display:"flex",alignItems:"center",gap:6,cursor:canEdit?"pointer":"default",
+                      padding:iconOnly?"4px":dense?"3px 4px":"4px 10px",opacity:canEdit?1:.4,
+                      borderRadius:"var(--radius-xs)"}}
+                    onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                    onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                    <span style={{color:t.color,display:"flex",flexShrink:0}}>{typeof Ic==="function"||typeof Ic==="object"?<Ic size={dense||iconOnly?13:14}/>:<NodeIcon icon={t.icon} size={14} color={t.color}/>}</span>
+                    {!iconOnly&&!dense&&<span style={{fontSize:10,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.label}</span>}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 
@@ -5266,6 +5500,7 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
       }}>{children}</button>
   );
 
+  const [moreFmt,setMoreFmt]=useState(false); // advanced formatting hidden by default
   const Div = () => <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />;
 
   const FONT_SIZES = [['1', '10px', 'XS'], ['2', '12px', 'S'], ['3', '14px', 'M'], ['5', '18px', 'L'], ['6', '24px', 'XL']];
@@ -5282,18 +5517,23 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
 
   return (
     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-      {/* Toolbar Row 1 */}
+      {/* Toolbar Row 1 — essentials; advanced tools behind ⋯ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 1, padding: '3px 6px', background: 'var(--bg2)', borderBottom: '1px solid var(--border2)', flexWrap: 'wrap' }}>
         <TBtn cmd="bold"          title="Bold (Ctrl+B)"        style={{ fontWeight: 700 }}>B</TBtn>
         <TBtn cmd="italic"        title="Italic (Ctrl+I)"      style={{ fontStyle: 'italic' }}>I</TBtn>
         <TBtn cmd="underline"     title="Underline (Ctrl+U)"   style={{ textDecoration: 'underline' }}>U</TBtn>
         <TBtn cmd="strikeThrough" title="Strikethrough"        style={{ textDecoration: 'line-through' }}>S</TBtn>
+        <TBtn cmd="insertUnorderedList" title="Bullet list">•≡</TBtn>
+        <TBtn cmd="formatBlock" val="H1" title="Heading 1">H1</TBtn>
+        <TBtn cmd="formatBlock" val="H2" title="Heading 2">H2</TBtn>
+        <button onMouseDown={e=>{e.preventDefault();setMoreFmt(v=>!v);}} title="More formatting tools"
+          style={{ minWidth:22,height:22,border:'none',borderRadius:4,cursor:'pointer',fontSize:11,
+            background:moreFmt?'var(--accent2)':'var(--bg3)',color:moreFmt?'#fff':'var(--text3)' }}>⋯</button>
+        {moreFmt&&<>
         <Div/>
         <TBtn cmd="superscript"   title="Superscript">x²</TBtn>
         <TBtn cmd="subscript"     title="Subscript">x₂</TBtn>
         <Div/>
-        <TBtn cmd="formatBlock" val="H1"         title="Heading 1">H1</TBtn>
-        <TBtn cmd="formatBlock" val="H2"         title="Heading 2">H2</TBtn>
         <TBtn cmd="formatBlock" val="H3"         title="Heading 3">H3</TBtn>
         <TBtn cmd="formatBlock" val="P"          title="Paragraph">¶</TBtn>
         <TBtn cmd="formatBlock" val="BLOCKQUOTE" title="Quote">❝</TBtn>
@@ -5302,7 +5542,6 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
         <TBtn cmd="justifyCenter" title="Center">≡</TBtn>
         <TBtn cmd="justifyRight"  title="Align right">⫸</TBtn>
         <Div/>
-        <TBtn cmd="insertUnorderedList" title="Bullet list">•≡</TBtn>
         <TBtn cmd="insertOrderedList"   title="Numbered list">1≡</TBtn>
         <TBtn cmd="indent"              title="Indent">→|</TBtn>
         <TBtn cmd="outdent"             title="Outdent">|←</TBtn>
@@ -5318,9 +5557,10 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
           style={{ fontSize: 9, background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 3, color: 'var(--text3)', padding: '1px 3px', height: 22, cursor: disabled ? 'default' : 'pointer', opacity: disabled ? 0.4 : 1 }}>
           {FONT_SIZES.map(([val, , lbl]) => <option key={val} value={val}>{lbl}</option>)}
         </select>
+        </>}
       </div>
-      {/* Toolbar Row 2 — colors */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', background: 'var(--bg2)', borderBottom: '1px solid var(--border2)' }}>
+      {/* Toolbar Row 2 — colors (advanced) */}
+      {moreFmt&&<div style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '3px 8px', background: 'var(--bg2)', borderBottom: '1px solid var(--border2)' }}>
         <span style={{ fontSize: 9, color: 'var(--text4)', marginRight: 2 }}>Text</span>
         {TEXT_COLORS.map(c => (
           <div key={c} onMouseDown={e => { e.preventDefault(); exec('foreColor', execColor(c)); }}
@@ -5334,7 +5574,7 @@ function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
             title={`Highlight: ${lbl}`}
             style={{ width: 14, height: 14, borderRadius: 2, background: c === 'transparent' ? 'var(--bg3)' : c, border: '1.5px solid var(--border)', cursor: disabled ? 'default' : 'pointer', flexShrink: 0 }}/>
         ))}
-      </div>
+      </div>}
       {/* Editor area */}
       <div ref={editorRef}
         contentEditable={!disabled}

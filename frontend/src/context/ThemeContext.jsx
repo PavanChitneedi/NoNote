@@ -36,6 +36,7 @@ export const THEMES = {
 
   // 3. Amber — Bear app / Obsidian inspired. Warm amber on dark.
   amber: {
+    extra: true,
     name:"Amber", icon:"🔥", group:"Dark",
     desc:"Warm focus — like Bear",
     vars:{
@@ -78,6 +79,7 @@ export const THEMES = {
 
   // 6. Emerald — Supabase inspired. Dark with emerald accent.
   emerald: {
+    extra: true,
     name:"Emerald", icon:"💚", group:"Dark",
     desc:"Dev-friendly — like Supabase",
     vars:{
@@ -92,6 +94,7 @@ export const THEMES = {
 
   // 7. Rose — Superhuman inspired. Warm rose-white, energetic.
   rose: {
+    extra: true,
     name:"Rose", icon:"🌹", group:"Light",
     desc:"Warm & energetic — like Superhuman",
     vars:{
@@ -106,6 +109,7 @@ export const THEMES = {
 
   // 8. Void — Warp terminal inspired. Near-black, pure focus.
   void: {
+    extra: true,
     name:"Void", icon:"◉", group:"Dark",
     desc:"Pure focus — like Warp",
     vars:{

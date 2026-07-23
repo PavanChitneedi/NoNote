@@ -4,6 +4,9 @@ import LiveDashboard from "./LiveDashboard.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch, saveMap, saveMapMeta, getAccessToken } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
+import { buildLLMText, buildMultiMapLLMText, copyText } from "../utils/llmExport.js";
+import { NT } from "./NodeCanvas.jsx";
+import { getMap } from "../api/client.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
 
@@ -143,6 +146,64 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
   const [toast, setToast] = useState(null); // {msg, type:"ok"|"err"}
   const [importConflict, setImportConflict] = useState(null); // {title, existing, nodes, edges}
   const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
+  // ── v5.53: quick-capture inbox, AI export, command palette ──
+  const [captureOpen, setCaptureOpen] = useState(false);
+  const [captureText, setCaptureText] = useState("");
+  const [capturing,   setCapturing]   = useState(false);
+  const [aiPickOpen,  setAiPickOpen]  = useState(false);
+  const [aiPick,      setAiPick]      = useState(new Set());
+  const [aiBusy,      setAiBusy]      = useState(false);
+  const [dashCmdK,    setDashCmdK]    = useState(false);
+  const [dashCmdQ,    setDashCmdQ]    = useState("");
+
+  // Copy one map as AI context
+  const copyMapForAI = async (mapId, title) => {
+    try {
+      const d = await getMap(mapId);
+      const ok = await copyText(buildLLMText(d.map?.title||title, d.nodes||[], d.edges||[], NT));
+      showToast(ok?"✓ AI context copied — paste into any chatbot":"Copy failed", ok?"ok":"err");
+    } catch(e){ showToast("Copy failed: "+e.message,"err"); }
+  };
+
+  // Copy several maps as one combined AI context
+  const copyMultiForAI = async () => {
+    if(!aiPick.size) return;
+    setAiBusy(true);
+    try {
+      const datas=[];
+      for(const id of aiPick){
+        const d=await getMap(id);
+        datas.push({title:d.map?.title||"Map",nodes:d.nodes||[],edges:d.edges||[]});
+      }
+      const ok=await copyText(buildMultiMapLLMText(datas,NT));
+      showToast(ok?`✓ ${datas.length} maps copied as one AI context`:"Copy failed",ok?"ok":"err");
+      setAiPickOpen(false); setAiPick(new Set());
+    } catch(e){ showToast("Copy failed: "+e.message,"err"); }
+    finally{ setAiBusy(false); }
+  };
+
+  // Quick capture → "Inbox" map (auto-created). File it later — or never.
+  const captureThought = async () => {
+    const text=captureText.trim(); if(!text||capturing) return;
+    setCapturing(true);
+    try {
+      let inbox=maps.find(m=>m.title==="Inbox");
+      if(!inbox){ const d=await createMap({title:"Inbox",description:"Quick-captured thoughts — file them later, or never."}); inbox=d.map; setMaps(m=>[inbox,...m]); }
+      const d=await getMap(inbox.id);
+      const nodes=(d.nodes||[]).map(n=>({...n,type:n.node_type||n.type,customProps:n.custom_props||n.customProps||{}}));
+      const maxY=nodes.length?Math.max(...nodes.map(n=>(n.y||0)+(n.h||110))):40;
+      nodes.push({id:"cap-"+Math.random().toString(36).slice(2),type:"idea",title:text,
+        x:60,y:maxY+40,w:240,h:100,properties:{Content:"",Tags:"",Status:"New"},customProps:{},
+        notes:[],node_notes:"",notes_private:false});
+      const edges=(d.edges||[]).map(e=>({id:e.id,from:e.from_node||e.from,to:e.to_node||e.to,label:e.label||"",style:e.style||"arrow",color:e.color||"#58a6ff",
+        fromAnchor:e.from_anchor||null,toAnchor:e.to_anchor||null,midOff:e.mid_off||null}));
+      await saveMap(inbox.id,{nodes,edges,groupBoxes:d.groupBoxes||[]});
+      setMaps(m=>m.map(x=>x.id===inbox.id?{...x,updated_at:new Date().toISOString(),node_count:nodes.length}:x));
+      setCaptureText(""); setCaptureOpen(false);
+      showToast("✓ Captured to Inbox");
+    } catch(e){ showToast("Capture failed: "+e.message,"err"); }
+    finally{ setCapturing(false); }
+  };
 
   useEffect(() => {
     getMaps().then(d => {
@@ -191,6 +252,21 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
     } catch(err) { setError(err.message); }
     finally { setCreating(false); }
   };
+
+  // Keyboard: C = quick capture · Ctrl+K = jump palette
+  useEffect(()=>{
+    const h=(e)=>{
+      const tag=document.activeElement?.tagName;
+      const typing=tag==="INPUT"||tag==="TEXTAREA"||document.activeElement?.isContentEditable;
+      if((e.ctrlKey||e.metaKey)&&e.code==="KeyK"){e.preventDefault();setDashCmdK(v=>!v);setDashCmdQ("");return;}
+      if(typing) return;
+      if(e.code==="KeyC"&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&["owner","admin","editor"].includes(user?.role)){
+        e.preventDefault();setCaptureOpen(true);
+      }
+    };
+    window.addEventListener("keydown",h);
+    return ()=>window.removeEventListener("keydown",h);
+  },[user]);
 
   const handleRename = async (id, title) => {
     try {
@@ -575,6 +651,25 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             </div>
           </div>
         )}
+        {/* ── Continue where you left off ── */}
+        {dashTab==="maps"&&maps.length>0&&(
+          <div style={{marginBottom:16}}>
+            <div style={{fontSize:9,fontWeight:700,letterSpacing:1.2,color:"var(--text4)",marginBottom:7}}>CONTINUE WHERE YOU LEFT OFF</div>
+            <div style={{display:"flex",gap:8,overflowX:"auto",paddingBottom:2}}>
+              {[...maps].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,4).map((m,i)=>(
+                <button key={m.id} onClick={()=>onOpenMap(m.id)} className="nn-recent-chip"
+                  style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:"var(--bg2)",
+                    border:"1px solid var(--border2)",borderLeft:`3px solid ${mapColor(m,maps.indexOf(m))}`,
+                    borderRadius:"var(--radius-md)",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
+                    animationDelay:`${i*40}ms`}}>
+                  <span style={{fontSize:14}}>{mapIcon(m)}</span>
+                  <span style={{fontSize:12,fontWeight:700,color:"var(--text)",maxWidth:160,overflow:"hidden",textOverflow:"ellipsis"}}>{m.title}</span>
+                  <span style={{fontSize:9,color:"var(--text4)"}}>{new Date(m.updated_at).toLocaleDateString()}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         {/* ── Action bar (maps only) ── */}
         {dashTab==="maps"&&<div style={{ display:"flex", gap:8, marginBottom:18, flexWrap:"wrap", alignItems:"center" }}>
           {["owner","admin","editor"].includes(user?.role) && (
@@ -595,6 +690,16 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               </button>
             )
           )}
+          {["owner","admin","editor"].includes(user?.role)&&(
+            <button onClick={()=>setCaptureOpen(true)} title="Quick capture a thought — lands in your Inbox (press C)"
+              style={{ padding:"9px 15px", background:"var(--bg2)", border:"1px solid var(--accent)44", borderRadius:8, color:"var(--accent)", fontSize:12, fontWeight:700, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
+              ⚡ Capture
+            </button>
+          )}
+          <button onClick={()=>{setAiPickOpen(true);setAiPick(new Set());}} title="Combine maps into one AI context and copy it"
+            style={{ padding:"9px 15px", background:"var(--bg2)", border:"1px solid var(--border)", borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
+            ✨ AI Context…
+          </button>
           {/* Import .nonote */}
           <label data-tut="import" style={{ padding:"9px 15px", background:"var(--bg2)",  borderRadius:8, color:"var(--text3)", fontSize:12, fontWeight:600, cursor:"pointer", fontFamily:"inherit", display:"flex", alignItems:"center", gap:6 }}>
             ↙ Import .nonote
@@ -644,6 +749,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     {icon:"✎",label:"Rename",action:()=>{setRenaming({id:menuMap.id,title:menuMap.title});setMenuMap(null);}},
                     {icon:"⧉",label:"Duplicate",action:()=>{handleDuplicate(menuMap);setMenuMap(null);}},
                     {icon:"🔗",label:"Copy link",action:()=>{copyMapLink(menuMap.id);setMenuMap(null);}},
+                    {icon:"✨",label:"Copy for AI",action:()=>{copyMapForAI(menuMap.id,menuMap.title);setMenuMap(null);}},
                     {icon:"↙",label:"Export .nonote",action:()=>{handleExportNoNote(menuMap);setMenuMap(null);}},
                     {icon:"👥",label:"Share / Collaborate",action:()=>{setShareMap(menuMap);setMenuMap(null);}},
                     {icon:"✕",label:"Delete",color:"var(--danger)",action:()=>{handleDelete(menuMap.id);setMenuMap(null);}},
@@ -911,6 +1017,122 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             })()}
           </>
         )}
+
+      {/* ── Quick Capture modal — thought → Inbox, zero decisions ── */}
+      {captureOpen&&(<>
+        <div style={{position:"fixed",inset:0,zIndex:940,background:"rgba(0,0,0,.4)"}} onClick={()=>{setCaptureOpen(false);setCaptureText("");}}/>
+        <div className="nn-modal-in" style={{position:"fixed",top:"22%",left:"50%",transform:"translateX(-50%)",zIndex:941,
+          width:"min(480px,92vw)",background:"var(--bg2)",border:"1.5px solid var(--accent)66",
+          borderRadius:"var(--radius-lg)",boxShadow:"var(--shadow-panel)",padding:16}}>
+          <div style={{fontSize:10,fontWeight:700,letterSpacing:"0.1em",color:"var(--accent)",marginBottom:10}}>⚡ QUICK CAPTURE → INBOX</div>
+          <div style={{display:"flex",gap:8}}>
+            <input autoFocus value={captureText} onChange={e=>setCaptureText(e.target.value)}
+              onKeyDown={e=>{e.stopPropagation();if(e.key==="Enter")captureThought();if(e.key==="Escape"){setCaptureOpen(false);setCaptureText("");}}}
+              placeholder="Type a thought and hit Enter — file it later, or never…"
+              style={{flex:1,background:"var(--bg3)",border:"1px solid var(--border)",borderRadius:"var(--radius-sm)",
+                padding:"10px 12px",color:"var(--text)",fontSize:14,fontFamily:"var(--font-ui)",outline:"none"}}/>
+            <button onClick={captureThought} disabled={capturing}
+              style={{background:"var(--accent)",border:"none",borderRadius:"var(--radius-sm)",color:"#fff",
+                cursor:"pointer",padding:"0 16px",fontSize:13,fontWeight:700}}>{capturing?"…":"↵"}</button>
+          </div>
+          <div style={{fontSize:9,color:"var(--text4)",marginTop:8}}>Lands in your "Inbox" map · press <b>C</b> anywhere on the dashboard to open this</div>
+        </div>
+      </>)}
+
+      {/* ── Multi-map AI context picker ── */}
+      {aiPickOpen&&(<>
+        <div style={{position:"fixed",inset:0,zIndex:940,background:"rgba(0,0,0,.4)"}} onClick={()=>setAiPickOpen(false)}/>
+        <div className="nn-modal-in" style={{position:"fixed",top:"16%",left:"50%",transform:"translateX(-50%)",zIndex:941,
+          width:"min(460px,92vw)",background:"var(--bg2)",border:"1px solid var(--border2)",
+          borderRadius:"var(--radius-lg)",boxShadow:"var(--shadow-panel)",overflow:"hidden"}}>
+          <div style={{padding:"14px 16px 10px",borderBottom:"1px solid var(--border2)"}}>
+            <div style={{fontSize:13,fontWeight:700,color:"var(--text)"}}>✨ Combine maps for AI</div>
+            <div style={{fontSize:10,color:"var(--text4)",marginTop:3}}>Pick maps → one context document on your clipboard. Paste into any chatbot and just ask.</div>
+          </div>
+          <div style={{maxHeight:280,overflow:"auto",padding:6}}>
+            {maps.map(m=>{
+              const on=aiPick.has(m.id);
+              return(
+                <div key={m.id} onClick={()=>setAiPick(prev=>{const n=new Set(prev);n.has(m.id)?n.delete(m.id):n.add(m.id);return n;})}
+                  style={{display:"flex",alignItems:"center",gap:10,padding:"8px 12px",cursor:"pointer",
+                    borderRadius:"var(--radius-sm)",background:on?"var(--accent)14":"transparent"}}>
+                  <div style={{width:15,height:15,borderRadius:4,border:`1.5px solid ${on?"var(--accent)":"var(--border)"}`,
+                    background:on?"var(--accent)":"transparent",display:"flex",alignItems:"center",justifyContent:"center",
+                    color:"#fff",fontSize:10,flexShrink:0}}>{on?"✓":""}</div>
+                  <span style={{fontSize:13}}>{mapIcon(m)}</span>
+                  <span style={{fontSize:12,fontWeight:600,color:"var(--text)",flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</span>
+                  <span style={{fontSize:9,color:"var(--text4)"}}>{m.node_count||0} nodes</span>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{padding:"10px 14px",borderTop:"1px solid var(--border2)",display:"flex",gap:8,justifyContent:"flex-end"}}>
+            <button onClick={()=>setAiPickOpen(false)} style={{padding:"7px 14px",background:"var(--bg3)",border:"none",borderRadius:7,color:"var(--text3)",fontSize:11,cursor:"pointer",fontFamily:"inherit"}}>Cancel</button>
+            <button onClick={copyMultiForAI} disabled={!aiPick.size||aiBusy}
+              style={{padding:"7px 16px",background:aiPick.size?"var(--accent)":"var(--bg3)",border:"none",borderRadius:7,
+                color:aiPick.size?"#fff":"var(--text4)",fontSize:11,fontWeight:700,cursor:aiPick.size?"pointer":"default",fontFamily:"inherit"}}>
+              {aiBusy?"Building…":`Copy ${aiPick.size||""} map${aiPick.size===1?"":"s"} for AI`}
+            </button>
+          </div>
+        </div>
+      </>)}
+
+      {/* ── Dashboard Ctrl+K — jump to any map ── */}
+      {dashCmdK&&(()=>{
+        const q=dashCmdQ.trim().toLowerCase();
+        const hits=maps.filter(m=>!q||m.title.toLowerCase().includes(q)).slice(0,9);
+        const acts=[["New map",()=>setShowNew(true)],["Quick capture → Inbox",()=>setCaptureOpen(true)],["Combine maps for AI",()=>{setAiPickOpen(true);setAiPick(new Set());}]]
+          .filter(([l])=>!q||l.toLowerCase().includes(q));
+        const run=fn=>{setDashCmdK(false);setDashCmdQ("");fn();};
+        const first=hits.length?()=>onOpenMap(hits[0].id):(acts[0]?acts[0][1]:null);
+        return(<>
+          <div style={{position:"fixed",inset:0,zIndex:940,background:"rgba(0,0,0,.4)"}} onClick={()=>{setDashCmdK(false);setDashCmdQ("");}}/>
+          <div className="nn-modal-in" style={{position:"fixed",top:"18%",left:"50%",transform:"translateX(-50%)",zIndex:941,
+            width:"min(520px,92vw)",background:"var(--bg2)",border:"1px solid var(--border2)",
+            borderRadius:"var(--radius-lg)",boxShadow:"var(--shadow-panel)",overflow:"hidden"}}>
+            <div style={{display:"flex",alignItems:"center",gap:9,padding:"12px 14px",borderBottom:"1px solid var(--border2)"}}>
+              <span style={{color:"var(--accent)",fontSize:13}}>⌘</span>
+              <input autoFocus value={dashCmdQ} onChange={e=>setDashCmdQ(e.target.value)}
+                placeholder="Jump to a map or run an action…"
+                onKeyDown={e=>{e.stopPropagation();
+                  if(e.key==="Escape"){setDashCmdK(false);setDashCmdQ("");}
+                  if(e.key==="Enter"&&first)run(first);}}
+                style={{flex:1,background:"none",border:"none",outline:"none",color:"var(--text)",fontSize:14,fontFamily:"var(--font-ui)"}}/>
+              <span style={{fontSize:9,color:"var(--text4)"}}>esc</span>
+            </div>
+            <div style={{maxHeight:320,overflow:"auto",padding:4}}>
+              {hits.map(m=>(
+                <div key={m.id} onClick={()=>run(()=>onOpenMap(m.id))}
+                  style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",fontSize:12,color:"var(--text)",borderRadius:"var(--radius-sm)"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <span style={{fontSize:13}}>{mapIcon(m)}</span>
+                  <span style={{overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{m.title}</span>
+                  <span style={{marginLeft:"auto",fontSize:9,color:"var(--text4)"}}>{new Date(m.updated_at).toLocaleDateString()}</span>
+                </div>
+              ))}
+              {acts.map(([lbl,fn],i)=>(
+                <div key={"a"+i} onClick={()=>run(fn)}
+                  style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",fontSize:12,color:"var(--text2)",borderRadius:"var(--radius-sm)"}}
+                  onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
+                  onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
+                  <span style={{opacity:.6}}>⚡</span>{lbl}
+                </div>
+              ))}
+              {!hits.length&&!acts.length&&<div style={{padding:"18px 14px",fontSize:11,color:"var(--text4)",textAlign:"center"}}>No matches</div>}
+            </div>
+          </div>
+        </>);
+      })()}
+
+      <style>{`
+        @keyframes nnFadeUp{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+        .nn-modal-in{animation:nnFadeUp .16s cubic-bezier(0.16,1,0.3,1) both}
+        .nn-map-card{animation:nnFadeUp .22s cubic-bezier(0.16,1,0.3,1) both}
+        .nn-recent-chip{animation:nnFadeUp .2s cubic-bezier(0.16,1,0.3,1) both;transition:transform .14s cubic-bezier(0.16,1,0.3,1),box-shadow .14s}
+        .nn-recent-chip:hover{transform:translateY(-1px);box-shadow:0 3px 12px rgba(0,0,0,.12)}
+        @media (prefers-reduced-motion: reduce){*,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+      `}</style>
       </div>
     </div>
   {shareMap && <ShareModal map={shareMap} onClose={()=>setShareMap(null)}/>}
