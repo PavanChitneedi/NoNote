@@ -710,7 +710,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               {[...maps].sort((a,b)=>new Date(b.updated_at)-new Date(a.updated_at)).slice(0,4).map((m,i)=>(
                 <button key={m.id} onClick={()=>onOpenMap(m.id)} className="nn-recent-chip"
                   style={{display:"flex",alignItems:"center",gap:8,padding:"8px 14px",background:"var(--bg2)",
-                    border:"1px solid var(--border2)",borderLeft:`3px solid ${mapColor(m,maps.indexOf(m))}`,
+                    border:"1px solid var(--border2)",
                     borderRadius:"var(--radius-md)",cursor:"pointer",fontFamily:"inherit",whiteSpace:"nowrap",
                     animationDelay:`${i*40}ms`}}>
                   <span style={{fontSize:14}}>{mapIcon(m)}</span>
@@ -1010,6 +1010,8 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                     const icon=mapIcon(map);
                     const grpLabel=mapGroup(map);
                     const visLabel=mapVisibility(map);
+                    // Detailed style: one consistent accent, no per-card rainbow.
+                    const visDot = visLabel==="Shared" ? "var(--success)" : visLabel==="Archived" ? "var(--text4)" : visLabel==="Public" ? "var(--accent)" : "var(--text3)";
                     return <div key={map.id}
                       className="nn-map-card" data-ui={`mapcard-${map.id}`} data-component="MapCard" data-page="dashboard" data-role="card"
                       data-tut={maps.indexOf(map)===0?"map-card":undefined}
@@ -1018,10 +1020,11 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                       onContextMenu={e=>{e.preventDefault();setMenuMap({id:map.id,title:map.title,x:e.clientX,y:e.clientY});}}
                       style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",
                         cursor:"pointer",position:"relative",overflow:"hidden",
-                        border: cardStyle==="detailed" ? `1px solid ${selectedMapId===map.id?accent:"var(--border2)"}` : (selectedMapId===map.id?`1px solid ${accent}`:"1px solid transparent"),
-                        borderLeft: cardStyle==="detailed" ? `3px solid ${accent}` : undefined,
+                        border: cardStyle==="detailed"
+                          ? `1px solid ${selectedMapId===map.id?"var(--accent)":"var(--border)"}`
+                          : (selectedMapId===map.id?`1px solid ${accent}`:"1px solid transparent"),
                         transition:"var(--transition-all)","--ca":accent}}>
-                      {/* Group badge — top-left accent strip (compact style only; detailed uses the left border) */}
+                      {/* Group badge — top-left accent strip (compact style only) */}
                       {cardStyle==="compact"&&grpLabel&&activeGroup==="all"&&(
                         <div style={{position:"absolute",top:0,left:0,right:0,height:3,background:accent,opacity:.7}}/>
                       )}
@@ -1066,7 +1069,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                               <span style={{opacity:.7}}>⌘</span> {parseInt(map.node_count)||0} nodes
                             </div>
                             <div style={{display:"flex",alignItems:"center",gap:6,marginTop:4}}>
-                              <span style={{width:6,height:6,borderRadius:"50%",background:accent,flexShrink:0}}/>
+                              <span style={{width:6,height:6,borderRadius:"50%",background:visDot,flexShrink:0}}/>
                               <span style={{fontSize:10,color:"var(--text3)",fontWeight:600}}>{visLabel}</span>
                               <span style={{marginLeft:"auto",fontSize:9,color:"var(--text4)"}}>{new Date(map.updated_at).toLocaleDateString()}</span>
                             </div>
@@ -1081,7 +1084,6 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                 {cardStyle==="detailed"&&selectedMapId&&(()=>{
                   const m = maps.find(x=>x.id===selectedMapId);
                   if(!m) return null;
-                  const accent = mapColor(m, maps.indexOf(m));
                   return (
                     <div style={{ position:"fixed", top:0, right:0, bottom:0, width:320, background:"var(--bg2)",
                       borderLeft:"1px solid var(--border2)", padding:20, overflowY:"auto", zIndex:60,
@@ -1109,7 +1111,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                         </div>
                       ))}
                       <button onClick={()=>onOpenMap(m.id)}
-                        style={{width:"100%",marginTop:20,padding:"10px",background:accent,border:"none",
+                        style={{width:"100%",marginTop:20,padding:"10px",background:"var(--accent2)",border:"none",
                           borderRadius:"var(--radius-md)",color:"#fff",fontWeight:700,fontSize:12,cursor:"pointer",
                           display:"flex",alignItems:"center",justifyContent:"center",gap:6}}>
                         Open Map ↗

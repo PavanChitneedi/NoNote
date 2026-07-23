@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.56.1",date:"Jul 2026",items:[
+    "Fix: Detailed card style had way too much per-card color — removed the colored left border entirely, and selection/Open Map/dot now use one single consistent accent color instead of a different hue per card.",
+    "Fix: visibility dot is now semantic (gray=Personal, green=Shared, muted=Archived) instead of random per-card color.",
+    "Fix: \"Continue where you left off\" chips also dropped the colored left border for the same reason.",
+  ]},
   {v:"v5.56.0",date:"Jul 2026",items:[
     "New: map detail panel — click a card (Detailed style) to see Nodes, Connections, Created, Updated, Author, and Visibility, with an Open Map button to actually navigate. Double-click a card still opens it directly.",
     "New: card style toggle — Compact (original) or Detailed (thicker accent border, visibility dot + label, matches the reference image). Switch anytime next to the grid/list toggle; choice is remembered.",
