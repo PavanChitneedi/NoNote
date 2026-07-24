@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.61.0",date:"Jul 2026",items:[
+    "Rewrote connector routing as a real shortest-path search. Instead of drawing a route and then trying to nudge it out of trouble, every connector is now found with A* over a grid built from the node boundaries. Segments that would pass through a node are removed from the grid before the search runs, so crossing a node is impossible rather than merely unlikely, and the route that comes back is the shortest legal one rather than the first one that worked.",
+    "All connectors are now solved together, shortest first, with each finished route marking the grid it occupied so later ones pay to reuse it and step aside instead. Three separate bugs were making this silently do nothing: the grid was rebuilt per connector so occupancy keys never matched, occupancy was recorded on simplified long segments that could never match the short segments the search looks up, and the cost of sharing was set too low to matter.",
+    "Notes are back BESIDE their parent and exactly centred on it, as originally asked. The note box height is now pinned to the value the layout reserves rather than estimated, so the centring is exact and the connector is genuinely straight.",
+    "Faces carrying a note connector now keep their centre line clear, so a sibling connector can no longer be assigned the same line and run along the top of it.",
+    "Port assignment moved into one shared function used by the layout, the renderer and the tests — previously these were separate implementations that could drift apart, which is how earlier fixes measured clean while still looking wrong on screen.",
+    "Verified against the real homelab topology using the shipped code: 0 connectors crossing a node, 0 parallel overlapping runs, 0 box overlaps, 10/10 note connectors dead straight, all 24 routes found. Stress test at 60 nodes / 89 connectors routes in under 300ms with 0 crossings.",
+  ]},
   {v:"v5.60.0",date:"Jul 2026",items:[
     "Fix: notes were parked in a gutter along the flow direction, which inserted an entire extra column between every layer and pushed connected nodes far apart. Notes now sit perpendicular to the flow — directly below the parent in a left-right layout — so they cost no extra column at all.",
     "Fix: the note-group box height was hardcoded at 150px while the real box is nearer 110px and grows with the note count. That offset was the bend on every parent-to-note connector. Notes are now centred on the axis whose size is exact, so the connector is straight no matter how many notes there are.",
