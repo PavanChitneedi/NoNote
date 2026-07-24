@@ -491,10 +491,12 @@ function autoLayout(nodes, edges, direction='LR') {
     });
     const memberToUnit = {};  // noteId -> unitId
     const unitMembers  = {};  // unitId -> [noteId,...]
+    const stackParentOf = {}; // unitId -> parent node id (its only real neighbour)
     Object.entries(stackOf).forEach(([pid, ids]) => {
       if (ids.length < 2) return;
       const unitId = `__stack__${pid}`;
       unitMembers[unitId] = ids;
+      stackParentOf[unitId] = pid;
       ids.forEach(id => { memberToUnit[id] = unitId; });
     });
     const unitId = id => memberToUnit[id] || id;
@@ -660,27 +662,40 @@ function autoLayout(nodes, edges, direction='LR') {
     // keeps a parent sitting beside its children instead of at the top of a
     // long column, which is what caused the long diagonal sweeping edges.
     const cross = {};
+    // A node carrying a note group needs as much room in its own layer as the
+    // group box occupies in the next one — otherwise the parents pack tighter
+    // than their note boxes can, and it becomes geometrically impossible for
+    // them all to line up no matter how the pinning is done.
+    const stackChildOf = {};
+    Object.entries(stackParentOf).forEach(([sid,pid]) => { stackChildOf[pid] = sid; });
+    const effSize = id => {
+      const sc = stackChildOf[id];
+      return sc ? Math.max(crossSize(id), crossSize(sc)) : crossSize(id);
+    };
+    const effTop  = id => cross[id] + crossSize(id)/2 - effSize(id)/2;
+    const setEffTop = (id,t) => { cross[id] = t + effSize(id)/2 - crossSize(id)/2; };
+
     layers.forEach(layer => {
       if (!layer) return;
       let c = PAD;
-      layer.forEach(id => { cross[id] = c; c += crossSize(id) + NODE_GAP; });
+      layer.forEach(id => { setEffTop(id, c); c += effSize(id) + NODE_GAP; });
     });
 
     function resolveOverlaps(layer) {
       // forward sweep: enforce min separation in current order
       for (let i = 1; i < layer.length; i++) {
         const prev = layer[i-1], cur = layer[i];
-        const minC = cross[prev] + crossSize(prev) + NODE_GAP;
-        if (cross[cur] < minC) cross[cur] = minC;
+        const minT = effTop(prev) + effSize(prev) + NODE_GAP;
+        if (effTop(cur) < minT) setEffTop(cur, minT);
       }
       // backward sweep: reclaim slack so the block stays compact
       for (let i = layer.length-2; i >= 0; i--) {
         const next = layer[i+1], cur = layer[i];
-        const maxC = cross[next] - NODE_GAP - crossSize(cur);
-        if (cross[cur] > maxC) cross[cur] = maxC;
+        const maxT = effTop(next) - NODE_GAP - effSize(cur);
+        if (effTop(cur) > maxT) setEffTop(cur, maxT);
       }
       // never drift above the canvas padding
-      const minStart = Math.min(...layer.map(id => cross[id]));
+      const minStart = Math.min(...layer.map(effTop));
       if (minStart < PAD) layer.forEach(id => { cross[id] += PAD - minStart; });
     }
 
@@ -698,6 +713,15 @@ function autoLayout(nodes, edges, direction='LR') {
           // align centres, not top edges
           const target = ref.reduce((s,x) => s + cross[x] + crossSize(x)/2, 0) / ref.length;
           cross[id] = target - crossSize(id)/2;
+        });
+        // A note group is an annotation on one node, not a peer in the graph.
+        // Pin it dead in line with its parent so the connector is a straight
+        // run with zero bends, then let overlap resolution nudge only if it
+        // truly has to.
+        layer.forEach(id => {
+          const pid = stackParentOf[id];
+          if (!pid || cross[pid] === undefined) return;
+          cross[id] = cross[pid] + crossSize(pid)/2 - crossSize(id)/2;
         });
         resolveOverlaps(layer);
       });
@@ -820,10 +844,19 @@ function segHitsRects(x1, y1, x2, y2, rects, pad = 8) {
 // travel segment; obstacles are the node rects to route around.
 function orthoRoute(fp, fn1, tp, fn2, lane, obstacles = []) {
   const STUB = 26;                       // straight run off the node face
-  const a = { x: fp.x + fn1.dx*STUB, y: fp.y + fn1.dy*STUB };
-  const b = { x: tp.x + fn2.dx*STUB, y: tp.y + fn2.dy*STUB };
   const horizExit  = Math.abs(fn1.dx) > 0.5;
   const horizEnter = Math.abs(fn2.dx) > 0.5;
+
+  // If the two ports already line up and the direct run is clear, draw a
+  // straight line. Forcing a stub-lane-stub route on an aligned pair is what
+  // produces those little meaningless kinks on otherwise straight connections.
+  const aligned = horizExit && horizEnter ? Math.abs(fp.y - tp.y) < 3
+                : !horizExit && !horizEnter ? Math.abs(fp.x - tp.x) < 3
+                : false;
+  if (aligned && !segHitsRects(fp.x, fp.y, tp.x, tp.y, obstacles)) return [fp, tp];
+
+  const a = { x: fp.x + fn1.dx*STUB, y: fp.y + fn1.dy*STUB };
+  const b = { x: tp.x + fn2.dx*STUB, y: tp.y + fn2.dy*STUB };
 
   const mk = (mid) => {
     if (horizExit && horizEnter) return [fp, a, {x:mid,y:a.y}, {x:mid,y:b.y}, b, tp];
@@ -2577,6 +2610,53 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Lane assignment for orthogonal routing ───────────────────────
   // Every edge that travels through the same channel gets its own lane
   // coordinate, so parallel runs never sit on top of each other.
+  // ── What is ACTUALLY on screen ───────────────────────────────────
+  // Grouped notes render as a single box at the average of their members,
+  // and the members themselves are not drawn at all. Any router that uses
+  // raw `nodes` is therefore dodging boxes that aren't there while ploughing
+  // through the one that is. Everything geometric must use this instead.
+  const renderedBoxes = useMemo(()=>{
+    const noteParents = {};
+    edges.forEach(e => {
+      const fn = nodes.find(n=>n.id===e.from), tn = nodes.find(n=>n.id===e.to);
+      if (tn?.type==='note' && fn?.type!=='note') (noteParents[e.to]  = noteParents[e.to]  || []).push(e.from);
+      if (fn?.type==='note' && tn?.type!=='note') (noteParents[e.from]= noteParents[e.from]|| []).push(e.to);
+    });
+    const stacks = {};
+    nodes.forEach(n => {
+      if (n.type !== 'note') return;
+      const ps = noteParents[n.id] || [];
+      if (ps.length === 1) (stacks[ps[0]] = stacks[ps[0]] || []).push(n);
+    });
+    const memberToStack = {}, boxes = [], stackByParent = {};
+    Object.entries(stacks).forEach(([pid, ns]) => {
+      if (ns.length < 2) return;
+      const sid = `__stack__${pid}`;
+      const ax = ns.reduce((s,n)=>s+n.x,0)/ns.length;
+      const ay = ns.reduce((s,n)=>s+n.y,0)/ns.length;
+      const box = { id:sid, x:ax, y:ay, w:240, h:150, parentId:pid };
+      boxes.push(box); stackByParent[pid] = box;
+      ns.forEach(n => { memberToStack[n.id] = sid; });
+    });
+    nodes.forEach(n => {
+      if (memberToStack[n.id]) return;
+      boxes.push({ id:n.id, x:n.x, y:n.y, w:n.w||220, h:n.h||96 });
+    });
+    return { boxes, memberToStack, stackByParent };
+  }, [nodes, edges]);
+
+  // nodeId -> ids of note nodes attached to it (any note, grouped or not)
+  const attachedNotes = useMemo(()=>{
+    const m = {};
+    edges.forEach(e => {
+      const f = nodes.find(n=>n.id===e.from), t = nodes.find(n=>n.id===e.to);
+      if (!f || !t) return;
+      if (t.type==='note' && f.type!=='note') (m[f.id]=m[f.id]||[]).push(t.id);
+      if (f.type==='note' && t.type!=='note') (m[t.id]=m[t.id]||[]).push(f.id);
+    });
+    return m;
+  }, [nodes, edges]);
+
   const edgeLaneMap = useMemo(()=>{
     if (edgeRouting !== "ortho") return {};
     const lanes = {};
@@ -2592,11 +2672,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const gapLo = horiz ? Math.min(f.x+fw, t.x+tw) : Math.min(f.y+fh, t.y+th);
       const gapHi = horiz ? Math.max(f.x, t.x)       : Math.max(f.y, t.y);
       const key = `${horiz?"h":"v"}:${Math.round(gapLo/40)}:${Math.round(gapHi/40)}`;
-      const cross = horiz ? (t.y+th/2) : (t.x+tw/2);
-      (groups[key]=groups[key]||[]).push({ id:edge.id, gapLo, gapHi, cross });
+      const srcC = horiz ? (f.y+fh/2) : (f.x+fw/2);
+      const tgtC = horiz ? (t.y+th/2) : (t.x+tw/2);
+      (groups[key]=groups[key]||[]).push({ id:edge.id, gapLo, gapHi, srcC, dist:Math.abs(tgtC-srcC) });
     });
     Object.values(groups).forEach(group => {
-      group.sort((a,b)=>a.cross-b.cross);
+      // Order matters. In a fan-out, the edge heading to the FARTHEST target
+      // must turn first (nearest lane): its long vertical run then sits inside
+      // all the shorter ones instead of cutting across them. Sorting by target
+      // position instead — the obvious choice — makes every long edge cross
+      // every short one. Group by source first so separate fans stay apart.
+      group.sort((a,b) => (a.srcC-b.srcC) || (b.dist-a.dist));
       const n = group.length;
       group.forEach((item, i) => {
         const lo = Math.min(item.gapLo, item.gapHi), hi = Math.max(item.gapLo, item.gapHi);
@@ -2678,9 +2764,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
     // ── Orthogonal routing ─────────────────────────────────────────
     if (edgeRouting === "ortho" && !edge.midOff) {
-      const obstacles = nodes
-        .filter(n => n.id !== fromNode.id && n.id !== toNode.id)
-        .map(n => ({ x:n.x, y:n.y, w:collW(n), h:collH(n) }));
+      // Exclude both endpoints — including the stack box a note endpoint is
+      // drawn inside of, otherwise the edge treats its own destination as a
+      // wall and detours around it.
+      const skip = new Set([
+        fromNode.id, toNode.id,
+        renderedBoxes.memberToStack[fromNode.id],
+        renderedBoxes.memberToStack[toNode.id],
+        fromNode.__stackId, toNode.__stackId,
+      ].filter(Boolean));
+      const obstacles = renderedBoxes.boxes.filter(b => !skip.has(b.id));
       const pts = orthoRoute(fp, fn1, tp, fn2, edgeLaneMap[edge.id], obstacles);
       const path = roundedPolyPath(pts, 14);
       // midpoint = middle vertex of the travel segment, for labels/handles
@@ -3449,6 +3542,25 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   borderRadius:4,cursor:"pointer",padding:"1px 4px",flexShrink:0,lineHeight:1,
                   fontSize:9,color:"var(--warning,#FF9800)",display:"flex",alignItems:"center",gap:2}}>
                 ⚡
+              </button>
+            )}
+
+            {/* Attached-notes focus — dims everything except this node's notes */}
+            {(attachedNotes[node.id]?.length > 0) && (
+              <button className="nn-notefocus-btn"
+                onMouseDown={e=>e.stopPropagation()}
+                onClick={e=>{
+                  e.stopPropagation();
+                  const ids = attachedNotes[node.id]||[];
+                  const already = focusMode && ids.every(i=>selected.has(i)) && selected.has(node.id);
+                  if (already) { setFocusMode(false); setSelected(new Set()); }
+                  else { setSelected(new Set([node.id, ...ids])); setFocusMode(true); }
+                }}
+                title={`Focus this node's ${attachedNotes[node.id].length} note${attachedNotes[node.id].length===1?'':'s'}`}
+                style={{background:"none",border:"none",cursor:"pointer",padding:"1px 3px",flexShrink:0,
+                  lineHeight:1,fontSize:10,fontWeight:700,borderRadius:4,
+                  color:"var(--text4)",display:"flex",alignItems:"center",gap:2}}>
+                📝<span style={{fontSize:8}}>{attachedNotes[node.id].length}</span>
               </button>
             )}
 
@@ -5009,6 +5121,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         .nn-node:hover .nn-collapse-btn { opacity: 0.8 !important; }
         .nn-node .nn-collapse-btn:hover { opacity: 1 !important; }
         .nn-node:hover .nn-comment-btn { opacity: 0.65 !important; }
+        .nn-notefocus-btn { opacity: 0.55; }
+        .nn-node:hover .nn-notefocus-btn { opacity: 1; }
+        .nn-notefocus-btn:hover { background: var(--accent)18 !important; color: var(--accent) !important; }
         .nn-comment-btn:hover { opacity: 1 !important; }
         .nn-node:hover .nn-addnote-btn { opacity: 0.6 !important; }
         .nn-node:hover .nn-pencil-btn { opacity: 0.5 !important; }

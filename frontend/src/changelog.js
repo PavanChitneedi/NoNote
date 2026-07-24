@@ -1,6 +1,13 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.59.0",date:"Jul 2026",items:[
+    "Fix: the router was avoiding the wrong boxes. Grouped notes draw as one box at the average of their members, but the obstacle list was built from the hidden members at their own positions — so edges dodged boxes that weren't on screen and ran straight behind the one that was. All geometry now uses what is actually rendered.",
+    "Fix: note groups are now pinned exactly in line with their parent, and the parent's layer reserves the group's full height so that alignment is actually possible. Parent→note connectors are now dead straight with zero bends (measured 4/4 on the test map).",
+    "Fix: pointless kinks on aligned connections — an already-straight run was still being forced through a stub-lane-stub route. Aligned pairs with a clear path are now drawn as a single straight line.",
+    "Fix: lane ordering in fan-outs. Lanes were ordered by target position, which makes every long edge cross every short one; the edge to the farthest target now turns first so long runs nest inside short ones instead of cutting across them (crossings 6 → 0 on a 6-way fan-out).",
+    "New: notes button on any node that has notes attached — click to focus just that node and its notes, click again to release.",
+  ]},
   {v:"v5.58.0",date:"Jul 2026",items:[
     "New: Right-angle connector routing — a new toggle beside Arrange switches edges between Curved (original) and Right-angle. Right-angle mode routes edges around nodes instead of through them, gives every edge its own lane in the gap between nodes so parallel runs never sit on top of each other, and falls back to a clear corridor between rows when an edge has to cross a whole column.",
     "Fix: arrows crossing each other right at a node. Ports were assigned in edge-list order rather than by where the other end sits, so an edge heading to a lower node could be given the upper port — forcing the two to cross. Ports are now sorted by target position, which removes that entire class of crossing in both routing modes.",
