@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.56.2",date:"Jul 2026",items:[
+    "Fix: grouped notes (2+ notes with a single parent) left dangling arrows pointing at blank space — the kept edge pointed at a hidden note's real position instead of the note-stack box. Now every note-stack gets exactly one edge, pointing at the box itself.",
+    "Confirmed: notes attached to multiple nodes are correctly never grouped — this fix only touches single-parent note stacks.",
+  ]},
   {v:"v5.56.1",date:"Jul 2026",items:[
     "Fix: Detailed card style had way too much per-card color — removed the colored left border entirely, and selection/Open Map/dot now use one single consistent accent color instead of a different hue per card.",
     "Fix: visibility dot is now semantic (gray=Personal, green=Shared, muted=Archived) instead of random per-card color.",

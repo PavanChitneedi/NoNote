@@ -2663,10 +2663,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── Render helpers ──────────────────────────────────────────────
   const renderEdges = () => {
-    // Compute suppressed edges for stacks
-    // For stacked notes: suppress all but the first edge to the parent when collapsed
+    // Compute suppressed edges for stacks.
+    // Stacked notes render as ONE box at the averaged (avgX,avgY) position — never at
+    // any individual note's own x/y. So every individual note edge must be suppressed
+    // (not just all-but-one), and replaced with a single synthetic edge that points at
+    // the box's real rendered position. Otherwise the "kept" edge dangles at a hidden
+    // note's real (but unrendered) location — the dangling-arrow bug.
     const suppressedEdgeIds = new Set();
-    // We need to recompute stacks here for edge filtering
     const _noteParents = {};
     edges.forEach(e => {
       const fn=nodes.find(n=>n.id===e.from), tn=nodes.find(n=>n.id===e.to);
@@ -2679,16 +2682,30 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const parents=_noteParents[n.id]||[];
       if(parents.length===1){const pid=parents[0];_stacks[pid]=_stacks[pid]||[];_stacks[pid].push(n);}
     });
+    const _activeStacks={}; // pid → notes[], only for stacks of 2+
     Object.entries(_stacks).forEach(([pid,notes])=>{
       if(notes.length<2) return;
-      const isExpanded=expandedStacks.has(pid);
-      if(!isExpanded){
-        // Keep only the first note's edge, suppress rest
-        notes.slice(1).forEach(n=>{
-          edges.filter(e=>(e.from===pid&&e.to===n.id)||(e.to===pid&&e.from===n.id))
-        .forEach(e=>suppressedEdgeIds.add(e.id));
-        });
-      }
+      _activeStacks[pid]=notes;
+      notes.forEach(n=>{
+        edges.filter(e=>(e.from===pid&&e.to===n.id)||(e.to===pid&&e.from===n.id))
+          .forEach(e=>suppressedEdgeIds.add(e.id));
+      });
+    });
+
+    // One consolidated dashed edge per stack → the box's real (avgX,avgY) position,
+    // never an individual note's hidden position.
+    const stackEdgeElements = Object.entries(_activeStacks).map(([pid,notes])=>{
+      const parentNode = nodes.find(n=>n.id===pid);
+      if(!parentNode) return null;
+      const avgX = notes.reduce((s,n)=>s+n.x,0)/notes.length;
+      const avgY = notes.reduce((s,n)=>s+n.y,0)/notes.length;
+      const stackTarget = { x:avgX, y:avgY, w:240, h:100, type:'note' };
+      const result = getEdgePath(parentNode, stackTarget, {});
+      const { path } = result;
+      return (
+        <path key={`stack-edge-${pid}`} d={path} stroke="var(--text4)" strokeWidth={1.5}
+          fill="none" strokeDasharray="5,4" markerEnd="url(#nn-arr)" opacity={0.8}/>
+      );
     });
 
     const edgeElements = edges.map(edge=>{
@@ -2884,6 +2901,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
       })()}
       {edgeElements}
+      {stackEdgeElements}
 
     </svg>
   );
