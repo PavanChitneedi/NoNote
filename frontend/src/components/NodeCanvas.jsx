@@ -561,62 +561,63 @@ function autoLayout(nodes, edges, direction='LR') {
       curMain += maxMain + LAYER_GAP;
     }
 
-    // ── 7. Subtree CROSS-axis span (space needed) ─────────────────────
-    // Leaf span = its cross size + NODE_GAP (gap after node)
-    // Internal span = sum of children spans  (no extra gap; gap is in leaves)
-    // NOTE: We add a small SUBTREE_GAP between groups of siblings
-    const SUBTREE_GAP = 20; // extra gap added between sibling subtrees
-    const span = {};
-    function computeSpan(id) {
-      const ch = treeKids[id];
-      if (!ch.length) {
-        return (span[id] = crossSize(id) + NODE_GAP);
-      }
-      // Sum of children spans + SUBTREE_GAP between each sibling group
-      const childSum = ch.reduce((s,c) => s + computeSpan(c), 0);
-      const extraGap = (ch.length - 1) * SUBTREE_GAP;
-      return (span[id] = Math.max(crossSize(id) + NODE_GAP, childSum + extraGap));
-    }
-    roots.forEach(r => computeSpan(r));
+    // ── 7. Order nodes WITHIN each depth layer to minimize edge crossings ──
+    // The tree above only decides which LAYER (depth) a node sits in. Ordering
+    // nodes within a layer using only the primary-parent tree ignores every
+    // other real edge (multi-parent links, cross-links between branches) —
+    // that's what produced the long sweeping/crossing arcs. Instead, use the
+    // classic layered-graph-drawing fix: barycenter crossing reduction over
+    // ALL edges, iterated a few passes forward and backward.
+    const layers = [];
+    nodes.forEach(n => { const d = depthOf[n.id] || 0; (layers[d] = layers[d] || []).push(n.id); });
 
-    // ── 8. Place subtrees recursively ────────────────────────────────
-    const px = {}, py = {};
-    function place(id, crossStart) {
-      const ch = treeKids[id];
-      const d  = depthOf[id];
+    const neighbors = {};
+    nodes.forEach(n => { neighbors[n.id] = new Set(); });
+    edges.forEach(e => {
+      if (!neighbors[e.from] || !neighbors[e.to]) return;
+      neighbors[e.from].add(e.to);
+      neighbors[e.to].add(e.from);
+    });
 
-      if (!ch.length) {
-        // Leaf: center in its span
-        const mainPos  = layerPos[d];
-        const crossPos = crossStart + span[id]/2 - crossSize(id)/2;
-        if (isHoriz) { px[id]=mainPos;  py[id]=crossPos; }
-        else          { px[id]=crossPos; py[id]=mainPos; }
-        return;
-      }
+    const orderIndex = {};
+    layers.forEach(layer => { if(layer) layer.forEach((id,i) => orderIndex[id]=i); });
 
-      // Place children sequentially, add SUBTREE_GAP between siblings
-      let c_cross = crossStart;
-      ch.forEach((c, i) => {
-        place(c, c_cross);
-        c_cross += span[c] + (i < ch.length-1 ? SUBTREE_GAP : 0);
+    function sortLayerByBarycenter(layer, refSet) {
+      const bc = {};
+      layer.forEach(id => {
+        const neigh = [...neighbors[id]].filter(nid => refSet.has(nid));
+        bc[id] = neigh.length ? neigh.reduce((s,nid)=>s+orderIndex[nid],0)/neigh.length : orderIndex[id];
       });
-
-      // Center this node over children's actual positions
-      const firstKid = nodeById(ch[0]);
-      const lastKid  = nodeById(ch[ch.length-1]);
-      const firstPos = isHoriz ? py[ch[0]] : px[ch[0]];
-      const lastPos  = (isHoriz ? py[ch[ch.length-1]] : px[ch[ch.length-1]])
-                       + crossSize(ch[ch.length-1]);
-      const midPos   = (firstPos + lastPos) / 2 - crossSize(id) / 2;
-
-      if (isHoriz) { px[id]=layerPos[d]; py[id]=midPos; }
-      else          { px[id]=midPos;      py[id]=layerPos[d]; }
+      layer.sort((a,b) => bc[a]-bc[b]);
+      layer.forEach((id,i) => orderIndex[id]=i);
     }
 
-    let globalCross = PAD;
-    roots.forEach(r => {
-      place(r, globalCross);
-      globalCross += span[r] + SUBTREE_GAP;
+    const CROSSING_PASSES = 6;
+    for (let it = 0; it < CROSSING_PASSES; it++) {
+      if (it % 2 === 0) {
+        for (let d = 1; d < layers.length; d++) {
+          if (!layers[d]) continue;
+          sortLayerByBarycenter(layers[d], new Set(layers[d-1]||[]));
+        }
+      } else {
+        for (let d = layers.length-2; d >= 0; d--) {
+          if (!layers[d]) continue;
+          sortLayerByBarycenter(layers[d], new Set(layers[d+1]||[]));
+        }
+      }
+    }
+
+    // ── 8. Pack each (now crossing-minimized) layer along the cross-axis ──
+    const px = {}, py = {};
+    layers.forEach((layer, d) => {
+      if (!layer) return;
+      let cross = PAD;
+      layer.forEach(id => {
+        const cs = crossSize(id);
+        if (isHoriz) { px[id]=layerPos[d]; py[id]=cross; }
+        else          { px[id]=cross;       py[id]=layerPos[d]; }
+        cross += cs + NODE_GAP;
+      });
     });
 
     // ── 9. Flip for RL / BT ──────────────────────────────────────────
@@ -631,20 +632,8 @@ function autoLayout(nodes, edges, direction='LR') {
       });
     }
 
-    // ── 10. Assemble + handle missing positions ──────────────────────
-    let isoMain = PAD;
-    const maxCross = Math.max(...nodes.map(n => isHoriz ? (py[n.id]??0)+nodeH(nodeById(n.id)) : (px[n.id]??0)+nodeW(nodeById(n.id))));
-    const isoStart = maxCross + LAYER_GAP;
-
-    return nodes.map(n => {
-      if (px[n.id] !== undefined) {
-        return { ...n, x: Math.round(px[n.id]), y: Math.round(py[n.id]) };
-      }
-      // Isolated node not in spanning tree
-      const r = isHoriz ? { ...n, x: isoMain, y: isoStart } : { ...n, x: isoStart, y: isoMain };
-      isoMain += mainSize(n.id) + LAYER_GAP;
-      return r;
-    });
+    // ── 10. Assemble ──────────────────────────────────────────────────
+    return nodes.map(n => ({ ...n, x: Math.round(px[n.id]??PAD), y: Math.round(py[n.id]??PAD) }));
 
   } catch(err) {
     console.error('[autoLayout]', err);
@@ -3728,7 +3717,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 <div style={{display:"flex",borderRadius:"var(--radius-sm)",overflow:"hidden"}}>
                   <button onClick={()=>handleAutoLayout()} style={{...tbtn(false),borderRadius:0,padding:"4px 9px",fontSize:11,borderRight:"1px solid var(--border)"}}
                     title="Auto-arrange (Ctrl+Enter)">
-                    ⊞ Layout
+                    ⊞ Arrange
                   </button>
                   <button data-ui="toolbar-layout" data-component="CanvasToolbar" data-page="canvas" data-role="action-btn" onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn"
                     style={{...tbtn(showLayoutMenu,"var(--accent2)"),borderRadius:0,padding:"4px 6px",fontSize:10}}
@@ -3820,7 +3809,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           ["Switch to "+(canvasMode==="think"?"Build":"Think")+" mode",()=>setCanvasModePersist(canvasMode==="think"?"build":"think")],
           ["Copy for AI — clipboard context",copyForAI],
           ["New thought (center of view)",()=>{const el=canvasRef.current;if(el){const s=1/zoom;createIdeaAt((el.scrollLeft+el.clientWidth/2)*s-110,(el.scrollTop+el.clientHeight/2)*s-40);}}],
-          ["Auto-layout",()=>handleAutoLayout(layoutDir)],
+          ["Arrange",()=>handleAutoLayout(layoutDir)],
           [globalCollapsed?"Expand all nodes":"Collapse all nodes",globalCollapsed?expandAll:collapseAll],
           ["Find in map",()=>{setShowSearch(true);setSearchQuery("");}],
           ["Export…",()=>setShowExportMenu(true)],

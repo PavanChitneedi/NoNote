@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.57.0",date:"Jul 2026",items:[
+    "Renamed: \"Layout\" → \"Arrange\" (toolbar button, command palette).",
+    "Rewrote: the auto-arrange algorithm. It previously ordered nodes using only a single-parent spanning tree, ignoring every other real connection — causing long sweeping crossed arcs whenever a node had multiple parents or cross-links (exactly the network-topology case). It now uses proper barycenter crossing-reduction across ALL edges, iterated several passes, so node order within each layer actually minimizes edge crossings.",
+    "Fixed: isolated/multi-parent nodes no longer get flung into a separate far-away area — every node is packed into its real depth layer, removing the large empty gaps between clusters.",
+  ]},
   {v:"v5.56.2",date:"Jul 2026",items:[
     "Fix: grouped notes (2+ notes with a single parent) left dangling arrows pointing at blank space — the kept edge pointed at a hidden note's real position instead of the note-stack box. Now every note-stack gets exactly one edge, pointing at the box itself.",
     "Confirmed: notes attached to multiple nodes are correctly never grouped — this fix only touches single-parent note stacks.",
