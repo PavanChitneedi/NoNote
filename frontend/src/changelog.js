@@ -1,6 +1,15 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.60.0",date:"Jul 2026",items:[
+    "Fix: notes were parked in a gutter along the flow direction, which inserted an entire extra column between every layer and pushed connected nodes far apart. Notes now sit perpendicular to the flow — directly below the parent in a left-right layout — so they cost no extra column at all.",
+    "Fix: the note-group box height was hardcoded at 150px while the real box is nearer 110px and grows with the note count. That offset was the bend on every parent-to-note connector. Notes are now centred on the axis whose size is exact, so the connector is straight no matter how many notes there are.",
+    "Fix: the whole diagram could end up thousands of pixels down the canvas with nothing above it — straightening moved layers freely and only drift above the padding was corrected. The finished layout is now normalised to the top-left, and Arrange scrolls the view there.",
+    "Fix: annotation connectors ran along the node centre line, exactly where every other edge places its stub, producing parallel overlapping runs. They now attach on their own offset line and stay perfectly straight.",
+    "Fix: near-aligned connectors within 12px are snapped to a straight line instead of being given a visible jog.",
+    "Improved: dragging is smoother and more granular — the collision gap that made nodes jump 15px when they touched is now 4px.",
+    "Measured on the full homelab topology: 0 connectors crossing a node, 0 parallel overlapping runs, 0 box overlaps, and 10/10 parent-to-note connectors dead straight.",
+  ]},
   {v:"v5.59.1",date:"Jul 2026",items:[
     "Fix: notes are no longer laid out as graph nodes. A note attached to a single node was being placed in the same layer as that node's real children, where it competed for a slot and got pushed away from its own parent — which is why note boxes kept landing across the map from the node they belong to. Notes attached to one node are now pulled out of the graph entirely and parked in a reserved gutter directly beside their parent. Notes shared by several nodes still lay out normally, since they genuinely belong in more than one place.",
     "Result on the real homelab topology: 10/10 note boxes sit exactly in line with their parent, all exactly 60px away, in all four directions — including the TP Link case (a node with both notes and real children) that defeated the previous attempt.",

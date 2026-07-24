@@ -495,23 +495,32 @@ function autoLayout(nodes, edges, direction='LR') {
     const core = nodes.filter(n => !annoIds.has(n.id));
     if (!core.length) return nodes;
 
-    // Rendered size of a node's annotation block: a group draws as one stacked
-    // box, a lone note draws at its own size.
-    const STACK_W = 240, STACK_H = 150;
+    // Rendered size of a node's annotation block. Width is fixed at 240 for a
+    // group; height is content-driven, so it is ESTIMATED. Placement below is
+    // arranged so that only spacing depends on the height estimate — never the
+    // straightness of the connector.
+    const STACK_W = 240;
+    const stackH = n => 76 + 18*Math.min(n,3) + (n>3 ? 18 : 0);
     const annoBox = pid => {
       const ids = annoOf[pid];
       if (!ids || !ids.length) return null;
-      if (ids.length >= 2) return { w: STACK_W, h: STACK_H };
+      if (ids.length >= 2) return { w: STACK_W, h: stackH(ids.length) };
       const n = rawById(ids[0]);
       return { w: n?.w || 240, h: n?.h || 160 };
     };
-    const annoMain  = pid => { const b = annoBox(pid); return b ? (isHoriz ? b.w : b.h) : 0; };
+    // Notes sit PERPENDICULAR to the flow — directly below the parent in a
+    // left-right layout. Putting them in a gutter along the flow axis inserts a
+    // whole extra column between every layer, which is what pushed children far
+    // apart. Perpendicular placement costs no extra column, and because the
+    // note is centred on the axis whose size is known exactly (width), the
+    // connector is a dead-straight perpendicular line whatever the height.
     const annoCross = pid => { const b = annoBox(pid); return b ? (isHoriz ? b.h : b.w) : 0; };
+    const annoMain  = pid => { const b = annoBox(pid); return b ? (isHoriz ? b.w : b.h) : 0; };
 
     const crossSize = id => isHoriz ? nodeH(rawById(id)) : nodeW(rawById(id));
-    const mainSize  = id => isHoriz ? nodeW(rawById(id)) : nodeH(rawById(id));
-    // A node must reserve enough room in its layer for its own notes too.
-    const effSize   = id => Math.max(crossSize(id), annoCross(id));
+    const mainSize  = id => Math.max(isHoriz ? nodeW(rawById(id)) : nodeH(rawById(id)), annoMain(id));
+    // Reserve the node plus its note block; the node sits at the top of it.
+    const effSize   = id => crossSize(id) + (annoBox(id) ? ANNO_GAP + annoCross(id) : 0);
 
     const coreIds = core.map(n => n.id);
     const isCore = new Set(coreIds);
@@ -556,18 +565,21 @@ function autoLayout(nodes, edges, direction='LR') {
     }
     const maxDepth = Math.max(0, ...coreIds.map(u => depthOf[u]));
 
-    // Place a node's annotation block beside it, on the outgoing side.
+    // Place a node's annotation block perpendicular to the flow direction.
+    // Centred on the axis whose size is exact, so the connector is straight.
     const placeAnnotations = (posX, posY, out) => {
       Object.keys(annoOf).forEach(pid => {
         const p = out.find(n => n.id === pid);
         const box = annoBox(pid);
         if (!p || !box) return;
         let ax, ay;
-        if (direction === 'LR')      { ax = p.x + nodeW(p) + ANNO_GAP;  ay = p.y + nodeH(p)/2 - box.h/2; }
-        else if (direction === 'RL') { ax = p.x - ANNO_GAP - box.w;     ay = p.y + nodeH(p)/2 - box.h/2; }
-        else if (direction === 'BT') { ax = p.x + nodeW(p)/2 - box.w/2; ay = p.y - ANNO_GAP - box.h; }
-        else                         { ax = p.x + nodeW(p)/2 - box.w/2; ay = p.y + nodeH(p) + ANNO_GAP; }
-        // every member of a group shares the slot, so the averaged box lands on it
+        if (isHoriz) {          // flow is horizontal → notes hang below
+          ax = p.x + nodeW(p)*ANNO_T - box.w/2;
+          ay = p.y + nodeH(p) + ANNO_GAP;
+        } else {                // flow is vertical → notes sit to the right
+          ax = p.x + nodeW(p) + ANNO_GAP;
+          ay = p.y + nodeH(p)*ANNO_T - box.h/2;
+        }
         annoOf[pid].forEach(nid => { posX[nid] = ax; posY[nid] = ay; });
       });
     };
@@ -602,16 +614,13 @@ function autoLayout(nodes, edges, direction='LR') {
       return out.map(n => PX[n.id]!==undefined ? {...n,x:Math.round(PX[n.id]),y:Math.round(PY[n.id])} : n);
     }
 
-    // ── 5. Main-axis position per layer, widened for the note gutter ──
+    // ── 5. Main-axis position per layer ──────────────────────────────
     const layerPos = [];
     let curMain = PAD;
     for (let d = 0; d <= maxDepth; d++) {
       layerPos[d] = curMain;
       const atD = coreIds.filter(u => depthOf[u] === d);
-      const widest = atD.length ? Math.max(...atD.map(mainSize)) : DEF_W;
-      // reserve a gutter after this layer if anything in it carries notes
-      const gutter = atD.length ? Math.max(0, ...atD.map(annoMain)) : 0;
-      curMain += widest + (gutter ? gutter + ANNO_GAP : 0) + LAYER_GAP;
+      curMain += (atD.length ? Math.max(...atD.map(mainSize)) : DEF_W) + LAYER_GAP;
     }
 
     // ── 6. Order within each layer — crossing reduction ──────────────
@@ -678,8 +687,10 @@ function autoLayout(nodes, edges, direction='LR') {
 
     // ── 7. Cross-axis coordinates ────────────────────────────────────
     const cross = {};
-    const effTop = id => cross[id] + crossSize(id)/2 - effSize(id)/2;
-    const setEffTop = (id,t) => { cross[id] = t + effSize(id)/2 - crossSize(id)/2; };
+    // The node sits at the TOP of its reserved block; its notes hang below
+    // inside the same block, so nothing else can be packed into that space.
+    const effTop = id => cross[id];
+    const setEffTop = (id,t) => { cross[id] = t; };
 
     layers.forEach(layer => {
       if (!layer) return;
@@ -743,9 +754,19 @@ function autoLayout(nodes, edges, direction='LR') {
       : { ...n });
     const AX = {}, AY = {};
     placeAnnotations(AX, AY, out);
-    return out.map(n => AX[n.id] !== undefined
+    const placed = out.map(n => AX[n.id] !== undefined
       ? { ...n, x: Math.round(AX[n.id]), y: Math.round(AY[n.id]) }
       : n);
+
+    // ── 11. Normalise to the origin ──────────────────────────────────
+    // Straightening pushes layers around freely and the per-layer guard only
+    // catches drift ABOVE the padding, so the whole diagram can end up
+    // thousands of pixels down the canvas with nothing above it. Shift the
+    // finished layout back so it always starts at the top-left.
+    const minX = Math.min(...placed.map(n => n.x));
+    const minY = Math.min(...placed.map(n => n.y));
+    const shiftX = PAD - minX, shiftY = PAD - minY;
+    return placed.map(n => ({ ...n, x: n.x + shiftX, y: n.y + shiftY }));
 
   } catch(err) {
     console.error('[autoLayout]', err);
@@ -790,6 +811,11 @@ function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
     return dy>=0?{from:"bottom",to:"top"}:{from:"top",to:"bottom"};
   }
 }
+
+// Where an annotation connector attaches across its parent's face. Shared by
+// the layout (which positions the note box) and the router (which picks the
+// port) — they must agree or the connector stops being straight.
+const ANNO_T = 0.32;
 
 // ── Orthogonal (Manhattan) edge routing ──────────────────────────
 // Curved beziers between two points can't avoid anything: they pass straight
@@ -839,13 +865,19 @@ function orthoRoute(fp, fn1, tp, fn2, lane, obstacles = []) {
   const horizExit  = Math.abs(fn1.dx) > 0.5;
   const horizEnter = Math.abs(fn2.dx) > 0.5;
 
-  // If the two ports already line up and the direct run is clear, draw a
-  // straight line. Forcing a stub-lane-stub route on an aligned pair is what
-  // produces those little meaningless kinks on otherwise straight connections.
-  const aligned = horizExit && horizEnter ? Math.abs(fp.y - tp.y) < 3
-                : !horizExit && !horizEnter ? Math.abs(fp.x - tp.x) < 3
-                : false;
-  if (aligned && !segHitsRects(fp.x, fp.y, tp.x, tp.y, obstacles)) return [fp, tp];
+  // If the two ports are close to lining up and the direct run is clear, draw a
+  // straight line — nudging the endpoint by a few pixels rather than inserting
+  // a visible jog. A 4px offset does not need a bend to express it, and those
+  // tiny jogs are the single biggest source of visual noise on a dense map.
+  const SNAP = 12;
+  const dPerp = horizExit && horizEnter ? Math.abs(fp.y - tp.y)
+              : !horizExit && !horizEnter ? Math.abs(fp.x - tp.x)
+              : Infinity;
+  if (dPerp < SNAP) {
+    const a2 = horizExit ? { x: fp.x, y: fp.y } : { x: fp.x, y: fp.y };
+    const b2 = horizExit ? { x: tp.x, y: fp.y } : { x: fp.x, y: tp.y };
+    if (!segHitsRects(a2.x, a2.y, b2.x, b2.y, obstacles)) return [a2, b2];
+  }
 
   const a = { x: fp.x + fn1.dx*STUB, y: fp.y + fn1.dy*STUB };
   const b = { x: tp.x + fn2.dx*STUB, y: tp.y + fn2.dy*STUB };
@@ -895,10 +927,15 @@ function orthoRoute(fp, fn1, tp, fn2, lane, obstacles = []) {
     return pts;
   };
   // Candidate corridors: the gaps between obstacle edges, nearest first.
+  // Two edges detouring around the SAME obstacle would otherwise pick the
+  // identical corridor and run exactly on top of each other, so each edge is
+  // nudged by a small offset derived from its lane — enough to keep them
+  // visually distinct without changing the shape of the route.
+  const bias = lane !== undefined && lane !== null ? ((Math.round(lane) % 3) - 1) * 10 : 0;
   const bounds = [];
   obstacles.forEach(r => {
-    if (horizExit) { bounds.push(r.y - 30, r.y + r.h + 30); }
-    else           { bounds.push(r.x - 30, r.x + r.w + 30); }
+    if (horizExit) { bounds.push(r.y - 30 + bias, r.y + r.h + 30 + bias); }
+    else           { bounds.push(r.x - 30 + bias, r.x + r.w + 30 + bias); }
   });
   const from = horizExit ? fp.y : fp.x;
   bounds.sort((p,q) => Math.abs(p-from) - Math.abs(q-from));
@@ -1920,7 +1957,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             dx=snappedX-start0.x; dy=snappedY-start0.y;
           }
         }
-        const GAP=14; // 14px minimum gap between any two node edges
+        const GAP=4;  // small gap: nodes cannot overlap, but dragging stays granular
         const fixedNodes=nodesRef.current.filter(n=>!dragging.ids.includes(n.id));
 
         // Axis-separated collision: X then Y, each fully resolved.
@@ -2434,6 +2471,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const d=dir||layoutDir;
     localStorage.setItem('nn_layout_dir',d);
     applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null,midOff:null})));
+    // Arrange places content at the top-left, so bring the view there too —
+    // otherwise the map appears to have vanished and you have to hunt for it.
+    setTimeout(()=>{
+      const el=canvasRef.current;
+      if(el) el.scrollTo({left:0,top:0,behavior:"smooth"});
+    },60);
     applyNodes(ns=>{
       const laid=autoLayout(ns,edges,d);
 
@@ -2561,10 +2604,39 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     // IMPORTANT: uses node.w/node.h (stored) NOT collW/collH (DOM ref) —
     // refs don't trigger memo updates so face decisions would be stale.
     const portGroups = {};
+    // A node has at most one annotation block, and that connector is placed to
+    // be perfectly perpendicular. Letting it join a stagger group would shove
+    // it off centre and reintroduce a bend, so it always keeps the centre port.
+    const annoParentCount = {};
+    edges.forEach(e => {
+      const f = nodes.find(n=>n.id===e.from), t = nodes.find(n=>n.id===e.to);
+      if (!f || !t) return;
+      if (t.type==='note' && f.type!=='note') annoParentCount[t.id] = (annoParentCount[t.id]||0)+1;
+      if (f.type==='note' && t.type!=='note') annoParentCount[f.id] = (annoParentCount[f.id]||0)+1;
+    });
+    const isAnnoEdge = (f,t) =>
+      (t.type==='note' && f.type!=='note' && annoParentCount[t.id]===1) ||
+      (f.type==='note' && t.type!=='note' && annoParentCount[f.id]===1);
+
+    // The annotation connector is offset off the node's centre line. Everything
+    // else in the router uses centre-line stubs, so a centred annotation line
+    // ends up running exactly on top of them. ANNO_T must match the offset used
+    // when the note box is positioned in autoLayout, or the line stops being
+    // straight.
+    const annoT = {};
+    edges.forEach(edge => {
+      const f = nodes.find(n=>n.id===edge.from), t = nodes.find(n=>n.id===edge.to);
+      if (!f || !t || !isAnnoEdge(f,t)) return;
+      const parentIsFrom = f.type !== 'note';
+      annoT[`${edge.id}:${parentIsFrom?'from':'to'}`] = ANNO_T;  // parent side
+      annoT[`${edge.id}:${parentIsFrom?'to':'from'}`] = 0.5;     // note side
+    });
+
     edges.forEach(edge => {
       const f = nodes.find(n=>n.id===edge.from);
       const t = nodes.find(n=>n.id===edge.to);
       if (!f || !t) return;
+      if (isAnnoEdge(f,t)) return;   // keeps the default 0.5 centre port
       // Use stored dimensions for consistent, stable face selection
       const fw=f.w||220, fh=f.h||96, tw=t.w||220, th=t.h||96;
 
@@ -2596,6 +2668,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         tMap[`${item.id}:${role}`] = n===1 ? 0.5 : 0.2+(i/(n-1))*0.6;
       });
     });
+    Object.assign(tMap, annoT);
     return tMap;
   }, [edges, nodes]);
 
