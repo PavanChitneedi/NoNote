@@ -2909,6 +2909,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // and naturally steps aside. Shortest edges go first — they have the least
   // freedom to detour, so they should claim the direct line.
   const edgeRoutes = useMemo(()=>{
+   try {
     if (edgeRouting !== "ortho") return {};
     const boxes = renderedBoxes.boxes;
     if (!boxes.length || boxes.length > 90) return {};   // keep it responsive
@@ -2951,6 +2952,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if (pts) { out[it.id] = pts; }
     });
     return out;
+   } catch (err) {
+    // A routing failure must never take the whole canvas down with it; an
+    // uglier edge is always better than a blank screen.
+    console.error('[edgeRoutes]', err);
+    return {};
+   }
   }, [edges, nodes, edgeRouting, renderedBoxes, edgePortMap]);
 
   const edgeLaneMap = useMemo(()=>{
@@ -3060,8 +3067,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
     // ── Orthogonal routing ─────────────────────────────────────────
     if (edgeRouting === "ortho" && !edge.midOff) {
+     try {
       const pre = edgeRoutes[edge.id];
-      if (pre) {
+      if (pre && pre.length >= 2) {
         const path = roundedPolyPath(pre, 12);
         const mi = Math.max(1, Math.floor(pre.length/2));
         const mid = { x:(pre[mi-1].x+pre[mi].x)/2, y:(pre[mi-1].y+pre[mi].y)/2 };
@@ -3080,6 +3088,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const midIdx = Math.max(1, Math.floor(pts.length/2));
       const mid = { x:(pts[midIdx-1].x+pts[midIdx].x)/2, y:(pts[midIdx-1].y+pts[midIdx].y)/2 };
       return { path, fp, tp, mid };
+     } catch (err) {
+      console.error('[getEdgePath/ortho]', err);   // fall through to the curve
+     }
     }
 
     // Bezier control points — adaptive S-curve
@@ -5656,7 +5667,7 @@ function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,ico
                       borderRadius:"var(--radius-xs)"}}
                     onMouseEnter={e=>e.currentTarget.style.background="var(--bg3)"}
                     onMouseLeave={e=>e.currentTarget.style.background="transparent"}>
-                    <span style={{color:t.color,display:"flex",flexShrink:0}}>{typeof Ic==="function"||typeof Ic==="object"?<Ic size={dense||iconOnly?13:14}/>:<NodeIcon icon={t.icon} size={14} color={t.color}/>}</span>
+                    <span style={{color:t.color,display:"flex",flexShrink:0}}>{(typeof Ic==="function"||typeof Ic==="object")?<Ic size={dense||iconOnly?13:14}/>:<NodeIcon icon={t.icon} size={14} color={t.color}/>}</span>
                     {!iconOnly&&!dense&&<span style={{fontSize:10,color:"var(--text2)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{t.label}</span>}
                   </div>
                 );

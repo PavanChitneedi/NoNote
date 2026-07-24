@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.61.1",date:"Jul 2026",items:[
+    "Fix: a failure anywhere in connector routing could take the whole canvas down and show the Application Error screen. Routing is now contained — if it fails it falls back to the previous router and then to a plain curve, so an ugly connector can never cost you the map.",
+    "Fix: index.html was allowed to be cached. It names the hashed bundle files, so a stale copy points at bundles that no longer exist after a deploy, which produces confusing errors that look like application bugs. It is now served no-cache.",
+    "Improved: production builds now ship sourcemaps, so if the error screen ever appears again the stack names the real file and line instead of minified nonsense.",
+    "Fix: a malformed conditional in the sidebar could render the literal value true instead of a node-type icon.",
+  ]},
   {v:"v5.61.0",date:"Jul 2026",items:[
     "Rewrote connector routing as a real shortest-path search. Instead of drawing a route and then trying to nudge it out of trouble, every connector is now found with A* over a grid built from the node boundaries. Segments that would pass through a node are removed from the grid before the search runs, so crossing a node is impossible rather than merely unlikely, and the route that comes back is the shortest legal one rather than the first one that worked.",
     "All connectors are now solved together, shortest first, with each finished route marking the grid it occupied so later ones pay to reuse it and step aside instead. Three separate bugs were making this silently do nothing: the grid was rebuilt per connector so occupancy keys never matched, occupancy was recorded on simplified long segments that could never match the short segments the search looks up, and the cost of sharing was set too low to matter.",
