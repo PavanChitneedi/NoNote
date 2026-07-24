@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.59.1",date:"Jul 2026",items:[
+    "Fix: notes are no longer laid out as graph nodes. A note attached to a single node was being placed in the same layer as that node's real children, where it competed for a slot and got pushed away from its own parent — which is why note boxes kept landing across the map from the node they belong to. Notes attached to one node are now pulled out of the graph entirely and parked in a reserved gutter directly beside their parent. Notes shared by several nodes still lay out normally, since they genuinely belong in more than one place.",
+    "Result on the real homelab topology: 10/10 note boxes sit exactly in line with their parent, all exactly 60px away, in all four directions — including the TP Link case (a node with both notes and real children) that defeated the previous attempt.",
+    "Fix: single notes get the same treatment as grouped ones — previously only groups of 2+ were handled, so lone notes still drifted.",
+    "Result: every parent→note connector is now a dead straight line with zero bends, and no connector passes through any node.",
+  ]},
   {v:"v5.59.0",date:"Jul 2026",items:[
     "Fix: the router was avoiding the wrong boxes. Grouped notes draw as one box at the average of their members, but the obstacle list was built from the hidden members at their own positions — so edges dodged boxes that weren't on screen and ran straight behind the one that was. All geometry now uses what is actually rendered.",
     "Fix: note groups are now pinned exactly in line with their parent, and the parent's layer reserves the group's full height so that alignment is actually possible. Parent→note connectors are now dead straight with zero bends (measured 4/4 on the test map).",
