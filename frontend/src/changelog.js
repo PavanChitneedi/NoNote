@@ -1,6 +1,12 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.57.1",date:"Jul 2026",items:[
+    "Fix: Arrange treated each note in a group as a separate node, reserving a slot for every one and spreading them apart — while the canvas renders the group as a single box at their average position. Grouped notes are now laid out as one unit, so the box lands exactly where the layout put it.",
+    "Fix: Arrange now runs a straightening pass that pulls each node toward its actual neighbours instead of leaving it wherever its layer slot fell — cutting the long diagonal sweeping edges (longest edge down ~15-20% on real maps).",
+    "Fix: crossing-reduction now starts from the tree order and only keeps passes that measurably reduce crossings, so it can never come out worse than before on simple maps.",
+    "Improved: more breathing room between layers (80px → 140px) and tighter, more even spacing within them.",
+  ]},
   {v:"v5.57.0",date:"Jul 2026",items:[
     "Renamed: \"Layout\" → \"Arrange\" (toolbar button, command palette).",
     "Rewrote: the auto-arrange algorithm. It previously ordered nodes using only a single-parent spanning tree, ignoring every other real connection — causing long sweeping crossed arcs whenever a node had multiple parents or cross-links (exactly the network-topology case). It now uses proper barycenter crossing-reduction across ALL edges, iterated several passes, so node order within each layer actually minimizes edge crossings.",

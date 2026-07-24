@@ -463,27 +463,58 @@ function autoLayout(nodes, edges, direction='LR') {
   if (!nodes.length) return nodes;
   try {
     const PAD        = 80;   // canvas padding
-    const LAYER_GAP  = 80;   // gap between depth layers
-    const NODE_GAP   = 50;   // gap between sibling node edges
+    const LAYER_GAP  = 140;  // gap between depth layers (main axis)
+    const NODE_GAP   = 44;   // min gap between nodes within a layer (cross axis)
     const nodeW = n => n?.w || DEF_W;
     const nodeH = n => n?.h || DEF_H;
-    const nodeById = id => nodes.find(n => n.id === id);
+    const rawById = id => nodes.find(n => n.id === id);
     const isHoriz = direction === 'LR' || direction === 'RL';
 
-    // cross-axis size of a node
-    const crossSize = id => isHoriz ? nodeH(nodeById(id)) : nodeW(nodeById(id));
-    // main-axis size of a node
-    const mainSize  = id => isHoriz ? nodeW(nodeById(id)) : nodeH(nodeById(id));
-
-    // ── 1. Build adjacency ───────────────────────────────────────────
-    const children = {}, parents = {};
-    nodes.forEach(n => { children[n.id] = []; parents[n.id] = []; });
+    // ── 0. Collapse note-stacks into single layout units ─────────────
+    // Grouped notes (2+ notes sharing exactly one non-note parent) render on
+    // canvas as ONE box at the average of their positions. If the layout treats
+    // them as N separate nodes it reserves N slots and spreads them apart, which
+    // both wastes space and drags the rendered box away from where the layout
+    // "thinks" it is. Treat each stack as one unit, then assign every member the
+    // same final coordinate so the averaged box lands exactly on that slot.
+    const noteParents = {};
     edges.forEach(e => {
-      if (!children[e.from] || children[e.to] === undefined) return;
-      if (!children[e.from].includes(e.to)) {
-        children[e.from].push(e.to);
-        parents[e.to].push(e.from);
-      }
+      const fn = rawById(e.from), tn = rawById(e.to);
+      if (tn?.type === 'note' && fn?.type !== 'note') (noteParents[e.to]  = noteParents[e.to]  || []).push(e.from);
+      if (fn?.type === 'note' && tn?.type !== 'note') (noteParents[e.from]= noteParents[e.from]|| []).push(e.to);
+    });
+    const stackOf = {};   // parentId -> [noteId,...]
+    nodes.forEach(n => {
+      if (n.type !== 'note') return;
+      const ps = noteParents[n.id] || [];
+      if (ps.length === 1) (stackOf[ps[0]] = stackOf[ps[0]] || []).push(n.id);
+    });
+    const memberToUnit = {};  // noteId -> unitId
+    const unitMembers  = {};  // unitId -> [noteId,...]
+    Object.entries(stackOf).forEach(([pid, ids]) => {
+      if (ids.length < 2) return;
+      const unitId = `__stack__${pid}`;
+      unitMembers[unitId] = ids;
+      ids.forEach(id => { memberToUnit[id] = unitId; });
+    });
+    const unitId = id => memberToUnit[id] || id;
+    // Size of a unit: the rendered stack box, not the sum of its members.
+    const STACK_W = 240, STACK_H = 150;
+    const unitW = id => unitMembers[id] ? STACK_W : nodeW(rawById(id));
+    const unitH = id => unitMembers[id] ? STACK_H : nodeH(rawById(id));
+    const crossSize = id => isHoriz ? unitH(id) : unitW(id);
+    const mainSize  = id => isHoriz ? unitW(id) : unitH(id);
+
+    // Work on the collapsed unit graph from here on.
+    const unitIds = [...new Set(nodes.map(n => unitId(n.id)))];
+
+    // ── 1. Build adjacency (unit level, no self-loops) ───────────────
+    const children = {}, parents = {};
+    unitIds.forEach(u => { children[u] = []; parents[u] = []; });
+    edges.forEach(e => {
+      const a = unitId(e.from), b = unitId(e.to);
+      if (a === b || !children[a] || !children[b]) return;
+      if (!children[a].includes(b)) { children[a].push(b); parents[b].push(a); }
     });
 
     // ── 2. Break cycles (DFS back-edge removal) ──────────────────────
@@ -498,142 +529,207 @@ function autoLayout(nodes, edges, direction='LR') {
       }
       stk.delete(id);
     }
-    nodes.forEach(n => { if (!vis.has(n.id)) breakCycles(n.id); });
+    unitIds.forEach(u => { if (!vis.has(u)) breakCycles(u); });
 
-    // ── 3. Spanning tree: pick primary parent per node ────────────────
-    // For DAGs, each node belongs to exactly one parent in the layout tree.
-    const primaryParent = {};
+    // ── 3. Longest-path layering ─────────────────────────────────────
+    const depthOf = {};
     {
-      const depMemo = {};
+      const memo = {};
+      const seen = new Set();
       function d(id) {
-        if (depMemo[id] !== undefined) return depMemo[id];
-        const pd = parents[id].map(p => d(p));
-        return (depMemo[id] = pd.length ? Math.max(...pd)+1 : 0);
+        if (memo[id] !== undefined) return memo[id];
+        if (seen.has(id)) return 0;      // safety against any residual cycle
+        seen.add(id);
+        const pd = parents[id].map(p => d(p) + 1);
+        seen.delete(id);
+        return (memo[id] = pd.length ? Math.max(...pd) : 0);
       }
-      nodes.forEach(n => d(n.id));
-      nodes.forEach(n => {
-        if (!parents[n.id].length) return;
-        primaryParent[n.id] = parents[n.id].reduce((best,p) =>
-          depMemo[p] > depMemo[best] ? p : best);
-      });
+      unitIds.forEach(u => { depthOf[u] = d(u); });
     }
-    const treeKids = {};
-    nodes.forEach(n => { treeKids[n.id] = []; });
-    nodes.forEach(n => { if (primaryParent[n.id]) treeKids[primaryParent[n.id]].push(n.id); });
-    const roots = nodes.filter(n => !primaryParent[n.id]).map(n => n.id);
+    const maxDepth = Math.max(0, ...unitIds.map(u => depthOf[u]));
 
-    // ── 4. RADIAL layout ─────────────────────────────────────────────
+    // ── 4. RADIAL layout (unchanged behaviour, unit-aware) ───────────
     if (direction === 'radial') {
-      const cx=2000, cy=1500, radii=[0,300,560,820,1080,1340];
+      const cx=2000, cy=1500, radii=[0,320,600,880,1160,1440];
       const px={}, py={};
       const byDepth = Array.from({length:6}, ()=>[]);
-      function radDepth(id, li) { byDepth[Math.min(li,5)].push(id); treeKids[id].forEach(c=>radDepth(c,li+1)); }
-      roots.forEach(r=>radDepth(r,0));
+      unitIds.forEach(u => byDepth[Math.min(depthOf[u],5)].push(u));
       byDepth.forEach((layer,li) => {
         const r=radii[li];
         layer.forEach((id,i) => {
-          if (li===0) { px[id]=cx-nodeW(nodeById(id))/2; py[id]=cy-nodeH(nodeById(id))/2; }
+          if (li===0 && layer.length===1) { px[id]=cx-unitW(id)/2; py[id]=cy-unitH(id)/2; }
           else {
             const a=(i/Math.max(layer.length,1))*Math.PI*2-Math.PI/2;
-            px[id]=cx+r*Math.cos(a)-nodeW(nodeById(id))/2;
-            py[id]=cy+r*Math.sin(a)-nodeH(nodeById(id))/2;
+            px[id]=cx+r*Math.cos(a)-unitW(id)/2;
+            py[id]=cy+r*Math.sin(a)-unitH(id)/2;
           }
         });
       });
-      return nodes.map(n => px[n.id]!==undefined ? {...n,x:Math.round(px[n.id]),y:Math.round(py[n.id])} : n);
+      return nodes.map(n => {
+        const u = unitId(n.id);
+        return px[u]!==undefined ? {...n, x:Math.round(px[u]), y:Math.round(py[u])} : n;
+      });
     }
 
-    // ── 5. Compute depths ────────────────────────────────────────────
-    const depthOf = {};
-    function setDepth(id, d) { depthOf[id]=d; treeKids[id].forEach(c=>setDepth(c,d+1)); }
-    roots.forEach(r => setDepth(r, 0));
-    const maxDepth = Math.max(...nodes.map(n => depthOf[n.id]||0));
-
-    // ── 6. Absolute layer MAIN-axis positions ────────────────────────
-    // All nodes at depth D get the same main-axis coordinate.
-    // Layer width = max node main-size at that depth.
+    // ── 5. Main-axis position per layer ──────────────────────────────
     const layerPos = [];
     let curMain = PAD;
     for (let d = 0; d <= maxDepth; d++) {
       layerPos[d] = curMain;
-      const atD = nodes.filter(n => depthOf[n.id] === d);
-      const maxMain = atD.length ? Math.max(...atD.map(n => mainSize(n.id))) : (DEF_W);
-      curMain += maxMain + LAYER_GAP;
+      const atD = unitIds.filter(u => depthOf[u] === d);
+      curMain += (atD.length ? Math.max(...atD.map(mainSize)) : DEF_W) + LAYER_GAP;
     }
 
-    // ── 7. Order nodes WITHIN each depth layer to minimize edge crossings ──
-    // The tree above only decides which LAYER (depth) a node sits in. Ordering
-    // nodes within a layer using only the primary-parent tree ignores every
-    // other real edge (multi-parent links, cross-links between branches) —
-    // that's what produced the long sweeping/crossing arcs. Instead, use the
-    // classic layered-graph-drawing fix: barycenter crossing reduction over
-    // ALL edges, iterated a few passes forward and backward.
+    // ── 6. Order within each layer — barycenter crossing reduction ────
     const layers = [];
-    nodes.forEach(n => { const d = depthOf[n.id] || 0; (layers[d] = layers[d] || []).push(n.id); });
+    unitIds.forEach(u => { const d = depthOf[u]; (layers[d] = layers[d] || []).push(u); });
 
-    const neighbors = {};
-    nodes.forEach(n => { neighbors[n.id] = new Set(); });
-    edges.forEach(e => {
-      if (!neighbors[e.from] || !neighbors[e.to]) return;
-      neighbors[e.from].add(e.to);
-      neighbors[e.to].add(e.from);
-    });
+    // Seed the order with a DFS of the spanning tree. A pure barycenter run
+    // starting from arbitrary insertion order can settle into a worse local
+    // optimum than the tree order on tree-shaped graphs (the common case), so
+    // start from the tree and let barycenter fix only what the tree gets wrong.
+    {
+      const primaryParent = {};
+      unitIds.forEach(u => {
+        if (!parents[u].length) return;
+        primaryParent[u] = parents[u].reduce((best,p) => depthOf[p] > depthOf[best] ? p : best);
+      });
+      const treeKids = {};
+      unitIds.forEach(u => { treeKids[u] = []; });
+      unitIds.forEach(u => { if (primaryParent[u]) treeKids[primaryParent[u]].push(u); });
+      const roots = unitIds.filter(u => !primaryParent[u]);
+      const seq = [];
+      const seenDfs = new Set();
+      (function dfsAll(list) {
+        list.forEach(function walk(id) {
+          if (seenDfs.has(id)) return;
+          seenDfs.add(id); seq.push(id);
+          treeKids[id].forEach(walk);
+        });
+      })(roots);
+      unitIds.forEach(u => { if (!seenDfs.has(u)) seq.push(u); });
+      const rank = Object.fromEntries(seq.map((id,i) => [id,i]));
+      layers.forEach(layer => layer && layer.sort((a,b) => rank[a]-rank[b]));
+    }
 
     const orderIndex = {};
-    layers.forEach(layer => { if(layer) layer.forEach((id,i) => orderIndex[id]=i); });
+    layers.forEach(layer => layer && layer.forEach((id,i) => { orderIndex[id] = i; }));
 
-    function sortLayerByBarycenter(layer, refSet) {
+    // Count crossings between every adjacent layer pair for the current order.
+    function countCrossings() {
+      let total = 0;
+      for (let d = 0; d < layers.length-1; d++) {
+        if (!layers[d] || !layers[d+1]) continue;
+        const pairs = [];
+        layers[d].forEach(u => children[u].forEach(v => {
+          if (depthOf[v] === d+1) pairs.push([orderIndex[u], orderIndex[v]]);
+        }));
+        for (let i = 0; i < pairs.length; i++)
+          for (let j = i+1; j < pairs.length; j++)
+            if ((pairs[i][0]-pairs[j][0]) * (pairs[i][1]-pairs[j][1]) < 0) total++;
+      }
+      return total;
+    }
+
+    function sortLayer(layer, refIds) {
+      const ref = new Set(refIds || []);
       const bc = {};
       layer.forEach(id => {
-        const neigh = [...neighbors[id]].filter(nid => refSet.has(nid));
-        bc[id] = neigh.length ? neigh.reduce((s,nid)=>s+orderIndex[nid],0)/neigh.length : orderIndex[id];
+        const nb = [...parents[id], ...children[id]].filter(x => ref.has(x));
+        bc[id] = nb.length ? nb.reduce((s,x)=>s+orderIndex[x],0)/nb.length : orderIndex[id];
       });
-      layer.sort((a,b) => bc[a]-bc[b]);
-      layer.forEach((id,i) => orderIndex[id]=i);
+      layer.sort((a,b) => bc[a]-bc[b] || orderIndex[a]-orderIndex[b]);
+      layer.forEach((id,i) => { orderIndex[id] = i; });
     }
 
-    const CROSSING_PASSES = 6;
-    for (let it = 0; it < CROSSING_PASSES; it++) {
-      if (it % 2 === 0) {
-        for (let d = 1; d < layers.length; d++) {
-          if (!layers[d]) continue;
-          sortLayerByBarycenter(layers[d], new Set(layers[d-1]||[]));
-        }
-      } else {
-        for (let d = layers.length-2; d >= 0; d--) {
-          if (!layers[d]) continue;
-          sortLayerByBarycenter(layers[d], new Set(layers[d+1]||[]));
-        }
-      }
+    // Only keep a pass if it actually reduced crossings — never regress.
+    let bestCross = countCrossings();
+    let bestOrder = layers.map(l => l ? [...l] : l);
+    for (let it = 0; it < 8 && bestCross > 0; it++) {
+      if (it % 2 === 0) for (let d = 1; d < layers.length; d++)      layers[d] && sortLayer(layers[d], layers[d-1]);
+      else               for (let d = layers.length-2; d >= 0; d--)   layers[d] && sortLayer(layers[d], layers[d+1]);
+      const c = countCrossings();
+      if (c < bestCross) { bestCross = c; bestOrder = layers.map(l => l ? [...l] : l); }
     }
+    bestOrder.forEach((l,d) => { if (l) layers[d] = l; });
+    layers.forEach(layer => layer && layer.forEach((id,i) => { orderIndex[id] = i; }));
 
-    // ── 8. Pack each (now crossing-minimized) layer along the cross-axis ──
-    const px = {}, py = {};
-    layers.forEach((layer, d) => {
+    // ── 7. Cross-axis coordinates — straighten toward neighbours ─────
+    // Pack once, then repeatedly pull each node toward the average cross
+    // position of its actual neighbours and re-resolve overlaps. This is what
+    // keeps a parent sitting beside its children instead of at the top of a
+    // long column, which is what caused the long diagonal sweeping edges.
+    const cross = {};
+    layers.forEach(layer => {
       if (!layer) return;
-      let cross = PAD;
-      layer.forEach(id => {
-        const cs = crossSize(id);
-        if (isHoriz) { px[id]=layerPos[d]; py[id]=cross; }
-        else          { px[id]=cross;       py[id]=layerPos[d]; }
-        cross += cs + NODE_GAP;
+      let c = PAD;
+      layer.forEach(id => { cross[id] = c; c += crossSize(id) + NODE_GAP; });
+    });
+
+    function resolveOverlaps(layer) {
+      // forward sweep: enforce min separation in current order
+      for (let i = 1; i < layer.length; i++) {
+        const prev = layer[i-1], cur = layer[i];
+        const minC = cross[prev] + crossSize(prev) + NODE_GAP;
+        if (cross[cur] < minC) cross[cur] = minC;
+      }
+      // backward sweep: reclaim slack so the block stays compact
+      for (let i = layer.length-2; i >= 0; i--) {
+        const next = layer[i+1], cur = layer[i];
+        const maxC = cross[next] - NODE_GAP - crossSize(cur);
+        if (cross[cur] > maxC) cross[cur] = maxC;
+      }
+      // never drift above the canvas padding
+      const minStart = Math.min(...layer.map(id => cross[id]));
+      if (minStart < PAD) layer.forEach(id => { cross[id] += PAD - minStart; });
+    }
+
+    for (let it = 0; it < 12; it++) {
+      const order = it % 2 === 0
+        ? [...layers.keys()]
+        : [...layers.keys()].reverse();
+      order.forEach(d => {
+        const layer = layers[d];
+        if (!layer) return;
+        layer.forEach(id => {
+          const nb = it % 2 === 0 ? parents[id] : children[id];
+          const ref = nb.length ? nb : [...parents[id], ...children[id]];
+          if (!ref.length) return;
+          // align centres, not top edges
+          const target = ref.reduce((s,x) => s + cross[x] + crossSize(x)/2, 0) / ref.length;
+          cross[id] = target - crossSize(id)/2;
+        });
+        resolveOverlaps(layer);
       });
+    }
+    layers.forEach(layer => layer && resolveOverlaps(layer));
+
+    // ── 8. Assemble unit coordinates ─────────────────────────────────
+    const px = {}, py = {};
+    unitIds.forEach(u => {
+      const d = depthOf[u];
+      if (isHoriz) { px[u] = layerPos[d]; py[u] = cross[u]; }
+      else          { px[u] = cross[u];    py[u] = layerPos[d]; }
     });
 
     // ── 9. Flip for RL / BT ──────────────────────────────────────────
     if (direction === 'RL' || direction === 'BT') {
-      const maxMain = Math.max(...nodes.map(n =>
-        isHoriz ? (px[n.id]??PAD) + nodeW(nodeById(n.id))
-                : (py[n.id]??PAD) + nodeH(nodeById(n.id))
-      ));
-      nodes.forEach(n => {
-        if (isHoriz) px[n.id] = maxMain - (px[n.id]??PAD) - nodeW(nodeById(n.id)) + PAD;
-        else         py[n.id] = maxMain - (py[n.id]??PAD) - nodeH(nodeById(n.id)) + PAD;
+      const maxMain = Math.max(...unitIds.map(u =>
+        isHoriz ? px[u] + unitW(u) : py[u] + unitH(u)));
+      unitIds.forEach(u => {
+        if (isHoriz) px[u] = maxMain - px[u] - unitW(u) + PAD;
+        else         py[u] = maxMain - py[u] - unitH(u) + PAD;
       });
     }
 
-    // ── 10. Assemble ──────────────────────────────────────────────────
-    return nodes.map(n => ({ ...n, x: Math.round(px[n.id]??PAD), y: Math.round(py[n.id]??PAD) }));
+    // ── 10. Expand units back to real nodes ──────────────────────────
+    // Stack members all share the unit's coordinate so the averaged stack box
+    // renders exactly on the reserved slot.
+    return nodes.map(n => {
+      const u = unitId(n.id);
+      if (px[u] === undefined) return n;
+      return { ...n, x: Math.round(px[u]), y: Math.round(py[u]) };
+    });
 
   } catch(err) {
     console.error('[autoLayout]', err);
