@@ -775,9 +775,115 @@ function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
   }
 }
 
-// ── Anchor system ────────────────────────────────────────────
-// anchor: { side: "top"|"bottom"|"left"|"right"|"auto", t: 0-1 }
-// t=0.5 is midpoint of that side. "auto" means compute from direction.
+// ── Orthogonal (Manhattan) edge routing ──────────────────────────
+// Curved beziers between two points can't avoid anything: they pass straight
+// through nodes, overlap each other when several edges share a corridor, and
+// balloon into big loops on long spans. Orthogonal routing fixes all three by
+// (a) leaving each node perpendicular to its face, (b) travelling down a
+// dedicated "lane" in the empty channel between nodes, and (c) checking that
+// lane against every node rectangle before committing to it.
+
+// Turn a polyline into an SVG path with rounded corners.
+function roundedPolyPath(pts, r = 14) {
+  const P = [];
+  pts.forEach(p => {
+    const last = P[P.length-1];
+    if (!last || Math.abs(last.x-p.x) > 0.5 || Math.abs(last.y-p.y) > 0.5) P.push(p);
+  });
+  if (P.length < 2) return '';
+  let d = `M ${P[0].x} ${P[0].y}`;
+  for (let i = 1; i < P.length-1; i++) {
+    const p = P[i], prev = P[i-1], next = P[i+1];
+    const v1 = { x: p.x-prev.x, y: p.y-prev.y };
+    const v2 = { x: next.x-p.x, y: next.y-p.y };
+    const l1 = Math.hypot(v1.x,v1.y) || 1, l2 = Math.hypot(v2.x,v2.y) || 1;
+    const rr = Math.min(r, l1/2, l2/2);
+    d += ` L ${p.x - v1.x/l1*rr} ${p.y - v1.y/l1*rr}`;
+    d += ` Q ${p.x} ${p.y}, ${p.x + v2.x/l2*rr} ${p.y + v2.y/l2*rr}`;
+  }
+  const last = P[P.length-1];
+  return d + ` L ${last.x} ${last.y}`;
+}
+
+// Does an axis-aligned segment pass through any obstacle rectangle?
+function segHitsRects(x1, y1, x2, y2, rects, pad = 8) {
+  const lo = (a,b) => Math.min(a,b), hi = (a,b) => Math.max(a,b);
+  const sx1 = lo(x1,x2), sx2 = hi(x1,x2), sy1 = lo(y1,y2), sy2 = hi(y1,y2);
+  return rects.some(r => {
+    const rx1 = r.x - pad, ry1 = r.y - pad;
+    const rx2 = r.x + r.w + pad, ry2 = r.y + r.h + pad;
+    return sx1 < rx2 && sx2 > rx1 && sy1 < ry2 && sy2 > ry1;
+  });
+}
+
+// Build an orthogonal route. `lane` is the preferred coordinate of the middle
+// travel segment; obstacles are the node rects to route around.
+function orthoRoute(fp, fn1, tp, fn2, lane, obstacles = []) {
+  const STUB = 26;                       // straight run off the node face
+  const a = { x: fp.x + fn1.dx*STUB, y: fp.y + fn1.dy*STUB };
+  const b = { x: tp.x + fn2.dx*STUB, y: tp.y + fn2.dy*STUB };
+  const horizExit  = Math.abs(fn1.dx) > 0.5;
+  const horizEnter = Math.abs(fn2.dx) > 0.5;
+
+  const mk = (mid) => {
+    if (horizExit && horizEnter) return [fp, a, {x:mid,y:a.y}, {x:mid,y:b.y}, b, tp];
+    if (!horizExit && !horizEnter) return [fp, a, {x:a.x,y:mid}, {x:b.x,y:mid}, b, tp];
+    if (horizExit && !horizEnter) return [fp, a, {x:b.x,y:a.y}, b, tp];
+    return [fp, a, {x:a.x,y:b.y}, b, tp];
+  };
+
+  const bothSameAxis = (horizExit && horizEnter) || (!horizExit && !horizEnter);
+  if (!bothSameAxis) return mk(0);
+
+  const base = lane !== undefined && lane !== null
+    ? lane
+    : (horizExit ? (a.x + b.x)/2 : (a.y + b.y)/2);
+
+  // Try the assigned lane first, then progressively wider offsets if the
+  // travel segment would cut through a node.
+  const hits = (mid) => {
+    const pts = mk(mid);
+    for (let i = 0; i < pts.length-1; i++) {
+      if (segHitsRects(pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, obstacles)) return true;
+    }
+    return false;
+  };
+  if (!hits(base)) return mk(base);
+  for (let step = 1; step <= 12; step++) {
+    for (const sign of [1,-1]) {
+      const cand = base + sign*step*26;
+      if (!hits(cand)) return mk(cand);
+    }
+  }
+
+  // Still blocked — the edge has to cross a whole row/column of nodes. Shifting
+  // the single travel segment can't help, because it's the legs at the source
+  // and target heights that are hitting things. Use a 5-segment route instead:
+  // step out, run along a clear corridor *between* rows, then come back in.
+  const corridorHits = (c) => {
+    const pts = horizExit
+      ? [fp, a, {x:a.x,y:c}, {x:b.x,y:c}, b, tp]
+      : [fp, a, {x:c,y:a.y}, {x:c,y:b.y}, b, tp];
+    for (let i = 0; i < pts.length-1; i++) {
+      if (segHitsRects(pts[i].x, pts[i].y, pts[i+1].x, pts[i+1].y, obstacles)) return null;
+    }
+    return pts;
+  };
+  // Candidate corridors: the gaps between obstacle edges, nearest first.
+  const bounds = [];
+  obstacles.forEach(r => {
+    if (horizExit) { bounds.push(r.y - 30, r.y + r.h + 30); }
+    else           { bounds.push(r.x - 30, r.x + r.w + 30); }
+  });
+  const from = horizExit ? fp.y : fp.x;
+  bounds.sort((p,q) => Math.abs(p-from) - Math.abs(q-from));
+  for (const c of bounds) {
+    const pts = corridorHits(c);
+    if (pts) return pts;
+  }
+  return mk(base);
+}
+
 function anchorToPoint(node, nw, nh, anchor) {
   const {side, t=0.5} = anchor;
   switch(side) {
@@ -1172,6 +1278,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [nodePopup,      setNodePopup]      = useState(null); // {nodeId, tab}
   const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
+  // Edge routing: 'curved' (bezier, original) | 'ortho' (right-angle, obstacle-aware)
+  const [edgeRouting,   setEdgeRouting]   = useState(()=>localStorage.getItem('nn_edge_routing')||'curved');
+  const setEdgeRoutingPersist=(m)=>{setEdgeRouting(m);localStorage.setItem('nn_edge_routing',m);};
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
   const [showChangelog,    setShowChangelog]    = useState(false);
   const [showDocExport,    setShowDocExport]     = useState(false);
@@ -2417,6 +2526,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     // Groups edges by (nodeId, side, from|to) and assigns evenly-spread t-values
     // so multiple arrows on the same face don't stack on the same pixel.
     //
+    // CRITICAL: each group is SORTED by where the *other* end of the edge sits.
+    // Assigning ports in edge-array order guarantees crossings whenever two
+    // edges leave the same face toward targets in the opposite vertical order —
+    // the edge heading to the lower node would get the upper port and the two
+    // would have to cross right at the node. Sorting removes that entire class
+    // of crossing for free.
+    //
     // IMPORTANT: uses node.w/node.h (stored) NOT collW/collH (DOM ref) —
     // refs don't trigger memo updates so face decisions would be stale.
     const portGroups = {};
@@ -2430,29 +2546,69 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if (!edge.fromAnchor || edge.fromAnchor.side==="auto") {
         const {from:fSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
         const k=`${edge.from}:${fSide}:from`;
-        (portGroups[k]=portGroups[k]||[]).push(edge.id);
+        // rank = position of the OTHER end along this face's spread axis
+        const rank = (fSide==="left"||fSide==="right") ? (t.y+th/2) : (t.x+tw/2);
+        (portGroups[k]=portGroups[k]||[]).push({id:edge.id, rank});
       }
       if (!edge.toAnchor || edge.toAnchor.side==="auto") {
         const {to:tSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
         const k=`${edge.to}:${tSide}:to`;
-        (portGroups[k]=portGroups[k]||[]).push(edge.id);
+        const rank = (tSide==="left"||tSide==="right") ? (f.y+fh/2) : (f.x+fw/2);
+        (portGroups[k]=portGroups[k]||[]).push({id:edge.id, rank});
       }
     });
 
-    // Spread t-values evenly across [0.2, 0.8]:
+    // Spread t-values evenly across [0.2, 0.8], in sorted order:
     //   1 edge  → 0.5
     //   2 edges → 0.27, 0.73
     //   3 edges → 0.2, 0.5, 0.8
     const tMap = {};
     Object.entries(portGroups).forEach(([key, group]) => {
       const role = key.split(":")[2];
+      group.sort((a,b)=>a.rank-b.rank);
       const n = group.length;
-      group.forEach((edgeId, i) => {
-        tMap[`${edgeId}:${role}`] = n===1 ? 0.5 : 0.2+(i/(n-1))*0.6;
+      group.forEach((item, i) => {
+        tMap[`${item.id}:${role}`] = n===1 ? 0.5 : 0.2+(i/(n-1))*0.6;
       });
     });
     return tMap;
   }, [edges, nodes]);
+
+  // ── Lane assignment for orthogonal routing ───────────────────────
+  // Every edge that travels through the same channel gets its own lane
+  // coordinate, so parallel runs never sit on top of each other.
+  const edgeLaneMap = useMemo(()=>{
+    if (edgeRouting !== "ortho") return {};
+    const lanes = {};
+    const groups = {};
+    edges.forEach(edge => {
+      const f = nodes.find(n=>n.id===edge.from);
+      const t = nodes.find(n=>n.id===edge.to);
+      if (!f || !t) return;
+      const fw=f.w||220, fh=f.h||96, tw=t.w||220, th=t.h||96;
+      const {from:fSide,to:tSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
+      const horiz = (fSide==="left"||fSide==="right");
+      // channel = the gap between the two facing edges
+      const gapLo = horiz ? Math.min(f.x+fw, t.x+tw) : Math.min(f.y+fh, t.y+th);
+      const gapHi = horiz ? Math.max(f.x, t.x)       : Math.max(f.y, t.y);
+      const key = `${horiz?"h":"v"}:${Math.round(gapLo/40)}:${Math.round(gapHi/40)}`;
+      const cross = horiz ? (t.y+th/2) : (t.x+tw/2);
+      (groups[key]=groups[key]||[]).push({ id:edge.id, gapLo, gapHi, cross });
+    });
+    Object.values(groups).forEach(group => {
+      group.sort((a,b)=>a.cross-b.cross);
+      const n = group.length;
+      group.forEach((item, i) => {
+        const lo = Math.min(item.gapLo, item.gapHi), hi = Math.max(item.gapLo, item.gapHi);
+        const span = hi - lo;
+        // keep lanes inside the channel, evenly spread, never hugging a node face
+        const inset = Math.min(30, span*0.25);
+        const usable = Math.max(0, span - inset*2);
+        lanes[item.id] = n===1 ? lo + span/2 : lo + inset + (usable * (i/(n-1)));
+      });
+    });
+    return lanes;
+  }, [edges, nodes, edgeRouting]);
 
   const getEdgePath=(fromNode,toNode,edge={})=>{
     const fw=collW(fromNode), fh=collH(fromNode);
@@ -2518,6 +2674,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const t=getPortT("to");
       const pt=sidePt(toNode,tw,th,tSide,t);
       tp=pt; fn2=pt.normal;
+    }
+
+    // ── Orthogonal routing ─────────────────────────────────────────
+    if (edgeRouting === "ortho" && !edge.midOff) {
+      const obstacles = nodes
+        .filter(n => n.id !== fromNode.id && n.id !== toNode.id)
+        .map(n => ({ x:n.x, y:n.y, w:collW(n), h:collH(n) }));
+      const pts = orthoRoute(fp, fn1, tp, fn2, edgeLaneMap[edge.id], obstacles);
+      const path = roundedPolyPath(pts, 14);
+      // midpoint = middle vertex of the travel segment, for labels/handles
+      const midIdx = Math.max(1, Math.floor(pts.length/2));
+      const mid = { x:(pts[midIdx-1].x+pts[midIdx].x)/2, y:(pts[midIdx-1].y+pts[midIdx].y)/2 };
+      return { path, fp, tp, mid };
     }
 
     // Bezier control points — adaptive S-curve
@@ -3807,6 +3976,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               )}
 
               <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
+
+              {/* Edge routing: curved vs orthogonal */}
+              <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}
+                title="Connector style — Orthogonal routes around nodes at right angles and never overlaps">
+                {[["curved","⌒","Curved"],["ortho","⌐","Right-angle"]].map(([m,ic,lbl])=>(
+                  <button key={m} onClick={()=>setEdgeRoutingPersist(m)}
+                    style={{padding:"4px 8px",border:"none",cursor:"pointer",fontSize:11,
+                      fontFamily:"var(--font-ui)",fontWeight:700,
+                      background:edgeRouting===m?"var(--accent2)":"transparent",
+                      color:edgeRouting===m?"#fff":"var(--text4)",transition:"all .15s"}}
+                    title={lbl}>{ic}</button>
+                ))}
+              </div>
 
               {/* Layout with direction picker */}
               <div style={{position:"relative",flexShrink:0}}>

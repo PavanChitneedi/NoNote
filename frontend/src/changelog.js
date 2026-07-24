@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.58.0",date:"Jul 2026",items:[
+    "New: Right-angle connector routing — a new toggle beside Arrange switches edges between Curved (original) and Right-angle. Right-angle mode routes edges around nodes instead of through them, gives every edge its own lane in the gap between nodes so parallel runs never sit on top of each other, and falls back to a clear corridor between rows when an edge has to cross a whole column.",
+    "Fix: arrows crossing each other right at a node. Ports were assigned in edge-list order rather than by where the other end sits, so an edge heading to a lower node could be given the upper port — forcing the two to cross. Ports are now sorted by target position, which removes that entire class of crossing in both routing modes.",
+    "Measured on the homelab-style test map: right-angle routing gives 0 edges passing through a node and 0 overlapping runs, down from 3 and 2.",
+  ]},
   {v:"v5.57.1",date:"Jul 2026",items:[
     "Fix: Arrange treated each note in a group as a separate node, reserving a slot for every one and spreading them apart — while the canvas renders the group as a single box at their average position. Grouped notes are now laid out as one unit, so the box lands exactly where the layout put it.",
     "Fix: Arrange now runs a straightening pass that pulls each node toward its actual neighbours instead of leaving it wherever its layer slot fell — cutting the long diagonal sweeping edges (longest edge down ~15-20% on real maps).",
