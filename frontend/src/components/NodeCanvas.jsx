@@ -488,6 +488,7 @@ function autoLayout(nodes, edges, direction='LR') {
     const annoOf = {};   // parentId -> [noteId,...]
     nodes.forEach(n => {
       if (n.type !== 'note') return;
+      if (n.customProps?._ungrouped) return;   // manually pulled out of its stack
       const ps = [...new Set(noteParents[n.id] || [])];
       if (ps.length === 1 && rawById(ps[0])) (annoOf[ps[0]] = annoOf[ps[0]] || []).push(n.id);
     });
@@ -915,7 +916,13 @@ function computePortMap(nodes, edges) {
 const ANNO_T = 0.32;
 // Collapsed height of a note-group box: header + up to three preview rows,
 // plus a "+N more" row when there are extras. autoLayout reserves exactly this.
-const STACK_BOX_H = n => 76 + 18*Math.min(n,3) + (n>3 ? 18 : 0);
+// Collapsed content is now fixed (header + one note's title + one snippet
+// line) regardless of how many notes are in the stack, so the reserved
+// height no longer scales with count. It stays a function of n for call-site
+// compatibility, but the box height is hard-pinned via CSS either way, so
+// this number IS the real height — it just needs to comfortably fit the
+// content, not predict it.
+const STACK_BOX_H = () => 96;
 
 // ── A* orthogonal router ─────────────────────────────────────────
 // Heuristics can only ever approximate. This searches for the genuinely
@@ -3586,6 +3593,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const stacks = {}; // parentId → noteNode[]
     nodes.forEach(n => {
       if (n.type !== 'note') return;
+      if (n.customProps?._ungrouped) return;   // manually pulled out of its stack
       const parents = noteParents[n.id] || [];
       if (parents.length === 1) {
         const pid = parents[0];
@@ -3646,20 +3654,32 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           <div
             onMouseDown={e=>{ e.stopPropagation(); if(!isExpanded) startDrag(e.clientX,e.clientY,stackNotes[0].id); }}
             style={{
+              position:'relative',
+              cursor: isExpanded ? 'default' : 'grab',
+            }}>
+            {/* Peek layers behind the top card — the "it's a stack" cue.
+                Capped at 2 so it reads as "stacked", not as a pile. */}
+            {!isExpanded && [...Array(Math.min(stackNotes.length-1,2))].map((_,i)=>(
+              <div key={i} style={{
+                position:'absolute', left:(i+1)*5, top:(i+1)*5, right:-(i+1)*5,
+                bottom:-(i+1)*5, zIndex:-1-i,
+                background:'var(--node-bg)',
+                border:`var(--node-border-w) solid ${t.color}${i===0?'45':'28'}`,
+                borderRadius:'var(--radius-node)',
+              }}/>
+            ))}
+            <div style={{
               background:'var(--node-bg)',
               border:`var(--node-border-w) solid ${t.color}65`,
               borderRadius:'var(--radius-node)',
               boxShadow:'var(--shadow-node)',
               overflow:'hidden',
-              cursor: isExpanded ? 'default' : 'grab',
-              // Stack visual: offset shadows underneath
-              '--stack-shadow': `3px 3px 0 1px ${t.color}22`,
             }}>
             {/* Stack header */}
             <div style={{background:`${t.color}1a`,borderBottom:`1px solid ${t.color}28`,padding:'7px 10px 6px',
               display:'flex',alignItems:'center',gap:6,cursor:'pointer'}}
               onClick={toggleStack}>
-              <span style={{fontSize:14}}>📝</span>
+              <Layers size={13} color={t.color} style={{flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:11,fontWeight:700,color:'var(--text)',
                   overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
@@ -3677,23 +3697,22 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               </span>
             </div>
 
-            {/* Collapsed: stacked card preview lines */}
-            {!isExpanded && (
-              <div style={{padding:'6px 10px',display:'flex',flexDirection:'column',gap:2}}>
-                {stackNotes.slice(0,3).map((n,i)=>(
-                  <div key={n.id} style={{fontSize:10,color:'var(--text4)',
-                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',
-                    opacity:1-(i*0.25)}}>
-                    {n.title||'Note'}
-                  </div>
-                ))}
-                {stackNotes.length>3&&(
-                  <div style={{fontSize:9,color:'var(--text4)',opacity:.4}}>
-                    +{stackNotes.length-3} more…
+            {/* Collapsed: only the top note, like the top card of a deck */}
+            {!isExpanded && (()=>{ const top=stackNotes[0]; return (
+              <div style={{padding:'8px 10px'}}>
+                <div style={{fontSize:11,fontWeight:600,color:'var(--text)',
+                  overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap',marginBottom:top.node_notes?3:0}}>
+                  {top.title||'Note'}
+                </div>
+                {top.node_notes && !top.notes_private && (
+                  <div style={{fontSize:10,color:'var(--text4)',
+                    overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                    {top.node_notes.replace(/[#*`_>]/g,'').slice(0,60)}
                   </div>
                 )}
+                {top.notes_private && <div style={{fontSize:9,color:'var(--text4)'}}>🔒 Private</div>}
               </div>
-            )}
+            );})()}
 
             {/* Expanded: accordion rows */}
             {isExpanded && (
@@ -3720,6 +3739,22 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                         </span>
                         {n.notes_private&&<span style={{fontSize:9,color:'var(--danger)',flexShrink:0}}>🔒</span>}
                         {canEdit&&editMode&&(
+                          <button onClick={e=>{
+                              e.stopPropagation();
+                              // Pull this one note out: flag it so it's excluded from
+                              // auto-stacking, and nudge it clear of the group box so
+                              // it doesn't render hidden underneath it.
+                              applyNodes(ns=>ns.map(x=>x.id===n.id
+                                ? {...x, x:avgX+270, y:avgY+(i*40), customProps:{...x.customProps,_ungrouped:true}}
+                                : x));
+                            }}
+                            style={{background:'none',border:'none',color:'var(--text4)',cursor:'pointer',
+                              fontSize:9,padding:'0 3px',flexShrink:0,display:'flex',alignItems:'center',gap:2}}
+                            title="Ungroup — make this its own note">
+                            <Layers size={10}/>✕
+                          </button>
+                        )}
+                        {canEdit&&editMode&&(
                           <button onClick={e=>{e.stopPropagation();setNodePopup({nodeId:n.id,tab:'notes'});}}
                             style={{background:'none',border:'none',color:'var(--text4)',cursor:'pointer',
                               fontSize:10,padding:'0 2px',flexShrink:0}}
@@ -3738,15 +3773,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 })}
               </div>
             )}
+            </div>
           </div>
-
-          {/* Pseudo-stack depth lines behind card */}
-          <div style={{position:'absolute',top:3,left:3,right:-3,bottom:-3,
-            background:'var(--node-bg)',border:`1px solid ${t.color}35`,
-            borderRadius:'var(--radius-node)',zIndex:-1}}/>
-          <div style={{position:'absolute',top:6,left:6,right:-6,bottom:-6,
-            background:'var(--node-bg)',border:`1px solid ${t.color}20`,
-            borderRadius:'var(--radius-node)',zIndex:-2}}/>
         </div>
       );
     });

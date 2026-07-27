@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.62.0",date:"Jul 2026",items:[
+    "New: redesigned grouped-note cards. Collapsed, a stack now shows only its top note (title + a one-line preview) instead of a list of every note squeezed in — with a layered-card icon and a subtle peek of the cards behind it as the \"this is a stack\" cue.",
+    "New: Ungroup — expand a stack and each note gets a small button to pull it out on its own. It becomes a normal standalone note immediately (no re-grouping on the next Arrange), positioned just clear of the stack so it's not hidden underneath it.",
+    "Fix: the stack box's reserved height was calculated for the old multi-line preview. Since the preview is now fixed-size regardless of note count, the reserved height no longer scales with count either — otherwise the box height assumption would drift from what actually renders and reintroduce the bent-connector bug from the routing rewrite.",
+  ]},
   {v:"v5.61.1",date:"Jul 2026",items:[
     "Fix: a failure anywhere in connector routing could take the whole canvas down and show the Application Error screen. Routing is now contained — if it fails it falls back to the previous router and then to a plain curve, so an ugly connector can never cost you the map.",
     "Fix: index.html was allowed to be cached. It names the hashed bundle files, so a stale copy points at bundles that no longer exist after a deploy, which produces confusing errors that look like application bugs. It is now served no-cache.",
