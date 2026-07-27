@@ -2,7 +2,7 @@
 
 Self-hosted mind-mapping and network diagram application for homelabbers and sysadmins.
 
-**Current version: v5.37.0**
+**Current version: v5.63.2**
 
 ---
 
@@ -37,7 +37,7 @@ cd NoNote
 
 # Configure
 cp .env.example .env
-# Edit .env — set JWT_SECRET, DB passwords, LLM keys
+# Edit .env — set JWT_ACCESS_SECRET / JWT_REFRESH_SECRET, DB passwords, LLM keys
 
 # Run
 docker compose up -d --build
@@ -52,7 +52,7 @@ Access at `https://your-host/` (Nginx handles SSL termination).
 ## Configuration (.env)
 
 ```env
-JWT_SECRET=your-secret-here
+JWT_ACCESS_SECRET=your-secret-here
 JWT_REFRESH_SECRET=your-refresh-secret-here
 POSTGRES_PASSWORD=yourpassword
 REDIS_PASSWORD=yourpassword
@@ -77,22 +77,17 @@ GEMINI_API_KEY=AIza...
 | `docs/ARCHITECTURE.md` | Component tree, API endpoints, DB schema, security controls |
 | `docs/FEATURES.md` | Feature inventory by page |
 | `docs/SKINS.md` | Skin + theme system, adding new skins/themes |
-| `docs/TASKS.md` | Pending tasks and roadmap |
 | `CLAUDE.md` | Developer handover — read first in any new session |
-| `AUDIT_REPORT.md` | Pre-production security audit findings (v5.36+) |
 
 ---
 
 ## Security
 
-As of v5.37.0 all critical and high audit findings are resolved:
 - Per-map RBAC on REST routes, WebSocket JOIN, and version history
-- Integration proxy SSRF guard (blocks RFC-1918, loopback, Docker internals)
-- TLS verification scoped — only disabled for homelab integration proxy
+- Integration proxy SSRF guard — blocks loopback, cloud-metadata (`169.254.x`), and named Docker-internal hosts; RFC-1918 private IPs are intentionally allowed, since that's where homelab appliances live
+- TLS verification scoped — only disabled for the homelab integration proxy
 - Automatic refresh token cleanup
 - Frontend served with Content-Security-Policy headers
-
-See `AUDIT_REPORT.md` for full details.
 
 ---
 
@@ -101,9 +96,11 @@ See `AUDIT_REPORT.md` for full details.
 ```bash
 # Backend (hot reload)
 cd backend && npm install && npm run dev
+cd backend && npm test          # run the backend test suite
 
 # Frontend (Vite dev server)
 cd frontend && npm install && npm run dev
+cd frontend && npm test         # run the frontend test suite
 ```
 
 Changelog: always update `frontend/src/changelog.js` before releasing.
