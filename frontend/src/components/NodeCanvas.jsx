@@ -3019,59 +3019,104 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                             : s==="top"  ?{x:b.x+b.w*t, y:b.y}
                             :             {x:b.x+b.w*t, y:b.y+b.h};
 
-      // Group real edges by (source box, exit side). Notes are excluded —
-      // each has its own dedicated straight connector already and shouldn't
-      // be pulled into a sibling's trunk.
-      const groups = {};
+      // Two kinds of bundle: FAN-OUT (one source, several targets — the
+      // "many" side is the branch entries) and FAN-IN (several sources, one
+      // target — the "many" side is the branch exits). The geometry is
+      // identical either way once you call the shared endpoint "trunkPt" and
+      // the scattered endpoints "branches": the spine sits outward from
+      // trunkPt along its own face normal, branches join it at their own
+      // cross-position, and one stem connects trunkPt to the spine.
+      function buildBundle(trunkPt, trunkSide, branchSpecs, obstacles) {
+        const horiz = trunkSide==="left"||trunkSide==="right";
+        const fn = nrm(trunkSide);
+        const cross = p => horiz ? p.y : p.x;
+        const main  = p => horiz ? p.x : p.y;
+        const spineOffset = Math.min(TRUNK_MAX, Math.max(TRUNK_MIN, Math.min(...branchSpecs.map(b=>b.gap))/2));
+        const spineMain = main(trunkPt) + (horiz?fn.dx:fn.dy)*spineOffset;
+        const at = (m,c) => horiz ? {x:m,y:c} : {x:c,y:m};
+        const stemPts = [trunkPt, at(spineMain, cross(trunkPt))];
+        // The spine must span the trunk's own cross position too, or the stem
+        // can land on a point past the drawn spine's end — a visible gap
+        // where the tee doesn't actually connect to anything.
+        const crosses = [...branchSpecs.map(b=>cross(b.entry)), cross(trunkPt)];
+        const spinePts = [at(spineMain, Math.min(...crosses)), at(spineMain, Math.max(...crosses))];
+
+        const blocked = (p,q) => segHitsRects(p.x,p.y,q.x,q.y,obstacles,4);
+        if (blocked(stemPts[0],stemPts[1]) || blocked(spinePts[0],spinePts[1])) return null;
+        const branchPts = {};
+        for (const b of branchSpecs) {
+          const junction = at(spineMain, cross(b.entry));
+          if (blocked(junction, b.entry)) return null;
+          branchPts[b.id] = [junction, b.entry];
+        }
+        return { stemPts, spinePts, branchPts };
+      }
+
+      // ── FAN-OUT: one source, several targets ─────────────────────────
+      const outGroups = {};
       edges.forEach(e => {
         const f = boxFor(e.from), t = boxFor(e.to);
         if (!f || !t || f.id === t.id) return;
         if (renderedBoxes.memberToStack[e.to] || renderedBoxes.memberToStack[e.from]) return;
         const s = pickBestSides(f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h);
-        (groups[`${f.id}:${s.from}`] = groups[`${f.id}:${s.from}`] || []).push({ id:e.id, f, t, fromSide:s.from, toSide:s.to });
+        (outGroups[`${f.id}:${s.from}`] = outGroups[`${f.id}:${s.from}`] || []).push({ id:e.id, f, t, fromSide:s.from, toSide:s.to });
       });
 
       const branchByEdgeId = {}, trunks = [];
-      Object.entries(groups).forEach(([key, group]) => {
+      const claimed = new Set();   // edges already resolved by a fan-out bundle
+
+      Object.entries(outGroups).forEach(([key, group]) => {
         if (group.length < 2) return;
         const f = group[0].f, fromSide = group[0].fromSide;
-        const horiz = fromSide==="left"||fromSide==="right";
-        const fn = nrm(fromSide);
-        const trunkStart = port(f, fromSide, 0.5);
-
-        // Branch entry point per child, and how far away it is — the spine
-        // sits proportionally closer for tightly-packed groups, farther for
-        // spread-out ones, clamped to a sane range either way.
-        const branches = group.map(g => {
-          const p = port(g.t, g.toSide, 0.5);
-          const gap = horiz ? Math.abs(p.x - trunkStart.x) : Math.abs(p.y - trunkStart.y);
-          return { ...g, entry:p, gap };
+        const trunkPt = port(f, fromSide, 0.5);
+        const branchSpecs = group.map(g => {
+          const entry = port(g.t, g.toSide, 0.5);
+          const gap = Math.abs((fromSide==="left"||fromSide==="right" ? entry.x-trunkPt.x : entry.y-trunkPt.y));
+          return { id:g.id, entry, gap };
         });
-        const spineOffset = Math.min(TRUNK_MAX, Math.max(TRUNK_MIN, Math.min(...branches.map(b=>b.gap))/2));
-        const spineMain = horiz ? trunkStart.x + fn.dx*spineOffset : trunkStart.y + fn.dy*spineOffset;
-
-        const stemPts = horiz
-          ? [trunkStart, {x:spineMain, y:trunkStart.y}]
-          : [trunkStart, {x:trunkStart.x, y:spineMain}];
-        const crosses = branches.map(b => horiz ? b.entry.y : b.entry.x);
-        const spinePts = horiz
-          ? [{x:spineMain, y:Math.min(...crosses)}, {x:spineMain, y:Math.max(...crosses)}]
-          : [{x:Math.min(...crosses), y:spineMain}, {x:Math.max(...crosses), y:spineMain}];
-
-        const groupIds = new Set(group.map(g=>g.id));
         const obstacles = boxes.filter(b => b.id!==f.id && !group.some(g=>g.t.id===b.id));
-        const blocked = (p,q) => segHitsRects(p.x,p.y,q.x,q.y,obstacles,4);
-        let ok = !blocked(stemPts[0],stemPts[1]) && !blocked(spinePts[0],spinePts[1]);
-        const branchPts = {};
-        if (ok) branches.forEach(b => {
-          const junction = horiz ? {x:spineMain, y:b.entry.y} : {x:b.entry.x, y:spineMain};
-          if (blocked(junction, b.entry)) { ok = false; return; }
-          branchPts[b.id] = [junction, b.entry];
-        });
-        if (!ok) return;   // leave this group's edges as individual A* routes
+        const built = buildBundle(trunkPt, fromSide, branchSpecs, obstacles);
+        if (!built) return;   // leave this group's edges as individual A* routes
+        trunks.push({ key, stemPts:built.stemPts, spinePts:built.spinePts });
+        group.forEach(g => { branchByEdgeId[g.id] = built.branchPts[g.id]; claimed.add(g.id); });
+      });
 
-        trunks.push({ key, stemPts, spinePts });
-        branches.forEach(b => { branchByEdgeId[b.id] = branchPts[b.id]; });
+      // ── FAN-IN: several sources, one target ───────────────────────────
+      // The genuinely common real-world case: a device with more than one
+      // real connection (e.g. a Raspberry Pi reachable via both a VPN router
+      // and a switch) draws as several lines converging on one box. Only
+      // edges not already used in a fan-out bundle are eligible, and notes
+      // are excluded exactly as for fan-out.
+      const inGroups = {};
+      edges.forEach(e => {
+        if (claimed.has(e.id)) return;
+        const f = boxFor(e.from), t = boxFor(e.to);
+        if (!f || !t || f.id === t.id) return;
+        if (renderedBoxes.memberToStack[e.to] || renderedBoxes.memberToStack[e.from]) return;
+        const s = pickBestSides(f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h);
+        (inGroups[`${t.id}:${s.to}`] = inGroups[`${t.id}:${s.to}`] || []).push({ id:e.id, f, t, fromSide:s.from, toSide:s.to });
+      });
+      Object.entries(inGroups).forEach(([key, group]) => {
+        if (group.length < 2) return;
+        const t = group[0].t, toSide = group[0].toSide;
+        const trunkPt = port(t, toSide, 0.5);
+        const branchSpecs = group.map(g => {
+          const entry = port(g.f, g.fromSide, 0.5);
+          const gap = Math.abs((toSide==="left"||toSide==="right" ? entry.x-trunkPt.x : entry.y-trunkPt.y));
+          return { id:g.id, entry, gap };
+        });
+        const obstacles = boxes.filter(b => b.id!==t.id && !group.some(g=>g.f.id===b.id));
+        const built = buildBundle(trunkPt, toSide, branchSpecs, obstacles);
+        if (!built) return;
+        trunks.push({ key:`in:${key}`, stemPts:built.stemPts, spinePts:built.spinePts });
+        // Fan-in branch runs source→spine, but the edge must still be drawn
+        // ending AT the target with the arrowhead there — reverse each
+        // branch so branch[last] is the real tp (the target), matching what
+        // getEdgePath expects for fan-out branches (which end at tp too).
+        group.forEach(g => {
+          const seg = built.branchPts[g.id];             // [junction, sourceExit]
+          branchByEdgeId[g.id] = [seg[1], seg[0], trunkPt]; // sourceExit → junction → target
+        });
       });
 
       return { branchByEdgeId, trunks };
@@ -3192,7 +3237,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const branch = edgeBundles.branchByEdgeId[edge.id];
       if (branch && branch.length >= 2) {
         const path = roundedPolyPath(branch, 10);
-        const mid = { x:(branch[0].x+branch[1].x)/2, y:(branch[0].y+branch[1].y)/2 };
+        const mi = Math.max(1, Math.floor(branch.length/2));
+        const mid = { x:(branch[mi-1].x+branch[mi].x)/2, y:(branch[mi-1].y+branch[mi].y)/2 };
         return { path, fp:branch[0], tp, mid };
       }
       const pre = edgeRoutes[edge.id];

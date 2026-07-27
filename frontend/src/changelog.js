@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.63.1",date:"Jul 2026",items:[
+    "New: fan-in bundling. Edge bundling only merged edges LEAVING a shared node — a node with two real connections (e.g. reachable via both a switch and a VPN router) still drew as separate converging lines. Convergent edges are now bundled the same way: individual runs out to a shared spine, one merged line into the destination.",
+    "Fix: a bundle's shared spine could stop short of where its own trunk needed to attach, leaving a visible gap where the tee didn't actually connect to anything. The spine now always extends to cover the trunk's own position, not just the branch positions.",
+  ]},
   {v:"v5.63.0",date:"Jul 2026",items:[
     "New: edge bundling. When two or more edges leave the same node from the same side, they now merge into one shared trunk out to a spine, splitting into short individual branches only where they actually diverge — the standard org-chart look, instead of several separate parallel lines. Works for fan-outs in any direction (left/right/top/bottom).",
     "Safety: a group is only bundled if the trunk, the spine, and every branch are verified clear of every other node first. If anything would be blocked, that whole group is left as individual routes rather than forcing a bad detour to make the bundle fit.",
