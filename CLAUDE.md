@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-NoNote (internal name "NodeMap") is a self-hosted mind-mapping / network-diagramming app for homelabbers and sysadmins: drag-and-connect node canvases with 60+ node types, live Proxmox/TrueNAS/Unraid/ESXi integration, real-time multi-user collaboration over WebSocket, an LLM assistant with canvas context, and an 11-skin/13-theme appearance system.
+NoNote (internal name "NodeMap") is a self-hosted mind-mapping / network-diagramming app for homelabbers and sysadmins: drag-and-connect node canvases with 118 node types across 13 categories, live Proxmox/TrueNAS/Unraid/ESXi integration, real-time multi-user collaboration over WebSocket, an LLM assistant with canvas context, and a 7-skin/11-theme appearance system.
 
 Current version lives in `backend/package.json` (`version` field) — treat that as ground truth over the README header, which drifts. Every release also prepends an entry to `frontend/src/changelog.js`; its first entry shows the latest shipped changes.
 
@@ -72,11 +72,11 @@ Declared in that order in `App.jsx`. `SkinContext` re-applies its CSS vars last 
 
 ### Skin / Theme / Design — three independent CSS-variable layers, never mix them
 
-The most failure-prone part of the frontend (full checklists in `docs/SKINS.md`). Strict separation:
-- **Theme** (`ThemeContext.jsx`) owns color vars only (`--bg`, `--text`, `--accent`, etc.).
-- **Design** (`DesignContext.jsx`) owns spacing only, and is now hardcoded to a single fixed "clean" baseline — no longer user-selectable, but the code path is still live.
-- **Skin** (`skins.js` + `SkinContext.jsx`) owns font/radius/shadow/nav-layout/effects — **never colors**. Skin `css` blocks must reference `var(--accent)`, `var(--bg)`, `color-mix(...)`, etc.; a hardcoded hex value in a skin breaks it under other themes.
-- 11 skins × 13 themes are all expected to work in every combination — when adding either, follow the checklist in `docs/SKINS.md` and test against at least the dark, light, and clay themes.
+The most failure-prone part of the frontend (full details in `docs/SKINS.md`, which was substantially rewritten after being found badly stale — verify against `skins.js`/`ThemeContext.jsx`/`DesignContext.jsx` directly rather than trusting any doc's specific skin/theme names or counts at face value). Strict separation:
+- **Theme** (`ThemeContext.jsx`) owns color vars only (`--bg`, `--text`, `--accent`, etc.) — 11 themes (7 dark, 4 light).
+- **Design** (`DesignContext.jsx`) owns spacing only. It still defines 5 named presets (Workspace/Clean/Comfort/Professional/Minimal) with a fully working switch mechanism (`setDesignName`, `nn-set-design` event) — but nothing in the current codebase calls it (skins no longer carry a `defaultDesign` field, `ThemePicker.jsx` has no Design tab), so every user silently gets the hardcoded fallback (`"workspace"`) with no way to change it. Live code, not dead code — just currently unreferenced.
+- **Skin** (`skins.js` + `SkinContext.jsx`) owns font/radius/shadow/transitions/topbar-sidebar-surface — **never colors**. Skin `css` blocks must reference `var(--accent)`, `var(--bg)`, `color-mix(...)`, etc.; a hardcoded hex value in a skin breaks it under other themes. 7 skins currently exist, all using `nav: "top"` (per-skin nav layout variation and the old accent-picker system are both gone).
+- Test skin/theme changes against at least one dark and one light theme; there's no compatibility matrix to lean on anymore.
 
 ### Canvas rendering (`frontend/src/components/NodeCanvas.jsx` — ~7,800 lines, by far the largest file in the repo)
 

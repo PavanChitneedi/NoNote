@@ -11,7 +11,8 @@
 
 ### Map Grouping
 - Assign any map to a group via ✎ modal
-- Groups stored in `localStorage["nn_mm_"+mapId]` (no DB change needed)
+- Backend-stored per-user in the `map_user_meta` table (`grp`/`color`/`icon` columns), via `saveMapMeta()` (`PATCH /api/maps/:id/meta`) — added v5.48.0
+- Legacy `localStorage["nn_mm_"+mapId]` entries are auto-migrated to the backend on load, then removed from localStorage
 - Preset groups: Personal, Work, Infrastructure, Network, Security, Archive
 
 ### Map Actions
@@ -33,8 +34,8 @@
 
 ## Canvas (/canvas/:mapId)
 
-### Node Types (60+, 9 categories)
-General, Network, Computers, Servers, Storage, Mobile & IoT, Cloud, Software, Security
+### Node Types (118, 13 categories)
+Network (27), Servers (13), Notes (11), Software (10), Mobile & IoT (10), Planning (9), Cloud (8), General (7), Storage (6), Knowledge (6), Security (5), Computers (5), Workflow (1)
 
 ### Node Features
 - **Drag**: AABB collision detection prevents overlap
@@ -74,15 +75,11 @@ Tabs: Notes, Properties, Services, Ports, 📡 Live, Type, Links
 ## Appearance System
 
 ### ThemePicker Modal (Appearance button in nav)
-Tabs:
-1. **✨ Skins** — 11 skins with accent quick-pick (5 per skin); switching auto-applies defaultTheme + defaultAccent
-2. **🌍 Theme** — 13 color themes in Dark/Light groups
-3. **🎨 Canvas** (canvas page only) — separate theme for canvas background
-4. **🔤 Text Size** — XS to XXL presets + slider + manual input
+Tabs (only 2 currently — earlier docs describing more are stale):
+1. **✦ Personality** — 7 skins; switching auto-applies the skin's `defaultTheme`
+2. **🎨 Color** — 11 color themes in Dark (7) / Light (4) groups
 
-> **Note:** The Design (spacing) tab was removed. A fixed "clean" spacing baseline is applied automatically.
-
-All 11 skins work with all 13 themes. See `docs/SKINS.md` for compatibility details.
+No Canvas tab, no Text Size tab, no accent picker currently exist in `ThemePicker.jsx`. There is no Design tab either — see `docs/SKINS.md` for why (a 5-preset Design system still exists in code but is currently unreachable from any UI).
 
 ---
 
@@ -102,11 +99,11 @@ All 11 skins work with all 13 themes. See `docs/SKINS.md` for compatibility deta
 
 ---
 
-## Security Model (as of v5.37.0)
+## Security Model
 - JWT auth (15min access + 7-day refresh with automatic cleanup)
 - Per-map RBAC on all REST routes AND WebSocket room joins
 - Version history routes gated by mapPermission
-- Integration proxy: SSRF guard (blocks RFC-1918, loopback, Docker internal)
+- Integration proxy: SSRF guard — blocks loopback, cloud-metadata (`169.254.x`), and named Docker-internal hosts; RFC-1918 private IPs are intentionally allowed, since that's where homelab appliances live
 - Gemini API key sent via header, not URL query param
 - Frontend nginx serves CSP + security headers
 

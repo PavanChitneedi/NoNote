@@ -1,82 +1,67 @@
 # NoNote — Skin & Theme System
 
 ## Philosophy
-Two independent layers. Any combination works.
+Three independent layers, though in practice only two are currently reachable from the UI.
 
 | Layer | File | Controls | Never touches |
 |---|---|---|---|
 | **Theme** | `ThemeContext.jsx` | Colors only | Fonts, spacing |
-| **Skin** | `skins.js` + `SkinContext.jsx` | Font, radius, shadow, effects, nav layout | Colors |
+| **Skin** | `skins.js` + `SkinContext.jsx` | Font, radius, shadow, transitions, topbar/sidebar surface | Colors |
+| **Design** | `DesignContext.jsx` | Spacing/density only | Colors, fonts | Colors, fonts |
 
-> **Note:** The Design layer (spacing/density) was removed from the user-facing UI. `DesignContext.jsx` still exists and applies a fixed "clean" spacing baseline — it is no longer user-selectable.
+> **Design is defined but currently unreachable from the UI.** `DesignContext.jsx` still defines 5 named presets (Workspace/Clean/Comfort/Professional/Minimal) with a fully working `setDesignName`/`nn-set-design` switching mechanism — but nothing in the current codebase calls it. Skins used to carry a `defaultDesign` field that auto-applied a design on skin switch (see `changelog.js`, "Removed: defaultDesign auto-apply on skin switch"); that field no longer exists on any skin, and `ThemePicker.jsx` has no Design tab. Every user silently gets `DesignContext`'s hardcoded fallback (`"workspace"`) with no way to change it. The mechanism is live code, not dead code — it would work immediately if something called `setDesignName()` — it's just currently unreferenced.
 
 ## Application Order
 1. `ThemeContext.useEffect` → applies color vars
-2. `DesignContext.useEffect` → applies fixed "clean" spacing vars
+2. `DesignContext.useEffect` → applies spacing vars (always `workspace`, per above)
 3. `SkinContext.useEffect` (with `setTimeout(0)`) → applies personality vars LAST
 
-Skin vars **always win** over theme on their variables. When theme changes, SkinContext listens to `nn-theme-changed` and re-applies personality vars on top.
+Skin vars **always win** over theme on their variables. `SkinContext` re-applies personality vars whenever `nn-theme-changed` or `nn-design-changed` fires, so switching either underneath it doesn't lose the active skin's look.
 
-## Current Skins (11)
+## Current Skins (7)
 
-| Key | Name | Nav | Font | Default Theme |
+All 7 currently use `nav: "top"` — there is no more per-skin nav layout variation (see "What changed" below).
+
+| Key | Name | Default Theme | Font | Notes |
 |---|---|---|---|---|
-| `obsidian` | Obsidian | top | JetBrains Mono | dark |
-| `aurora` | Aurora | top | Inter | midnight |
-| `brutalist` | Brutalist | bottom | Space Grotesk | dark |
-| `neonTokyo` | Neon Tokyo | bottom | Rajdhani | ocean |
-| `neumorphic` | Neumorphic | icon-dock | Nunito | clay |
-| `sakura` | Sakura | icon-dock | Cormorant Garamond | cream |
-| `vapor` | Vapor | editorial | VT323 | violet |
-| `newspaper` | Newspaper | editorial | Playfair Display | parchment |
-| `coral` | Coral | bottom | DM Sans | dark |
-| `carbon` | Carbon | icon-dock | IBM Plex Mono | amber |
-| `pastelPop` | Pastel Pop | bottom | Nunito Black | rose |
+| `clean` | Clean | `arctic` | Inter | Default skin (`SkinContext`'s hardcoded fallback) |
+| `rounded` | Rounded | `sakura` | Nunito | Warm, generous radii |
+| `sharp` | Sharp | `void` | JetBrains Mono | `extra: true` — dev-tool aesthetic |
+| `glass` | Glass | `midnight` | Inter | Frosted/backdrop-blur topbar + sidebar |
+| `editorial` | Editorial | `amber` | Georgia (serif) | `extra: true` — reading-first |
+| `industrial` | Industrial | `industrialDark` | Inter | Thin borders, near-zero shadow |
+| `neutralIndustrial` | Neutral Industrial | `neutralIndustrialDark` | Inter | Flattest of all — Proxmox/TrueNAS-inspired |
 
-## Theme Compatibility
+The `extra: true` flag exists on some skins and themes (`sharp`, `editorial` skins; `amber`, `emerald`, `rose`, `void` themes) — check `ThemePicker.jsx`/`SkinContext.jsx` for current gating behavior before assuming what it does; it isn't just decorative.
 
-All 11 skins work correctly with all 13 themes. Adaptive techniques used:
+## Nav Layout Types — mostly historical
 
-| Skin | Technique |
-|---|---|
-| **Neumorphic** | `color-mix(in srgb, var(--bg) 78%, #000/fff)` derives shadow colors from any theme bg |
-| **NeonTokyo** | Scanlines use `color-mix(in srgb, var(--text) 5%, transparent)` — readable on light and dark |
-| **Vapor** | Grid lines use `color-mix(in srgb, var(--accent) 18%, transparent)` — always visible |
-| **Carbon** | Texture uses `color-mix(in srgb, var(--text) 4%, transparent)` — visible on both |
-| **Newspaper** | Card shadows use `var(--shadow)` — adapts between light/dark |
-| All others | Already fully CSS-var-based, no hardcoded colors |
+Older versions supported `"top" | "bottom" | "icon-dock" | "editorial"` nav layouts per skin. Every skin currently defined uses `"top"` — the other three layout modes may still be supported by the surrounding layout code, but nothing in `skins.js` currently exercises them. Don't assume `bottom`/`icon-dock`/`editorial` nav is reachable without checking `App.jsx`'s nav-shell logic first.
 
-## Nav Layout Types
-```
-"top"       → Standard topbar + left sidebar
-"bottom"    → Content fills screen + fixed 60px dock at bottom
-"icon-dock" → 56px vertical icon column on left side
-"editorial" → Full-width with centered topbar text
-```
-
-## Skin Definition Structure
+## Skin Definition Structure (current shape)
 ```js
 skinKey: {
   name: "Display Name",
-  icon: "emoji",
-  nav: "top" | "bottom" | "icon-dock" | "editorial",
-  concept: "One-line personality description",
-  tags: ["Tag1", "Tag2"],
+  icon: "glyph",
+  nav: "top",                  // only value in use currently
+  desc: "One-line personality description",
 
-  defaultTheme: "themeName",    // auto-applied on skin switch
-  defaultAccent: { accent: "#hex", accent2: "#hex" },  // optional
+  defaultTheme: "themeName",   // auto-applied on skin switch, via the
+                                // nn-set-theme event — NOT via the
+                                // localStorage write in setSkinName,
+                                // which writes to the wrong key ("nm_theme"
+                                // instead of "nn_theme") and is a no-op;
+                                // the event dispatch is what actually works
 
-  accentOptions: [
-    { name: "Label", accent: "#hex", accent2: "#hex" },
-    // 5 entries shown in Appearance > Skins tab
-  ],
+  extra: true,                 // optional — gates something in the UI,
+                                // verify current behavior before relying on it
 
   vars: {
-    // ONLY: font, radius, shadow, transition, topbar/sidebar bg/border
+    // font, radius, shadow, transition, topbar/sidebar bg/border — never colors
     "--font-ui": "...",
     "--radius-xs": "...",
     "--shadow-node": "...",
-    "--topbar-bg": "var(--bg2)",  // use CSS vars, never hex!
+    "--topbar-bg": "var(--bg2)",  // use CSS vars or color-mix(), never hex!
   },
 
   bodyClass: "skin-kebab-name",  // added to <body>
@@ -89,42 +74,44 @@ skinKey: {
 }
 ```
 
-## Current Themes (13)
+There is currently **no accent-picker system** — no `accentOptions`, no `defaultAccent`, no per-skin accent override. `SkinContext.jsx` only manages `skinName`, applies `skin.vars`/`skin.css`/`skin.bodyClass`, and dispatches the default-theme switch. If earlier docs or code comments mention accent pickers, that feature has been removed.
 
-### Dark (6)
-| Key | Name | Character |
-|---|---|---|
-| `dark` | Dark | GitHub Dark |
-| `midnight` | Midnight | Tokyo Night indigo |
-| `forest` | Forest | Deep forest teal |
-| `ocean` | Ocean | Deep abyss cyan |
-| `amber` | Amber | Volcanic warm amber |
-| `violet` | Violet | Dracula purple |
+## Current Themes (11)
 
-### Light (7)
-| Key | Name | Notes |
-|---|---|---|
-| `light` | Light | Clean crisp white |
-| `cream` | Cream | Warm terracotta |
-| `sepia` | Sepia | Vintage brown |
-| `rose` | Rose | Vibrant pink |
-| `softblue` | Soft Blue | Airy sky blue |
-| `mint` | Mint | Fresh green |
-| `parchment` | Parchment | Medieval manuscript |
-| `clay` | Clay | Neumorphic default — provides `--neu-dark`/`--neu-light` vars |
+### Dark (7)
+| Key | Name | Character | Notes |
+|---|---|---|---|
+| `slate` | Slate | Linear.app-inspired professional dark | |
+| `amber` | Amber | Bear/Obsidian-inspired warm amber | `extra: true` |
+| `midnight` | Midnight | Raycast-inspired deep navy | |
+| `emerald` | Emerald | Supabase-inspired dark + emerald accent | `extra: true` |
+| `void` | Void | Warp terminal-inspired near-black | `extra: true` |
+| `industrialDark` | Industrial Dark | Primary long-session dark theme, ~90% grayscale | |
+| `neutralIndustrialDark` | Neutral Industrial | Proxmox/TrueNAS/DSM-inspired, muted material accents | |
+
+### Light (4)
+| Key | Name | Character | Notes |
+|---|---|---|---|
+| `arctic` | Arctic | Vercel/Tailwind-inspired crisp cool white | |
+| `sakura` | Sakura | Craft.do-inspired warm cream-rose | |
+| `rose` | Rose | Superhuman-inspired warm energetic | `extra: true` |
+| `neutralIndustrialLight` | Neutral Industrial Light | Light counterpart to Neutral Industrial | |
+
+Note: `ThemeContext.jsx`'s own top-of-file comment still says "8 Carefully designed themes" — that's stale in the source itself (11 are actually defined), not just in docs.
 
 ## Adding a New Skin — Checklist
 1. Add entry to `SKINS` in `skins.js`
-2. Set `nav` type
-3. Set `defaultTheme` + optional `defaultAccent`
-4. Set 5 `accentOptions`
-5. In `vars`: only set font/radius/shadow/topbar-bg vars
-6. In `css`: use `var(--accent)`, `var(--bg)`, `color-mix()` — never hardcode hex
-7. `bodyClass`: unique `skin-kebab-name`
-8. Test with dark, light, and clay themes minimum
+2. Set `defaultTheme`
+3. In `vars`: only set font/radius/shadow/transition/topbar-bg/sidebar-bg vars — never colors
+4. In `css`: use `var(--accent)`, `var(--bg)`, `color-mix()` — never hardcode hex
+5. `bodyClass`: unique `skin-kebab-name`
+6. Test with at least one dark and one light theme
 
 ## Adding a New Theme — Checklist
 1. Add entry to `THEMES` in `ThemeContext.jsx`
-2. Set all required vars: `--bg`, `--bg2`, `--bg3`, `--border`, `--border2`, `--text`, `--text2`, `--text3`, `--text4`, `--accent`, `--accent2`, `--success`, `--danger`, `--canvas-dot`, `--node-bg`, `--shadow`
-3. For themes intended for Neumorphic: add `--neu-dark`/`--neu-light` (optional — neumorphic now derives these via `color-mix` as fallback)
-4. Test with all 11 skins
+2. Set `group: "Dark"` or `"Light"` and all required vars: `--bg`, `--bg2`, `--bg3`, `--border`, `--border2`, `--text`, `--text2`, `--text3`, `--text4`, `--accent`, `--accent2`, `--success`, `--danger`, `--warn`, `--canvas-dot`, `--node-bg`, `--shadow`
+3. Test with all 7 skins
+
+## What changed since this doc was last accurate
+
+This file previously described an 11-skin (Obsidian/Aurora/Brutalist/NeonTokyo/Neumorphic/Sakura/Vapor/Newspaper/Coral/Carbon/PastelPop), 13-theme system with 4 nav layout types and a 5-accent-per-skin picker. None of that exists in the current code — it was fully replaced by the system documented above. If you find references elsewhere (comments, other docs, old changelog entries) to skin names like "Obsidian" or "Vapor," they're historical, not current.

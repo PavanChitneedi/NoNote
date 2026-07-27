@@ -8,11 +8,11 @@ Self-hosted mind-mapping and network diagram application for homelabbers and sys
 
 ## What It Does
 
-- **Visual mind maps and architecture diagrams** — drag, connect, annotate 60+ node types across 9 categories (Network, Servers, Cloud, Security, etc.)
+- **Visual mind maps and architecture diagrams** — drag, connect, annotate 118 node types across 13 categories (Network, Servers, Cloud, Security, etc.)
 - **Live homelab integration** — connect Proxmox, TrueNAS, Unraid, ESXi nodes to live server data; see VM/container status in real time
 - **Real-time collaboration** — multiple users edit the same map simultaneously via WebSocket
 - **LLM assistant** — ask questions about your map with canvas context awareness
-- **11 visual skins** — from Obsidian (GitHub Dark dev tool) to Neumorphic (soft clay) to Vapor (80s vaporwave); any of 13 color themes works with any skin
+- **7 visual skins** — from Clean (Linear/Notion) to Sharp (dev-tool mono) to Neutral Industrial (Proxmox/TrueNAS-inspired); any of 11 color themes works with any skin
 - **Version history** — save named snapshots, restore any previous state
 
 ---
