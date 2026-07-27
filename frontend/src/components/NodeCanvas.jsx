@@ -1126,6 +1126,69 @@ export function segHitsRects(x1, y1, x2, y2, rects, pad = 8) {
   });
 }
 
+// Face-normal vector and border point for a box side — shared by edge routing
+// and edge bundling.
+export function nrm(side) {
+  return side==="right" ? {dx:1,dy:0} : side==="left" ? {dx:-1,dy:0} : side==="top" ? {dx:0,dy:-1} : {dx:0,dy:1};
+}
+export function port(b, side, t) {
+  return side==="right" ? {x:b.x+b.w, y:b.y+b.h*t}
+       : side==="left"  ? {x:b.x,     y:b.y+b.h*t}
+       : side==="top"   ? {x:b.x+b.w*t, y:b.y}
+       :                  {x:b.x+b.w*t, y:b.y+b.h};
+}
+
+export const TRUNK_MIN = 40, TRUNK_MAX = 110;
+
+// Shared trunk + spine for a fan-out/fan-in bundle — see edgeBundles in
+// NodeCanvas for how FAN-OUT (one source, several targets) and FAN-IN
+// (several sources, one target) both funnel through this same geometry by
+// calling the shared endpoint "trunkPt" and the scattered endpoints
+// "branches". Returns null if the trunk, spine, or any branch would be
+// blocked by an obstacle — callers fall back to individual A* routes.
+export function buildBundle(trunkPt, trunkSide, branchSpecs, baseObstacles, clearBox) {
+  const horiz = trunkSide==="left"||trunkSide==="right";
+  const fn = nrm(trunkSide);
+  const cross = p => horiz ? p.y : p.x;
+  const main  = p => horiz ? p.x : p.y;
+  let spineOffset = Math.min(TRUNK_MAX, Math.max(TRUNK_MIN, Math.min(...branchSpecs.map(b=>b.gap))/2));
+  // A node's own note sits in the same corridor the trunk exits into. It's
+  // excluded from the hard obstacle check (below) so the bundle isn't
+  // rejected outright, but the trunk should still visually clear it rather
+  // than run straight through it — so route past its far edge instead of
+  // stopping at the default offset.
+  if (clearBox) {
+    const farEdge = horiz
+      ? (fn.dx > 0 ? clearBox.x + clearBox.w : clearBox.x)
+      : (fn.dy > 0 ? clearBox.y + clearBox.h : clearBox.y);
+    const neededOffset = Math.abs(farEdge - main(trunkPt)) + 20;
+    spineOffset = Math.max(spineOffset, Math.min(neededOffset, TRUNK_MAX*3));
+  }
+  const spineMain = main(trunkPt) + (horiz?fn.dx:fn.dy)*spineOffset;
+  const at = (m,c) => horiz ? {x:m,y:c} : {x:c,y:m};
+  const stemPts = [trunkPt, at(spineMain, cross(trunkPt))];
+  const crosses = [...branchSpecs.map(b=>cross(b.entry)), cross(trunkPt)];
+  const spinePts = [at(spineMain, Math.min(...crosses)), at(spineMain, Math.max(...crosses))];
+
+  const blocked = (p,q,obs) => segHitsRects(p.x,p.y,q.x,q.y,obs,4);
+  // The stem and spine are shared corridor — every sibling target is a real
+  // obstacle here, none of them get excluded.
+  if (blocked(stemPts[0],stemPts[1],baseObstacles) || blocked(spinePts[0],spinePts[1],baseObstacles)) return null;
+  const branchPts = {};
+  for (const b of branchSpecs) {
+    // A branch's own target is not an obstacle to ITSELF — but every OTHER
+    // sibling's target still is. Excluding all group targets for every
+    // branch (the earlier version) let one branch's line cut straight
+    // through a sibling's box, since that box had been blanket-excluded
+    // group-wide instead of only for its own branch.
+    const branchObstacles = b.targetId ? baseObstacles.filter(x => x.id !== b.targetId) : baseObstacles;
+    const junction = at(spineMain, cross(b.entry));
+    if (blocked(junction, b.entry, branchObstacles)) return null;
+    branchPts[b.id] = [junction, b.entry];
+  }
+  return { stemPts, spinePts, branchPts };
+}
+
 // Build an orthogonal route. `lane` is the preferred coordinate of the middle
 // travel segment; obstacles are the node rects to route around.
 function orthoRoute(fp, fn1, tp, fn2, lane, obstacles = []) {
@@ -3024,7 +3087,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // trunk, spine, and every branch are verified clear of every other node; if
   // anything would be blocked, that whole group is left as individual A*
   // routes instead of forcing an ugly detour to make the bundle work.
-  const TRUNK_MIN = 40, TRUNK_MAX = 110;
   const edgeBundles = useMemo(()=>{
     const empty = { branchByEdgeId:{}, trunks:[] };
     try {
@@ -3033,11 +3095,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       if (!boxes.length) return empty;
       const byId = Object.fromEntries(boxes.map(b=>[b.id,b]));
       const boxFor = id => byId[renderedBoxes.memberToStack[id] || id];
-      const nrm = s => s==="right"?{dx:1,dy:0}:s==="left"?{dx:-1,dy:0}:s==="top"?{dx:0,dy:-1}:{dx:0,dy:1};
-      const port = (b,s,t) => s==="right"?{x:b.x+b.w,y:b.y+b.h*t}
-                            : s==="left" ?{x:b.x,     y:b.y+b.h*t}
-                            : s==="top"  ?{x:b.x+b.w*t, y:b.y}
-                            :             {x:b.x+b.w*t, y:b.y+b.h};
 
       // A node's own attached note(s) sit immediately beside it — in the same
       // narrow gap a fan-out/fan-in trunk also wants to start from. Without
@@ -3068,49 +3125,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       // identical either way once you call the shared endpoint "trunkPt" and
       // the scattered endpoints "branches": the spine sits outward from
       // trunkPt along its own face normal, branches join it at their own
-      // cross-position, and one stem connects trunkPt to the spine.
-      function buildBundle(trunkPt, trunkSide, branchSpecs, baseObstacles, clearBox) {
-        const horiz = trunkSide==="left"||trunkSide==="right";
-        const fn = nrm(trunkSide);
-        const cross = p => horiz ? p.y : p.x;
-        const main  = p => horiz ? p.x : p.y;
-        let spineOffset = Math.min(TRUNK_MAX, Math.max(TRUNK_MIN, Math.min(...branchSpecs.map(b=>b.gap))/2));
-        // A node's own note sits in the same corridor the trunk exits into.
-        // It's excluded from the hard obstacle check (below) so the bundle
-        // isn't rejected outright, but the trunk should still visually clear
-        // it rather than run straight through it — so route past its far
-        // edge instead of stopping at the default offset.
-        if (clearBox) {
-          const farEdge = horiz
-            ? (fn.dx > 0 ? clearBox.x + clearBox.w : clearBox.x)
-            : (fn.dy > 0 ? clearBox.y + clearBox.h : clearBox.y);
-          const neededOffset = Math.abs(farEdge - main(trunkPt)) + 20;
-          spineOffset = Math.max(spineOffset, Math.min(neededOffset, TRUNK_MAX*3));
-        }
-        const spineMain = main(trunkPt) + (horiz?fn.dx:fn.dy)*spineOffset;
-        const at = (m,c) => horiz ? {x:m,y:c} : {x:c,y:m};
-        const stemPts = [trunkPt, at(spineMain, cross(trunkPt))];
-        const crosses = [...branchSpecs.map(b=>cross(b.entry)), cross(trunkPt)];
-        const spinePts = [at(spineMain, Math.min(...crosses)), at(spineMain, Math.max(...crosses))];
-
-        const blocked = (p,q,obs) => segHitsRects(p.x,p.y,q.x,q.y,obs,4);
-        // The stem and spine are shared corridor — every sibling target is a
-        // real obstacle here, none of them get excluded.
-        if (blocked(stemPts[0],stemPts[1],baseObstacles) || blocked(spinePts[0],spinePts[1],baseObstacles)) return null;
-        const branchPts = {};
-        for (const b of branchSpecs) {
-          // A branch's own target is not an obstacle to ITSELF — but every
-          // OTHER sibling's target still is. Excluding all group targets for
-          // every branch (the earlier version) let one branch's line cut
-          // straight through a sibling's box, since that box had been
-          // blanket-excluded group-wide instead of only for its own branch.
-          const branchObstacles = b.targetId ? baseObstacles.filter(x => x.id !== b.targetId) : baseObstacles;
-          const junction = at(spineMain, cross(b.entry));
-          if (blocked(junction, b.entry, branchObstacles)) return null;
-          branchPts[b.id] = [junction, b.entry];
-        }
-        return { stemPts, spinePts, branchPts };
-      }
+      // cross-position, and one stem connects trunkPt to the spine. See the
+      // module-scope buildBundle above.
 
       // ── FAN-OUT: one source, several targets ─────────────────────────
       const outGroups = {};
