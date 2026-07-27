@@ -52,10 +52,8 @@ export function SkinProvider({ children }) {
       setTimeout(() => applyPersonality(skin), 0);
     };
     window.addEventListener("nn-theme-changed", reapply);
-    window.addEventListener("nn-design-changed", reapply);
     return () => {
       window.removeEventListener("nn-theme-changed", reapply);
-      window.removeEventListener("nn-design-changed", reapply);
     };
   }, [skinName]);
 

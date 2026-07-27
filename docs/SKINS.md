@@ -9,14 +9,14 @@ Three independent layers, though in practice only two are currently reachable fr
 | **Skin** | `skins.js` + `SkinContext.jsx` | Font, radius, shadow, transitions, topbar/sidebar surface | Colors |
 | **Design** | `DesignContext.jsx` | Spacing/density only | Colors, fonts | Colors, fonts |
 
-> **Design is defined but currently unreachable from the UI.** `DesignContext.jsx` still defines 5 named presets (Workspace/Clean/Comfort/Professional/Minimal) with a fully working `setDesignName`/`nn-set-design` switching mechanism — but nothing in the current codebase calls it. Skins used to carry a `defaultDesign` field that auto-applied a design on skin switch (see `changelog.js`, "Removed: defaultDesign auto-apply on skin switch"); that field no longer exists on any skin, and `ThemePicker.jsx` has no Design tab. Every user silently gets `DesignContext`'s hardcoded fallback (`"workspace"`) with no way to change it. The mechanism is live code, not dead code — it would work immediately if something called `setDesignName()` — it's just currently unreferenced.
+> **Design is hardcoded to one baseline, not user-selectable.** `DesignContext.jsx` used to have 5 named presets (Workspace/Clean/Comfort/Professional/Minimal) with a working switching mechanism, and skins used to carry a `defaultDesign` field that auto-applied one on skin switch (see `changelog.js`, "Removed: defaultDesign auto-apply on skin switch"). Once that auto-apply was removed, nothing ever called the switch mechanism again — no skin has carried `defaultDesign` since, and `ThemePicker.jsx` never grew a Design tab. Since the other 4 presets and the switching code were unreachable, they were removed; `DesignContext.jsx` now just applies the fixed set of vars that were always the de facto default (the old "workspace" preset) on mount.
 
 ## Application Order
 1. `ThemeContext.useEffect` → applies color vars
 2. `DesignContext.useEffect` → applies spacing vars (always `workspace`, per above)
 3. `SkinContext.useEffect` (with `setTimeout(0)`) → applies personality vars LAST
 
-Skin vars **always win** over theme on their variables. `SkinContext` re-applies personality vars whenever `nn-theme-changed` or `nn-design-changed` fires, so switching either underneath it doesn't lose the active skin's look.
+Skin vars **always win** over theme on their variables. `SkinContext` re-applies personality vars whenever `nn-theme-changed` fires, so switching the theme underneath it doesn't lose the active skin's look. (It used to also listen for `nn-design-changed`, removed along with the rest of the dead Design-switching code — see below.)
 
 ## Current Skins (7)
 

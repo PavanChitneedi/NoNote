@@ -4,9 +4,9 @@
 ```
 App.jsx (root)
 ├── ThemeProvider (colors)
-│   └── DesignProvider (5 presets defined, but unreachable from the UI —
-│       │                every user gets the hardcoded "workspace" fallback;
-│       │                see docs/SKINS.md)
+│   └── DesignProvider (spacing hardcoded to one baseline, not user-selectable —
+│       │                see docs/SKINS.md for why the old 5-preset switcher
+│       │                was removed rather than left unreachable)
 │       └── SkinProvider (personality)
 │           └── AuthProvider
 │               └── AppInner
@@ -210,8 +210,8 @@ Color (Theme owns):
   --success, --danger, --warn
   --canvas-dot, --node-bg, --shadow
 
-Spacing (DesignContext — hardcoded to the "workspace" preset; see docs/SKINS.md
-         for why 4 other defined presets are currently unreachable):
+Spacing (DesignContext — hardcoded to one fixed baseline, not user-selectable;
+         see docs/SKINS.md for the history of the 5-preset system it replaced):
   --topbar-h, --node-header-h, --node-pad, --node-body-pad
   --btn-pad, --sidebar-w, --props-w, --node-border-w, --line-height, --letter-space
 
