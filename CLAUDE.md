@@ -1,132 +1,100 @@
-# NoNote — Claude Handover Document
-> **NEW SESSION?** Read this file first, then `INSTRUCTIONS.md`.
-> This is the source of truth for any Claude working on this project.
+# CLAUDE.md
 
-## Current Version: v5.46.8
-## Last Updated: Apr 2026
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-Self-hosted mind-mapping / network diagram app for homelabbers and sysadmins.
-Built so ADHD brains can switch environments visually (skins).
-Owner (Pavan) runs it on EC2 at `192.168.0.43` via Docker Compose.
+## Project Overview
 
----
+NoNote (internal name "NodeMap") is a self-hosted mind-mapping / network-diagramming app for homelabbers and sysadmins: drag-and-connect node canvases with 60+ node types, live Proxmox/TrueNAS/Unraid/ESXi integration, real-time multi-user collaboration over WebSocket, an LLM assistant with canvas context, and an 11-skin/13-theme appearance system.
 
-## Stack
-| Layer | Tech |
-|---|---|
-| Frontend | React 18 + Vite, inline styles only (no CSS modules) |
-| Backend | Node.js + Express + WebSocket (ws) |
-| DB | PostgreSQL 15 + Redis |
-| Infra | Docker Compose, AWS EC2, Nginx reverse proxy |
-| Dev | code-server local IDE, Gitea, GitHub (PavanChitneedi/NoNote) |
+Current version lives in `backend/package.json` (`version` field) — treat that as ground truth over the README header, which drifts. Every release also prepends an entry to `frontend/src/changelog.js`; its first entry shows the latest shipped changes.
 
----
+Other docs in this repo, kept current by convention:
+- `docs/ARCHITECTURE.md` — component tree, API routes, DB schema, CSS variable reference
+- `docs/SKINS.md` — skin/theme system rules and checklists
+- `docs/FEATURES.md` — feature inventory by page
+- `docs/TASKS.md` — backlog / in-progress work
+- `AUDIT_REPORT.md` — security audit findings (pre-v5.37)
 
-## Repository Structure
-```
-NoNote/
-├── CLAUDE.md              ← YOU ARE HERE
-├── AUDIT_REPORT.md        ← Pre-production security audit findings
-├── docs/
-│   ├── ARCHITECTURE.md    ← Component tree, API endpoints, DB schema, security
-│   ├── SKINS.md           ← Skin/Theme system, compatibility matrix
-│   ├── FEATURES.md        ← Feature inventory by page
-│   └── TASKS.md           ← Pending tasks / roadmap
-├── frontend/src/
-│   ├── App.jsx            ← Root: auth, routing, nav layout per skin
-│   ├── skins.js           ← 11 skin definitions (no defaultDesign — removed)
-│   ├── changelog.js       ← Version changelog (update before every release)
-│   ├── context/
-│   │   ├── ThemeContext.jsx   ← 13 color themes
-│   │   ├── DesignContext.jsx  ← Fixed "clean" spacing (not user-selectable)
-│   │   └── SkinContext.jsx    ← Active skin + accent override
-│   └── components/
-│       ├── Dashboard.jsx      ← Maps list + Live Dashboard tab
-│       ├── LiveDashboard.jsx  ← Proxmox/TrueNAS/Unraid live tiles
-│       ├── ThemePicker.jsx    ← Appearance modal (Skins / Theme / Canvas / Text Size)
-│       ├── NodeCanvas.jsx     ← Canvas (nodes, edges, drag, collision)
-│       ├── IntegrationPanel.jsx ← Per-node live integration config
-│       └── AdminPanel.jsx     ← User/settings/audit management
-├── backend/src/
-│   ├── index.js               ← Express + WebSocket setup, rate limiting
-│   └── routes/
-│       ├── auth.js            ← Login, refresh, register
-│       ├── maps.js            ← Map CRUD, save, duplicate, collaborators
-│       ├── versions.js        ← Version history (mapPermission gated)
-│       ├── users.js           ← Users, audit log, app logs, settings
-│       ├── llm.js             ← LLM proxy (OpenAI/Anthropic/Gemini/Groq)
-│       └── integrations.js    ← Homelab proxy (SSRF-guarded)
-└── postgres/init.sql          ← DB schema + migrations
-```
+## Commands
 
----
+There is no root `package.json` — frontend and backend are independent Node projects with no shared tooling.
 
-## Appearance System (2 layers, not 3)
-The **Design** layer was removed from the user-facing UI (v5.37.0).
-`DesignContext` still exists and applies a fixed "clean" spacing baseline automatically.
-
-User-facing layers:
-1. **Theme** — 13 color themes (dark/midnight/forest/ocean/amber/violet + 7 light)
-2. **Skin** — 11 personality skins (font, radius, shadow, nav layout, effects)
-
-Skins use `color-mix()` for adaptive effects that work on any theme.
-See `docs/SKINS.md` for full compatibility matrix.
-
----
-
-## Critical Implementation Notes
-
-### Node Heights
-Track from DOM via `nodeHeightsRef`, not from stored `node.h`. The `minHeight` CSS causes actual rendered height to exceed stored values — this affects collision detection and edge routing.
-
-### Edge Saving
-Edges use upsert (INSERT … ON CONFLICT DO UPDATE) keyed by edge ID — **not** delete-all-reinsert. This is concurrency-safe for collaborative editing.
-
-### Auto-layout
-Must operate on expanded node sizes. Never collapse → layout → expand — causes overlaps.
-
-### SVG z-order
-SVG renders before node divs in DOM order. Do NOT use `zIndex` on the SVG layer.
-
-### Map Permission
-`mapPermission(level)` middleware must be applied to ALL map-related routes.
-WebSocket JOIN also verifies map access before admitting clients to a room.
-
-### LLM History
-Chat history is budget-trimmed before each API call (~6000-word budget, newest-first).
-Canvas context can be large — never pass unbounded history.
-
----
-
-## Deployment Workflow
 ```bash
-# On server
-cd /opt/NoNote && docker compose down && docker compose up -d --build
+# Backend — hot reload via node --watch, no build step (plain ESM)
+cd backend && npm install && npm run dev      # or: npm start (production mode)
+
+# Frontend — Vite dev server
+cd frontend && npm install && npm run dev     # vite --host
+cd frontend && npm run build                  # production build to frontend/dist
+cd frontend && npm run preview                # preview a production build
 ```
 
-Packaging (done by Claude after changes):
+**There is no test suite and no lint config in this repo** — no `test` script in either `package.json`, no `.eslintrc*` anywhere. Don't assume `npm test` / `npm run lint` exist; verify by reading before invoking. `frontend/vite.config.js` is the only build config present.
+
+Full stack via Docker Compose — this is the actual deployment path (`docker-compose.yml`, `Makefile`, `setup.sh`):
+
 ```bash
-cd /home/claude && zip -r nonote-vX.X.X.zip nonote \
-  --exclude "nonote/.git/*" --exclude "nonote/node_modules/*" \
-  --exclude "nonote/frontend/node_modules/*" \
-  --exclude "nonote/backend/node_modules/*"
-cp nonote-vX.X.X.zip /mnt/user-data/outputs/
+cp .env.example .env      # fill in JWT secrets, DB/Redis passwords, admin creds
+make up                   # docker compose up -d
+make logs                 # tail all service logs
+make logs-backend         # backend only
+make shell-db             # psql into postgres
+make shell-backend        # sh into backend container
+make gen-certs            # self-signed TLS cert into nginx/certs/
+make backup / make restore FILE=...
+make update                # pull + rebuild, rolling
+make health                # curl /health
 ```
 
-**Version naming:** `vMAJOR.MINOR.PATCH`
-- PATCH: bug fixes
-- MINOR: new features, significant changes
-- MAJOR: architecture changes
+## Architecture
 
-**Always before packaging:**
-1. Update `frontend/src/changelog.js` (prepend new entry)
-2. Update `backend/package.json` version
-3. Update version in this file (CLAUDE.md)
+### Two-service Node app behind Nginx, no ORM, no build-time DB migration tool
 
----
+- `backend/` — Express + `ws` WebSocket server on **one** HTTP server (`backend/src/index.js`), raw `pg` queries (no ORM). Redis is used only for token blocklisting on logout.
+- `frontend/` — React 18 (no Redux/state library) + Vite, built to static files and served by Nginx (`frontend/Dockerfile` → `nginx:1.25-alpine`).
+- `nginx/` — reverse proxy, SSL termination, serves the frontend's static build.
+- **DB schema has no migration files or CLI tool.** `runMigrations()` in `backend/src/index.js` runs a hardcoded array of idempotent `CREATE TABLE IF NOT EXISTS` / `ALTER TABLE ... ADD COLUMN IF NOT EXISTS` statements on *every* backend boot, each wrapped in try/catch so already-applied statements silently no-op. To change schema, append a new statement to that array (with a version comment) — don't create a separate migrations directory. `postgres/init.sql` only handles first-boot bootstrap (extensions, enum types, base tables).
 
-## Known Remaining Items (v5.37.0)
-- No automated tests (unit/integration) — highest-value gap for future sessions
-- Refresh token in localStorage (accepted risk for homelab context)
-- Map duplicate N+1 → fixed in v5.37.0 (batch inserts in transaction)
-- See `AUDIT_REPORT.md` for full audit findings and resolution status
+### Auth & permissions
+
+- JWT access token (15 min, kept in **sessionStorage**) + refresh token (7 days, kept in **localStorage**) — see `frontend/src/api/client.js`. `apiFetch()` auto-retries once on 401 by calling `/auth/refresh`, coalescing concurrent refreshes through a shared `_refreshPromise` so parallel in-flight requests don't each trigger a separate refresh.
+- Role hierarchy (`backend/src/middleware/auth.js`): `owner(4) > admin(3) > editor(2) > viewer(1)`. A `restricted` role was added later via migration and sits outside this numeric map — check call sites before assuming it behaves like a tier below viewer.
+- Two permission layers: `requireRole(minRole)` for global/admin routes, `mapPermission(requiredPerm)` for per-map REST routes (checks `map_collaborators`, ownership, or `is_public`). Owners/admins bypass per-map checks entirely.
+- **The WebSocket JOIN handler in `backend/src/index.js` reimplements the same map-access logic as `mapPermission` inline** (JWT verify → user lookup → `map_collaborators`/`is_public` check) instead of importing the middleware, since it isn't Express middleware. If map-access rules change, update both places.
+- Integration routes (`backend/src/routes/integrations.js`) proxy to homelab hosts (Proxmox/TrueNAS/Unraid/ESXi). `isSafeUrl()` there is the SSRF guard, blocking RFC-1918/loopback/Docker-internal hosts before any outbound request. This is also the one place TLS verification is deliberately relaxed — don't reuse that relaxed-TLS pattern elsewhere.
+
+### Frontend provider stack (order matters)
+
+```
+ThemeProvider → DesignProvider → SkinProvider → AuthProvider → AppInner
+```
+Declared in that order in `App.jsx`. `SkinContext` re-applies its CSS vars last (via `setTimeout(0)`) specifically so skin personality vars always win over theme vars, and it re-triggers on an `nn-theme-changed` event whenever the active theme changes underneath it.
+
+### Skin / Theme / Design — three independent CSS-variable layers, never mix them
+
+The most failure-prone part of the frontend (full checklists in `docs/SKINS.md`). Strict separation:
+- **Theme** (`ThemeContext.jsx`) owns color vars only (`--bg`, `--text`, `--accent`, etc.).
+- **Design** (`DesignContext.jsx`) owns spacing only, and is now hardcoded to a single fixed "clean" baseline — no longer user-selectable, but the code path is still live.
+- **Skin** (`skins.js` + `SkinContext.jsx`) owns font/radius/shadow/nav-layout/effects — **never colors**. Skin `css` blocks must reference `var(--accent)`, `var(--bg)`, `color-mix(...)`, etc.; a hardcoded hex value in a skin breaks it under other themes.
+- 11 skins × 13 themes are all expected to work in every combination — when adding either, follow the checklist in `docs/SKINS.md` and test against at least the dark, light, and clay themes.
+
+### Canvas rendering (`frontend/src/components/NodeCanvas.jsx` — ~7,800 lines, by far the largest file in the repo)
+
+Effectively the whole diagram engine lives in this one component: node rendering, drag/collision, edge routing, edge bundling (fan-out/fan-in trunks with obstacle-aware pathing), and note-stack grouping. Invariants that have repeatedly caused regressions per the changelog history:
+- SVG edge `<defs>` + paths render **before** node divs in DOM order — z-stacking relies on DOM order, not `z-index`. Never put `z-index` on the SVG edge layer.
+- Node heights are read from real DOM measurements (`nodeHeightsRef`), not stored/assumed sizes — routing bugs have repeatedly come from code reading a stored `h` instead of measured height for nodes with variable content (badges, note stacks, etc.).
+- Edge saves use `INSERT ... ON CONFLICT DO UPDATE` (upsert) keyed by edge ID, not delete-all-reinsert — required for concurrency safety under real-time collaboration.
+
+### Real-time collaboration
+
+Single-instance, in-memory room model — `rooms: Map<mapId, Set<ws>>` in `backend/src/index.js`, no Redis pub/sub, so this does not horizontally scale past one backend instance. Per-connection rate limit: 120 messages/min. Incoming `nodes_update`/`edges_update` messages are diffed against the previous per-connection snapshot to write `map_changelog` audit rows (add/edit/delete) without the client sending explicit change events.
+
+### LLM integration
+
+`backend/src/routes/llm.js` supports multiple provider configs (OpenAI, Anthropic, Groq, Gemini, custom OpenAI-compatible via `base_url`) stored per-install in the DB, not just via env vars — `.env` API keys are one way to configure a provider, not the only way. Chat history is loaded generously then trimmed to a ~6000-word budget before each call (`WORD_BUDGET` in `llm.js`) since canvas context can otherwise blow up the request. Gemini auth goes through the `x-goog-api-key` header rather than a URL query param to keep keys out of logs (the `safe-url` morgan token in `index.js` also strips `key`/`token`/`api_key` query params from access logs generally).
+
+## Conventions worth knowing (non-obvious, not enforced by tooling)
+
+- Never define a React component inline inside another component's render/body — has caused remount bugs (canvas/panel state loss) in this codebase. Define components at module scope.
+- `app_settings` is a flat key/value table gating certain user-editable profile fields (username/email/password/avatar changes, registration, LLM/export access for viewers, max maps per user). `PATCH /api/users/settings/global` only accepts an allowlisted set of keys — check the allowlist in `backend/src/routes/users.js` before adding a new setting key.
+- Changelog convention: `frontend/src/changelog.js` entries are prepended (newest first), plain JS objects only (`v`, `date`, `items[]`) — no JSX in that file; it's imported by both `NodeCanvas` and `Dashboard`.
