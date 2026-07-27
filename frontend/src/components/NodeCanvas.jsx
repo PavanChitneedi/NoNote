@@ -274,7 +274,7 @@ function tryExtractNotes(str) {
   }
   return null;
 }
-function parseNotes(raw) {
+export function parseNotes(raw) {
   if (!raw) return [];
   // Already a proper array
   if (Array.isArray(raw)) {
@@ -294,10 +294,10 @@ function parseNotes(raw) {
   }
   return [];
 }
-function stripHtml(html) {
+export function stripHtml(html) {
   return (html || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
 }
-function serializeNotes(notes) {
+export function serializeNotes(notes) {
   return JSON.stringify(Array.isArray(notes) ? notes : []);
 }
 
@@ -459,7 +459,7 @@ const mkNode = (type, x, y) => ({
 });
 
 // ── Auto-layout — topological layers, centered, no overlap ──
-function autoLayout(nodes, edges, direction='LR') {
+export function autoLayout(nodes, edges, direction='LR') {
   if (!nodes.length) return nodes;
   try {
     const PAD       = 80;   // canvas padding
@@ -774,7 +774,7 @@ function autoLayout(nodes, edges, direction='LR') {
 
 // ── Edge start/end point on node rectangle edge ─────────────────
 // nw/nh are the ACTUAL rendered dimensions (not just stored node.w/node.h)
-function rectEdgePoint(node, nw, nh, targetX, targetY) {
+export function rectEdgePoint(node, nw, nh, targetX, targetY) {
   const cx = node.x + nw/2, cy = node.y + nh/2;
   const dx = targetX - cx,  dy = targetY - cy;
   if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) return { x:cx, y:cy };
@@ -787,7 +787,7 @@ function rectEdgePoint(node, nw, nh, targetX, targetY) {
 
 // ── Best face picker — pure function, used by getEdgePath + port pre-compute ──
 // Picks the (from, to) face pair that gives the most direct, non-backtracking path
-function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
+export function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
   // CRITICAL RULE: Always return OPPOSITE faces.
   // right→left, left→right, bottom→top, top→bottom.
   // Non-opposite pairs (right→right, bottom→left, etc.) create U-curves and loops.
@@ -815,7 +815,7 @@ function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
 // port) — they must agree or the connector stops being straight.
 // Port assignment, as a pure function so the router, the renderer and the
 // tests all use one implementation rather than three that can drift apart.
-function computePortMap(nodes, edges) {
+export function computePortMap(nodes, edges) {
     // Groups edges by (nodeId, side, from|to) and assigns evenly-spread t-values
     // so multiple arrows on the same face don't stack on the same pixel.
     //
@@ -1094,7 +1094,7 @@ function markUsage(pts, usage) {
 // lane against every node rectangle before committing to it.
 
 // Turn a polyline into an SVG path with rounded corners.
-function roundedPolyPath(pts, r = 14) {
+export function roundedPolyPath(pts, r = 14) {
   const P = [];
   pts.forEach(p => {
     const last = P[P.length-1];
@@ -1116,7 +1116,7 @@ function roundedPolyPath(pts, r = 14) {
 }
 
 // Does an axis-aligned segment pass through any obstacle rectangle?
-function segHitsRects(x1, y1, x2, y2, rects, pad = 8) {
+export function segHitsRects(x1, y1, x2, y2, rects, pad = 8) {
   const lo = (a,b) => Math.min(a,b), hi = (a,b) => Math.max(a,b);
   const sx1 = lo(x1,x2), sx2 = hi(x1,x2), sy1 = lo(y1,y2), sy2 = hi(y1,y2);
   return rects.some(r => {
