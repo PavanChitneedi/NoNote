@@ -2,7 +2,7 @@
 
 Self-hosted mind-mapping and network diagram application for homelabbers and sysadmins.
 
-**Current version: v5.63.2**
+**Current version: v5.63.3**
 
 ---
 

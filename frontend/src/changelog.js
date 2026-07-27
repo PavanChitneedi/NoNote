@@ -1,6 +1,10 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.63.3",date:"Jul 2026",items:[
+    "Security fix: the homelab integration proxy's URL guard blocked IPv4 loopback (127.0.0.1) but not IPv6 loopback ([::1]) — the browser's URL parser keeps brackets on IPv6 addresses, so the old check against a bracket-less \"::1\" never matched. IPv6 loopback requests to the proxy are now correctly blocked too.",
+    "Cleanup: removed the unused 5-preset spacing/density system (Workspace/Clean/Comfort/Professional/Minimal). It stopped being reachable from any skin or the Appearance UI a while back, but the presets and switching code were still sitting in the app; every install was already silently getting the same fixed spacing regardless, so this changes nothing visible — just less dead weight.",
+  ]},
   {v:"v5.63.2",date:"Jul 2026",items:[
     "Security fix: .nonote export, Copy for AI, and Word/PDF export could all leak live API tokens and the full raw integration response cache (disk serials, internal hostnames, container inventories, alerts) for any node with a Proxmox/TrueNAS integration configured. All three export paths now go through one shared filter that strips these before anything leaves the app.",
     "Fix: the parent-to-note-stack connector was built from a placeholder edge object with no id, so it could never be found by the router or bundler and silently fell back to the old, non-obstacle-aware renderer for every stack connector on the map. It now reuses a real edge, giving it full routing and bundling like everything else.",
