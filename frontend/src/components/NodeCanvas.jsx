@@ -2993,6 +2993,94 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
    }
   }, [edges, nodes, edgeRouting, renderedBoxes, edgePortMap]);
 
+  // ── Edge bundling — shared trunk + spine for fan-outs ─────────────
+  // A* gives every edge its own shortest, obstacle-free path, but a switch
+  // with five children still draws as five separate parallel lines. This is
+  // a rendering-level pass on top of that: edges leaving the same box from
+  // the same face are merged into one shared trunk out to a spine, which then
+  // splits into short individual branches — the standard org-chart look, and
+  // fewer/thicker shared lines are inherently less crossing-prone than many
+  // thin independent ones. Safety-first: a group is only bundled if the
+  // trunk, spine, and every branch are verified clear of every other node; if
+  // anything would be blocked, that whole group is left as individual A*
+  // routes instead of forcing an ugly detour to make the bundle work.
+  const TRUNK_MIN = 40, TRUNK_MAX = 110;
+  const edgeBundles = useMemo(()=>{
+    const empty = { branchByEdgeId:{}, trunks:[] };
+    try {
+      if (edgeRouting !== "ortho") return empty;
+      const boxes = renderedBoxes.boxes;
+      if (!boxes.length) return empty;
+      const byId = Object.fromEntries(boxes.map(b=>[b.id,b]));
+      const boxFor = id => byId[renderedBoxes.memberToStack[id] || id];
+      const nrm = s => s==="right"?{dx:1,dy:0}:s==="left"?{dx:-1,dy:0}:s==="top"?{dx:0,dy:-1}:{dx:0,dy:1};
+      const port = (b,s,t) => s==="right"?{x:b.x+b.w,y:b.y+b.h*t}
+                            : s==="left" ?{x:b.x,     y:b.y+b.h*t}
+                            : s==="top"  ?{x:b.x+b.w*t, y:b.y}
+                            :             {x:b.x+b.w*t, y:b.y+b.h};
+
+      // Group real edges by (source box, exit side). Notes are excluded —
+      // each has its own dedicated straight connector already and shouldn't
+      // be pulled into a sibling's trunk.
+      const groups = {};
+      edges.forEach(e => {
+        const f = boxFor(e.from), t = boxFor(e.to);
+        if (!f || !t || f.id === t.id) return;
+        if (renderedBoxes.memberToStack[e.to] || renderedBoxes.memberToStack[e.from]) return;
+        const s = pickBestSides(f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h);
+        (groups[`${f.id}:${s.from}`] = groups[`${f.id}:${s.from}`] || []).push({ id:e.id, f, t, fromSide:s.from, toSide:s.to });
+      });
+
+      const branchByEdgeId = {}, trunks = [];
+      Object.entries(groups).forEach(([key, group]) => {
+        if (group.length < 2) return;
+        const f = group[0].f, fromSide = group[0].fromSide;
+        const horiz = fromSide==="left"||fromSide==="right";
+        const fn = nrm(fromSide);
+        const trunkStart = port(f, fromSide, 0.5);
+
+        // Branch entry point per child, and how far away it is — the spine
+        // sits proportionally closer for tightly-packed groups, farther for
+        // spread-out ones, clamped to a sane range either way.
+        const branches = group.map(g => {
+          const p = port(g.t, g.toSide, 0.5);
+          const gap = horiz ? Math.abs(p.x - trunkStart.x) : Math.abs(p.y - trunkStart.y);
+          return { ...g, entry:p, gap };
+        });
+        const spineOffset = Math.min(TRUNK_MAX, Math.max(TRUNK_MIN, Math.min(...branches.map(b=>b.gap))/2));
+        const spineMain = horiz ? trunkStart.x + fn.dx*spineOffset : trunkStart.y + fn.dy*spineOffset;
+
+        const stemPts = horiz
+          ? [trunkStart, {x:spineMain, y:trunkStart.y}]
+          : [trunkStart, {x:trunkStart.x, y:spineMain}];
+        const crosses = branches.map(b => horiz ? b.entry.y : b.entry.x);
+        const spinePts = horiz
+          ? [{x:spineMain, y:Math.min(...crosses)}, {x:spineMain, y:Math.max(...crosses)}]
+          : [{x:Math.min(...crosses), y:spineMain}, {x:Math.max(...crosses), y:spineMain}];
+
+        const groupIds = new Set(group.map(g=>g.id));
+        const obstacles = boxes.filter(b => b.id!==f.id && !group.some(g=>g.t.id===b.id));
+        const blocked = (p,q) => segHitsRects(p.x,p.y,q.x,q.y,obstacles,4);
+        let ok = !blocked(stemPts[0],stemPts[1]) && !blocked(spinePts[0],spinePts[1]);
+        const branchPts = {};
+        if (ok) branches.forEach(b => {
+          const junction = horiz ? {x:spineMain, y:b.entry.y} : {x:b.entry.x, y:spineMain};
+          if (blocked(junction, b.entry)) { ok = false; return; }
+          branchPts[b.id] = [junction, b.entry];
+        });
+        if (!ok) return;   // leave this group's edges as individual A* routes
+
+        trunks.push({ key, stemPts, spinePts });
+        branches.forEach(b => { branchByEdgeId[b.id] = branchPts[b.id]; });
+      });
+
+      return { branchByEdgeId, trunks };
+    } catch (err) {
+      console.error('[edgeBundles]', err);
+      return empty;
+    }
+  }, [edges, edgeRouting, renderedBoxes]);
+
   const edgeLaneMap = useMemo(()=>{
     if (edgeRouting !== "ortho") return {};
     const lanes = {};
@@ -3098,6 +3186,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     // ── Orthogonal routing ─────────────────────────────────────────
     if (edgeRouting === "ortho" && !edge.midOff) {
      try {
+      // Bundled: this edge shares a trunk with siblings, rendered once
+      // separately below. Only its short branch (spine → this child) draws
+      // here, keeping the arrowhead on the segment that actually points at it.
+      const branch = edgeBundles.branchByEdgeId[edge.id];
+      if (branch && branch.length >= 2) {
+        const path = roundedPolyPath(branch, 10);
+        const mid = { x:(branch[0].x+branch[1].x)/2, y:(branch[0].y+branch[1].y)/2 };
+        return { path, fp:branch[0], tp, mid };
+      }
       const pre = edgeRoutes[edge.id];
       if (pre && pre.length >= 2) {
         const path = roundedPolyPath(pre, 12);
@@ -3590,6 +3687,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       })()}
       {edgeElements}
       {stackEdgeElements}
+      {edgeRouting==="ortho" && edgeBundles.trunks.map((tr,i)=>(
+        <g key={`trunk-${i}`}>
+          <path d={`M ${tr.stemPts[0].x} ${tr.stemPts[0].y} L ${tr.stemPts[1].x} ${tr.stemPts[1].y}`}
+            fill="none" stroke="var(--text4)" strokeWidth={2} opacity={0.7}/>
+          <path d={`M ${tr.spinePts[0].x} ${tr.spinePts[0].y} L ${tr.spinePts[1].x} ${tr.spinePts[1].y}`}
+            fill="none" stroke="var(--text4)" strokeWidth={2} opacity={0.7}/>
+        </g>
+      ))}
 
     </svg>
   );

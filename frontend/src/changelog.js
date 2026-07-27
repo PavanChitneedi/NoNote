@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.63.0",date:"Jul 2026",items:[
+    "New: edge bundling. When two or more edges leave the same node from the same side, they now merge into one shared trunk out to a spine, splitting into short individual branches only where they actually diverge — the standard org-chart look, instead of several separate parallel lines. Works for fan-outs in any direction (left/right/top/bottom).",
+    "Safety: a group is only bundled if the trunk, the spine, and every branch are verified clear of every other node first. If anything would be blocked, that whole group is left as individual routes rather than forcing a bad detour to make the bundle fit.",
+    "Verified on a 5-way fan-out and a vertical 3-way fan-out: all edges bundled, 0 segments touching a node. Verified the obstacle guard separately: a blocking node correctly disables bundling for that group rather than routing through it.",
+  ]},
   {v:"v5.62.1",date:"Jul 2026",items:[
     "Fix: connectors to nodes with an extra content row (a type badge like \"Proxmox VE\", an IP tag) kept a small permanent bend even after Arrange. Those nodes render taller than their stored size, and ports/routing were reading the stored size instead of the real one — the same class of bug fixed for note-stack boxes last release, just on regular nodes this time. Routing now reads the actual measured height everywhere, and updates itself automatically once a node's real size is known.",
   ]},
