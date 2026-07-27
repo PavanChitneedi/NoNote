@@ -23,7 +23,7 @@ Self-hosted mind-mapping and network diagram application for homelabbers and sys
 |---|---|
 | Frontend | React 18 + Vite |
 | Backend | Node.js + Express + WebSocket |
-| Database | PostgreSQL 15 + Redis |
+| Database | PostgreSQL 16 + Redis |
 | Infra | Docker Compose + Nginx |
 
 ---
@@ -46,6 +46,8 @@ docker compose up -d --build
 Default admin credentials: set via `ADMIN_EMAIL` / `ADMIN_PASSWORD` in `.env`.
 
 Access at `https://your-host/` (Nginx handles SSL termination).
+
+To update later: `git pull && make update` (or `make deploy` to do both in one step). Tags the new build with the git commit and checks `/health` afterward; if that fails, it prints the exact `make rollback SHA=…` command to revert. See `docs/ARCHITECTURE.md` for details.
 
 ---
 
@@ -74,9 +76,10 @@ GEMINI_API_KEY=AIza...
 
 | File | Contents |
 |---|---|
-| `docs/ARCHITECTURE.md` | Component tree, API endpoints, DB schema, security controls |
+| `docs/ARCHITECTURE.md` | Component tree, API endpoints, DB schema, security controls, deployment/rollback |
 | `docs/FEATURES.md` | Feature inventory by page |
-| `docs/SKINS.md` | Skin + theme system, adding new skins/themes |
+| `docs/SKINS.md` | Skin + theme + design system, adding new skins/themes |
+| `docs/ui-system.md` | Dev Mode / `data-ui` metadata contract |
 | `CLAUDE.md` | Developer handover — read first in any new session |
 
 ---

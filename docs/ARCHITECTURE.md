@@ -249,3 +249,9 @@ nodemap_redis      → Redis (sessions/cache)
 ```
 
 Networks: `internal` (postgres/redis private) + `external` (nginx/backend/frontend)
+
+## Deployment & Rollback
+
+`backend`/`frontend` images are tagged `nonote-{service}:${GIT_SHA:-latest}` (both `pull_policy: never` — locally built only, never pulled from a registry). `make update` builds with `GIT_SHA` set to the current commit, tags the result as both that SHA and `:latest`, then polls `/health` and fails loudly (printing the rollback command) if the app doesn't come back up — see `Makefile`. `make rollback SHA=<sha>` swaps to a previously-tagged image without rebuilding; only works for commits actually deployed via `make update` after this was added, since older deploys were never tagged. `make deploy` = `git pull && make update` in one step.
+
+Tagged images accumulate over time (`docker image prune -f` only removes dangling/untagged images, not these) — periodically run `docker images | grep nonote-` and `docker rmi` old ones you no longer need for rollback.

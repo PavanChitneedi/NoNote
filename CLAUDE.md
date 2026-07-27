@@ -9,11 +9,12 @@ NoNote (internal name "NodeMap") is a self-hosted mind-mapping / network-diagram
 Current version lives in `backend/package.json` (`version` field) — treat that as ground truth over the README header, which drifts. Every release also prepends an entry to `frontend/src/changelog.js`; its first entry shows the latest shipped changes.
 
 Other docs in this repo, kept current by convention:
-- `docs/ARCHITECTURE.md` — component tree, API routes, DB schema, CSS variable reference
-- `docs/SKINS.md` — skin/theme system rules and checklists
+- `docs/ARCHITECTURE.md` — component tree, API routes, DB schema, CSS variable reference, deployment/rollback
+- `docs/SKINS.md` — skin/theme/design system, rewritten from scratch after being found badly stale — verify against source before trusting any other doc's specific claims about it
 - `docs/FEATURES.md` — feature inventory by page
-- `docs/TASKS.md` — backlog / in-progress work
-- `AUDIT_REPORT.md` — security audit findings (pre-v5.37)
+- `docs/ui-system.md` — Dev Mode / `data-ui` metadata contract; its own coverage table is honestly flagged as under-enforced, not exhaustive
+
+(No `docs/TASKS.md` or `AUDIT_REPORT.md` — both existed at points in this repo's history but were removed as stale/superseded; don't assume they exist.)
 
 ## Commands
 
@@ -29,7 +30,11 @@ cd frontend && npm run build                  # production build to frontend/dis
 cd frontend && npm run preview                # preview a production build
 ```
 
-**Backend has a Vitest suite** (`cd backend && npm test`) — currently just `src/middleware/auth.test.js`, covering `requireRole`/`authenticate`/`mapPermission`. `db/pool.js` and `db/redis.js` are mocked with `vi.mock` since both open real connections at import time; don't import them unmocked in a test. **Frontend has no tests yet**, and neither project has lint config (no `.eslintrc*` anywhere) — don't assume `npm run lint` exists.
+**Both projects have Vitest suites** (`npm test` in either directory). Neither project has lint config (no `.eslintrc*` anywhere) — don't assume `npm run lint` exists.
+
+Backend (134 tests, one `*.test.js` per route file plus middleware/ws): `db/pool.js` and `db/redis.js` are mocked with `vi.mock` in every test file since both open real connections at import time — never import them unmocked. Route tests use `supertest` against an `express()` app with just that router mounted; several route files (`integrations.js`, `llm.js`, `users.js`) have pure-ish helper functions (`isSafeUrl`, `isProbeUrlSafe`, `buildSystemPrompt`, `getEffectivePermissions`, etc.) exported specifically to unit-test in isolation, same pattern as the earlier `NodeCanvas.jsx` extractions — check a route file for an already-exported helper before assuming you need a full HTTP-level test.
+
+Frontend (86 tests): most are extracted pure functions from `NodeCanvas.jsx` (geometry/layout/bundling) plus `llmExport`/`api/client` — none of those render a component. `@testing-library/react` is set up (`frontend/src/test-setup.js`, registers RTL's `cleanup()` in `afterEach` — required since `vitest.config.js` doesn't set `test.globals: true`) with one real component test (`LoginPage.test.jsx`) as the template: mock `api/client.js`, render the real context providers, not mocked hooks.
 
 Full stack via Docker Compose — this is the actual deployment path (`docker-compose.yml`, `Makefile`, `setup.sh`):
 

@@ -45,7 +45,7 @@ Network (27), Servers (13), Notes (11), Software (10), Mobile & IoT (10), Planni
 - **Double-click title**: inline rename
 
 ### Node Panel (right side, opens on node select)
-Tabs: Notes, Properties, Services, Ports, 📡 Live, Type, Links
+Tabs: Notes, Props, Services (if node has any), Ports (if any), 📡 Live (if an integration is configured), 🤖 Ask AI, Type, Links
 
 ### 📡 Live Integration (per node)
 - Configure credentials: URL, API token, username/password
@@ -55,7 +55,7 @@ Tabs: Notes, Properties, Services, Ports, 📡 Live, Type, Links
 - Backend proxy at `POST /api/integrations/{type}` with SSRF guard
 
 ### Edge System
-- 15 connection styles: Basic, Dashed, Dotted, Bold, Double, Special/Wave
+- 22 connection styles across 7 categories: Basic, Dashed, Dotted, Bold, Double, Special (wave/animated), and Semantic — note-taking relationship types (Causes, Supports, Contradicts, Part of, See also, Leads to, Depends on)
 - Custom anchor points: drag endpoint to specific position on node edge (`from_anchor`/`to_anchor` JSONB)
 - Bezier curve control: drag midpoint diamond handle (`mid_off` JSONB)
 - Concurrent-save-safe: edges upserted by ID, not delete-all-reinsert
@@ -68,7 +68,7 @@ Tabs: Notes, Properties, Services, Ports, 📡 Live, Type, Links
 - **Auto-layout**: force-directed, collision-aware, always uses expanded node sizes
 
 ### Node Sidebar (left panel)
-- 60+ node types, 9 collapsible categories, search filtering, sticky headers
+- 118 node types, 13 collapsible categories, search filtering, sticky headers
 
 ---
 
@@ -79,7 +79,7 @@ Tabs (only 2 currently — earlier docs describing more are stale):
 1. **✦ Personality** — 7 skins; switching auto-applies the skin's `defaultTheme`
 2. **🎨 Color** — 11 color themes in Dark (7) / Light (4) groups
 
-No Canvas tab, no Text Size tab, no accent picker currently exist in `ThemePicker.jsx`. There is no Design tab either — see `docs/SKINS.md` for why (a 5-preset Design system still exists in code but is currently unreachable from any UI).
+No Canvas tab, no Text Size tab, no accent picker currently exist in `ThemePicker.jsx`. There is no Design tab either — spacing is hardcoded to one fixed baseline, not user-selectable (see `docs/SKINS.md` for the history of the 5-preset system this replaced).
 
 ---
 
