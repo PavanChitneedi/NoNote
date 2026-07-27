@@ -1,4 +1,4 @@
-.PHONY: up down restart logs ps backup restore shell-db shell-backend gen-certs help
+.PHONY: up down restart logs ps backup restore shell-db shell-backend gen-certs rotate-secrets rotate-secrets-full help
 
 # ── Startup ───────────────────────────────────────────────────
 up:
@@ -51,6 +51,13 @@ shell-backend:
 shell-redis:
 	docker exec -it nodemap_redis redis-cli --pass $${REDIS_PASSWORD}
 
+# ── Secrets ──────────────────────────────────────────────────
+rotate-secrets:
+	@bash rotate-secrets.sh
+
+rotate-secrets-full:
+	@bash rotate-secrets.sh --admin-password
+
 # ── TLS ──────────────────────────────────────────────────────
 gen-certs:
 	@mkdir -p nginx/certs
@@ -94,6 +101,8 @@ help:
 	@echo "  make shell-db        Open psql shell"
 	@echo "  make shell-backend   Open backend sh shell"
 	@echo "  make shell-redis     Open redis-cli"
+	@echo "  make rotate-secrets       Rotate JWT/Redis/Postgres passwords"
+	@echo "  make rotate-secrets-full  Also rotate the admin password"
 	@echo "  make gen-certs       Generate self-signed TLS cert"
 	@echo "  make build           Force rebuild all images"
 	@echo "  make update          Pull + rebuild (rolling update)"
