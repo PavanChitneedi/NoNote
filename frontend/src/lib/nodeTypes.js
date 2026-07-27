@@ -11,6 +11,11 @@ import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,P
   BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban,
   Boxes,AppWindow,Component,Layers2,Container } from "lucide-react";
 
+// Default / collapsed node sizes — shared by node creation, layout, export,
+// and collapsed-node rendering.
+export const DEF_W=220, DEF_H=96, GRP_W=340, GRP_H=240;
+export const COL_W=72,  COL_H=72; // collapsed node size
+
 // ── Node type registry ────────────────────────────────────────
 export const NT = {
   // ── General ──────────────────────────────────────────────────

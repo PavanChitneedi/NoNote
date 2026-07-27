@@ -15,6 +15,7 @@ import {
   BorderStyle, ShadingType, Table, TableRow, TableCell,
   WidthType, AlignmentType, LevelFormat,
 } from "docx";
+import { SECRET_KEY_RE } from "../lib/exportFormats.js";
 
 const NT_LABELS = {
   note:"Note", heading:"Heading", user:"User", process:"Process",
@@ -65,7 +66,6 @@ function buildNormalSections(nodes, edges, title) {
       // Never let a live API token or the raw integration cache (disk
       // serials, internal hostnames, container inventories) into an
       // exported document — only the fields actually shown on the card.
-      const SECRET_KEY_RE = /^_integration|token|password|secret|api[_-]?key/i;
       Object.entries(node.properties || {}).filter(([k,v]) => v && !SECRET_KEY_RE.test(k)).forEach(([k,v]) => {
         sections.push({ type:"label", label: k, value: String(v) });
       });

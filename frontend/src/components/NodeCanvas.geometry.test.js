@@ -5,10 +5,12 @@ import {
   computePortMap,
   roundedPolyPath,
   segHitsRects,
+} from "../lib/edgeRouting.js";
+import {
   parseNotes,
   serializeNotes,
   stripHtml,
-} from "./NodeCanvas.jsx";
+} from "../lib/notesFormat.js";
 
 describe("rectEdgePoint", () => {
   it("returns the node center when the target is exactly at the center", () => {

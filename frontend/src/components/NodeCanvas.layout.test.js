@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoLayout } from "./NodeCanvas.jsx";
+import { autoLayout } from "../lib/autoLayout.js";
 
 // Minimal node builder — mirrors mkNode's shape without going through the
 // full node-type registry, since autoLayout only reads x/y/w/h/type/id.

@@ -1,3 +1,5 @@
+import { SECRET_KEY_RE } from "../lib/exportFormats.js";
+
 // Shared "Copy for AI" context builder — used by NodeCanvas topbar,
 // Dashboard card menu, and multi-map export.
 // NT is passed in to avoid duplicating the node-type registry.
@@ -5,8 +7,9 @@
 // Keys that must never leave the app in any export: live API tokens, and
 // the raw, unfiltered integration response cache (disk serials, internal
 // hostnames, container inventories, alerts — everything the integration
-// happened to fetch, not just what's shown on the card).
-const SECRET_KEY_RE = /^_integration|token|password|secret|api[_-]?key/i;
+// happened to fetch, not just what's shown on the card). Imported from
+// lib/exportFormats.js — the canonical copy shared by every export path
+// (.nonote, Copy for AI, Word/PDF), rather than each keeping its own.
 
 export function buildLLMText(title, nodes, edges, NT = {}) {
   let out = `# ${title}\n_NoNote export · ${new Date().toLocaleString()}_\n\n## Summary\n${nodes.length} components · ${edges.length} connections\n\n## Components\n\n`;

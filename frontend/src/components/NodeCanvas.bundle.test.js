@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { nrm, port, buildBundle, TRUNK_MIN, TRUNK_MAX } from "./NodeCanvas.jsx";
+import { nrm, port, buildBundle, TRUNK_MIN, TRUNK_MAX } from "../lib/edgeRouting.js";
 
 describe("nrm", () => {
   it("returns the outward face normal for each side", () => {
