@@ -1,6 +1,9 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.63.4",date:"Jul 2026",items:[
+    "Internal: split NodeCanvas.jsx's ~15 tail React components (NodeSidebar, PropsPanel, InlineNodeEditor, ExportModal, etc.) into their own files under frontend/src/components/canvas/. Pure refactor, no user-facing behavior change.",
+  ]},
   {v:"v5.63.3",date:"Jul 2026",items:[
     "Security fix: the homelab integration proxy's URL guard blocked IPv4 loopback (127.0.0.1) but not IPv6 loopback ([::1]) — the browser's URL parser keeps brackets on IPv6 addresses, so the old check against a bracket-less \"::1\" never matched. IPv6 loopback requests to the proxy are now correctly blocked too.",
     "Cleanup: removed the unused 5-preset spacing/density system (Workspace/Clean/Comfort/Professional/Minimal). It stopped being reachable from any skin or the Appearance UI a while back, but the presets and switching code were still sitting in the app; every install was already silently getting the same fixed spacing regardless, so this changes nothing visible — just less dead weight.",
