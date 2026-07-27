@@ -23,7 +23,7 @@ jobs:
         run: npm run build
 
   backend:
-    name: Backend install + syntax check
+    name: Backend install + test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -37,6 +37,8 @@ jobs:
       - name: Syntax-check all source files
         working-directory: backend
         run: find src -name "*.js" -print0 | xargs -0 -n1 node --check
+      - working-directory: backend
+        run: npm test
 
   docker:
     name: Docker image builds

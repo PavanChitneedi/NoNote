@@ -29,7 +29,7 @@ cd frontend && npm run build                  # production build to frontend/dis
 cd frontend && npm run preview                # preview a production build
 ```
 
-**There is no test suite and no lint config in this repo** — no `test` script in either `package.json`, no `.eslintrc*` anywhere. Don't assume `npm test` / `npm run lint` exist; verify by reading before invoking. `frontend/vite.config.js` is the only build config present.
+**Backend has a Vitest suite** (`cd backend && npm test`) — currently just `src/middleware/auth.test.js`, covering `requireRole`/`authenticate`/`mapPermission`. `db/pool.js` and `db/redis.js` are mocked with `vi.mock` since both open real connections at import time; don't import them unmocked in a test. **Frontend has no tests yet**, and neither project has lint config (no `.eslintrc*` anywhere) — don't assume `npm run lint` exists.
 
 Full stack via Docker Compose — this is the actual deployment path (`docker-compose.yml`, `Makefile`, `setup.sh`):
 
