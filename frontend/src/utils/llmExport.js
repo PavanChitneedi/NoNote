@@ -2,6 +2,12 @@
 // Dashboard card menu, and multi-map export.
 // NT is passed in to avoid duplicating the node-type registry.
 
+// Keys that must never leave the app in any export: live API tokens, and
+// the raw, unfiltered integration response cache (disk serials, internal
+// hostnames, container inventories, alerts — everything the integration
+// happened to fetch, not just what's shown on the card).
+const SECRET_KEY_RE = /^_integration|token|password|secret|api[_-]?key/i;
+
 export function buildLLMText(title, nodes, edges, NT = {}) {
   let out = `# ${title}\n_NoNote export · ${new Date().toLocaleString()}_\n\n## Summary\n${nodes.length} components · ${edges.length} connections\n\n## Components\n\n`;
   const cats = {};
@@ -11,7 +17,7 @@ export function buildLLMText(title, nodes, edges, NT = {}) {
     ns.forEach(n => {
       out += `**${n.title}** _(${NT[n.type]?.label || n.type})_\n`;
       [...Object.entries(n.properties || {}), ...Object.entries(n.customProps || n.custom_props || {})]
-        .filter(([, v]) => v).forEach(([k, v]) => { out += `- ${k}: ${v}\n`; });
+        .filter(([k, v]) => v && !SECRET_KEY_RE.test(k)).forEach(([k, v]) => { out += `- ${k}: ${v}\n`; });
       if (n.node_notes && n.node_notes.trim()) {
         if (n.notes_private) out += `- Notes: [PRIVATE]\n`;
         else out += `- Notes:\n${n.node_notes.split("\n").map(l => `  ${l}`).join("\n")}\n`;

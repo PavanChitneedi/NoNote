@@ -1257,6 +1257,26 @@ function iconChar(icon) {
   return "◉"; // generic fallback for SVG icons in canvas context
 }
 
+// ── Secret redaction for every export path ─────────────────────────
+// `_integration` holds a live API token, and `_integration_cache` is the raw,
+// unfiltered API response from that integration — for Proxmox/TrueNAS this
+// includes disk serials, internal hostnames, VM/container inventories, and
+// other infrastructure internals that were never meant to leave the app.
+// Every export (.nonote file, Copy for AI, Word/PDF) must go through this.
+export const SECRET_KEY_RE = /^_integration|token|password|secret|api[_-]?key/i;
+export function sanitizeProperties(props) {
+  if (!props) return props;
+  const out = {};
+  Object.entries(props).forEach(([k, v]) => {
+    if (SECRET_KEY_RE.test(k)) return;
+    out[k] = v;
+  });
+  return out;
+}
+function sanitizeNodesForExport(nodes) {
+  return nodes.map(n => ({ ...n, properties: sanitizeProperties(n.properties) }));
+}
+
 // ── PNG export ────────────────────────────────────────────────────
 function exportAsNoNote(nodes, edges, mapMeta) {
   const bundle = {
@@ -1264,7 +1284,7 @@ function exportAsNoNote(nodes, edges, mapMeta) {
     app: "NoNote",
     title: mapMeta?.title || "Untitled",
     exported: new Date().toISOString(),
-    nodes: nodes.map(n => ({...n, notes: Array.isArray(n.notes) ? n.notes : []})),
+    nodes: sanitizeNodesForExport(nodes).map(n => ({...n, notes: Array.isArray(n.notes) ? n.notes : []})),
     edges,
   };
   const blob = new Blob([JSON.stringify(bundle, null, 2)], {type:"application/json"});
@@ -3019,6 +3039,29 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                             : s==="top"  ?{x:b.x+b.w*t, y:b.y}
                             :             {x:b.x+b.w*t, y:b.y+b.h};
 
+      // A node's own attached note(s) sit immediately beside it — in the same
+      // narrow gap a fan-out/fan-in trunk also wants to start from. Without
+      // excluding a node's own annotation box from its own bundle's obstacles,
+      // the trunk reliably collides with the very notes belonging to the same
+      // node the bundle is rooted at, and the whole bundle gets rejected.
+      const ownAnnoBox = {};   // nodeId -> its own note/stack box id, if any
+      {
+        const noteParentsLocal = {};
+        edges.forEach(e => {
+          const fn = nodes.find(n=>n.id===e.from), tn = nodes.find(n=>n.id===e.to);
+          if (tn?.type==='note' && fn?.type!=='note') (noteParentsLocal[e.to]=noteParentsLocal[e.to]||[]).push(e.from);
+          if (fn?.type==='note' && tn?.type!=='note') (noteParentsLocal[e.from]=noteParentsLocal[e.from]||[]).push(e.to);
+        });
+        nodes.forEach(n => {
+          if (n.type !== 'note') return;
+          const ps = [...new Set(noteParentsLocal[n.id]||[])];
+          if (ps.length === 1) {
+            const bid = renderedBoxes.memberToStack[n.id] || n.id;
+            if (byId[bid]) ownAnnoBox[ps[0]] = bid;
+          }
+        });
+      }
+
       // Two kinds of bundle: FAN-OUT (one source, several targets — the
       // "many" side is the branch entries) and FAN-IN (several sources, one
       // target — the "many" side is the branch exits). The geometry is
@@ -3026,27 +3069,44 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       // the scattered endpoints "branches": the spine sits outward from
       // trunkPt along its own face normal, branches join it at their own
       // cross-position, and one stem connects trunkPt to the spine.
-      function buildBundle(trunkPt, trunkSide, branchSpecs, obstacles) {
+      function buildBundle(trunkPt, trunkSide, branchSpecs, baseObstacles, clearBox) {
         const horiz = trunkSide==="left"||trunkSide==="right";
         const fn = nrm(trunkSide);
         const cross = p => horiz ? p.y : p.x;
         const main  = p => horiz ? p.x : p.y;
-        const spineOffset = Math.min(TRUNK_MAX, Math.max(TRUNK_MIN, Math.min(...branchSpecs.map(b=>b.gap))/2));
+        let spineOffset = Math.min(TRUNK_MAX, Math.max(TRUNK_MIN, Math.min(...branchSpecs.map(b=>b.gap))/2));
+        // A node's own note sits in the same corridor the trunk exits into.
+        // It's excluded from the hard obstacle check (below) so the bundle
+        // isn't rejected outright, but the trunk should still visually clear
+        // it rather than run straight through it — so route past its far
+        // edge instead of stopping at the default offset.
+        if (clearBox) {
+          const farEdge = horiz
+            ? (fn.dx > 0 ? clearBox.x + clearBox.w : clearBox.x)
+            : (fn.dy > 0 ? clearBox.y + clearBox.h : clearBox.y);
+          const neededOffset = Math.abs(farEdge - main(trunkPt)) + 20;
+          spineOffset = Math.max(spineOffset, Math.min(neededOffset, TRUNK_MAX*3));
+        }
         const spineMain = main(trunkPt) + (horiz?fn.dx:fn.dy)*spineOffset;
         const at = (m,c) => horiz ? {x:m,y:c} : {x:c,y:m};
         const stemPts = [trunkPt, at(spineMain, cross(trunkPt))];
-        // The spine must span the trunk's own cross position too, or the stem
-        // can land on a point past the drawn spine's end — a visible gap
-        // where the tee doesn't actually connect to anything.
         const crosses = [...branchSpecs.map(b=>cross(b.entry)), cross(trunkPt)];
         const spinePts = [at(spineMain, Math.min(...crosses)), at(spineMain, Math.max(...crosses))];
 
-        const blocked = (p,q) => segHitsRects(p.x,p.y,q.x,q.y,obstacles,4);
-        if (blocked(stemPts[0],stemPts[1]) || blocked(spinePts[0],spinePts[1])) return null;
+        const blocked = (p,q,obs) => segHitsRects(p.x,p.y,q.x,q.y,obs,4);
+        // The stem and spine are shared corridor — every sibling target is a
+        // real obstacle here, none of them get excluded.
+        if (blocked(stemPts[0],stemPts[1],baseObstacles) || blocked(spinePts[0],spinePts[1],baseObstacles)) return null;
         const branchPts = {};
         for (const b of branchSpecs) {
+          // A branch's own target is not an obstacle to ITSELF — but every
+          // OTHER sibling's target still is. Excluding all group targets for
+          // every branch (the earlier version) let one branch's line cut
+          // straight through a sibling's box, since that box had been
+          // blanket-excluded group-wide instead of only for its own branch.
+          const branchObstacles = b.targetId ? baseObstacles.filter(x => x.id !== b.targetId) : baseObstacles;
           const junction = at(spineMain, cross(b.entry));
-          if (blocked(junction, b.entry)) return null;
+          if (blocked(junction, b.entry, branchObstacles)) return null;
           branchPts[b.id] = [junction, b.entry];
         }
         return { stemPts, spinePts, branchPts };
@@ -3072,10 +3132,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const branchSpecs = group.map(g => {
           const entry = port(g.t, g.toSide, 0.5);
           const gap = Math.abs((fromSide==="left"||fromSide==="right" ? entry.x-trunkPt.x : entry.y-trunkPt.y));
-          return { id:g.id, entry, gap };
+          return { id:g.id, entry, gap, targetId:g.t.id };
         });
-        const obstacles = boxes.filter(b => b.id!==f.id && !group.some(g=>g.t.id===b.id));
-        const built = buildBundle(trunkPt, fromSide, branchSpecs, obstacles);
+        const obstacles = boxes.filter(b => b.id!==f.id && b.id!==ownAnnoBox[f.id]);
+        const built = buildBundle(trunkPt, fromSide, branchSpecs, obstacles, byId[ownAnnoBox[f.id]]);
         if (!built) return;   // leave this group's edges as individual A* routes
         trunks.push({ key, stemPts:built.stemPts, spinePts:built.spinePts });
         group.forEach(g => { branchByEdgeId[g.id] = built.branchPts[g.id]; claimed.add(g.id); });
@@ -3103,19 +3163,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const branchSpecs = group.map(g => {
           const entry = port(g.f, g.fromSide, 0.5);
           const gap = Math.abs((toSide==="left"||toSide==="right" ? entry.x-trunkPt.x : entry.y-trunkPt.y));
-          return { id:g.id, entry, gap };
+          return { id:g.id, entry, gap, targetId:g.f.id };
         });
-        const obstacles = boxes.filter(b => b.id!==t.id && !group.some(g=>g.f.id===b.id));
-        const built = buildBundle(trunkPt, toSide, branchSpecs, obstacles);
+        const obstacles = boxes.filter(b => b.id!==t.id && b.id!==ownAnnoBox[t.id]);
+        const built = buildBundle(trunkPt, toSide, branchSpecs, obstacles, byId[ownAnnoBox[t.id]]);
         if (!built) return;
-        trunks.push({ key:`in:${key}`, stemPts:built.stemPts, spinePts:built.spinePts });
-        // Fan-in branch runs source→spine, but the edge must still be drawn
-        // ending AT the target with the arrowhead there — reverse each
-        // branch so branch[last] is the real tp (the target), matching what
-        // getEdgePath expects for fan-out branches (which end at tp too).
+        // Do NOT draw [ownJunction → target] directly per branch — that
+        // segment is a diagonal shortcut nobody validated, and it's exactly
+        // what let a branch cut straight through an unrelated node in
+        // testing. Every branch instead travels source → its own junction →
+        // ALONG the spine to the target's own cross-position → target. The
+        // middle leg is a sub-range of the spine's full span, which was
+        // already checked clear end-to-end, so it's safe by construction —
+        // no separate shared trunk needed for fan-in.
+        const targetJunction = built.stemPts[1];
         group.forEach(g => {
-          const seg = built.branchPts[g.id];             // [junction, sourceExit]
-          branchByEdgeId[g.id] = [seg[1], seg[0], trunkPt]; // sourceExit → junction → target
+          const seg = built.branchPts[g.id];             // [ownJunction, sourceExit]
+          branchByEdgeId[g.id] = [seg[1], seg[0], targetJunction, trunkPt];
         });
       });
 
@@ -3495,11 +3559,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Render helpers ──────────────────────────────────────────────
   const renderEdges = () => {
     // Compute suppressed edges for stacks.
-    // Stacked notes render as ONE box at the averaged (avgX,avgY) position — never at
-    // any individual note's own x/y. So every individual note edge must be suppressed
-    // (not just all-but-one), and replaced with a single synthetic edge that points at
-    // the box's real rendered position. Otherwise the "kept" edge dangles at a hidden
-    // note's real (but unrendered) location — the dangling-arrow bug.
+    // Stacked notes render as ONE box at the averaged (avgX,avgY) position.
+    // Keep exactly one real edge per stack visible (suppress the rest) and
+    // let it render through the normal path below — which resolves through
+    // renderedBoxes.memberToStack to the stack box automatically. The
+    // previous approach synthesized a fake `{}` edge object with no `id`,
+    // which meant it could never be looked up in edgeRoutes or edgeBundles
+    // and silently fell back to the old, non-obstacle-aware heuristic router
+    // for every single stack connector — a real, structural miss, not a tuning
+    // issue.
     const suppressedEdgeIds = new Set();
     const _noteParents = {};
     edges.forEach(e => {
@@ -3513,30 +3581,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const parents=_noteParents[n.id]||[];
       if(parents.length===1){const pid=parents[0];_stacks[pid]=_stacks[pid]||[];_stacks[pid].push(n);}
     });
-    const _activeStacks={}; // pid → notes[], only for stacks of 2+
     Object.entries(_stacks).forEach(([pid,notes])=>{
       if(notes.length<2) return;
-      _activeStacks[pid]=notes;
-      notes.forEach(n=>{
+      notes.slice(1).forEach(n=>{
         edges.filter(e=>(e.from===pid&&e.to===n.id)||(e.to===pid&&e.from===n.id))
           .forEach(e=>suppressedEdgeIds.add(e.id));
       });
-    });
-
-    // One consolidated dashed edge per stack → the box's real (avgX,avgY) position,
-    // never an individual note's hidden position.
-    const stackEdgeElements = Object.entries(_activeStacks).map(([pid,notes])=>{
-      const parentNode = nodes.find(n=>n.id===pid);
-      if(!parentNode) return null;
-      const avgX = notes.reduce((s,n)=>s+n.x,0)/notes.length;
-      const avgY = notes.reduce((s,n)=>s+n.y,0)/notes.length;
-      const stackTarget = { x:avgX, y:avgY, w:240, h:100, type:'note' };
-      const result = getEdgePath(parentNode, stackTarget, {});
-      const { path } = result;
-      return (
-        <path key={`stack-edge-${pid}`} d={path} stroke="var(--text4)" strokeWidth={1.5}
-          fill="none" strokeDasharray="5,4" markerEnd="url(#nn-arr)" opacity={0.8}/>
-      );
     });
 
     const edgeElements = edges.map(edge=>{
@@ -3732,7 +3782,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
       })()}
       {edgeElements}
-      {stackEdgeElements}
       {edgeRouting==="ortho" && edgeBundles.trunks.map((tr,i)=>(
         <g key={`trunk-${i}`}>
           <path d={`M ${tr.stemPts[0].x} ${tr.stemPts[0].y} L ${tr.stemPts[1].x} ${tr.stemPts[1].y}`}

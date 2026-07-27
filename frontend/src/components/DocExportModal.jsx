@@ -62,7 +62,11 @@ function buildNormalSections(nodes, edges, title) {
           if (text) sections.push({ type:"note", text });
         });
       }
-      Object.entries(node.properties || {}).filter(([,v]) => v).forEach(([k,v]) => {
+      // Never let a live API token or the raw integration cache (disk
+      // serials, internal hostnames, container inventories) into an
+      // exported document — only the fields actually shown on the card.
+      const SECRET_KEY_RE = /^_integration|token|password|secret|api[_-]?key/i;
+      Object.entries(node.properties || {}).filter(([k,v]) => v && !SECRET_KEY_RE.test(k)).forEach(([k,v]) => {
         sections.push({ type:"label", label: k, value: String(v) });
       });
       sections.push({ type:"divider" });

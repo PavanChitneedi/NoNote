@@ -1,6 +1,14 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.63.2",date:"Jul 2026",items:[
+    "Security fix: .nonote export, Copy for AI, and Word/PDF export could all leak live API tokens and the full raw integration response cache (disk serials, internal hostnames, container inventories, alerts) for any node with a Proxmox/TrueNAS integration configured. All three export paths now go through one shared filter that strips these before anything leaves the app.",
+    "Fix: the parent-to-note-stack connector was built from a placeholder edge object with no id, so it could never be found by the router or bundler and silently fell back to the old, non-obstacle-aware renderer for every stack connector on the map. It now reuses a real edge, giving it full routing and bundling like everything else.",
+    "Fix: a bundle's own targets were excluded from obstacles for every branch in the group, not just their own — letting one sibling's line validly cut through another sibling's box. Obstacle exclusion is now scoped per-branch.",
+    "Fix: fan-in branches took a diagonal shortcut into the shared target that was never actually validated for obstructions. They now travel along the already-validated spine before turning in, matching the same safety guarantee as every other route.",
+    "Fix: a node's own attached note sits in the same narrow corridor its own fan-out trunk needs to start from, so bundles rooted at a node with notes were being rejected outright. The trunk now routes past the note's far edge instead of failing to form.",
+    "Verified against the user's actual 37-node/37-edge exported map (not a synthetic test): 0 segments crossing a foreign box, 0 parallel overlaps, 4 bundles now form (up from 1), 11 edges bundled (up from 2).",
+  ]},
   {v:"v5.63.1",date:"Jul 2026",items:[
     "New: fan-in bundling. Edge bundling only merged edges LEAVING a shared node — a node with two real connections (e.g. reachable via both a switch and a VPN router) still drew as separate converging lines. Convergent edges are now bundled the same way: individual runs out to a shared spine, one merged line into the destination.",
     "Fix: a bundle's shared spine could stop short of where its own trunk needed to attach, leaving a visible gap where the tee didn't actually connect to anything. The spine now always extends to cover the trunk's own position, not just the branch positions.",
