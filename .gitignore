@@ -33,3 +33,6 @@ Thumbs.db
 # Docker overrides with real secrets
 docker-compose.override.yml
 
+# Database backups (contain password hashes + all user data)
+backups/
+

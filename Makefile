@@ -1,4 +1,4 @@
-.PHONY: up down restart logs ps backup restore shell-db shell-backend gen-certs rotate-secrets rotate-secrets-full help
+.PHONY: up down restart logs ps backup restore install-backup-cron shell-db shell-backend gen-certs rotate-secrets rotate-secrets-full help
 
 # ── Startup ───────────────────────────────────────────────────
 up:
@@ -40,6 +40,13 @@ restore:
 	gunzip -c $(FILE) | docker exec -i nodemap_postgres psql \
 	  -U $${POSTGRES_USER:-nodemap} $${POSTGRES_DB:-nodemap}
 	@echo "Restore complete."
+
+install-backup-cron:
+	@CRON_LINE="0 3 * * * cd $$(pwd) && ./backup-cron.sh >> backups/backup.log 2>&1"; \
+	mkdir -p backups; \
+	( crontab -l 2>/dev/null | grep -vF "backup-cron.sh" ; echo "$$CRON_LINE" ) | crontab -; \
+	echo "Installed — daily backup at 3am, keeping 14 days (set BACKUP_RETENTION_DAYS to change)."; \
+	echo "Verify with: crontab -l"
 
 # ── Shell access ─────────────────────────────────────────────
 shell-db:
@@ -96,8 +103,9 @@ help:
 	@echo "  make logs            Tail all logs"
 	@echo "  make logs-backend    Tail backend logs only"
 	@echo "  make ps              Show service status"
-	@echo "  make backup          Backup PostgreSQL to backups/"
-	@echo "  make restore FILE=…  Restore from a backup file"
+	@echo "  make backup               Backup PostgreSQL to backups/"
+	@echo "  make restore FILE=…       Restore from a backup file"
+	@echo "  make install-backup-cron  Schedule daily backups via cron (3am, 14-day retention)"
 	@echo "  make shell-db        Open psql shell"
 	@echo "  make shell-backend   Open backend sh shell"
 	@echo "  make shell-redis     Open redis-cli"
