@@ -28,6 +28,7 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+.claude/
 
 # Docker overrides with real secrets
 docker-compose.override.yml
