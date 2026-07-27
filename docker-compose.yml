@@ -35,6 +35,7 @@ services:
 
   backend:
     image: nonote-backend:${GIT_SHA:-latest}
+    pull_policy: never
     build:
       context: ./backend
       dockerfile: Dockerfile
@@ -79,6 +80,7 @@ services:
 
   frontend:
     image: nonote-frontend:${GIT_SHA:-latest}
+    pull_policy: never
     build:
       context: ./frontend
       dockerfile: Dockerfile
