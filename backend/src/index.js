@@ -15,6 +15,7 @@ import usersRouter from "./routes/users.js";
 import llmRouter      from "./routes/llm.js";
 import versionsRouter from "./routes/versions.js";
 import integrationsRouter from "./routes/integrations.js";
+import { checkMapAccess } from "./ws/mapAccess.js";
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || "3001");
@@ -175,42 +176,15 @@ wss.on("connection", (ws) => {
 
       mapId = msg.mapId;
 
-      // ── Check map access (mirrors mapPermission middleware) ──
+      // ── Check map access (see ws/mapAccess.js — mirrors mapPermission middleware) ──
       try {
-        const userRes = await query("SELECT role, display_name, is_active FROM users WHERE id=$1", [userId]);
-        const u = userRes.rows[0];
-        if (!u || !u.is_active) {
-          ws.send(JSON.stringify({ type: "auth_error", message: "User not found or disabled" }));
-          ws.close(1008, "Unauthorized");
+        const access = await checkMapAccess(userId, mapId);
+        if (!access.ok) {
+          ws.send(JSON.stringify({ type: "auth_error", message: access.message }));
+          ws.close(access.closeCode, access.closeReason);
           return;
         }
-        userName = u.display_name || "User";
-        // Admins/owners have global access; others need explicit map permission
-        if (!["owner","admin"].includes(u.role)) {
-          const accessRes = await query(
-            `SELECT m.owner_id, mc.permission, m.is_public
-             FROM maps m
-             LEFT JOIN map_collaborators mc ON mc.map_id=m.id AND mc.user_id=$2
-             WHERE m.id=$1`,
-            [mapId, userId]
-          );
-          const row = accessRes.rows[0];
-          if (!row) {
-            ws.send(JSON.stringify({ type: "auth_error", message: "Map not found" }));
-            ws.close(1008, "Forbidden");
-            return;
-          }
-          const hasAccess = row.owner_id === userId || row.permission || row.is_public;
-          if (!hasAccess) {
-            ws.send(JSON.stringify({ type: "auth_error", message: "No access to this map" }));
-            ws.close(1008, "Forbidden");
-            return;
-          }
-        } else {
-          // Admin/owner: still fetch display name
-          const row = await query("SELECT display_name FROM users WHERE id=$1", [userId]);
-          userName = row.rows[0]?.display_name || "User";
-        }
+        userName = access.userName;
       } catch (e) {
         console.error("[ws] access check error:", e.message);
         ws.send(JSON.stringify({ type: "auth_error", message: "Access check failed" }));
