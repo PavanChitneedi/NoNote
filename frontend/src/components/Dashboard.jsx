@@ -6,7 +6,7 @@ import { useAuth } from "../context/AuthContext.jsx";
 import { getMaps, createMap, deleteMap, apiFetch, saveMap, saveMapMeta, getAccessToken } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 import { buildLLMText, buildMultiMapLLMText, copyText } from "../utils/llmExport.js";
-import { NT } from "./NodeCanvas.jsx";
+import { NT } from "../lib/nodeTypes.js";
 import { getMap } from "../api/client.js";
 
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)" };
