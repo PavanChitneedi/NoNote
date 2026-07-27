@@ -11,7 +11,7 @@ router.use(authenticate);
 // Integration routes are FOR homelab use — private IPs (192.168.x, 10.x, 172.16-31.x)
 // are ALLOWED because Proxmox/TrueNAS/Unraid/ESXi live on LAN.
 // Only blocked: cloud metadata endpoint, loopback, Docker service names.
-function isSafeUrl(rawUrl) {
+export function isSafeUrl(rawUrl) {
   let parsed;
   try { parsed = new URL(rawUrl); } catch { return false; }
   const hostname = parsed.hostname.toLowerCase();
@@ -19,7 +19,10 @@ function isSafeUrl(rawUrl) {
   if (!['http:', 'https:'].includes(parsed.protocol)) return false;
 
   // Block loopback
-  if (/^localhost$/i.test(hostname) || /^127\./.test(hostname) || /^::1$/.test(hostname)) return false;
+  // URL.hostname keeps brackets on IPv6 literals (e.g. "[::1]"), so the
+  // bracket-less form of this regex never matched — IPv6 loopback silently
+  // bypassed this check while 127.0.0.1 was correctly blocked.
+  if (/^localhost$/i.test(hostname) || /^127\./.test(hostname) || /^\[?::1\]?$/.test(hostname)) return false;
 
   // Block cloud metadata (AWS/Azure/GCP link-local) — not a homelab address
   if (/^169\.254\./.test(hostname)) return false;
@@ -33,7 +36,7 @@ function isSafeUrl(rawUrl) {
 }
 
 // ── Credential sanity check: non-empty, printable ASCII, reasonable length ──
-function isValidToken(t) {
+export function isValidToken(t) {
   return typeof t === 'string' && t.length >= 4 && t.length <= 2048 && /^[\x20-\x7E]+$/.test(t);
 }
 
