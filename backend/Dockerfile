@@ -3,8 +3,8 @@ RUN apk add --no-cache curl dumb-init
 WORKDIR /app
 
 FROM base AS deps
-COPY package.json ./
-RUN npm install --omit=dev && npm cache clean --force
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev && npm cache clean --force
 
 FROM base AS runtime
 ENV NODE_ENV=production
