@@ -1685,6 +1685,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const canvasRef   = useRef(null);
   const nodesRef      = useRef([]);        // live ref for box-select
   const nodeHeightsRef= useRef({});       // actual rendered height per node id
+  // Bumped when a real DOM measurement disagrees with the stored value by
+  // more than a rounding error. Anything computing box geometry from stored
+  // h alone (routing, ports) is memoized on node/edge identity and has no way
+  // to know the ref changed, so without this it silently uses the pre-measurement
+  // estimate forever — which is exactly what produced the small permanent bends
+  // on any node with extra content rows (type badge, IP tag) taller than DEF_H.
+  const [heightTick, setHeightTick] = useState(0);
+  const reportMeasuredHeight = useCallback((id, h) => {
+    const prev = nodeHeightsRef.current[id];
+    nodeHeightsRef.current[id] = h;
+    if (Math.abs((prev||0) - h) > 0.5) setHeightTick(t => t+1);
+  }, []);
   const saveTimer   = useRef(null);
   const versionTimer= useRef(null);
   const notesTimers = useRef({});
@@ -2858,7 +2870,18 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Pre-compute staggered port t-values for all edges ────────────────────
   // Groups edges by which face they share on a node and spreads their
   // exit/entry points evenly to prevent arrows stacking on the same pixel.
-  const edgePortMap = useMemo(()=>computePortMap(nodes, edges), [edges, nodes]);
+  // Nodes with h corrected to the real rendered height where it's known.
+  // Every geometry computation (ports, boxes, routing) must read from this,
+  // not raw `nodes` — a node with an extra content row (type badge, IP tag)
+  // renders taller than its stored h, and using the stored value there is
+  // exactly what produced the small permanent bends on those connectors.
+  const measuredNodes = useMemo(
+    () => nodes.map(n => ({ ...n, h: collH(n) })),
+    [nodes, heightTick]   // eslint-disable-line react-hooks/exhaustive-deps
+  );
+
+
+  const edgePortMap = useMemo(()=>computePortMap(measuredNodes, edges), [edges, measuredNodes]);
 
   // ── Lane assignment for orthogonal routing ───────────────────────
   // Every edge that travels through the same channel gets its own lane
@@ -2871,12 +2894,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const renderedBoxes = useMemo(()=>{
     const noteParents = {};
     edges.forEach(e => {
-      const fn = nodes.find(n=>n.id===e.from), tn = nodes.find(n=>n.id===e.to);
+      const fn = measuredNodes.find(n=>n.id===e.from), tn = measuredNodes.find(n=>n.id===e.to);
       if (tn?.type==='note' && fn?.type!=='note') (noteParents[e.to]  = noteParents[e.to]  || []).push(e.from);
       if (fn?.type==='note' && tn?.type!=='note') (noteParents[e.from]= noteParents[e.from]|| []).push(e.to);
     });
     const stacks = {};
-    nodes.forEach(n => {
+    measuredNodes.forEach(n => {
       if (n.type !== 'note') return;
       const ps = noteParents[n.id] || [];
       if (ps.length === 1) (stacks[ps[0]] = stacks[ps[0]] || []).push(n);
@@ -2887,16 +2910,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const sid = `__stack__${pid}`;
       const ax = ns.reduce((s,n)=>s+n.x,0)/ns.length;
       const ay = ns.reduce((s,n)=>s+n.y,0)/ns.length;
-      const box = { id:sid, x:ax, y:ay, w:240, h:150, parentId:pid };
+      // Must match STACK_BOX_H exactly — this box height was hardcoded to a
+      // stale value from before the card redesign, which is a second,
+      // independent source of the same class of bend bug.
+      const box = { id:sid, x:ax, y:ay, w:240, h:STACK_BOX_H(ns.length), parentId:pid };
       boxes.push(box); stackByParent[pid] = box;
       ns.forEach(n => { memberToStack[n.id] = sid; });
     });
-    nodes.forEach(n => {
+    measuredNodes.forEach(n => {
       if (memberToStack[n.id]) return;
       boxes.push({ id:n.id, x:n.x, y:n.y, w:n.w||220, h:n.h||96 });
     });
     return { boxes, memberToStack, stackByParent };
-  }, [nodes, edges]);
+  }, [measuredNodes, edges]);
 
   // nodeId -> ids of note nodes attached to it (any note, grouped or not)
   const attachedNotes = useMemo(()=>{
@@ -2972,8 +2998,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const lanes = {};
     const groups = {};
     edges.forEach(edge => {
-      const f = nodes.find(n=>n.id===edge.from);
-      const t = nodes.find(n=>n.id===edge.to);
+      const f = measuredNodes.find(n=>n.id===edge.from);
+      const t = measuredNodes.find(n=>n.id===edge.to);
       if (!f || !t) return;
       const fw=f.w||220, fh=f.h||96, tw=t.w||220, th=t.h||96;
       const {from:fSide,to:tSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
@@ -3004,7 +3030,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       });
     });
     return lanes;
-  }, [edges, nodes, edgeRouting]);
+  }, [edges, measuredNodes, edgeRouting]);
 
   const getEdgePath=(fromNode,toNode,edge={})=>{
     const fw=collW(fromNode), fh=collH(fromNode);
@@ -3045,12 +3071,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       fp=a; fn1=a.normal;
     }
     if(!fp){
-      // Use STORED dims for face selection (consistent with edgePortMap)
-      const sw=fromNode.w||220, sh=fromNode.h||96;
-      const dw=toNode.w||220,   dh=toNode.h||96;
-      const {from:fSide}=pickBestSides(fromNode.x,fromNode.y,sw,sh,toNode.x,toNode.y,dw,dh);
+      // Face selection uses the same collW/collH-measured dimensions as
+      // edgePortMap (via measuredNodes) — using stale stored dims here would
+      // pick a different face than the one ports were grouped and sorted on.
+      const {from:fSide}=pickBestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
       const t=getPortT("from");
-      // But use collW/collH for actual exit POINT so arrow lands on visible edge
       const pt=sidePt(fromNode,fw,fh,fSide,t);
       fp=pt; fn1=pt.normal;
     }
@@ -3064,9 +3089,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       tp=a; fn2=a.normal;
     }
     if(!tp){
-      const sw=fromNode.w||220, sh=fromNode.h||96;
-      const dw=toNode.w||220,   dh=toNode.h||96;
-      const {to:tSide}=pickBestSides(fromNode.x,fromNode.y,sw,sh,toNode.x,toNode.y,dw,dh);
+      const {to:tSide}=pickBestSides(fromNode.x,fromNode.y,fw,fh,toNode.x,toNode.y,tw,th);
       const t=getPortT("to");
       const pt=sidePt(toNode,tw,th,tSide,t);
       tp=pt; fn2=pt.normal;
@@ -3807,7 +3830,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
     return(
       <div key={node.id} className="nn-node" data-ui={`node-${node.id}`} data-component="NodeCard" data-page="canvas" data-role="node" data-variant={node.type}
-        ref={el=>{ if(el) nodeHeightsRef.current[node.id]=el.getBoundingClientRect().height/zoom; }}
+        ref={el=>{ if(el) reportMeasuredHeight(node.id, el.getBoundingClientRect().height/zoom); }}
         onMouseDown={e=>{e.stopPropagation();if(editingTitle!==node.id)startDrag(e.clientX,e.clientY,node.id);}}
         onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
         onClick={e=>handleNodeClick(e,node.id)}

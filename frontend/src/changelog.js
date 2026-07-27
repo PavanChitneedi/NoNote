@@ -1,6 +1,9 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.62.1",date:"Jul 2026",items:[
+    "Fix: connectors to nodes with an extra content row (a type badge like \"Proxmox VE\", an IP tag) kept a small permanent bend even after Arrange. Those nodes render taller than their stored size, and ports/routing were reading the stored size instead of the real one — the same class of bug fixed for note-stack boxes last release, just on regular nodes this time. Routing now reads the actual measured height everywhere, and updates itself automatically once a node's real size is known.",
+  ]},
   {v:"v5.62.0",date:"Jul 2026",items:[
     "New: redesigned grouped-note cards. Collapsed, a stack now shows only its top note (title + a one-line preview) instead of a list of every note squeezed in — with a layered-card icon and a subtle peek of the cards behind it as the \"this is a stack\" cue.",
     "New: Ungroup — expand a stack and each note gets a small button to pull it out on its own. It becomes a normal standalone note immediately (no re-grouping on the next Arrange), positioned just clear of the stack so it's not hidden underneath it.",
