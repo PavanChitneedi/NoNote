@@ -24,7 +24,7 @@ async function getSetting(key, fallback = null) {
 
 // ── Helper: get effective permissions for a user ─────────────────────────
 // Returns merged set from role + groups + individual overrides
-async function getEffectivePermissions(userId, role) {
+export async function getEffectivePermissions(userId, role) {
   const ROLE_PERMISSIONS = {
     owner:   ["*"],  // wildcard = all
     admin:   ["users.view","users.create","users.edit","users.delete",
