@@ -42,7 +42,10 @@ make shell-db             # psql into postgres
 make shell-backend        # sh into backend container
 make gen-certs            # self-signed TLS cert into nginx/certs/
 make backup / make restore FILE=...
-make update                # pull + rebuild, rolling
+make install-backup-cron   # schedule daily backups via cron
+make deploy                # git pull + make update, in one step
+make update                # rebuild + rolling update, tagged by git commit, health-checked after
+make rollback SHA=<sha>    # revert to a previously-deployed commit's image, no rebuild
 make health                # curl /health
 ```
 

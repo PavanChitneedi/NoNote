@@ -1,4 +1,6 @@
-.PHONY: up down restart logs ps backup restore install-backup-cron shell-db shell-backend gen-certs rotate-secrets rotate-secrets-full help
+.PHONY: up down restart logs ps backup restore install-backup-cron shell-db shell-backend gen-certs rotate-secrets rotate-secrets-full build pull update rollback deploy health _healthcheck help
+
+GIT_SHA := $(shell git rev-parse --short HEAD 2>/dev/null || echo unknown)
 
 # ── Startup ───────────────────────────────────────────────────
 up:
@@ -83,15 +85,57 @@ pull:
 	docker compose pull
 
 # ── Update (zero-downtime rolling) ───────────────────────────
+# Tags the built images with the current git commit (GIT_SHA) so a bad
+# deploy can be rolled back to the exact previous image without a rebuild
+# — see `make rollback`. Verifies the app actually comes back healthy
+# afterward instead of silently leaving a broken deploy running.
 update:
 	docker compose pull
-	docker compose up -d --build --remove-orphans
+	GIT_SHA=$(GIT_SHA) docker compose build backend frontend
+	@docker tag nonote-backend:$(GIT_SHA) nonote-backend:latest
+	@docker tag nonote-frontend:$(GIT_SHA) nonote-frontend:latest
+	GIT_SHA=$(GIT_SHA) docker compose up -d --remove-orphans
 	docker image prune -f
+	@echo "Deployed commit $(GIT_SHA) — checking health..."
+	@$(MAKE) --no-print-directory _healthcheck || \
+	  (echo "FAILED health check after update. Roll back with: make rollback SHA=<previous-sha>  (see: docker images | grep nonote-backend)" && exit 1)
+	@echo "Update successful — running commit $(GIT_SHA)"
+
+# ── Rollback ──────────────────────────────────────────────────
+# Runs a PREVIOUSLY-BUILT image tag without rebuilding — only works if that
+# tag hasn't been pruned. List what's available with:
+#   docker images | grep nonote-backend
+# Only works for commits deployed via `make update` after this feature was
+# added; there's no tagged image for anything deployed before that.
+rollback:
+	@test -n "$(SHA)" || (echo "Usage: make rollback SHA=<short-git-sha>  (see: docker images | grep nonote-backend)" && exit 1)
+	@echo "Rolling back to $(SHA) (no rebuild — using the already-built image)..."
+	GIT_SHA=$(SHA) docker compose up -d --no-deps backend frontend
+	@$(MAKE) --no-print-directory _healthcheck || \
+	  (echo "FAILED health check after rollback to $(SHA)." && exit 1)
+	@echo "Rolled back to $(SHA)"
+
+# ── Deploy: pull latest code, then update ────────────────────
+deploy:
+	git pull
+	@$(MAKE) --no-print-directory update
 
 # ── Health check ─────────────────────────────────────────────
 health:
 	@curl -sk https://localhost/health | python3 -m json.tool 2>/dev/null || \
 	 curl -s  http://localhost/health  | python3 -m json.tool
+
+# Internal: polling health check with a real pass/fail exit code, used by
+# update/rollback. (`make health` above is for humans reading output and
+# doesn't reliably exit non-zero on failure — this does.)
+_healthcheck:
+	@for i in 1 2 3 4 5 6; do \
+	  if curl -sfk https://localhost/health >/dev/null 2>&1 || curl -sf http://localhost/health >/dev/null 2>&1; then \
+	    exit 0; \
+	  fi; \
+	  echo "  waiting for app to respond... ($$i/6)"; sleep 3; \
+	done; \
+	exit 1
 
 help:
 	@echo ""
@@ -112,7 +156,9 @@ help:
 	@echo "  make rotate-secrets       Rotate JWT/Redis/Postgres passwords"
 	@echo "  make rotate-secrets-full  Also rotate the admin password"
 	@echo "  make gen-certs       Generate self-signed TLS cert"
-	@echo "  make build           Force rebuild all images"
-	@echo "  make update          Pull + rebuild (rolling update)"
-	@echo "  make health          Check /health endpoint"
+	@echo "  make build                Force rebuild all images"
+	@echo "  make update               Rebuild + rolling update, tagged by git commit, health-checked"
+	@echo "  make rollback SHA=…       Roll back to a previously-deployed commit (no rebuild)"
+	@echo "  make deploy               git pull + make update, in one step"
+	@echo "  make health               Check /health endpoint"
 	@echo ""
