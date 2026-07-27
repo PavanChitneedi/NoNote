@@ -41,6 +41,10 @@ import {
   exportAsNoNote, userColor, exportAsPDF, exportAsHTML, exportAsDoc, exportAsPNG,
 } from "../lib/exportFormats.js";
 import { tbtn, inp } from "../lib/styleHelpers.js";
+import NodeIcon from "./canvas/NodeIcon.jsx";
+import CustomKeyInput from "./canvas/CustomKeyInput.jsx";
+import FormattedContent from "./canvas/FormattedContent.jsx";
+import EdgeIcon from "./canvas/EdgeIcon.jsx";
 
 // Use browser crypto for UUID - never send non-UUID to DB
 const makeId = () => typeof crypto !== 'undefined' && crypto.randomUUID
@@ -58,14 +62,6 @@ const mkNode = (type, x, y) => ({
   properties: { ...(DP[type]||{}) }, customProps: {},
 });
 
-// ── Lucide icon renderer ─────────────────────────────────────────────────
-// icon can be a Lucide component (new) or a string emoji (legacy/canvas fallback)
-function NodeIcon({ icon, size=18, color="currentColor", strokeWidth=1.8 }) {
-  if (!icon) return null;
-  if (typeof icon === "string") return <span style={{fontSize:size,lineHeight:1}}>{icon}</span>;
-  const I = icon;
-  return <I size={size} color={color} strokeWidth={strokeWidth} style={{flexShrink:0}} />;
-}
 // ─────────────────────────────────────────────────────────────
 // Main Component
 // ─────────────────────────────────────────────────────────────
@@ -4593,58 +4589,6 @@ function NodeNotesTab({ node, canEdit, t, onUpdate }) {
 }
 
 // ── Props Panel ───────────────────────────────────────────────
-// ── Editable custom property key with duplicate detection ────────────────
-function CustomKeyInput({ propKey, node, canEdit, onRename, style }) {
-  const [val, setVal]   = useState(propKey);
-  const [err, setErr]   = useState("");
-
-  // Reset if the key changes externally (e.g. successful rename)
-  const prevKey = useRef(propKey);
-  useEffect(() => { if(propKey !== prevKey.current){ setVal(propKey); setErr(""); prevKey.current=propKey; }}, [propKey]);
-
-  const takenKeys = (inputVal) => {
-    const lower = inputVal.trim().toLowerCase();
-    const defaultKeys = Object.keys(node.properties||{}).map(k=>k.toLowerCase());
-    const customKeys  = Object.keys(node.customProps||{}).filter(k=>k!==propKey).map(k=>k.toLowerCase());
-    return [...defaultKeys,...customKeys].includes(lower);
-  };
-
-  const handleChange = (e) => {
-    const v = e.target.value;
-    setVal(v);
-    if(v.trim() && v.trim() !== propKey && takenKeys(v))
-      setErr("Name already used by another property");
-    else setErr("");
-  };
-
-  const handleBlur = (e) => {
-    const nk = e.target.value.trim();
-    if(!nk){ setVal(propKey); setErr(""); return; }           // empty → revert
-    if(nk === propKey){ setErr(""); return; }                  // unchanged → ok
-    if(takenKeys(nk)){ setErr("Name already used by another property"); setVal(propKey); return; } // dupe → revert
-    onRename(propKey, nk);                                     // success
-    setErr("");
-  };
-
-  return (
-    <div style={{flex:"0 0 42%",display:"flex",flexDirection:"column",gap:2}}>
-      <input
-        value={val}
-        disabled={!canEdit}
-        onChange={handleChange}
-        onBlur={handleBlur}
-        onKeyDown={e=>{if(e.key==="Enter")e.target.blur();e.stopPropagation();}}
-        placeholder="property name"
-        style={{...style,
-          border: err ? "1.5px solid var(--danger)" : style?.border,
-          outline: err ? "none" : undefined,
-          boxShadow: err ? "0 0 0 2px var(--danger)30" : undefined,
-        }}
-      />
-      {err && <span style={{fontSize:9,color:"var(--danger)",lineHeight:1.3,paddingLeft:2}}>{err}</span>}
-    </div>
-  );
-}
 
 function PropsPanel({node,edges,nodes,isMobile,canEdit,onClose,onUpdate,onUpdateProp,onUpdateCustom,onDeleteCustom,onAddCustom,onRenameCustom,onUpdateEdge,onDeleteEdge,onResetSize,onUpdateNotes,onStartEditTitle,onToggleCollapse}){
   const t=NT[node.type]||NT.note;
@@ -5233,185 +5177,6 @@ function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
     </div>
   );
 }
-
-// ── Lightweight Markdown renderer ──────────────────────────────
-function MarkdownNote({ text, color }) {
-  if (!text) return null;
-  const lines = text.split("\n");
-  const elems = [];
-  let i = 0;
-  while (i < lines.length) {
-    const line = lines[i];
-    // Heading
-    if (/^#{1,3}\s/.test(line)) {
-      const lvl = line.match(/^#+/)[0].length;
-      const txt = line.replace(/^#+\s/, '');
-      const sz = lvl === 1 ? 13 : lvl === 2 ? 12 : 11;
-      elems.push(<div key={i} style={{fontWeight:700,fontSize:sz,color:'var(--text)',marginTop:lvl===1?4:2,marginBottom:1}}>{txt}</div>);
-    }
-    // HR
-    else if (/^---+$/.test(line.trim())) {
-      elems.push(<hr key={i} style={{border:'none',borderTop:`1px solid ${color}30`,margin:'4px 0'}}/>);
-    }
-    // Bullet
-    else if (/^[-*]\s/.test(line)) {
-      const txt = line.replace(/^[-*]\s/, '');
-      elems.push(<div key={i} style={{display:'flex',gap:5,fontSize:11,color:'var(--text2)',lineHeight:1.5}}>
-        <span style={{color,flexShrink:0,marginTop:1}}>•</span>
-        <span>{inlineFormat(txt)}</span>
-      </div>);
-    }
-    // Checkbox
-    else if (/^\[[ x]\]\s/i.test(line)) {
-      const done = line[1].toLowerCase() === 'x';
-      const txt = line.replace(/^\[[ x]\]\s/i, '');
-      elems.push(<div key={i} style={{display:'flex',gap:5,fontSize:11,color:done?'var(--text4)':'var(--text2)',lineHeight:1.5,textDecoration:done?'line-through':'none'}}>
-        <span style={{color:done?'var(--success)':color,flexShrink:0}}>{done?'☑':'☐'}</span>
-        <span>{inlineFormat(txt)}</span>
-      </div>);
-    }
-    // Code block
-    else if (line.startsWith('```')) {
-      const codeLines = [];
-      i++;
-      while (i < lines.length && !lines[i].startsWith('```')) { codeLines.push(lines[i]); i++; }
-      elems.push(<pre key={i} style={{background:'var(--bg)',borderRadius:4,
-        padding:'4px 6px',fontSize:10,fontFamily:'monospace',color:'var(--text3)',
-        margin:'2px 0',overflow:'auto',whiteSpace:'pre-wrap'}}>{codeLines.join("\n")}</pre>);
-    }
-    // Normal paragraph
-    else if (line.trim()) {
-      elems.push(<div key={i} style={{fontSize:11,color:'var(--text3)',lineHeight:1.55}}>{inlineFormat(line)}</div>);
-    }
-    // Blank line — small gap
-    else {
-      elems.push(<div key={i} style={{height:4}}/>);
-    }
-    i++;
-  }
-  return <>{elems}</>;
-}
-
-function inlineFormat(text) {
-  // Bold **text**, italic *text*, inline code `text`
-  const parts = text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
-  return parts.map((p, i) => {
-    if (p.startsWith('**') && p.endsWith('**'))
-      return <strong key={i} style={{color:'var(--text)',fontWeight:700}}>{p.slice(2,-2)}</strong>;
-    if (p.startsWith('*') && p.endsWith('*'))
-      return <em key={i} style={{color:'var(--text2)'}}>{p.slice(1,-1)}</em>;
-    if (p.startsWith('`') && p.endsWith('`'))
-      return <code key={i} style={{background:'var(--bg)',borderRadius:3,
-        padding:'0 3px',fontSize:10,fontFamily:'monospace',color:'#79c0ff'}}>{p.slice(1,-1)}</code>;
-    return p;
-  });
-}
-
-function FormattedContent({ content }) {
-  if (!content) return null;
-  const segments = content.split(/(```[\s\S]*?```)/g);
-  const elements = [];
-  let ki = 0;
-  segments.forEach(seg => {
-    if (seg.startsWith('```') && seg.endsWith('```')) {
-      const inner = seg.slice(3,-3);
-      const lm = inner.match(/^[a-zA-Z]+\n/);
-      const code = lm ? inner.slice(lm[0].length) : inner;
-      elements.push(<pre key={ki++} style={{background:'var(--bg)',border:'1px solid var(--border2)',
-        borderRadius:'var(--radius-sm)',padding:'7px 9px',fontSize:10,overflowX:'auto',
-        margin:'4px 0',fontFamily:'monospace',color:'var(--accent)',lineHeight:1.5,whiteSpace:'pre'}}>{code.trimEnd()}</pre>);
-      return;
-    }
-    const lines = seg.split('\n');
-    let i = 0;
-    while (i < lines.length) {
-      const line = lines[i];
-      if (/^---+$/.test(line.trim())) { elements.push(<hr key={ki++} style={{border:'none',borderTop:'1px solid var(--border)',margin:'6px 0'}}/>); i++; continue; }
-      const hm = line.match(/^(#{1,3})\s+(.+)/);
-      if (hm) { const sz={1:13,2:12,3:11}[hm[1].length]; elements.push(<div key={ki++} style={{fontWeight:700,fontSize:sz,color:'var(--text)',margin:'6px 0 2px'}}>{inlineFormat(hm[2])}</div>); i++; continue; }
-      if (line.startsWith('>')) { elements.push(<div key={ki++} style={{borderLeft:'3px solid var(--accent)',paddingLeft:7,color:'var(--text3)',fontStyle:'italic',margin:'3px 0',fontSize:11}}>{inlineFormat(line.replace(/^>\s*/,''))}</div>); i++; continue; }
-      if (/^[-*]\s/.test(line)) {
-        const items=[];
-        while(i<lines.length&&/^[-*]\s/.test(lines[i])){items.push(lines[i].replace(/^[-*]\s/,''));i++;}
-        elements.push(<ul key={ki++} style={{margin:'3px 0',paddingLeft:14,listStyle:'disc'}}>{items.map((it,li)=><li key={li} style={{color:'var(--text2)',fontSize:11,lineHeight:1.6}}>{inlineFormat(it)}</li>)}</ul>);
-        continue;
-      }
-      if (/^\d+\.\s/.test(line)) {
-        const items=[];
-        while(i<lines.length&&/^\d+\.\s/.test(lines[i])){items.push(lines[i].replace(/^\d+\.\s/,''));i++;}
-        elements.push(<ol key={ki++} style={{margin:'3px 0',paddingLeft:14}}>{items.map((it,li)=><li key={li} style={{color:'var(--text2)',fontSize:11,lineHeight:1.6}}>{inlineFormat(it)}</li>)}</ol>);
-        continue;
-      }
-      if (line.trim()==='') { elements.push(<div key={ki++} style={{height:4}}/>); i++; continue; }
-      elements.push(<div key={ki++} style={{color:'var(--text2)',fontSize:11,lineHeight:1.6}}>{inlineFormat(line)}</div>);
-      i++;
-    }
-  });
-  return <div style={{display:'flex',flexDirection:'column'}}>{elements}</div>;
-}
-
-// ── EdgeIcon — SVG preview of a connection style ──────────────
-function EdgeIcon({ styleKey, size=40, active=false, color="var(--text3)" }) {
-  const s = EDGE_STYLES[styleKey];
-  if(!s) return null;
-  const w=size, h=Math.round(size*0.55);
-  const x1=6, x2=w-8, y=h/2;
-  const dash = s.dash==="none" ? "none"
-    : s.dash==="8,5" ? `${Math.round(size*.14)},${Math.round(size*.09)}`
-    : `${Math.round(size*.035)},${Math.round(size*.09)}`;
-  const sw = s.strokeW>=4 ? Math.round(size*.075) : Math.round(size*.045);
-  const col = active?"var(--accent)":color;
-  const arrowSize = Math.round(size*.13);
-
-  // Arrow marker paths
-  const ArrowHead = ({x,y,dir=1})=>(
-    <polygon
-      points={`${x},${y} ${x-dir*arrowSize},${y-arrowSize*.55} ${x-dir*arrowSize},${y+arrowSize*.55}`}
-      fill={col}/>
-  );
-
-  // Wave path
-  const wavePath = ()=>{
-    const segs=5; const segW=(x2-x1)/segs;
-    let d=`M ${x1} ${y}`;
-    for(let i=0;i<segs;i++){
-      const cx1=x1+i*segW+segW*.25, cy1=y-(h*.2);
-      const cx2=x1+i*segW+segW*.75, cy2=y+(h*.2);
-      const ex=x1+(i+1)*segW;
-      d+=` C ${cx1} ${cy1}, ${cx2} ${cy2}, ${ex} ${y}`;
-    }
-    return d;
-  };
-
-  // Double line
-  const offset=Math.round(size*.07);
-
-  return(
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{display:"block",overflow:"visible"}}>
-      {s.wave?(
-        <path d={wavePath()} stroke={col} strokeWidth={sw} fill="none"
-          strokeDasharray={dash!=="none"?dash:undefined}/>
-      ):s.strokeW>=1.5&&s.strokeW<2?(
-        // Double line
-        <>
-          <line x1={x1} y1={y-offset} x2={x2} y2={y-offset} stroke={col} strokeWidth={sw*.7} fill="none"
-            strokeDasharray={dash!=="none"?dash:undefined}/>
-          <line x1={x1} y1={y+offset} x2={x2} y2={y+offset} stroke={col} strokeWidth={sw*.7} fill="none"
-            strokeDasharray={dash!=="none"?dash:undefined}/>
-        </>
-      ):(
-        <line x1={x1} y1={y} x2={x2} y2={y} stroke={col} strokeWidth={sw} fill="none"
-          strokeDasharray={dash!=="none"?dash:undefined}
-          strokeLinecap="round"/>
-      )}
-      {/* End arrowhead */}
-      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1}/>}
-      {/* Start arrowhead */}
-      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1}/>}
-    </svg>
-  );
-}
-
 // ── Search Panel ──────────────────────────────────────────────
 function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nodes,edges}){
   const inputRef = useRef(null);
