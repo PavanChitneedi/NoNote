@@ -53,7 +53,7 @@ const PROVIDER_PRESETS = {
 // Allows: localhost (for host.docker.internal fallback), LAN IPs, public APIs.
 const BLOCKED_HOSTS = new Set(["postgres", "redis", "backend", "frontend", "nginx"]);
 
-function isProbeUrlSafe(rawUrl) {
+export function isProbeUrlSafe(rawUrl) {
   let parsed;
   try { parsed = new URL(rawUrl); } catch { return false; }
   if (!["http:", "https:"].includes(parsed.protocol)) return false;
@@ -603,7 +603,7 @@ const MAX_NODES = 30;   // hard cap
 const MAX_NOTES = 120;  // chars per node note
 const MAX_PROPS = 6;    // properties per node
 
-function buildSystemPrompt(ctx) {
+export function buildSystemPrompt(ctx) {
   if (!ctx) return "You are a helpful assistant in NoNote, a mind-mapping and architecture tool.";
 
   // ── Node-level chat (single node context) ──────────────────
