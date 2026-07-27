@@ -1,6 +1,8 @@
 # NoNote UI System — Metadata & Dev Mode Contract
-**Version:** v5.43.4 | **Status:** Enforced  
-**Rule:** Every UI element MUST have `data-ui`. Every PR touching UI MUST update this doc.
+**Status:** Not actually enforced — see note below.
+**Rule (aspirational):** Every UI element MUST have `data-ui`. Every PR touching UI MUST update this doc.
+
+> **Coverage has regressed significantly since this was written.** Verified directly against the code: most of `NodeCanvas.jsx`'s toolbar buttons (`toolbar-edit`, `toolbar-popup`, `toolbar-panel`, `toolbar-select`, `toolbar-connect`, `toolbar-group`, `toolbar-collapse`, `topbar-aichat`, `topbar-comments`), `canvas-sidebar`, `sidebar-search`, `dashboard-new-map`, and `dashboard-search` don't have `data-ui` at all despite being listed below. Three whole components (`ThemePicker.jsx`, `HelpGuide.jsx`, `IntegrationPanel.jsx`) and one that didn't exist when this doc was written (`WorkflowAuditPanel.jsx`) have **zero** `data-ui` attributes. The Dev Mode inspector itself is real and works as described — it just won't show useful metadata for most of the app's interactive surface right now. Treat the registry below as "what's actually tagged," not "what should be tagged."
 
 ---
 
@@ -89,7 +91,7 @@
 
 ## 3. Component Metadata Registry
 
-All 22 root components and their metadata:
+Verified directly against every `data-ui=` occurrence in the code (not trusted from the previous version of this table, which had drifted significantly). Components with **no** `data-ui` at all currently: `ThemePicker.jsx`, `HelpGuide.jsx`, `IntegrationPanel.jsx`, `WorkflowAuditPanel.jsx`.
 
 | Component | File | data-ui | data-page | data-role |
 |---|---|---|---|---|
@@ -99,39 +101,22 @@ All 22 root components and their metadata:
 | Help btn | App.jsx | `topbar-help` | `global` | `nav-btn` |
 | Logout btn | App.jsx | `topbar-logout` | `global` | `action-btn` |
 | LoginPage | LoginPage.jsx | `login-page` | `login` | `page` |
-| Dashboard | Dashboard.jsx | (root div) | `dashboard` | `page` |
 | Dashboard sidebar | Dashboard.jsx | `dashboard-sidebar` | `dashboard` | `sidebar` |
-| Dashboard new map | Dashboard.jsx | `dashboard-new-map` | `dashboard` | `cta-btn` |
-| Dashboard search | Dashboard.jsx | `dashboard-search` | `dashboard` | `search-input` |
 | Map card | Dashboard.jsx | `mapcard-{id}` | `dashboard` | `card` |
 | Map list row | Dashboard.jsx | `maprow-{id}` | `dashboard` | `list-item` |
-| NodeCanvas | NodeCanvas.jsx | (canvas div) | `canvas` | `page` |
-| Canvas sidebar | NodeCanvas.jsx | `canvas-sidebar` | `canvas` | `sidebar` |
-| Sidebar search | NodeCanvas.jsx | `sidebar-search` | `canvas` | `search-input` |
 | Canvas toolbar R1 | NodeCanvas.jsx | `canvas-toolbar-row1` | `canvas` | `toolbar` |
-| Edit btn | NodeCanvas.jsx | `toolbar-edit` | `canvas` | `mode-btn` |
-| Popup btn | NodeCanvas.jsx | `toolbar-popup` | `canvas` | `mode-btn` |
-| Panel btn | NodeCanvas.jsx | `toolbar-panel` | `canvas` | `mode-btn` |
-| Select btn | NodeCanvas.jsx | `toolbar-select` | `canvas` | `mode-btn` |
-| Connect btn | NodeCanvas.jsx | `toolbar-connect` | `canvas` | `mode-btn` |
-| Group btn | NodeCanvas.jsx | `toolbar-group` | `canvas` | `action-btn` |
 | Layout btn | NodeCanvas.jsx | `toolbar-layout` | `canvas` | `action-btn` |
-| Collapse btn | NodeCanvas.jsx | `toolbar-collapse` | `canvas` | `action-btn` |
-| AI Chat btn | NodeCanvas.jsx | `topbar-aichat` | `canvas` | `panel-btn` |
-| Comments btn | NodeCanvas.jsx | `topbar-comments` | `canvas` | `panel-btn` |
+| Copy for AI btn | NodeCanvas.jsx | `copy-for-ai` | `canvas` | `action-btn` |
 | Node card | NodeCanvas.jsx | `node-{id}` | `canvas` | `node` |
 | MobileCanvas | MobileCanvas.jsx | `mobile-canvas` | `canvas` | `page` |
 | AdminPanel | AdminPanel.jsx | `admin-panel` | `admin` | `modal` |
-| ThemePicker | ThemePicker.jsx | `theme-picker` | `global` | `modal` |
 | LLMSettings | LLMSettings.jsx | `llm-settings` | `global` | `modal` |
 | LLMChat | LLMChat.jsx | `llm-chat` | `canvas` | `panel` |
 | NodeAIChat | NodeAIChat.jsx | `node-ai-chat` | `canvas` | `panel` |
 | VersionHistory | VersionHistory.jsx | `version-history` | `canvas` | `panel` |
 | UserProfile | UserProfile.jsx | `user-profile` | `global` | `modal` |
 | DocExportModal | DocExportModal.jsx | `doc-export` | `canvas` | `modal` |
-| HelpGuide | HelpGuide.jsx | `help-guide` | `global` | `modal` |
 | Tutorial | Tutorial.jsx | `tutorial` | `global` | `overlay` |
-| IntegrationPanel | IntegrationPanel.jsx | `integration-panel` | `canvas` | `panel` |
 | LiveDashboard | LiveDashboard.jsx | `live-dashboard` | `dashboard` | `panel` |
 
 ---
@@ -194,3 +179,4 @@ Acceptable missing: internal framework elements, SVG children, conditional rende
 | Version | Change |
 |---|---|
 | v5.43.4 | Initial system — DevMode + full metadata schema + 40+ tagged elements |
+| (undated, this audit) | Registry re-verified against actual code — found ~15 previously-listed elements with no `data-ui`, 3 fully-untagged components, 1 untagged newer component (`WorkflowAuditPanel.jsx`), and 1 undocumented tagged element (`copy-for-ai`). See coverage note near the top. |
