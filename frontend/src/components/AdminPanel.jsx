@@ -131,6 +131,8 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
         {err && <Alert color="var(--danger)">{err}</Alert>}
 
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+          {/* eslint-disable react/jsx-key -- [label, element] data tuples consumed via
+              destructuring below, not rendered as JSX list siblings directly */}
           {[
             ["DISPLAY NAME", <input value={name} onChange={e=>setName(e.target.value)} style={inp}/>],
             ["EMAIL ADDRESS", <input value={email} onChange={e=>setEmail(e.target.value)} style={inp}/>],
@@ -145,6 +147,7 @@ function EditUserModal({user:u, allGroups, me, onSave, onClose}){
               <option value="active">Active</option>
               <option value="disabled">Disabled</option>
             </select>],
+          /* eslint-enable react/jsx-key */
           ].map(([label,el])=>(
             <div key={label}>
               <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:1.5,marginBottom:4}}>{label}</div>
@@ -365,7 +368,7 @@ export default function AdminPanel({ onBack }) {
               <div style={{fontSize:10,fontWeight:700,color:"var(--text4)",letterSpacing:2}}>NEW USER</div>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 {[["EMAIL","email","email"],["DISPLAY NAME","text","display_name"],
-                  ["PASSWORD","password","password"],null].map((f,i)=>f?(
+                  ["PASSWORD","password","password"],null].map((f,_i)=>f?(
                   <div key={f[2]}>
                     <div style={{fontSize:10,color:"var(--text4)",marginBottom:4}}>{f[0]}</div>
                     <input type={f[1]} value={createForm[f[2]]} required

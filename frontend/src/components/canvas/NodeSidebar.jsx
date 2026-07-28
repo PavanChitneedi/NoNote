@@ -4,7 +4,7 @@ import NodeIcon from "./NodeIcon.jsx";
 
 // ── Node Sidebar ──────────────────────────────────────────────
 // Modes: full (178px) → compact (136px icons+labels) → icons (48px) → full
-export default function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onToggleCollapse,iconOnly,onToggleIconOnly,dense,onToggleDense,onCycleMode,recentTypes=[]}){
+export default function NodeSidebar({addNode,canEdit,collapsed,onToggleCollapse,iconOnly,dense,onCycleMode,recentTypes=[]}){
   const [search, setSearch]   = useState("");
   const [catOpen, setCatOpen] = useState({});
   const [tooltip, setTooltip] = useState(null);
@@ -94,7 +94,7 @@ export default function NodeSidebar({cats,addNode,canEdit,inline,collapsed,onTog
       <div style={{flex:1,overflowY:"auto",overflowX:"hidden"}} onMouseLeave={()=>setTooltip(null)}>
         {visibleCats.length===0&&q&&(
           <div style={{padding:"16px 10px",color:"var(--text4)",fontSize:10,textAlign:"center"}}>
-            No nodes match "{search}"
+            No nodes match &quot;{search}&quot;
           </div>
         )}
 

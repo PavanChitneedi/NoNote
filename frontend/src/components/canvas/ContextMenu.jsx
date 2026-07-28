@@ -1,6 +1,23 @@
 import { NT } from "../../lib/nodeTypes.js";
 import NodeIcon from "./NodeIcon.jsx";
 
+const Item=({icon,label,sub,onClick,danger,disabled,onClose})=>(
+  <div onClick={disabled?undefined:()=>{onClick();onClose();}}
+    style={{display:"flex",alignItems:"center",gap:9,padding:"7px 13px",cursor:disabled?"default":"pointer",
+      opacity:disabled?.4:1,transition:"background .1s",
+      color:danger?"var(--danger)":"var(--text)"}}
+    onMouseEnter={e=>{if(!disabled)e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)";}}
+    onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
+    <NodeIcon icon={icon} size={14} />
+    <div style={{flex:1}}>
+      <div style={{fontSize:12,fontWeight:600}}>{label}</div>
+      {sub&&<div style={{fontSize:9,color:danger?"var(--danger)":"var(--text4)",marginTop:1}}>{sub}</div>}
+    </div>
+  </div>
+);
+
+const Sep=()=><div style={{height:1,background:"var(--border2)",margin:"3px 0"}}/>;
+
 // ── Context Menu ─────────────────────────────────────────────────
 export default function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onClose,
   onDuplicate,onDelete,onCollapse,onConnect,onEditTitle,onSelectAll,onProps}){
@@ -11,27 +28,7 @@ export default function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onC
   const isMulti=selected.size>1&&selected.has(nodeId);
 
   // Clamp to viewport
-  const menuW=196, menuH=320;
-  const vw=window.innerWidth, vh=window.innerHeight;
-  const left=Math.min(x+220, vw-menuW-8)-220; // approx canvas offset
-  const top=Math.min(y+48, vh-menuH-8)-48;
-
-  const Item=({icon,label,sub,onClick,danger,disabled})=>(
-    <div onClick={disabled?undefined:()=>{onClick();onClose();}}
-      style={{display:"flex",alignItems:"center",gap:9,padding:"7px 13px",cursor:disabled?"default":"pointer",
-        opacity:disabled?.4:1,transition:"background .1s",
-        color:danger?"var(--danger)":"var(--text)"}}
-      onMouseEnter={e=>{if(!disabled)e.currentTarget.style.boxShadow="2px 2px 5px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)";}}
-      onMouseLeave={e=>e.currentTarget.style.boxShadow=""}>
-      <NodeIcon icon={icon} size={14} />
-      <div style={{flex:1}}>
-        <div style={{fontSize:12,fontWeight:600}}>{label}</div>
-        {sub&&<div style={{fontSize:9,color:danger?"var(--danger)":"var(--text4)",marginTop:1}}>{sub}</div>}
-      </div>
-    </div>
-  );
-
-  const Sep=()=><div style={{height:1,background:"var(--border2)",margin:"3px 0"}}/>;
+  const menuW=196;
 
   return(
     <div style={{
@@ -52,16 +49,16 @@ export default function ContextMenu({x,y,nodeId,nodes,selected,edges,canEdit,onC
       </div>
 
       {canEdit&&<>
-        <Item icon="✏" label="Edit title" sub="Double-click" onClick={onEditTitle}/>
-        <Item icon="⤳" label="Connect from here" sub="C key" onClick={onConnect}/>
+        <Item onClose={onClose} icon="✏" label="Edit title" sub="Double-click" onClick={onEditTitle}/>
+        <Item onClose={onClose} icon="⤳" label="Connect from here" sub="C key" onClick={onConnect}/>
         <Sep/>
-        <Item icon="⧉" label={isMulti?`Duplicate ${selected.size} nodes`:"Duplicate"} sub="Ctrl+D" onClick={onDuplicate}/>
-        <Item icon={node.collapsed?"⊞":"⊟"} label={node.collapsed?"Expand":"Collapse"} onClick={onCollapse}/>
-        <Item icon="✏" label="Properties" onClick={onProps}/>
+        <Item onClose={onClose} icon="⧉" label={isMulti?`Duplicate ${selected.size} nodes`:"Duplicate"} sub="Ctrl+D" onClick={onDuplicate}/>
+        <Item onClose={onClose} icon={node.collapsed?"⊞":"⊟"} label={node.collapsed?"Expand":"Collapse"} onClick={onCollapse}/>
+        <Item onClose={onClose} icon="✏" label="Properties" onClick={onProps}/>
         <Sep/>
-        <Item icon="◻" label="Select all" sub="Ctrl+A" onClick={onSelectAll}/>
+        <Item onClose={onClose} icon="◻" label="Select all" sub="Ctrl+A" onClick={onSelectAll}/>
         <Sep/>
-        <Item icon="🗑" label={isMulti?`Delete ${selected.size} nodes`:"Delete node"} sub="Del"
+        <Item onClose={onClose} icon="🗑" label={isMulti?`Delete ${selected.size} nodes`:"Delete node"} sub="Del"
           danger onClick={onDelete}/>
       </>}
       {!canEdit&&(

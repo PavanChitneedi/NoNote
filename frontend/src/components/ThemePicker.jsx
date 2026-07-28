@@ -20,15 +20,6 @@ export default function ThemePicker({ onClose }) {
     boxShadow:"var(--shadow-panel)",overflow:"hidden",
     animation:"nn-slide-in-up 0.2s cubic-bezier(0.34,1.56,0.64,1)",
   };
-  const tabStyle = (active) => ({
-    flex:1,padding:"10px 0",border:"none",cursor:"pointer",
-    fontFamily:"var(--font-ui)",fontWeight:600,fontSize:12,
-    background:active?"var(--bg2)":"var(--bg3)",
-    color:active?"var(--accent)":"var(--text3)",
-    borderBottom:active?"2px solid var(--accent)":"2px solid transparent",
-    transition:"all 0.14s",
-  });
-
   return (
     <div style={overlay} onClick={onClose}>
       <div style={modal} onClick={e=>e.stopPropagation()}>

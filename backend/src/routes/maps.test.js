@@ -137,7 +137,7 @@ describe("POST /api/maps/:mapId/duplicate", () => {
     // Edge insert must reference the SAME remapped node id, not the original
     const edgeInsertCall = mockClient.query.mock.calls.find(([sql]) => sql.includes("INSERT INTO map_edges"));
     expect(edgeInsertCall).toBeTruthy();
-    const [, newMapId, fromNode, toNode] = edgeInsertCall[1];
+    const [, , fromNode, toNode] = edgeInsertCall[1];
     expect(fromNode).toBe(newNodeId);
     expect(toNode).toBe(newNodeId);
   });

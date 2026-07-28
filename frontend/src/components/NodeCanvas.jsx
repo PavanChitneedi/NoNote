@@ -1,53 +1,38 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getMap, saveMap, saveVersion, apiFetch, addCollab, removeCollab, getAccessToken } from "../api/client.js";
 import { useAuth } from "../context/AuthContext.jsx";
-import { useTheme, THEMES } from "../context/ThemeContext.jsx";
+import { THEMES } from "../context/ThemeContext.jsx";
 import LLMChat        from "./LLMChat.jsx";
-import NodeAIChat     from "./NodeAIChat.jsx";
 import Tutorial       from "./Tutorial.jsx";
 import HelpGuide      from "./HelpGuide.jsx";
 import DocExportModal  from "./DocExportModal.jsx";
 import WorkflowAuditPanel from "./WorkflowAuditPanel.jsx";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 import { buildLLMText, copyText } from "../utils/llmExport.js";
-import { FileText,Type,User,RefreshCw,Folder,GitBranch,MessageSquare,Lightbulb,Pin,Brain,
-  BookOpen,Quote,AlignLeft,HelpCircle,CheckCircle,AlertTriangle,Sparkles,Code2,Square,
-  ClipboardList,Target,Flag,Clock,StopCircle,Play,XCircle,CheckCircle2,ExternalLink,
-  BookMarked,Paperclip,Layers,Bookmark,Calculator,Router,Network,Shield,Scale,Lock,Wifi,
-  Tv,Globe,Tag,Repeat,LogIn,ShieldCheck,GitMerge,Map,Building2,Navigation,Shuffle,Zap,
-  Radio,AtSign,Search,Timer,Key,LayoutGrid,Eye,Activity,TestTube,Monitor,Laptop,Cpu,
-  Tv2,Terminal,Server,Globe2,Settings,Database,Archive,Mail,Printer,HardDrive,
-  FolderArchive,Disc,ArchiveRestore,Film,Smartphone,Tablet,CircuitBoard,Binary,Waves,
-  Thermometer,Camera,Factory,DoorOpen,Wind,Cloud,Braces,ListOrdered,Share2,Package,
-  Hexagon,Box,ArrowUpDown,PackageOpen,Link2,Library,Power,Puzzle,Gauge,MessageCircle,
-  BellRing,ShieldOff,LockKeyhole,ScanSearch,Ban,
-  Boxes,AppWindow,Component,Layers2,Container,MemoryStick,
-  MoreHorizontal,History as HistoryIcon,Palette,LogOut,Keyboard,Import,Users,
-  Command,Feather,Hammer,GraduationCap,Copy } from "lucide-react";
+import { HelpCircle,Sparkles,ClipboardList,Layers,Map,Zap,Search,
+  MoreHorizontal,History as HistoryIcon,Palette,LogOut,Import,Users,
+  Command,Feather,Hammer,GraduationCap } from "lucide-react";
 import ThemePicker    from "./ThemePicker.jsx";
-import IntegrationPanel from "./IntegrationPanel.jsx";
 import VersionHistory from "./VersionHistory.jsx";
 import { NT, DP, SIDEBAR_CATS, DEF_W, DEF_H, GRP_W, GRP_H, COL_W, COL_H } from "../lib/nodeTypes.js";
 import { highlightText } from "../lib/textHighlight.jsx";
-import { parseNotes, stripHtml, serializeNotes } from "../lib/notesFormat.js";
+import { parseNotes, serializeNotes } from "../lib/notesFormat.js";
 import { autoLayout } from "../lib/autoLayout.js";
 import {
   EDGE_STYLES, EDGE_SECTIONS, rectEdgePoint, pickBestSides, computePortMap,
-  STACK_BOX_H, roundedPolyPath, nrm, port,
+  STACK_BOX_H, roundedPolyPath, port,
   buildBundle, orthoRoute, anchorToPoint, snapToAnchor,
   buildRoutingGrid, astarRoute,
 } from "../lib/edgeRouting.js";
 import {
   exportAsNoNote, userColor, exportAsPDF, exportAsHTML, exportAsDoc, exportAsPNG,
 } from "../lib/exportFormats.js";
-import { tbtn, inp } from "../lib/styleHelpers.js";
+import { tbtn } from "../lib/styleHelpers.js";
 import NodeIcon from "./canvas/NodeIcon.jsx";
-import CustomKeyInput from "./canvas/CustomKeyInput.jsx";
 import FormattedContent from "./canvas/FormattedContent.jsx";
 import EdgeIcon from "./canvas/EdgeIcon.jsx";
 import CollapsedNode from "./canvas/CollapsedNode.jsx";
 import NodeSidebar from "./canvas/NodeSidebar.jsx";
-import NodeNotesTab from "./canvas/NodeNotesTab.jsx";
 import PropsPanel from "./canvas/PropsPanel.jsx";
 import ContextMenu from "./canvas/ContextMenu.jsx";
 import InlineNodeEditor from "./canvas/InlineNodeEditor.jsx";
@@ -76,7 +61,6 @@ const mkNode = (type, x, y) => ({
 // ─────────────────────────────────────────────────────────────
 export default function NodeCanvas({ mapId, onBack, onHome }) {
   const { user, logout }      = useAuth();
-  const { themeName, theme } = useTheme();
   const canEdit              = ["owner","admin","editor"].includes(user?.role);
 
   // ── State ──────────────────────────────────────────────────
@@ -89,8 +73,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [mode,         setMode]         = useState("select");
   const [edgeStyle,    setEdgeStyle]    = useState("arrow");
   const [edgeColor,    setEdgeColor]    = useState("var(--accent)");
-  const [showConnPanel,setShowConnPanel]= useState(false);
-  const [draggingMid,  setDraggingMid]  = useState(null); // {edgeId, startX, startY, origOffset}
   const [dragging,     setDragging]     = useState(null);
   const draggingRef   = useRef(null);   // mirror for stable handler
   const resizingRef   = useRef(null);   // mirror for stable handler
@@ -103,7 +85,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [saveState,    setSaveState]    = useState("idle");
   const [saveMsg,      setSaveMsg]      = useState("");
   const [loading,      setLoading]      = useState(true);
-  const [showSidebar,  setShowSidebar]  = useState(false);
+  const [, setShowSidebar]  = useState(false);
   const [showProps,    setShowProps]    = useState(false);
   const [propsMode,    setPropsMode]    = useState(()=>localStorage.getItem('nn_props_mode')||'popup'); // 'popup'|'panel'
   const [showExport,   setShowExport]   = useState(false);
@@ -111,18 +93,16 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showAppearance,setShowAppearance]=useState(false);
   const [showVersions, setShowVersions] = useState(false);
   const [showExportMenu,  setShowExportMenu]  = useState(false);
-  const [showAppMenu,     setShowAppMenu]     = useState(false);
   const [showConnDropdown,setShowConnDropdown]= useState(false);
   const [contextMenu,    setContextMenu]    = useState(null);  // {x,y,nodeId}
-  const [snapToGrid,     setSnapToGrid]     = useState(false); // shift-drag snapping
   const [snapGuides,     setSnapGuides]     = useState([]);    // [{x1,y1,x2,y2}] alignment guides
-  const [editingNotes,   setEditingNotes]   = useState(null);  // nodeId being edited
+  const [editingNotes] = useState(null);  // nodeId being edited
   const [inlineEditField,setInlineEditField]= useState(null); // {nodeId, field: 'title'|'desc'|noteId}
   const [expandedStacks,  setExpandedStacks]  = useState(new Set()); // set of parentNodeId whose stack is expanded
   const [expandedStackRows,setExpandedStackRows]=useState(new Set()); // set of noteNodeId whose row is expanded
   // Feature: Focus mode
   const [focusMode,      setFocusMode]      = useState(false);
-  const [focusEnabled,   setFocusEnabled]   = useState(true);  // global toggle
+  const [focusEnabled] = useState(true);  // global toggle
   // Feature: Template library
   const [showTemplates,  setShowTemplates]  = useState(false);
   // Feature: Inline node popup editor
@@ -151,7 +131,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // remoteSelections: who's selecting/editing what on the shared canvas
   // {userId: {userName, color, selectedIds: Set, editingId: string|null}}
   const [remoteSelections, setRemoteSelections] = useState({});
-  const [wsConnected,   setWsConnected]    = useState(false);
+  const [, setWsConnected]    = useState(false);
   const wsRef = useRef(null);
   const [shareUsers,    setShareUsers]     = useState([]);
   const [shareEmail,    setShareEmail]     = useState("");
@@ -168,7 +148,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [showSearch,   setShowSearch]   = useState(false);
   const [searchQuery,  setSearchQuery]  = useState("");
   const [searchField,  setSearchField]  = useState("all"); // all|title|notes|props
-  const [searchHitIdx, setSearchHitIdx] = useState(0);
 
   // Quick capture
   const [quickPos,     setQuickPos]     = useState(null);
@@ -195,7 +174,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // Zoom
   const [zoom,         setZoom]         = useState(1.0);
   // Canvas theme
-  const [canvasTheme,  setCanvasTheme]  = useState(
+  const [canvasTheme]  = useState(
     () => localStorage.getItem(`nn_canvas_${mapId}`) || "global"
   );
   // Undo/redo
@@ -728,12 +707,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setDragging({ids:[...sel],startX:canvasX,startY:canvasY,startPositions});
   },[mode,nodes,selected,canEdit,zoom]);
 
-  const startResize=useCallback((e,id)=>{
-    e.stopPropagation();e.preventDefault();
-    const node=nodes.find(n=>n.id===id);
-    setResizing({id,startX:e.clientX,startY:e.clientY,origW:node.w,origH:node.h});
-  },[nodes]);
-
   useEffect(()=>{
     const onMove=(e)=>{
       const isT=!!e.touches;
@@ -1253,7 +1226,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       setWsConnected(false);
       setRemoteSelections({});
     };
-  }, [mapId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [mapId]);
 
   // ── Broadcast local selection to collaborators ───────────────────
   // Called whenever selected nodes or editing state changes
@@ -1319,7 +1292,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           es.forEach(e=>{ edgeMap[e.id]=e; });
 
           Object.entries(groups).forEach(([key,items])=>{
-            const [nid,side]=key.split(":");
+            const [,side]=key.split(":");
             const isHorizSide = side==="left"||side==="right";
             
             // Sort by the cross-axis center of the other node
@@ -1610,7 +1583,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const s = pickBestSides(f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h);
         (inGroups[`${t.id}:${s.to}`] = inGroups[`${t.id}:${s.to}`] || []).push({ id:e.id, f, t, fromSide:s.from, toSide:s.to });
       });
-      Object.entries(inGroups).forEach(([key, group]) => {
+      Object.entries(inGroups).forEach(([, group]) => {
         if (group.length < 2) return;
         const t = group[0].t, toSide = group[0].toSide;
         const trunkPt = port(t, toSide, 0.5);
@@ -1653,7 +1626,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const t = measuredNodes.find(n=>n.id===edge.to);
       if (!f || !t) return;
       const fw=f.w||220, fh=f.h||96, tw=t.w||220, th=t.h||96;
-      const {from:fSide,to:tSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
+      const {from:fSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
       const horiz = (fSide==="left"||fSide==="right");
       // channel = the gap between the two facing edges
       const gapLo = horiz ? Math.min(f.x+fw, t.x+tw) : Math.min(f.y+fh, t.y+th);
@@ -1854,8 +1827,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
   // ── Derived ────────────────────────────────────────────────
   const selectedNode = selected.size===1 ? nodes.find(n=>n.id===[...selected][0]) : null;
-  const selectedEdgeObj = selEdge ? edges.find(e=>e.id===selEdge) : null;
-  const cats=useMemo(()=>SIDEBAR_CATS.filter(c=>Object.values(NT).some(t=>t.cat===c)),[]);
   const isMobile=window.innerWidth<768;
 
   // ── Search ─────────────────────────────────────────────────
@@ -1946,7 +1917,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const lbl=edge.label.toLowerCase();
         if(lbl.indexOf(q)>=0){
           const fn=nodes.find(n=>n.id===edge.from);
-          const tn=nodes.find(n=>n.id===edge.to);
           if(fn){
             let existing=nodeResults.find(r=>r.node.id===fn.id);
             const hit={field:"Arrow label",snippet:edge.label,matchStart:0,matchLen:edge.label.length};
@@ -2306,13 +2276,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         });
       };
 
-      const handleStackDrag = (clientX, clientY) => {
-        // Move all notes in stack together
-        stackNotes.forEach(n => startDrag(clientX, clientY, n.id));
-      };
-
       const isFocused = focusMode && stackNotes.some(n=>selected.has(n.id));
-      const focusDim = focusMode && !isFocused ? '0.15' : '1';
       const t = NT.note;
 
       return (
@@ -2467,7 +2431,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     const nw=isCollapsed?COL_W:node.w;
     const nh=isCollapsed?COL_H:node.h;
     const isFocused=(focusMode&&(editingTitle===node.id||editingNotes===node.id||selected.has(node.id)));
-    const focusDim=focusMode&&!isFocused?"0.15":"1";
 
     if(isCollapsed) return(
       <div key={`fc-${node.id}`} style={{opacity:focusMode&&!isFocused?0.08:1,filter:focusMode&&!isFocused?'blur(1.5px)':'none',transition:'opacity .25s,filter .25s'}}>
@@ -2493,7 +2456,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           e.stopPropagation();
           if(node.type==="note") {
             if(propsMode==='popup') setNodePopup({nodeId:node.id,tab:'notes'});
-            else { setSelectedNode(node.id); setNodePanelTab('notes'); }
+            else { setSelected(new Set([node.id])); setShowProps(true); }
           } else if(propsMode==='popup') setNodePopup({nodeId:node.id,tab:'notes'});
           else if(canEdit&&editMode) setEditingTitle(node.id);
         }}
@@ -2922,6 +2885,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   background:"var(--bg2)",borderRadius:"var(--radius-md)",
                   boxShadow:"var(--shadow-panel)",border:"1px solid var(--border2)",
                   minWidth:200,overflow:"hidden",padding:4}}>
+                  {/* eslint-disable react/jsx-key -- these are [icon, label, shortcut, action]
+                      data tuples consumed via destructuring below, not rendered as JSX list
+                      siblings; the `key` lives on the actual rendered element in .map() */}
                   {[
                     [<HistoryIcon size={13}/>,"History & versions","V",()=>{setShowVersions(true);if(!showCollabLog)apiFetch(`/maps/${mapId}/changelog`).then(d=>setCollabLog(Array.isArray(d)?d:[])).catch(()=>{});}],
                     [<ClipboardList size={13}/>,"Templates","",()=>setShowTemplates(true)],
@@ -2929,6 +2895,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     [<Palette size={13}/>,"Appearance","",()=>setShowAppearance(true)],
                     [<HelpCircle size={13}/>,"Help & docs","",()=>setShowHelp(true)],
                     [<GraduationCap size={13}/>,"Guided tour","",()=>setShowTutorial(true)],
+                  /* eslint-enable react/jsx-key */
                   ].map(([ic,lbl,kbd,act],i)=>(
                     <div key={i} onClick={()=>{act();setShowMore(false);}}
                       style={{display:"flex",alignItems:"center",gap:9,padding:"8px 12px",cursor:"pointer",
@@ -3361,7 +3328,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               ):searchResults.length===0?(
                 <div style={{padding:"32px 18px",textAlign:"center"}}>
                   <div style={{fontSize:32,marginBottom:10}}>🔎</div>
-                  <div style={{fontSize:14,fontWeight:700,color:"var(--text2)",marginBottom:6}}>No results for "{searchQuery}"</div>
+                  <div style={{fontSize:14,fontWeight:700,color:"var(--text2)",marginBottom:6}}>No results for &quot;{searchQuery}&quot;</div>
                   <div style={{fontSize:11,color:"var(--text4)"}}>Try different keywords or switch the field filter above</div>
                 </div>
               ):(
@@ -3728,11 +3695,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           {nodes.length>0&&(()=>{
             const connectedIds=new Set(edges.flatMap(e=>[e.from,e.to]));
             const isolated=nodes.filter(n=>n.type!=="group"&&!connectedIds.has(n.id)).length;
-            const stacks=Object.values(nodes.reduce((acc,n)=>{
-              if(n.type!=="note") return acc;
-              // just count note nodes for stack indicator
-              acc.count=(acc.count||0)+1; return acc;
-            },{})).length;
             return(
               <div style={{position:"absolute",bottom:16,left:16,zIndex:20,
                 opacity:0,transition:"opacity .2s",}}
@@ -3898,7 +3860,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     <div style={{fontSize:11,color:"var(--text)"}}>
                       <span style={{fontWeight:600,color}}>{entry.user_name||"User"}</span>
                       {" "}{actionMap[entry.action]||entry.action}
-                      {entry.target_label&&<span style={{color:"var(--accent)"}}> "{entry.target_label}"</span>}
+                      {entry.target_label&&<span style={{color:"var(--accent)"}}> &quot;{entry.target_label}&quot;</span>}
                     </div>
                     <div style={{fontSize:9,color:"var(--text4)",marginTop:2}}>{ago}</div>
                   </div>
@@ -3981,7 +3943,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     setShareStatus("Sending…");
                     try{
                       // apiFetch throws on error, returns JSON on success
-                      const data = await addCollab(mapId, {email:shareEmail.trim(), permission:sharePerm});
+                      await addCollab(mapId, {email:shareEmail.trim(), permission:sharePerm});
                       setShareStatus("✓ Invited "+shareEmail.trim()+"!");
                       setShareEmail(""); setShareSearch([]);
                       const collabs = await apiFetch(`/maps/${mapId}/collaborators`).catch(()=>[]);
@@ -4060,7 +4022,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",
               borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
               <div>
-                <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What's New</div>
+                <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What&apos;s New</div>
                 <div style={{fontSize:10,color:"var(--text4)",marginTop:2}}>Full changelog across all versions</div>
               </div>
               <button onClick={()=>setShowChangelog(false)}

@@ -2,7 +2,7 @@ import { Router } from "express";
 import { appLog } from "../utils/logger.js";
 import { body, validationResult } from "express-validator";
 import bcrypt from "bcryptjs";
-import { query, withTransaction } from "../db/pool.js";
+import { query } from "../db/pool.js";
 import { authenticate, requireRole } from "../middleware/auth.js";
 
 const router = Router();
@@ -144,7 +144,7 @@ router.get("/me/settings", authenticate, async (req, res) => {
     );
     const perms = await getEffectivePermissions(req.user.id, req.user.role);
     res.json({ settings, groups: groups.rows, permissions: perms });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to load user settings" });
   }
 });
@@ -269,7 +269,7 @@ router.delete("/:id", authenticate, requireRole("owner"), async (req, res) => {
     await query("DELETE FROM users WHERE id=$1", [req.params.id]);
     await appLog("warn","users",`User deleted: ${ud.rows[0]?.email||req.params.id}`, req.user.id);
     res.json({ ok: true });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Delete failed" });
   }
 });
@@ -317,7 +317,7 @@ router.get("/groups", authenticate, requireRole("admin"), async (req, res) => {
        GROUP BY g.id, u.display_name ORDER BY g.created_at ASC`
     );
     res.json({ groups: rows });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch groups" });
   }
 });
@@ -334,7 +334,7 @@ router.post("/groups", authenticate, requireRole("admin"),
         [name, description, color, JSON.stringify(permissions), req.user.id]
       );
       res.status(201).json({ group: { ...rows[0], member_count: 0 } });
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "Failed to create group" });
     }
   }

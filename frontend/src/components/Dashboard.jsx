@@ -1,9 +1,8 @@
-import React from 'react';
 import { useState, useEffect, useCallback, useRef } from "react";
 import LiveDashboard from "./LiveDashboard.jsx";
 import ThemePicker from "./ThemePicker.jsx";
 import { useAuth } from "../context/AuthContext.jsx";
-import { getMaps, createMap, deleteMap, apiFetch, saveMap, saveMapMeta, getAccessToken } from "../api/client.js";
+import { getMaps, createMap, deleteMap, apiFetch, saveMap, saveMapMeta } from "../api/client.js";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 import { buildLLMText, buildMultiMapLLMText, copyText } from "../utils/llmExport.js";
 import { NT } from "../lib/nodeTypes.js";
@@ -33,7 +32,7 @@ function ShareModal({ map, onClose }) {
   const [perm,  setPerm]          = useState("editor");
   const [users, setUsers]         = useState([]);
   const [search, setSearch]       = useState([]);
-  const [saving, setSaving]       = useState(false);
+  const [, setSaving]       = useState(false);
   const [msg,   setMsg]           = useState("");
 
   useEffect(() => {
@@ -130,12 +129,12 @@ function ShareModal({ map, onClose }) {
   );
 }
 
-export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNav="top" }) {
+export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
   const [showChangelog, setShowChangelog] = useState(false);
   const [menuMap,   setMenuMap]   = useState(null);
   const [renaming,  setRenaming]  = useState(null);
   const [shareMap,  setShareMap]  = useState(null);
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const [maps, setMaps]       = useState([]);
   const [dashTab, setDashTab]     = useState("maps");
   const [viewMode, setViewMode]   = useState("grid");   // "grid" | "list"
@@ -150,7 +149,6 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
   const [showNew, setShowNew] = useState(false);
   const [creating, setCreating]= useState(false);
   const [error, setError]     = useState("");
-  const [conflict, setConflict] = useState(null);
   const [toast, setToast] = useState(null); // {msg, type:"ok"|"err"}
   const [importConflict, setImportConflict] = useState(null); // {title, existing, nodes, edges}
   const showToast = (msg, type="ok") => { setToast({msg,type}); setTimeout(()=>setToast(null),3500); };
@@ -560,7 +558,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             style={{ width:"100%", padding:"7px 10px", background:"none",
                borderRadius:7, color:"var(--text4)",
               fontSize:10, fontWeight:600, cursor:"pointer", fontFamily:"var(--font-ui)", textAlign:"left" }}>
-            {CURRENT_VERSION} ✦ What's new
+            {CURRENT_VERSION} ✦ What&apos;s new
           </button>
         </div>
       </div>}
@@ -608,7 +606,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               style={{ background:"none",  borderRadius:"var(--radius-btn)",
                 padding:"4px 10px", color:"var(--text4)", fontSize:10, cursor:"pointer",
                 fontFamily:"var(--font-ui)", fontWeight:600 }}>
-              {CURRENT_VERSION} ✦ What's new
+              {CURRENT_VERSION} ✦ What&apos;s new
             </button>
           </div>
         )}
@@ -624,7 +622,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               <div style={{display:"flex",alignItems:"center",gap:10,padding:"14px 18px",
                 borderBottom:"1px solid var(--border2)",background:"var(--bg3)",flexShrink:0}}>
                 <div style={{flex:1}}>
-                  <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What's New</div>
+                  <div style={{fontSize:15,fontWeight:700,color:"var(--accent)"}}>NoNote — What&apos;s New</div>
                   <div style={{fontSize:10,color:"var(--text4)",marginTop:2}}>Full changelog across all versions</div>
                 </div>
                 <button onClick={()=>setShowChangelog(false)}
@@ -674,7 +672,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
             <div style={{ background:"var(--bg2)",  borderRadius:14, padding:"28px 32px", maxWidth:420, width:"90%", boxShadow:"0 8px 40px #000a" }}>
               <div style={{ fontSize:15, fontWeight:700, color:"var(--text1)", marginBottom:10 }}>Map already exists</div>
               <div style={{ fontSize:13, color:"var(--text3)", marginBottom:24 }}>
-                A map named <strong style={{color:"var(--text1)"}}>"{importConflict.title}"</strong> already exists.<br/>What would you like to do?
+                A map named <strong style={{color:"var(--text1)"}}>&quot;{importConflict.title}&quot;</strong> already exists.<br/>What would you like to do?
               </div>
               <div style={{ display:"flex", gap:10, flexWrap:"wrap" }}>
                 <button onClick={()=>handleImportConflictResolve("overwrite")}
@@ -851,14 +849,6 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
                 const matchSearch = !mapSearch || m.title.toLowerCase().includes(mapSearch.toLowerCase());
                 return matchGroup && matchSearch;
               });
-              const grouped = activeGroup==="all" && !mapSearch
-                ? [...new Set(["", ...allGroups])].reduce((acc,g)=>{
-                    const items=sorted.filter(m=>mapGroup(m)===(g||""));
-                    if(items.length) acc.push({group:g||"Ungrouped",items});
-                    return acc;
-                  },[])
-                : [{group:"",items:filtered}];
-
               return <>
                 {/* ── Group tabs + toolbar ── */}
                 <div style={{borderBottom:"1px solid var(--border2)",marginBottom:0,display:"flex",alignItems:"stretch",gap:0,flexWrap:"nowrap",overflowX:"auto",scrollbarWidth:"none"}}>
@@ -1179,7 +1169,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, onShowThemes, skinNa
               style={{background:"var(--accent)",border:"none",borderRadius:"var(--radius-sm)",color:"#fff",
                 cursor:"pointer",padding:"0 16px",fontSize:13,fontWeight:700}}>{capturing?"…":"↵"}</button>
           </div>
-          <div style={{fontSize:9,color:"var(--text4)",marginTop:8}}>Lands in your "Inbox" map · press <b>C</b> anywhere on the dashboard to open this</div>
+          <div style={{fontSize:9,color:"var(--text4)",marginTop:8}}>Lands in your &quot;Inbox&quot; map · press <b>C</b> anywhere on the dashboard to open this</div>
         </div>
       </>)}
 

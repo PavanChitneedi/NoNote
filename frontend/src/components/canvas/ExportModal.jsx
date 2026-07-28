@@ -9,7 +9,7 @@ export default function ExportModal({nodes,edges,mapTitle,exportLLM,onClose}){
   const [copied,setCopied]=useState(false);
   const content=tab==="llm"?exportLLM():JSON.stringify({title:mapTitle,nodes,edges},null,2);
   const copy=()=>{navigator.clipboard.writeText(content);setCopied(true);setTimeout(()=>setCopied(false),2000);};
-  const tbS=(active,color="var(--accent2)")=>({padding:"8px 16px",border:"none",borderRadius:"var(--radius-sm)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"var(--font-ui)",background:"var(--bg)",color:active?"var(--text)":"var(--text3)",boxShadow:active?"inset 2px 2px 6px var(--neu-shadow),inset -1px -1px 4px var(--neu-hilight)":"2px 2px 4px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)",transition:"all .14s"});
+  const tbS=(active)=>({padding:"8px 16px",border:"none",borderRadius:"var(--radius-sm)",cursor:"pointer",fontSize:12,fontWeight:700,fontFamily:"var(--font-ui)",background:"var(--bg)",color:active?"var(--text)":"var(--text3)",boxShadow:active?"inset 2px 2px 6px var(--neu-shadow),inset -1px -1px 4px var(--neu-hilight)":"2px 2px 4px var(--neu-shadow),-1px -1px 3px var(--neu-hilight)",transition:"all .14s"});
   return(
     <div style={{position:"fixed",inset:0,background:"rgba(0,0,0,.76)",display:"flex",alignItems:"center",justifyContent:"center",zIndex:200,padding:16}} onClick={onClose}>
       <div style={{background:"var(--bg2)",borderRadius:"var(--radius-lg)",padding:20,width:"100%",maxWidth:600,maxHeight:"84vh",display:"flex",flexDirection:"column",gap:14}} onClick={e=>e.stopPropagation()}>

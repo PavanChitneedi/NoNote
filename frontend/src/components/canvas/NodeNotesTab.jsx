@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import FormattedContent from "./FormattedContent.jsx";
 
 // ── NodeNotesTab ───────────────────────────────────────────────
-export default function NodeNotesTab({ node, canEdit, t, onUpdate }) {
+export default function NodeNotesTab({ node, canEdit, onUpdate }) {
   const [preview, setPreview] = useState(false);
 
   const getInitialDraft = (n) => {

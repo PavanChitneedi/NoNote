@@ -3,6 +3,7 @@ function looksLikeNote(obj) {
   return obj && typeof obj === 'object' && ('id' in obj || 'title' in obj || 'content' in obj);
 }
 function escCtrl(s) {
+  // eslint-disable-next-line no-control-regex -- intentionally matching raw control chars to escape them
   return s.replace(/[\x00-\x1f]/g, c => {
     const m = {'\n':'\\n','\r':'\\r','\t':'\\t'};
     return m[c] || ('\\u' + c.charCodeAt(0).toString(16).padStart(4,'0'));

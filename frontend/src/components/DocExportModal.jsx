@@ -8,12 +8,12 @@
  *   "ai-pdf"       — LLM interprets → styled HTML print page
  */
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { apiFetch } from "../api/client.js";
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   BorderStyle, ShadingType, Table, TableRow, TableCell,
-  WidthType, AlignmentType, LevelFormat,
+  WidthType,
 } from "docx";
 import { SECRET_KEY_RE } from "../lib/exportFormats.js";
 
@@ -306,24 +306,6 @@ ${rows}
 function esc(s) { return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;"); }
 function sanitize(s) { return String(s||"map").replace(/[^a-z0-9]/gi,"-"); }
 
-// ── Call LLM API ──────────────────────────────────────────────────────────
-async function callLLM(prompt) {
-  const resp = await fetch("https://api.anthropic.com/v1/messages", {
-    method:"POST",
-    headers:{ "Content-Type":"application/json" },
-    body:JSON.stringify({
-      model:"claude-sonnet-4-20250514",
-      max_tokens:4000,
-      messages:[{ role:"user", content:prompt }],
-    }),
-  });
-  if (!resp.ok) throw new Error(`LLM API error: ${resp.status}`);
-  const data = await resp.json();
-  const raw  = data.content?.[0]?.text || "";
-  const clean = raw.replace(/```json\n?|```/g,"").trim();
-  return JSON.parse(clean);
-}
-
 // ── Main modal component ──────────────────────────────────────────────────
 const MODE_INFO = {
   "normal-docx": { icon:"📄", label:"Standard Word Export",   sub:"Structured documentation built directly from your nodes, notes, and connections" },
@@ -438,7 +420,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
             </div>
           ) : (
             <div style={{ fontSize:12, color:"var(--text3)", lineHeight:1.65 }}>
-              <strong style={{ color:"var(--text)" }}>What you'll get:</strong><br/>
+              <strong style={{ color:"var(--text)" }}>What you&apos;ll get:</strong><br/>
               • Overview paragraph with node/connection summary<br/>
               • Components section — each node with type, description, notes, properties<br/>
               • Connections table showing all relationships<br/>
@@ -462,7 +444,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
         {isPDF && (
           <div style={{ background:"#f59e0b14", border:"1px solid #f59e0b40",
             borderRadius:8, padding:"8px 14px", fontSize:11, color:"#d97706", lineHeight:1.5 }}>
-            💡 A styled page will open in a new tab. Use <strong>Ctrl+P</strong> (or <strong>Cmd+P</strong> on Mac) and choose <strong>"Save as PDF"</strong> as the printer destination.
+            💡 A styled page will open in a new tab. Use <strong>Ctrl+P</strong> (or <strong>Cmd+P</strong> on Mac) and choose <strong>&quot;Save as PDF&quot;</strong> as the printer destination.
           </div>
         )}
 

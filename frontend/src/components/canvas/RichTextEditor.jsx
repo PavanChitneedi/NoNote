@@ -1,5 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 
+const TBtn = ({ cmd, val, title, active, children, style: s, disabled, exec }) => (
+  <button onMouseDown={e => { e.preventDefault(); exec(cmd, val); }} title={title}
+    style={{
+      background: active ? 'var(--accent2)' : 'transparent',
+      border: 'none', borderRadius: 3, cursor: disabled ? 'default' : 'pointer',
+      padding: '3px 5px', fontSize: 11, color: active ? '#fff' : 'var(--text3)',
+      lineHeight: 1, minWidth: 22, height: 22, display: 'flex', alignItems: 'center',
+      justifyContent: 'center', flexShrink: 0, opacity: disabled ? 0.4 : 1, ...s,
+    }}>{children}</button>
+);
+
+const Div = () => <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />;
 
 // ── Rich Text Editor — enhanced ──────────────────────────────────
 export default function RichTextEditor({ value, onChange, disabled, minHeight = 100 }) {
@@ -22,19 +34,7 @@ export default function RichTextEditor({ value, onChange, disabled, minHeight = 
     onChange(editorRef.current?.innerHTML || '');
   };
 
-  const TBtn = ({ cmd, val, title, active, children, style: s }) => (
-    <button onMouseDown={e => { e.preventDefault(); exec(cmd, val); }} title={title}
-      style={{
-        background: active ? 'var(--accent2)' : 'transparent',
-        border: 'none', borderRadius: 3, cursor: disabled ? 'default' : 'pointer',
-        padding: '3px 5px', fontSize: 11, color: active ? '#fff' : 'var(--text3)',
-        lineHeight: 1, minWidth: 22, height: 22, display: 'flex', alignItems: 'center',
-        justifyContent: 'center', flexShrink: 0, opacity: disabled ? 0.4 : 1, ...s,
-      }}>{children}</button>
-  );
-
   const [moreFmt,setMoreFmt]=useState(false); // advanced formatting hidden by default
-  const Div = () => <div style={{ width: 1, height: 14, background: 'var(--border)', margin: '0 2px', flexShrink: 0 }} />;
 
   const FONT_SIZES = [['1', '10px', 'XS'], ['2', '12px', 'S'], ['3', '14px', 'M'], ['5', '18px', 'L'], ['6', '24px', 'XL']];
   const TEXT_COLORS = ['var(--text)', '#58a6ff', '#3fb950', '#f78166', '#ffa657', '#d2a8ff', '#ffb3c0', '#aff5b4'];
@@ -52,36 +52,36 @@ export default function RichTextEditor({ value, onChange, disabled, minHeight = 
     <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
       {/* Toolbar Row 1 — essentials; advanced tools behind ⋯ */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 1, padding: '3px 6px', background: 'var(--bg2)', borderBottom: '1px solid var(--border2)', flexWrap: 'wrap' }}>
-        <TBtn cmd="bold"          title="Bold (Ctrl+B)"        style={{ fontWeight: 700 }}>B</TBtn>
-        <TBtn cmd="italic"        title="Italic (Ctrl+I)"      style={{ fontStyle: 'italic' }}>I</TBtn>
-        <TBtn cmd="underline"     title="Underline (Ctrl+U)"   style={{ textDecoration: 'underline' }}>U</TBtn>
-        <TBtn cmd="strikeThrough" title="Strikethrough"        style={{ textDecoration: 'line-through' }}>S</TBtn>
-        <TBtn cmd="insertUnorderedList" title="Bullet list">•≡</TBtn>
-        <TBtn cmd="formatBlock" val="H1" title="Heading 1">H1</TBtn>
-        <TBtn cmd="formatBlock" val="H2" title="Heading 2">H2</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="bold"          title="Bold (Ctrl+B)"        style={{ fontWeight: 700 }}>B</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="italic"        title="Italic (Ctrl+I)"      style={{ fontStyle: 'italic' }}>I</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="underline"     title="Underline (Ctrl+U)"   style={{ textDecoration: 'underline' }}>U</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="strikeThrough" title="Strikethrough"        style={{ textDecoration: 'line-through' }}>S</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="insertUnorderedList" title="Bullet list">•≡</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="formatBlock" val="H1" title="Heading 1">H1</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="formatBlock" val="H2" title="Heading 2">H2</TBtn>
         <button onMouseDown={e=>{e.preventDefault();setMoreFmt(v=>!v);}} title="More formatting tools"
           style={{ minWidth:22,height:22,border:'none',borderRadius:4,cursor:'pointer',fontSize:11,
             background:moreFmt?'var(--accent2)':'var(--bg3)',color:moreFmt?'#fff':'var(--text3)' }}>⋯</button>
         {moreFmt&&<>
         <Div/>
-        <TBtn cmd="superscript"   title="Superscript">x²</TBtn>
-        <TBtn cmd="subscript"     title="Subscript">x₂</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="superscript"   title="Superscript">x²</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="subscript"     title="Subscript">x₂</TBtn>
         <Div/>
-        <TBtn cmd="formatBlock" val="H3"         title="Heading 3">H3</TBtn>
-        <TBtn cmd="formatBlock" val="P"          title="Paragraph">¶</TBtn>
-        <TBtn cmd="formatBlock" val="BLOCKQUOTE" title="Quote">❝</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="formatBlock" val="H3"         title="Heading 3">H3</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="formatBlock" val="P"          title="Paragraph">¶</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="formatBlock" val="BLOCKQUOTE" title="Quote">❝</TBtn>
         <Div/>
-        <TBtn cmd="justifyLeft"   title="Align left">⫷</TBtn>
-        <TBtn cmd="justifyCenter" title="Center">≡</TBtn>
-        <TBtn cmd="justifyRight"  title="Align right">⫸</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="justifyLeft"   title="Align left">⫷</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="justifyCenter" title="Center">≡</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="justifyRight"  title="Align right">⫸</TBtn>
         <Div/>
-        <TBtn cmd="insertOrderedList"   title="Numbered list">1≡</TBtn>
-        <TBtn cmd="indent"              title="Indent">→|</TBtn>
-        <TBtn cmd="outdent"             title="Outdent">|←</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="insertOrderedList"   title="Numbered list">1≡</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="indent"              title="Indent">→|</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="outdent"             title="Outdent">|←</TBtn>
         <Div/>
-        <TBtn cmd="insertHorizontalRule" title="Horizontal rule">—</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="insertHorizontalRule" title="Horizontal rule">—</TBtn>
         <Div/>
-        <TBtn cmd="removeFormat" title="Clear formatting">✕</TBtn>
+        <TBtn disabled={disabled} exec={exec} cmd="removeFormat" title="Clear formatting">✕</TBtn>
         {/* Font size */}
         <Div/>
         <select onMouseDown={e => e.stopPropagation()}

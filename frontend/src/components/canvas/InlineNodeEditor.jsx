@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { NT, DP, SIDEBAR_CATS } from "../../lib/nodeTypes.js";
-import { inp } from "../../lib/styleHelpers.js";
 import NodeIcon from "./NodeIcon.jsx";
 import CustomKeyInput from "./CustomKeyInput.jsx";
+import NodeNotesTab from "./NodeNotesTab.jsx";
+import IntegrationPanel from "../IntegrationPanel.jsx";
+import NodeAIChat from "../NodeAIChat.jsx";
 
 
 const NODE_INT_TYPES = new Set(['proxmox','unraid','truenas','freenas','esxi','hyperv','nas','server','appserver','router','switch','firewall','desktop','laptop','rpi']);
 
 // ── Inline Node Editor — tabbed popup at node ────────────────────
 export default function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdit, mapId, mapTitle,
-  onTabChange, onClose, onUpdate, onUpdateNotes, onChangeType,
+  onTabChange, onClose, onUpdate, onChangeType,
   onUpdateCustom, onDeleteCustom, onAddCustom, onRenameCustom, onUpdateProp: onUpdatePropExt }) {
   // onUpdateProp: prefer external (functional update from NodeCanvas) to avoid stale closure on live tab
   const onUpdateProp = onUpdatePropExt || ((key, val) => onUpdate({ properties: { ...node.properties, [key]: val } }));
@@ -440,7 +442,7 @@ export default function InlineNodeEditor({ node, x, y, tab, nodes, edges, canEdi
                     </div>
                     <div style={{ display: 'flex', gap: 5 }}>
                       <input value={edge.label || ''} placeholder="Label…"
-                        onChange={e => {/* handled by parent */}}
+                        onChange={_e => {/* handled by parent */}}
                         style={{ flex: 1, background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
                           padding: '3px 6px', color: 'var(--text)', fontSize: 10, fontFamily: 'var(--font-ui)', outline: 'none' }}
                       />

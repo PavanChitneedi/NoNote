@@ -228,7 +228,7 @@ router.delete("/providers/:id", authenticate, async (req, res) => {
     );
     if (!rowCount) return res.status(404).json({ error: "Not found" });
     res.json({ ok: true });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to delete provider" });
   }
 });
@@ -248,7 +248,7 @@ router.get("/maps/:mapId/conversations", authenticate, async (req, res) => {
       [req.params.mapId, req.user.id, node_id || null]
     );
     res.json({ conversations: rows });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch conversations" });
   }
 });
@@ -290,7 +290,7 @@ router.get("/conversations/:id/messages", authenticate, async (req, res) => {
       [req.params.id]
     );
     res.json({ messages: rows });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch messages" });
   }
 });
@@ -400,7 +400,7 @@ router.delete("/conversations/:id", authenticate, async (req, res) => {
       [req.params.id, req.user.id]
     );
     res.json({ ok: true });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to delete conversation" });
   }
 });
@@ -580,7 +580,7 @@ async function callAzure({ base_url, model, api_key, system, messages }) {
 }
 
 // ── Hugging Face Inference API ─────────────────────────────────
-async function callHuggingFace({ base_url, model, api_key, system, messages }) {
+async function callHuggingFace({ base_url: _base_url, model, api_key, system, messages }) {
   // HF Inference uses the full conversation as a single prompt
   const conversation = messages.map(m => `${m.role === "assistant" ? "Assistant" : "User"}: ${m.content}`).join("\n");
   const prompt = `${system}\n\n${conversation}\nAssistant:`;

@@ -12,7 +12,7 @@ function MiniMetric({label,value,sub,v}){ return <div style={{minWidth:0}}><div 
 function Pill({running}){ return <span style={{fontSize:9,padding:'1px 6px',borderRadius:8,fontWeight:700,background:running?'var(--success)22':'var(--bg3)',color:running?'var(--success)':'var(--text4)',border:`1px solid ${running?'var(--success)44':'var(--border)'}`}}>{running?'●':'■'} {running?'on':'off'}</span>; }
 
 // ── Guest list (shared) ───────────────────────────────────────
-function GuestList({guests, color}){
+function GuestList({guests}){
   const [f,setF]=useState('all');
   const rVM=guests.filter(g=>g._type==='VM'&&g.status==='running').length, tVM=guests.filter(g=>g._type==='VM').length;
   const rCT=guests.filter(g=>g._type==='CT'&&g.status==='running').length, tCT=guests.filter(g=>g._type==='CT').length;

@@ -20,7 +20,7 @@ const SUGGESTED = [
   "Generate documentation for this map",
 ];
 
-export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
+export default function LLMChat({ mapId, nodes, edges, mapTitle }) {
   const [providers, setProviders]         = useState([]);
   const [conversations, setConversations] = useState([]);
   const [activeConvId, setActiveConvId]   = useState(null);
@@ -188,8 +188,6 @@ export default function LLMChat({ mapId, nodes, edges, mapTitle, onClose }) {
     setConversations(cs => cs.filter(c => c.id !== id));
     if (activeConvId === id) { setActiveConvId(null); setMessages([]); }
   };
-
-  const activeConv = conversations.find(c => c.id === activeConvId);
 
   // Token total for active conversation
   const totalTokens = messages.reduce((sum, m) => sum + (m.tokens_used || 0), 0);

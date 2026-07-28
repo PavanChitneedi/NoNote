@@ -17,6 +17,7 @@ const validate = (req, res, next) => {
 // Old save code stored the serialized notes array as the content of a single
 // wrapper note. This unwraps it back into real individual notes.
 function escCtrl(s) {
+  // eslint-disable-next-line no-control-regex -- intentionally matching raw control chars to escape them
   return s.replace(/[\x00-\x1f]/g, c => {
     const m = {'\n':'\\n','\r':'\\r','\t':'\\t'};
     return m[c] || ('\\u' + c.charCodeAt(0).toString(16).padStart(4,'0'));
@@ -218,7 +219,7 @@ router.patch(
         [title||null, description||null, req.params.mapId]
       );
       res.json({ map: result.rows[0] });
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "Failed to update map" });
     }
   }
@@ -475,7 +476,7 @@ router.get(
         [req.params.mapId]
       );
       res.json(result.rows);
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "Failed to fetch collaborators" });
     }
   }
@@ -492,7 +493,7 @@ router.delete(
         [req.params.mapId, req.params.userId]
       );
       res.json({ ok: true });
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "Failed to remove collaborator" });
     }
   }
@@ -512,7 +513,7 @@ router.get(
         [req.params.mapId]
       );
       res.json(result.rows);
-    } catch (err) {
+    } catch {
       res.status(500).json({ error: "Failed to fetch changelog" });
     }
   }

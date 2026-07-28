@@ -1,5 +1,12 @@
 import { EDGE_STYLES } from "../../lib/edgeRouting.js";
 
+// Arrow marker paths
+const ArrowHead = ({x,y,dir=1,col,arrowSize})=>(
+  <polygon
+    points={`${x},${y} ${x-dir*arrowSize},${y-arrowSize*.55} ${x-dir*arrowSize},${y+arrowSize*.55}`}
+    fill={col}/>
+);
+
 // ── EdgeIcon — SVG preview of a connection style ──────────────
 export default function EdgeIcon({ styleKey, size=40, active=false, color="var(--text3)" }) {
   const s = EDGE_STYLES[styleKey];
@@ -12,13 +19,6 @@ export default function EdgeIcon({ styleKey, size=40, active=false, color="var(-
   const sw = s.strokeW>=4 ? Math.round(size*.075) : Math.round(size*.045);
   const col = active?"var(--accent)":color;
   const arrowSize = Math.round(size*.13);
-
-  // Arrow marker paths
-  const ArrowHead = ({x,y,dir=1})=>(
-    <polygon
-      points={`${x},${y} ${x-dir*arrowSize},${y-arrowSize*.55} ${x-dir*arrowSize},${y+arrowSize*.55}`}
-      fill={col}/>
-  );
 
   // Wave path
   const wavePath = ()=>{
@@ -55,9 +55,9 @@ export default function EdgeIcon({ styleKey, size=40, active=false, color="var(-
           strokeLinecap="round"/>
       )}
       {/* End arrowhead */}
-      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1}/>}
+      {s.mEnd&&<ArrowHead x={x2} y={y} dir={1} col={col} arrowSize={arrowSize}/>}
       {/* Start arrowhead */}
-      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1}/>}
+      {s.mStart&&<ArrowHead x={x1} y={y} dir={-1} col={col} arrowSize={arrowSize}/>}
     </svg>
   );
 }

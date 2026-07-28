@@ -1,10 +1,17 @@
 import { useState, useRef, useEffect } from "react";
 import NodeIcon from "./NodeIcon.jsx";
 
+const Hl=({text,q})=>{
+  if(!q||!text) return <span>{text}</span>;
+  const low=String(text).toLowerCase(), ql=q.toLowerCase();
+  const idx=low.indexOf(ql); if(idx<0) return <span>{text}</span>;
+  return <span>{String(text).slice(0,idx)}<mark style={{background:"var(--accent2)",color:"#fff",borderRadius:2,padding:"0 1px"}}>{String(text).slice(idx,idx+q.length)}</mark>{String(text).slice(idx+q.length)}</span>;
+};
+
 // NOTE: this component is currently unreferenced anywhere in the app (confirmed via
 // repo-wide grep before this Phase 2 extraction) — moved verbatim, behavior unchanged.
 // ── Search Panel ──────────────────────────────────────────────
-export default function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,nodes,edges}){
+export default function SearchPanel({query,setQuery,field,setField,results,onSelect,onClose,edges}){
   const inputRef = useRef(null);
   const [activeIdx, setActiveIdx] = useState(0);
 
@@ -16,13 +23,6 @@ export default function SearchPanel({query,setQuery,field,setField,results,onSel
     if(e.key==="ArrowUp")  {e.preventDefault();setActiveIdx(i=>Math.max(i-1,0));}
     if(e.key==="Enter"&&results[activeIdx]){e.preventDefault();onSelect(results[activeIdx]);}
     if(e.key==="Escape"){onClose();}
-  };
-
-  const Hl=({text,q})=>{
-    if(!q||!text) return <span>{text}</span>;
-    const low=String(text).toLowerCase(), ql=q.toLowerCase();
-    const idx=low.indexOf(ql); if(idx<0) return <span>{text}</span>;
-    return <span>{String(text).slice(0,idx)}<mark style={{background:"var(--accent2)",color:"#fff",borderRadius:2,padding:"0 1px"}}>{String(text).slice(idx,idx+q.length)}</mark>{String(text).slice(idx+q.length)}</span>;
   };
 
   const FIELDS=[{id:"all",label:"All"},{id:"title",label:"Title"},{id:"notes",label:"Notes"},{id:"props",label:"Properties"},{id:"type",label:"Type"}];
@@ -79,7 +79,7 @@ export default function SearchPanel({query,setQuery,field,setField,results,onSel
         {query.trim()&&results.length===0&&(
           <div style={{padding:"30px 14px",textAlign:"center",color:"var(--text4)"}}>
             <div style={{fontSize:28,marginBottom:8}}>🔎</div>
-            <div style={{fontSize:12}}>No results for "{query}"</div>
+            <div style={{fontSize:12}}>No results for &quot;{query}&quot;</div>
             <div style={{fontSize:10,marginTop:6}}>Try different terms or change field filter</div>
           </div>
         )}

@@ -108,7 +108,7 @@ export function exportAsPDF(nodes, edges, mapTitle) {
   <svg width="${W}" height="${H}"><defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4d9be6"/></marker></defs>${svgEdges}</svg>
   ${nodeHtml}
 </div>
-<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}<\/script>
+<script>window.onload=()=>{window.print();window.onafterprint=()=>window.close();}</script>
 </body></html>`;
 
   const w=window.open("","_blank","width=800,height=600");

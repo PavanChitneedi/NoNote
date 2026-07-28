@@ -3,7 +3,7 @@ import { NT } from "../../lib/nodeTypes.js";
 import NodeIcon from "./NodeIcon.jsx";
 
 // ── Comments Panel ─────────────────────────────────────────────────
-export default function CommentsPanel({comments,nodes,commentNode,setCommentNode,draft,setDraft,user,onAdd,onDelete,onScrollTo}){
+export default function CommentsPanel({comments,nodes,commentNode,setCommentNode,draft,setDraft,onAdd,onDelete,onScrollTo}){
   const inputRef=useRef(null);
   // Build list: if commentNode set, show only that node's comments; else all
   const entries=commentNode
@@ -70,7 +70,7 @@ export default function CommentsPanel({comments,nodes,commentNode,setCommentNode
       {commentNode?(
         <div style={{padding:"10px 12px",borderTop:"1px solid var(--border2)",background:"var(--bg3)"}}>
           <div style={{fontSize:10,color:"var(--accent)",marginBottom:5,fontWeight:700}}>
-            REPLY ON "{nodes.find(n=>n.id===commentNode)?.title||"node"}"
+            REPLY ON &quot;{nodes.find(n=>n.id===commentNode)?.title||"node"}&quot;
           </div>
           <div style={{display:"flex",gap:6}}>
             <textarea ref={inputRef} value={draft} onChange={e=>setDraft(e.target.value)}
@@ -89,7 +89,7 @@ export default function CommentsPanel({comments,nodes,commentNode,setCommentNode
       ):(
         <div style={{padding:"10px 12px",borderTop:"1px solid var(--border2)",
           fontSize:10,color:"var(--text4)",textAlign:"center"}}>
-          Click a node's 💬 icon or a thread above to comment
+          Click a node&apos;s 💬 icon or a thread above to comment
         </div>
       )}
     </div>

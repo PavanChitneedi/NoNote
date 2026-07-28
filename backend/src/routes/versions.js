@@ -80,7 +80,7 @@ router.get("/:mapId/versions/:versionId",
       nodes: rows[0].nodes_json,
       edges: rows[0].edges_json,
     });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to fetch version" });
   }
 });
@@ -96,7 +96,7 @@ router.delete("/:mapId/versions/:versionId",
       [req.params.versionId, req.params.mapId]
     );
     res.json({ ok: true });
-  } catch (err) {
+  } catch {
     res.status(500).json({ error: "Failed to delete version" });
   }
 });

@@ -19,6 +19,29 @@ const AVATAR_COLORS = [
   "#00BCD4","#F44336","#8BC34A","#FF5722","#3F51B5","#009688",
 ];
 
+const TabBtn = ({ tab, setTab, id, label }) => (
+  <button onClick={() => setTab(id)} style={{
+    padding:"8px 16px", background:"none", border:"none",
+    borderBottom:`2px solid ${tab===id?"var(--accent)":"transparent"}`,
+    color: tab===id?"var(--accent)":"var(--text4)",
+    cursor:"pointer", fontSize:11, fontWeight:700, letterSpacing:.5, fontFamily:"inherit",
+  }}>{label}</button>
+);
+
+const Message = ({ m }) => m.text ? (
+  <div style={{ fontSize:12, color:m.ok?"#4CAF50":"var(--danger)", marginTop:4, lineHeight:1.4 }}>
+    {m.ok?"✓ ":""}{m.text}
+  </div>
+) : null;
+
+const Locked = ({ reason }) => (
+  <div style={{ fontSize:11, color:"var(--text4)", background:"var(--bg3)",
+    borderRadius:6, padding:"8px 12px", display:"flex", gap:8, alignItems:"center",
+    border:"1px solid var(--border2)" }}>
+    🔒 {reason}
+  </div>
+);
+
 const RC = { owner:"#FFD93D", admin:"#f78166", editor:"var(--accent)", viewer:"var(--text3)", restricted:"#888" };
 
 export default function UserProfile({ onClose }) {
@@ -100,29 +123,6 @@ export default function UserProfile({ onClose }) {
 
   const hasChanges = name !== user?.display_name || email !== user?.email || color !== user?.avatar_color;
 
-  const TabBtn = ({ id, label }) => (
-    <button onClick={() => setTab(id)} style={{
-      padding:"8px 16px", background:"none", border:"none",
-      borderBottom:`2px solid ${tab===id?"var(--accent)":"transparent"}`,
-      color: tab===id?"var(--accent)":"var(--text4)",
-      cursor:"pointer", fontSize:11, fontWeight:700, letterSpacing:.5, fontFamily:"inherit",
-    }}>{label}</button>
-  );
-
-  const Message = ({ m }) => m.text ? (
-    <div style={{ fontSize:12, color:m.ok?"#4CAF50":"var(--danger)", marginTop:4, lineHeight:1.4 }}>
-      {m.ok?"✓ ":""}{m.text}
-    </div>
-  ) : null;
-
-  const Locked = ({ reason }) => (
-    <div style={{ fontSize:11, color:"var(--text4)", background:"var(--bg3)",
-      borderRadius:6, padding:"8px 12px", display:"flex", gap:8, alignItems:"center",
-      border:"1px solid var(--border2)" }}>
-      🔒 {reason}
-    </div>
-  );
-
   return (
     <div data-ui="user-profile" data-component="UserProfile" data-page="global" data-role="modal" style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.7)", display:"flex",
       alignItems:"center", justifyContent:"center", zIndex:300, padding:16 }}
@@ -155,9 +155,9 @@ export default function UserProfile({ onClose }) {
 
         {/* Tabs */}
         <div style={{ display:"flex", borderBottom:"1px solid var(--border2)", flexShrink:0, padding:"0 12px" }}>
-          <TabBtn id="profile"  label="Profile"/>
-          <TabBtn id="password" label="Password"/>
-          <TabBtn id="access"   label="My Access"/>
+          <TabBtn tab={tab} setTab={setTab} id="profile"  label="Profile"/>
+          <TabBtn tab={tab} setTab={setTab} id="password" label="Password"/>
+          <TabBtn tab={tab} setTab={setTab} id="access"   label="My Access"/>
         </div>
 
         {/* Content */}
@@ -256,7 +256,7 @@ export default function UserProfile({ onClose }) {
                       placeholder="Repeat new password" style={inp}/>
                   </div>
                   {newPw && confPw && newPw !== confPw && (
-                    <div style={{ fontSize:12, color:"var(--danger)" }}>Passwords don't match</div>
+                    <div style={{ fontSize:12, color:"var(--danger)" }}>Passwords don&apos;t match</div>
                   )}
                   <Message m={pwMsg}/>
                   <button onClick={savePassword} disabled={pwSaving||!curPw||!newPw||newPw!==confPw} style={btn(true)}>
@@ -280,7 +280,7 @@ export default function UserProfile({ onClose }) {
                       YOUR GROUPS ({myGroups.length})
                     </div>
                     {myGroups.length === 0 ? (
-                      <div style={{ fontSize:12, color:"var(--text4)" }}>You're not in any groups.</div>
+                      <div style={{ fontSize:12, color:"var(--text4)" }}>You&apos;re not in any groups.</div>
                     ) : (
                       <div style={{ display:"flex", gap:6, flexWrap:"wrap" }}>
                         {myGroups.map(g => (

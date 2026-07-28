@@ -155,7 +155,7 @@ export default function NodeAIChat({ node, mapId, mapTitle }) {
             <div style={{ fontSize: 22 }}>🤖</div>
             <div style={{ fontSize: 11, color: "var(--text)", fontWeight: 700 }}>Ask about this node</div>
             <div style={{ fontSize: 10, color: "var(--text4)", lineHeight: 1.6 }}>
-              Focused chat for <strong style={{ color: "var(--accent)" }}>{node.title || node.type}</strong>.<br/>Context includes only this node's details.
+              Focused chat for <strong style={{ color: "var(--accent)" }}>{node.title || node.type}</strong>.<br/>Context includes only this node&apos;s details.
             </div>
             {providers.length > 0 && (
               <div style={{ display: "flex", flexDirection: "column", gap: 5, width: "100%" }}>
