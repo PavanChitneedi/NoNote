@@ -43,6 +43,21 @@ App.jsx (root)
 4. `rectEdgePoint()` uses actual rendered dimensions
 5. Edge bundling (`buildBundle()`, module-scope in `NodeCanvas.jsx`): fan-out/fan-in groups sharing a node/side get one trunk + spine instead of parallel lines, only when the whole group is obstacle-clear — see `NodeCanvas.bundle.test.js`
 
+### `NodeCanvas.jsx` structure — pure logic vs. presentational components extracted out
+
+`frontend/src/components/NodeCanvas.jsx` is now ~4,185 lines (down from ~7,828 pre-refactor). It still contains the single main orchestration component — canvas-level state (nodes/edges/selection/mode), drag/collision handling, edge routing invocation, WebSocket sync hookup, save/autosave, and the top-level JSX that composes the pieces below — but the pure logic and the ~15 tail UI pieces that used to be defined inline inside it were extracted into their own files in two passes:
+
+- **`frontend/src/lib/`** — pure, framework-light logic with no JSX rendering of their own (aside from `textHighlight.jsx`), each with a dedicated Vitest suite (`NodeCanvas.geometry.test.js`, `NodeCanvas.layout.test.js`, `NodeCanvas.bundle.test.js`):
+  - `nodeTypes.js` — the `NT` node type registry (118 types / 13 categories), default sizes (`DEF_W`/`DEF_H`/`COL_W`/`COL_H`), `DP` default-properties map, `SIDEBAR_CATS`
+  - `edgeRouting.js` — `EDGE_STYLES`/`EDGE_SECTIONS`, geometry (`rectEdgePoint`, `pickBestSides`, anchor/port helpers) and A*-based obstacle-aware routing (`buildRoutingGrid`, `astarRoute`, `orthoRoute`, `buildBundle` for fan-out/fan-in trunks)
+  - `autoLayout.js` — automatic node layout
+  - `notesFormat.js` — note parsing/serialization (`parseNotes`, `stripHtml`, `serializeNotes`)
+  - `exportFormats.js` — export to NoNote/PDF/HTML/Doc/PNG (`exportAsNoNote`, `exportAsPDF`, `exportAsHTML`, `exportAsDoc`, `exportAsPNG`, `userColor`)
+  - `styleHelpers.js` — shared inline-style factories (`tbtn`, `inp`)
+  - `textHighlight.jsx` — search-match highlighting (the one `lib/` file that returns JSX)
+
+- **`frontend/src/components/canvas/`** — the ~15 presentational/interactive components that used to live inline inside `NodeCanvas.jsx`, now standalone files each taking props from the parent (no direct `api/client.js` or context imports, aside from what's passed down): `NodeIcon.jsx`, `ExportModal.jsx`, `CustomKeyInput.jsx`, `FormattedContent.jsx`, `EdgeIcon.jsx`, `ContextMenu.jsx`, `CollapsedNode.jsx`, `NoteCard.jsx`, `CommentsPanel.jsx`, `NodeNotesTab.jsx`, `TemplateLibrary.jsx`, `SearchPanel.jsx`, `RichTextEditor.jsx`, `NodeSidebar.jsx`, `PropsPanel.jsx`, `InlineNodeEditor.jsx`. These have RTL/Vitest coverage under `frontend/src/components/canvas/*.test.jsx`.
+
 ### Authentication
 - JWT: 15-min access token (sessionStorage) + 7-day refresh token (localStorage)
 - Refresh tokens auto-purged on startup and every 24h
