@@ -9,7 +9,7 @@ import DocExportModal  from "./DocExportModal.jsx";
 import WorkflowAuditPanel from "./WorkflowAuditPanel.jsx";
 import { CHANGELOG, CURRENT_VERSION } from "../changelog.js";
 import { buildLLMText, copyText } from "../utils/llmExport.js";
-import { HelpCircle,Sparkles,ClipboardList,Layers,Map,Zap,Search,
+import { HelpCircle,Sparkles,ClipboardList,Layers,Zap,Search,
   MoreHorizontal,History as HistoryIcon,Palette,LogOut,Import,Users,
   Command,Feather,Hammer,GraduationCap } from "lucide-react";
 import ThemePicker    from "./ThemePicker.jsx";
@@ -18,9 +18,10 @@ import { NT, DP, SIDEBAR_CATS, DEF_W, DEF_H, GRP_W, GRP_H, COL_W, COL_H } from "
 import { highlightText } from "../lib/textHighlight.jsx";
 import { parseNotes, serializeNotes } from "../lib/notesFormat.js";
 import { autoLayout } from "../lib/autoLayout.js";
+import { elkAutoLayout } from "../lib/elkLayout.js";
 import {
   EDGE_STYLES, EDGE_SECTIONS, rectEdgePoint, pickBestSides, computePortMap,
-  STACK_BOX_H, roundedPolyPath, port,
+  STACK_BOX_H, roundedPolyPath, port, nrm, effectiveSide,
   buildBundle, orthoRoute, anchorToPoint, snapToAnchor,
   buildRoutingGrid, astarRoute,
 } from "../lib/edgeRouting.js";
@@ -109,10 +110,14 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   const [nodePopup,      setNodePopup]      = useState(null); // {nodeId, tab}
   const [sidebarCollapsed,setSidebarCollapsed]= useState(false);
   const [layoutDir,     setLayoutDir]     = useState(()=>localStorage.getItem('nn_layout_dir')||'LR');
-  // Edge routing: 'curved' (bezier, original) | 'ortho' (right-angle, obstacle-aware)
-  const [edgeRouting,   setEdgeRouting]   = useState(()=>localStorage.getItem('nn_edge_routing')||'curved');
-  const setEdgeRoutingPersist=(m)=>{setEdgeRouting(m);localStorage.setItem('nn_edge_routing',m);};
+  const [arranging,     setArranging]     = useState(false);
   const [showLayoutMenu,setShowLayoutMenu] = useState(false);
+  // Trunk/branch bundling vs every edge routed independently — a toggle so
+  // both styles can be compared live on a real map before picking one as the
+  // default. Bundling was added to fix same-node parallel edges visually
+  // merging into one thick line; unbundled is closer to how the ELK layout
+  // spike previewed edges, but loses that guard on dense fan-outs.
+  const [bundleEdges,   setBundleEdges]   = useState(()=>(localStorage.getItem('nn_bundle_edges')??'1')==='1');
   const [showChangelog,    setShowChangelog]    = useState(false);
   const [showDocExport,    setShowDocExport]     = useState(false);
   const [docExportMode,    setDocExportMode]     = useState("normal");
@@ -422,7 +427,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         label:e.label,style:e.style,color:e.color,
         fromAnchor:e.from_anchor||null,
         toAnchor:e.to_anchor||null,
-        midOff:e.mid_off||null,
       }));
       if(Array.isArray(data.groupBoxes)) setGroupBoxes(data.groupBoxes);
 
@@ -442,7 +446,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               notes_private:nt.sensitive||false,collapsed:false,properties:{},customProps:{}});
             const parents=[...new Set(es.filter(e=>e.to===n.id||e.from===n.id).map(e=>e.from===n.id?e.to:e.from))];
             parents.forEach(pid=>extraEdges.push({id:makeId(),from:pid,to:newId,label:"",
-              style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null}));
+              style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"}}));
           });
           return {...n,title:toTitle(first)||n.title,node_notes:toContent(first),notes:[],notes_private:first.sensitive||false};
         } else {
@@ -453,7 +457,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
               title:toTitle(nt),description:"",notes:[],node_notes:c,
               notes_private:nt.sensitive||false,collapsed:false,properties:{},customProps:{}});
             extraEdges.push({id:makeId(),from:n.id,to:newId,label:"",
-              style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"},midOff:null});
+              style:"dashed",color:"var(--text4)",fromAnchor:{side:"auto"},toAnchor:{side:"auto"}});
           });
           return {...n,node_notes:"",notes:[]};
         }
@@ -1241,95 +1245,37 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   }, [selected, editingTitle, inlineEditField]);
 
   // ── Auto-layout ────────────────────────────────────────────
-  const handleAutoLayout=useCallback((dir)=>{
+  const handleAutoLayout=useCallback(async (dir)=>{
     const d=dir||layoutDir;
     localStorage.setItem('nn_layout_dir',d);
-    applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null,midOff:null})));
+    applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null})));
     // Arrange places content at the top-left, so bring the view there too —
     // otherwise the map appears to have vanished and you have to hunt for it.
     setTimeout(()=>{
       const el=canvasRef.current;
       if(el) el.scrollTo({left:0,top:0,behavior:"smooth"});
     },60);
-    applyNodes(ns=>{
-      const laid=autoLayout(ns,edges,d);
-
-      // Post-layout: assign exit ports so multiple edges from/to same node
-      // side are spread out (t values) rather than all exiting at center.
-      // This prevents a "fan" of arrows all colliding at the same point.
-      setTimeout(()=>{
-        applyEdges(es=>{
-          // Group edges by (nodeId, side) to assign t offsets
-          const groups = {}; // key="nodeId:side" -> [edgeId,...]
-          const nodeMap = {};
-          laid.forEach(n=>{ nodeMap[n.id]=n; });
-
-          // First pass: determine which side each edge will use
-          const sideOf = {}; // edgeId -> {fromSide, toSide}
-          es.forEach(e=>{
-            const fn=nodeMap[e.from], tn=nodeMap[e.to];
-            if(!fn||!tn) return;
-            const fw=fn.w||DEF_W, fh=fn.h||DEF_H;
-            const tw=tn.w||DEF_W, th=tn.h||DEF_H;
-            const dx=(tn.x+tw/2)-(fn.x+fw/2), dy=(tn.y+th/2)-(fn.y+fh/2);
-            const ax=Math.abs(dx), ay=Math.abs(dy);
-            let fromSide, toSide;
-            if(ax>ay*0.5){ fromSide=dx>0?"right":"left"; toSide=dx>0?"left":"right"; }
-            else { fromSide=dy>0?"bottom":"top"; toSide=dy>0?"top":"bottom"; }
-            sideOf[e.id]={fromSide,toSide};
-            // Group by exit side
-            const fk=`${e.from}:${fromSide}`, tk=`${e.to}:${toSide}`;
-            if(!groups[fk]) groups[fk]=[];
-            if(!groups[tk]) groups[tk]=[];
-            groups[fk].push({eid:e.id,isFrom:true});
-            groups[tk].push({eid:e.id,isFrom:false});
-          });
-
-          // Second pass: sort items by other-node cross-axis center, assign t values
-          // This ensures arrows going to higher nodes get lower t-offsets (no crossing)
-          const anchorOverrides = {}; // edgeId -> {fromAnchor?, toAnchor?}
-          const edgeMap = {};
-          es.forEach(e=>{ edgeMap[e.id]=e; });
-
-          Object.entries(groups).forEach(([key,items])=>{
-            const [,side]=key.split(":");
-            const isHorizSide = side==="left"||side==="right";
-            
-            // Sort by the cross-axis center of the other node
-            const sorted = [...items].sort((a,b)=>{
-              const ea=edgeMap[a.eid], eb=edgeMap[b.eid];
-              if(!ea||!eb) return 0;
-              const oaId = a.isFrom ? ea.to   : ea.from;
-              const obId = b.isFrom ? eb.to   : eb.from;
-              const na=nodeMap[oaId], nb=nodeMap[obId];
-              if(!na||!nb) return 0;
-              // For horizontal sides (left/right), sort by Y of target
-              if(isHorizSide) return (na.y+(na.h||DEF_H)/2) - (nb.y+(nb.h||DEF_H)/2);
-              // For vertical sides (top/bottom), sort by X of target
-              return (na.x+(na.w||DEF_W)/2) - (nb.x+(nb.w||DEF_W)/2);
-            });
-            
-            sorted.forEach((item,i)=>{
-              const n = sorted.length;
-              const t = n===1 ? 0.5 : (i+1)/(n+1);
-              if(!anchorOverrides[item.eid]) anchorOverrides[item.eid]={};
-              if(item.isFrom) anchorOverrides[item.eid].fromAnchor={side,t:Math.round(t*100)/100};
-              else            anchorOverrides[item.eid].toAnchor={side,t:Math.round(t*100)/100};
-            });
-          });
-
-          return es.map(e=>({
-            ...e,
-            fromAnchor: anchorOverrides[e.id]?.fromAnchor || null,
-            toAnchor:   anchorOverrides[e.id]?.toAnchor   || null,
-            midOff: null,
-          }));
-        });
-        if(canvasRef.current) canvasRef.current.scrollTo({left:0,top:0,behavior:"smooth"});
-      },50);
-
-      return laid;
-    });
+    setArranging(true);
+    try{
+      // ELK has no radial equivalent, so radial stays on the original
+      // hand-rolled layout; every other direction goes through ELK, which
+      // proved more robust on real maps (see elkLayout.js).
+      const laid = d==='radial' ? autoLayout(nodesRef.current,edges,d) : await elkAutoLayout(nodesRef.current,edges,d);
+      // Exit-port staggering for multiple edges on the same node face is
+      // handled live by pickBestSides + computePortMap on every render (see
+      // edgeRouting.js) — it doesn't need (and must not get) a one-time
+      // snapshot written back into fromAnchor/toAnchor here. A previous
+      // version of Arrange did exactly that, using a fourth, independent
+      // side-selection formula; the moment any node was dragged afterward,
+      // those frozen anchors went stale and fought the live layout, which is
+      // what caused mismatched bundling, wrong-looking routes, and bent
+      // connectors that reappeared "even after Arrange".
+      applyNodes(()=>laid);
+    }catch(err){
+      console.error('[handleAutoLayout]',err);
+    }finally{
+      setArranging(false);
+    }
   },[edges,applyNodes,zoom,layoutDir]);
 
   // ── Restore version ────────────────────────────────────────
@@ -1364,13 +1310,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Pre-compute staggered port t-values for all edges ────────────────────
   // Groups edges by which face they share on a node and spreads their
   // exit/entry points evenly to prevent arrows stacking on the same pixel.
-  // Nodes with h corrected to the real rendered height where it's known.
-  // Every geometry computation (ports, boxes, routing) must read from this,
-  // not raw `nodes` — a node with an extra content row (type badge, IP tag)
-  // renders taller than its stored h, and using the stored value there is
-  // exactly what produced the small permanent bends on those connectors.
+  // Nodes with w/h corrected to the real rendered size where it's known — a
+  // collapsed node renders at COL_W/COL_H, not its stored w/h, and using the
+  // stored value there is exactly what produced the small permanent bends on
+  // those connectors (and made a collapsed node's obstacle box the wrong
+  // width for bundling/routing to test against).
   const measuredNodes = useMemo(
-    () => nodes.map(n => ({ ...n, h: collH(n) })),
+    () => nodes.map(n => ({ ...n, w: collW(n), h: collH(n) })),
     [nodes, heightTick]   // eslint-disable-line react-hooks/exhaustive-deps
   );
 
@@ -1430,63 +1376,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     return m;
   }, [nodes, edges]);
 
-  // All orthogonal routes, solved together. Routing edges one at a time in
-  // isolation is what lets them pile onto the same line; here each finished
-  // route marks the segments it used, so every later edge pays to reuse them
-  // and naturally steps aside. Shortest edges go first — they have the least
-  // freedom to detour, so they should claim the direct line.
-  const edgeRoutes = useMemo(()=>{
-   try {
-    if (edgeRouting !== "ortho") return {};
-    const boxes = renderedBoxes.boxes;
-    if (!boxes.length || boxes.length > 90) return {};   // keep it responsive
-    const byId = Object.fromEntries(boxes.map(b=>[b.id,b]));
-    const boxFor = id => byId[renderedBoxes.memberToStack[id] || id];
-
-    const items = [];
-    edges.forEach(e => {
-      const f = boxFor(e.from), t = boxFor(e.to);
-      if (!f || !t || f.id === t.id) return;
-      const [fs, ts] = (()=>{
-        const s = pickBestSides(f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h);
-        return [s.from, s.to];
-      })();
-      const nrm = s => s==="right"?{dx:1,dy:0}:s==="left"?{dx:-1,dy:0}:s==="top"?{dx:0,dy:-1}:{dx:0,dy:1};
-      const port = (b,s,t2) => s==="right"?{x:b.x+b.w,y:b.y+b.h*t2}
-                             : s==="left" ?{x:b.x,     y:b.y+b.h*t2}
-                             : s==="top"  ?{x:b.x+b.w*t2, y:b.y}
-                             :             {x:b.x+b.w*t2, y:b.y+b.h};
-      const fp = port(f, fs, edgePortMap[`${e.id}:from`] ?? 0.5);
-      const tp = port(t, ts, edgePortMap[`${e.id}:to`]   ?? 0.5);
-      items.push({ id:e.id, f, t, fp, tp, fn1:nrm(fs), fn2:nrm(ts),
-                   len: Math.abs(fp.x-tp.x)+Math.abs(fp.y-tp.y) });
-    });
-    items.sort((a,b)=>a.len-b.len);
-
-    // One grid for all edges, including every port so each is reachable.
-    const ports = [];
-    items.forEach(it => {
-      ports.push({ x: it.fp.x + it.fn1.dx*24, y: it.fp.y + it.fn1.dy*24 });
-      ports.push({ x: it.tp.x + it.fn2.dx*24, y: it.tp.y + it.fn2.dy*24 });
-    });
-    const grid = buildRoutingGrid(boxes, ports);
-
-    const usage = new Map();
-    const out = {};
-    items.forEach(it => {
-      const obstacles = boxes.filter(b => b.id !== it.f.id && b.id !== it.t.id);
-      const pts = astarRoute(it.fp, it.fn1, it.tp, it.fn2, obstacles, usage, grid);
-      if (pts) { out[it.id] = pts; }
-    });
-    return out;
-   } catch (err) {
-    // A routing failure must never take the whole canvas down with it; an
-    // uglier edge is always better than a blank screen.
-    console.error('[edgeRoutes]', err);
-    return {};
-   }
-  }, [edges, nodes, edgeRouting, renderedBoxes, edgePortMap]);
-
   // ── Edge bundling — shared trunk + spine for fan-outs ─────────────
   // A* gives every edge its own shortest, obstacle-free path, but a switch
   // with five children still draws as five separate parallel lines. This is
@@ -1500,8 +1389,8 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // routes instead of forcing an ugly detour to make the bundle work.
   const edgeBundles = useMemo(()=>{
     const empty = { branchByEdgeId:{}, trunks:[] };
+    if (!bundleEdges) return empty;
     try {
-      if (edgeRouting !== "ortho") return empty;
       const boxes = renderedBoxes.boxes;
       if (!boxes.length) return empty;
       const byId = Object.fromEntries(boxes.map(b=>[b.id,b]));
@@ -1539,20 +1428,55 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       // cross-position, and one stem connects trunkPt to the spine. See the
       // module-scope buildBundle above.
 
+      // Two INDEPENDENT bundles (e.g. two similarly-shaped switches, each
+      // with its own annotation stack needing the same clearBox extension)
+      // can otherwise land their spine on the exact same coordinate and
+      // visually merge into one long line spanning both — reported live as
+      // "it merged different node's connection when creating branching".
+      // reservedSpines is shared across every bundle built in this pass; a
+      // bundle whose natural spine collides with an already-accepted one is
+      // pushed further out (via buildBundle's minOffset) in fixed steps
+      // until clear, or dropped back to individual routing if it can't find
+      // room within a bounded number of attempts.
+      const reservedSpines = [];   // {axis:'x'|'y', coord, lo, hi}[]
+      const SPINE_STEP = 30, SPINE_RETRIES = 6;
+      const buildWithRetry = (trunkPt, side, branchSpecs, obstacles, clearBox) => {
+        const horiz = side==="left"||side==="right";
+        const trunkMain = horiz ? trunkPt.x : trunkPt.y;
+        let minOffset = 0;
+        for (let attempt = 0; attempt <= SPINE_RETRIES; attempt++) {
+          const built = buildBundle(trunkPt, side, branchSpecs, obstacles, clearBox, minOffset);
+          if (!built) return null;
+          const coord = horiz ? built.spinePts[0].x : built.spinePts[0].y;
+          const crossVals = [built.spinePts[0], built.spinePts[1]].map(p => horiz ? p.y : p.x);
+          const lo = Math.min(...crossVals), hi = Math.max(...crossVals);
+          const axis = horiz ? 'x' : 'y';
+          const collides = reservedSpines.some(r => r.axis===axis && Math.abs(r.coord-coord)<1 && r.lo<hi && r.hi>lo);
+          if (!collides) { reservedSpines.push({ axis, coord, lo, hi }); return built; }
+          minOffset = Math.abs(coord - trunkMain) + SPINE_STEP;
+        }
+        return null;   // no room found within the retry budget — leave unbundled
+      };
+
       // ── FAN-OUT: one source, several targets ─────────────────────────
       const outGroups = {};
       edges.forEach(e => {
         const f = boxFor(e.from), t = boxFor(e.to);
         if (!f || !t || f.id === t.id) return;
         if (renderedBoxes.memberToStack[e.to] || renderedBoxes.memberToStack[e.from]) return;
-        const s = pickBestSides(f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h);
-        (outGroups[`${f.id}:${s.from}`] = outGroups[`${f.id}:${s.from}`] || []).push({ id:e.id, f, t, fromSide:s.from, toSide:s.to });
+        const fromSide = effectiveSide(e, 'from', f, t, f.w, f.h, t.w, t.h);
+        const toSide   = effectiveSide(e, 'to',   f, t, f.w, f.h, t.w, t.h);
+        (outGroups[`${f.id}:${fromSide}`] = outGroups[`${f.id}:${fromSide}`] || []).push({ id:e.id, f, t, fromSide, toSide });
       });
 
       const branchByEdgeId = {}, trunks = [];
       const claimed = new Set();   // edges already resolved by a fan-out bundle
 
-      Object.entries(outGroups).forEach(([key, group]) => {
+      // Biggest bundles first — they're the most visually dominant, so they
+      // get first claim on the "natural" spine offset; smaller ones are more
+      // tolerant of being nudged aside.
+      const outEntries = Object.entries(outGroups).sort((a,b) => b[1].length - a[1].length || (a[0]<b[0]?-1:1));
+      outEntries.forEach(([key, group]) => {
         if (group.length < 2) return;
         const f = group[0].f, fromSide = group[0].fromSide;
         const trunkPt = port(f, fromSide, 0.5);
@@ -1562,10 +1486,13 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           return { id:g.id, entry, gap, targetId:g.t.id };
         });
         const obstacles = boxes.filter(b => b.id!==f.id && b.id!==ownAnnoBox[f.id]);
-        const built = buildBundle(trunkPt, fromSide, branchSpecs, obstacles, byId[ownAnnoBox[f.id]]);
+        const built = buildWithRetry(trunkPt, fromSide, branchSpecs, obstacles, byId[ownAnnoBox[f.id]]);
         if (!built) return;   // leave this group's edges as individual A* routes
         trunks.push({ key, stemPts:built.stemPts, spinePts:built.spinePts });
-        group.forEach(g => { branchByEdgeId[g.id] = built.branchPts[g.id]; claimed.add(g.id); });
+        // A branch with an obstructed corridor is dropped by buildBundle —
+        // it's absent from built.branchPts and falls through to individual
+        // A*/ortho routing on the next pass, same as an unbundled edge.
+        group.forEach(g => { if (built.branchPts[g.id]) { branchByEdgeId[g.id] = built.branchPts[g.id]; claimed.add(g.id); } });
       });
 
       // ── FAN-IN: several sources, one target ───────────────────────────
@@ -1580,10 +1507,12 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const f = boxFor(e.from), t = boxFor(e.to);
         if (!f || !t || f.id === t.id) return;
         if (renderedBoxes.memberToStack[e.to] || renderedBoxes.memberToStack[e.from]) return;
-        const s = pickBestSides(f.x,f.y,f.w,f.h,t.x,t.y,t.w,t.h);
-        (inGroups[`${t.id}:${s.to}`] = inGroups[`${t.id}:${s.to}`] || []).push({ id:e.id, f, t, fromSide:s.from, toSide:s.to });
+        const fromSide = effectiveSide(e, 'from', f, t, f.w, f.h, t.w, t.h);
+        const toSide   = effectiveSide(e, 'to',   f, t, f.w, f.h, t.w, t.h);
+        (inGroups[`${t.id}:${toSide}`] = inGroups[`${t.id}:${toSide}`] || []).push({ id:e.id, f, t, fromSide, toSide });
       });
-      Object.entries(inGroups).forEach(([, group]) => {
+      const inEntries = Object.entries(inGroups).sort((a,b) => b[1].length - a[1].length || (a[0]<b[0]?-1:1));
+      inEntries.forEach(([, group]) => {
         if (group.length < 2) return;
         const t = group[0].t, toSide = group[0].toSide;
         const trunkPt = port(t, toSide, 0.5);
@@ -1593,7 +1522,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           return { id:g.id, entry, gap, targetId:g.f.id };
         });
         const obstacles = boxes.filter(b => b.id!==t.id && b.id!==ownAnnoBox[t.id]);
-        const built = buildBundle(trunkPt, toSide, branchSpecs, obstacles, byId[ownAnnoBox[t.id]]);
+        const built = buildWithRetry(trunkPt, toSide, branchSpecs, obstacles, byId[ownAnnoBox[t.id]]);
         if (!built) return;
         // Do NOT draw [ownJunction → target] directly per branch — that
         // segment is a diagonal shortcut nobody validated, and it's exactly
@@ -1606,6 +1535,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const targetJunction = built.stemPts[1];
         group.forEach(g => {
           const seg = built.branchPts[g.id];             // [ownJunction, sourceExit]
+          if (!seg) return;   // dropped — falls through to individual routing
           branchByEdgeId[g.id] = [seg[1], seg[0], targetJunction, trunkPt];
         });
       });
@@ -1615,10 +1545,76 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       console.error('[edgeBundles]', err);
       return empty;
     }
-  }, [edges, edgeRouting, renderedBoxes]);
+  }, [edges, nodes, renderedBoxes, bundleEdges]);
+
+  // All orthogonal routes, solved together. Routing edges one at a time in
+  // isolation is what lets them pile onto the same line; here each finished
+  // route marks the segments it used, so every later edge pays to reuse them
+  // and naturally steps aside. Shortest edges go first — they have the least
+  // freedom to detour, so they should claim the direct line.
+  const edgeRoutes = useMemo(()=>{
+   try {
+    const boxes = renderedBoxes.boxes;
+    if (!boxes.length || boxes.length > 90) return {};   // keep it responsive
+    const byId = Object.fromEntries(boxes.map(b=>[b.id,b]));
+    const boxFor = id => byId[renderedBoxes.memberToStack[id] || id];
+
+    // Bundled trunks are real geometry other, unrelated edges shouldn't cut
+    // through — represent each stem/spine segment as a thin padded rect and
+    // fold it into the shared obstacle set below.
+    const trunkRects = [];
+    edgeBundles.trunks.forEach(tr => {
+      [tr.stemPts, tr.spinePts].forEach(seg => {
+        const [a,b] = seg;
+        trunkRects.push({
+          id: `__trunk__${trunkRects.length}`,
+          x: Math.min(a.x,b.x)-3, y: Math.min(a.y,b.y)-3,
+          w: Math.abs(a.x-b.x)+6, h: Math.abs(a.y-b.y)+6,
+        });
+      });
+    });
+
+    const items = [];
+    edges.forEach(e => {
+      const f = boxFor(e.from), t = boxFor(e.to);
+      if (!f || !t || f.id === t.id) return;
+      const fs = effectiveSide(e, 'from', f, t, f.w, f.h, t.w, t.h);
+      const ts = effectiveSide(e, 'to',   f, t, f.w, f.h, t.w, t.h);
+      const fp = port(f, fs, edgePortMap[`${e.id}:from`] ?? 0.5);
+      const tp = port(t, ts, edgePortMap[`${e.id}:to`]   ?? 0.5);
+      items.push({ id:e.id, f, t, fp, tp, fn1:nrm(fs), fn2:nrm(ts),
+                   len: Math.abs(fp.x-tp.x)+Math.abs(fp.y-tp.y) });
+    });
+    items.sort((a,b)=>a.len-b.len);
+
+    // One grid for all edges, including every port so each is reachable.
+    const ports = [];
+    items.forEach(it => {
+      ports.push({ x: it.fp.x + it.fn1.dx*24, y: it.fp.y + it.fn1.dy*24 });
+      ports.push({ x: it.tp.x + it.fn2.dx*24, y: it.tp.y + it.fn2.dy*24 });
+    });
+    const grid = buildRoutingGrid([...boxes, ...trunkRects], ports);
+
+    const usage = new Map();
+    const out = {};
+    items.forEach(it => {
+      // A bundled edge's own branch isn't part of this obstacle set (it's
+      // drawn separately), and an edge is never its own obstacle.
+      const skipTrunk = edgeBundles.branchByEdgeId[it.id] ? [] : trunkRects;
+      const obstacles = [...boxes.filter(b => b.id !== it.f.id && b.id !== it.t.id), ...skipTrunk];
+      const pts = astarRoute(it.fp, it.fn1, it.tp, it.fn2, obstacles, usage, grid);
+      if (pts) { out[it.id] = pts; }
+    });
+    return out;
+   } catch (err) {
+    // A routing failure must never take the whole canvas down with it; an
+    // uglier edge is always better than a blank screen.
+    console.error('[edgeRoutes]', err);
+    return {};
+   }
+  }, [edges, nodes, renderedBoxes, edgePortMap, edgeBundles]);
 
   const edgeLaneMap = useMemo(()=>{
-    if (edgeRouting !== "ortho") return {};
     const lanes = {};
     const groups = {};
     edges.forEach(edge => {
@@ -1626,7 +1622,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const t = measuredNodes.find(n=>n.id===edge.to);
       if (!f || !t) return;
       const fw=f.w||220, fh=f.h||96, tw=t.w||220, th=t.h||96;
-      const {from:fSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
+      const fSide = effectiveSide(edge, 'from', f, t, fw, fh, tw, th);
       const horiz = (fSide==="left"||fSide==="right");
       // channel = the gap between the two facing edges
       const gapLo = horiz ? Math.min(f.x+fw, t.x+tw) : Math.min(f.y+fh, t.y+th);
@@ -1654,31 +1650,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       });
     });
     return lanes;
-  }, [edges, measuredNodes, edgeRouting]);
+  }, [edges, measuredNodes]);
 
   const getEdgePath=(fromNode,toNode,edge={})=>{
     const fw=collW(fromNode), fh=collH(fromNode);
     const tw=collW(toNode),   th=collH(toNode);
 
-    const faceNormal=(side)=>{
-      switch(side){
-        case "top":    return {dx:0, dy:-1};
-        case "bottom": return {dx:0, dy:1};
-        case "left":   return {dx:-1,dy:0};
-        case "right":  return {dx:1, dy:0};
-        default:       return {dx:0, dy:0};
-      }
-    };
-
-    const sidePt=(nd,nw,nh,side,t=0.5)=>{
-      switch(side){
-        case "top":    return {x:nd.x+nw*t,   y:nd.y,       normal:faceNormal(side)};
-        case "bottom": return {x:nd.x+nw*t,   y:nd.y+nh,    normal:faceNormal(side)};
-        case "left":   return {x:nd.x,         y:nd.y+nh*t,  normal:faceNormal(side)};
-        case "right":  return {x:nd.x+nw,      y:nd.y+nh*t,  normal:faceNormal(side)};
-        default:       return {x:nd.x+nw/2,    y:nd.y+nh/2,  normal:{dx:0,dy:0}};
-      }
-    };
+    // Thin wrapper over the shared port()/nrm() from edgeRouting.js — this
+    // used to be its own third reimplementation of "point on a box face",
+    // independent of the one edgeBundles/edgeRoutes use, which is exactly
+    // the kind of split that lets the three quietly drift apart.
+    const sidePt=(nd,nw,nh,side,t=0.5)=>({ ...port({x:nd.x,y:nd.y,w:nw,h:nh}, side, t), normal: nrm(side) });
 
     // Look up the pre-computed staggered t for this edge on a given port
     const getPortT=(role)=>{
@@ -1719,22 +1701,33 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       tp=pt; fn2=pt.normal;
     }
 
-    // ── Orthogonal routing ─────────────────────────────────────────
-    if (edgeRouting === "ortho" && !edge.midOff) {
-     try {
+    // A start-marker (bidirectional/double style) needs its point pulled a
+    // touch off the node face so the arrowhead doesn't overlap the border —
+    // pulled along the exit normal, applied only to the drawn path's first
+    // point, never to the returned anchor point itself.
+    const hasMStart = edge.style && (EDGE_STYLES[edge.style]?.mStart);
+    const sw = EDGE_STYLES[edge.style]?.strokeW || 2;
+    const PULL = sw*10;
+    const pullFirst = pts => {
+      if (!hasMStart || !pts.length) return pts;
+      return [{ x:pts[0].x+fn1.dx*PULL, y:pts[0].y+fn1.dy*PULL }, ...pts.slice(1)];
+    };
+
+    // ── Orthogonal routing (the only mode — right-angle, obstacle-aware) ──
+    try {
       // Bundled: this edge shares a trunk with siblings, rendered once
       // separately below. Only its short branch (spine → this child) draws
       // here, keeping the arrowhead on the segment that actually points at it.
       const branch = edgeBundles.branchByEdgeId[edge.id];
       if (branch && branch.length >= 2) {
-        const path = roundedPolyPath(branch, 10);
+        const path = roundedPolyPath(pullFirst(branch), 10);
         const mi = Math.max(1, Math.floor(branch.length/2));
         const mid = { x:(branch[mi-1].x+branch[mi].x)/2, y:(branch[mi-1].y+branch[mi].y)/2 };
         return { path, fp:branch[0], tp, mid };
       }
       const pre = edgeRoutes[edge.id];
       if (pre && pre.length >= 2) {
-        const path = roundedPolyPath(pre, 12);
+        const path = roundedPolyPath(pullFirst(pre), 12);
         const mi = Math.max(1, Math.floor(pre.length/2));
         const mid = { x:(pre[mi-1].x+pre[mi].x)/2, y:(pre[mi-1].y+pre[mi].y)/2 };
         return { path, fp, tp, mid };
@@ -1747,48 +1740,20 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       ].filter(Boolean));
       const obstacles = renderedBoxes.boxes.filter(b => !skip.has(b.id));
       const pts = orthoRoute(fp, fn1, tp, fn2, edgeLaneMap[edge.id], obstacles);
-      const path = roundedPolyPath(pts, 14);
+      const path = roundedPolyPath(pullFirst(pts), 14);
       // midpoint = middle vertex of the travel segment, for labels/handles
       const midIdx = Math.max(1, Math.floor(pts.length/2));
       const mid = { x:(pts[midIdx-1].x+pts[midIdx].x)/2, y:(pts[midIdx-1].y+pts[midIdx].y)/2 };
       return { path, fp, tp, mid };
-     } catch (err) {
-      console.error('[getEdgePath/ortho]', err);   // fall through to the curve
-     }
+    } catch (err) {
+      // A routing failure must never take the whole canvas down with it —
+      // fall back to a plain straight line rather than a bezier curve, since
+      // curved mode no longer exists.
+      console.error('[getEdgePath/ortho]', err);
+      const path = `M ${fp.x} ${fp.y} L ${tp.x} ${tp.y}`;
+      const mid = { x:(fp.x+tp.x)/2, y:(fp.y+tp.y)/2 };
+      return { path, fp, tp, mid };
     }
-
-    // Bezier control points — adaptive S-curve
-    const dx=tp.x-fp.x, dy=tp.y-fp.y;
-    const dist=Math.sqrt(dx*dx+dy*dy)||1;
-    const alignF=Math.abs(fn1.dx*(dx/dist)+fn1.dy*(dy/dist));
-    // Short handle for aligned routes (direct), long for backtracking
-    const ctrlMult = alignF>0.7 ? 0.35 : alignF>0.3 ? 0.48 : 0.65;
-    const ctrl=Math.max(60, dist*ctrlMult);
-    let c1x=fp.x+fn1.dx*ctrl, c1y=fp.y+fn1.dy*ctrl;
-    let c2x=tp.x+fn2.dx*ctrl, c2y=tp.y+fn2.dy*ctrl;
-
-    if(edge.midOff){
-      const mx=(fp.x+tp.x)/2+edge.midOff.dx;
-      const my=(fp.y+tp.y)/2+edge.midOff.dy;
-      c1x=fp.x*0.25+mx*0.75; c1y=fp.y*0.25+my*0.75;
-      c2x=tp.x*0.25+mx*0.75; c2y=tp.y*0.25+my*0.75;
-    }
-
-    const hasMStart=edge.style&&(EDGE_STYLES[edge.style]?.mStart);
-    const sw=EDGE_STYLES[edge.style]?.strokeW||2;
-    let fpx=fp.x, fpy=fp.y;
-    if(hasMStart){
-      const PULL=sw*10;
-      const d1=Math.sqrt((c1x-fp.x)**2+(c1y-fp.y)**2)||1;
-      fpx=fp.x+(c1x-fp.x)/d1*PULL;
-      fpy=fp.y+(c1y-fp.y)/d1*PULL;
-    }
-    const path=`M ${fpx} ${fpy} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${tp.x} ${tp.y}`;
-    const mid={
-      x:0.125*(fp.x+tp.x)+0.375*(c1x+c2x),
-      y:0.125*(fp.y+tp.y)+0.375*(c1y+c2y),
-    };
-    return {path,fp,tp,mid};
   };
 
   // ── LLM export ─────────────────────────────────────────────
@@ -2020,7 +1985,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         const result=getEdgePath(f,t,edge); const {path,fp,tp}=result;
         const mid=result.mid||{x:(fp.x+tp.x)/2,y:(fp.y+tp.y)/2};
         const isSel=selEdge===edge.id;
-        const isThisEdgeSel=isSel;
         // Focus mode: dim edge if neither endpoint is focused
         const edgeFocused = !focusMode || selected.has(edge.from) || selected.has(edge.to) ||
           editingTitle===edge.from || editingTitle===edge.to ||
@@ -2081,31 +2045,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                 </div>
               </foreignObject>
             )}
-            {(()=>{
-              const onMidDown=(ev)=>{
-                ev.stopPropagation();
-                const origOff=edge.midOff||{dx:0,dy:0};
-                const startX=ev.clientX, startY=ev.clientY;
-                const onMove=(mv)=>{
-                  const el=canvasRef.current; if(!el) return;
-                  const s=1/zoom;
-                  applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,midOff:{dx:origOff.dx+(mv.clientX-startX)*s,dy:origOff.dy+(mv.clientY-startY)*s}}));
-                };
-                const onUp=()=>{window.removeEventListener("mousemove",onMove);window.removeEventListener("mouseup",onUp);};
-                window.addEventListener("mousemove",onMove); window.addEventListener("mouseup",onUp);
-              };
-              return(
-                <g style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={onMidDown}
-                   opacity={isThisEdgeSel?1:0} className="nn-mid-handle">
-                  <circle cx={mid.x} cy={mid.y} r="10" fill="transparent"/>
-                  <rect x={mid.x-5} y={mid.y-5} width="10" height="10" rx="2"
-                    fill="var(--bg2)" stroke={edge.color||"var(--accent)"} strokeWidth="1.5"
-                    transform={`rotate(45,${mid.x},${mid.y})`}/>
-                  <circle cx={mid.x} cy={mid.y} r="10" fill="transparent"
-                    onDoubleClick={ev=>{ev.stopPropagation();applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,midOff:null}));}}/>
-                </g>
-              );
-            })()}
             {isSel&&canEdit&&(()=>{
               // Drag endpoint: if near the SAME node's edge → slide t offset
               //               if dragged onto a DIFFERENT node → reattach
@@ -2151,10 +2090,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   style={{cursor:"grab",pointerEvents:"all"}} onMouseDown={handleEndpointDrag(false)}/>
                 <circle cx={tp.x} cy={tp.y} r="3" fill="#fff" opacity="0.8" style={{pointerEvents:"none"}}/>
                 {/* Reset anchor button — tiny x near midpoint */}
-                {(edge.fromAnchor||edge.toAnchor||edge.midOff)&&(
+                {(edge.fromAnchor||edge.toAnchor)&&(
                   <text x={mid.x+14} y={mid.y-14} fill="var(--text4)" fontSize="10" textAnchor="middle"
                     style={{cursor:"pointer",pointerEvents:"all"}} fontFamily="var(--font-ui)"
-                    onClick={ev=>{ev.stopPropagation();applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,fromAnchor:null,toAnchor:null,midOff:null}));}}>
+                    onClick={ev=>{ev.stopPropagation();applyEdges(es=>es.map(ex=>ex.id!==edge.id?ex:{...ex,fromAnchor:null,toAnchor:null}));}}>
                     ↺
                   </text>
                 )}
@@ -2206,7 +2145,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           stroke="var(--accent)" strokeWidth="2.5" fill="none" strokeDasharray="6,4" opacity=".9" markerEnd="url(#nn-arr)"/>;
       })()}
       {edgeElements}
-      {edgeRouting==="ortho" && edgeBundles.trunks.map((tr,i)=>(
+      {edgeBundles.trunks.map((tr,i)=>(
         <g key={`trunk-${i}`}>
           <path d={`M ${tr.stemPts[0].x} ${tr.stemPts[0].y} L ${tr.stemPts[1].x} ${tr.stemPts[1].y}`}
             fill="none" stroke="var(--text4)" strokeWidth={2} opacity={0.7}/>
@@ -3077,28 +3016,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
 
               <div style={{width:1,height:18,background:"var(--border)",flexShrink:0,margin:"0 4px"}}/>
 
-              {/* Edge routing: curved vs orthogonal */}
-              <div style={{display:"flex",alignItems:"center",background:"var(--bg3)",borderRadius:"var(--radius-sm)",overflow:"hidden",flexShrink:0}}
-                title="Connector style — Orthogonal routes around nodes at right angles and never overlaps">
-                {[["curved","⌒","Curved"],["ortho","⌐","Right-angle"]].map(([m,ic,lbl])=>(
-                  <button key={m} onClick={()=>setEdgeRoutingPersist(m)}
-                    style={{padding:"4px 8px",border:"none",cursor:"pointer",fontSize:11,
-                      fontFamily:"var(--font-ui)",fontWeight:700,
-                      background:edgeRouting===m?"var(--accent2)":"transparent",
-                      color:edgeRouting===m?"#fff":"var(--text4)",transition:"all .15s"}}
-                    title={lbl}>{ic}</button>
-                ))}
-              </div>
-
               {/* Layout with direction picker */}
               <div style={{position:"relative",flexShrink:0}}>
                 <div style={{display:"flex",borderRadius:"var(--radius-sm)",overflow:"hidden"}}>
-                  <button onClick={()=>handleAutoLayout()} style={{...tbtn(false),borderRadius:0,padding:"4px 9px",fontSize:11,borderRight:"1px solid var(--border)"}}
+                  <button onClick={()=>handleAutoLayout()} disabled={arranging} style={{...tbtn(false),borderRadius:0,padding:"4px 9px",fontSize:11,borderRight:"1px solid var(--border)",opacity:arranging?0.6:1,cursor:arranging?"wait":"pointer"}}
                     title="Auto-arrange (Ctrl+Enter)">
-                    ⊞ Arrange
+                    {arranging?"⊞ Arranging…":"⊞ Arrange"}
                   </button>
-                  <button data-ui="toolbar-layout" data-component="CanvasToolbar" data-page="canvas" data-role="action-btn" onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn"
-                    style={{...tbtn(showLayoutMenu,"var(--accent2)"),borderRadius:0,padding:"4px 6px",fontSize:10}}
+                  <button data-ui="toolbar-layout" data-component="CanvasToolbar" data-page="canvas" data-role="action-btn" onClick={()=>setShowLayoutMenu(v=>!v)} data-tut="layout-btn" disabled={arranging}
+                    style={{...tbtn(showLayoutMenu,"var(--accent2)"),borderRadius:0,padding:"4px 6px",fontSize:10,opacity:arranging?0.6:1,cursor:arranging?"wait":"pointer"}}
                     title="Choose layout direction">
                     {{LR:"→",TB:"↓",RL:"←",BT:"↑",radial:"◎"}[layoutDir]||"→"} ▾
                   </button>
@@ -3136,6 +3062,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                   </div>
                 </>)}
               </div>
+              <button onClick={()=>{const v=!bundleEdges;setBundleEdges(v);localStorage.setItem('nn_bundle_edges',v?'1':'0');}}
+                style={{...tbtn(bundleEdges,"var(--accent2)"),fontSize:11,padding:"4px 9px"}}
+                title="Toggle whether same-node edges share a trunk/branch line, or each route independently">
+                {bundleEdges?"⑂ Bundled":"⑂ Unbundled"}
+              </button>
               <button onClick={globalCollapsed?expandAll:collapseAll} style={tbtn(globalCollapsed,"var(--accent2)")} title="Collapse / Expand all nodes">
                 {globalCollapsed?"⊞ Expand All":"⊟ Collapse"}
               </button>

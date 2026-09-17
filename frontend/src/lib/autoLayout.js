@@ -1,6 +1,9 @@
 import { DEF_W, DEF_H } from "./nodeTypes.js";
 import { STACK_BOX_H } from "./edgeRouting.js";
 
+// Exported for its own unit tests.
+export const boxesOverlap = (a, b) => a.x < b.x+b.w && a.x+a.w > b.x && a.y < b.y+b.h && a.y+a.h > b.y;
+
 // ── Auto-layout — topological layers, centered, no overlap ──
 export function autoLayout(nodes, edges, direction='LR') {
   if (!nodes.length) return nodes;
@@ -15,13 +18,18 @@ export function autoLayout(nodes, edges, direction='LR') {
     const isHoriz = direction === 'LR' || direction === 'RL';
 
     // ── 0. Separate annotations from the graph proper ────────────────
-    // A note attached to exactly one node is an ANNOTATION on that node, not a
-    // peer in the graph. Laying it out as a graph node puts it in the same
-    // layer as that node's real children, where it competes for a slot and gets
-    // shoved away from its own parent — which is precisely why notes end up
-    // scattered. Annotations are pulled out of the graph entirely and parked in
-    // a gutter beside their parent afterwards. Notes shared by several nodes
-    // stay in the graph, since they genuinely belong to more than one place.
+    // A note attached to exactly one node is an ANNOTATION on that node, not
+    // a peer in the graph. Laying it out via the same crossing-reduction
+    // pass as everything else was tried and reverted: with several real
+    // siblings competing for the same layer, a note has no special pull
+    // toward staying next to its one parent and can land far away — which
+    // also breaks the bundler's assumption (below) that a node's own note
+    // sits right beside it, causing bundling to fail across the whole
+    // board. Annotations are pulled out and parked beside their parent
+    // instead, with a bounded local collision nudge (not a full solver) so
+    // they don't land on top of unrelated content. Notes shared by several
+    // nodes stay in the graph, since they genuinely belong to more than one
+    // place.
     const noteParents = {};
     edges.forEach(e => {
       const fn = rawById(e.from), tn = rawById(e.to);
@@ -108,18 +116,55 @@ export function autoLayout(nodes, edges, direction='LR') {
     const maxDepth = Math.max(0, ...coreIds.map(u => depthOf[u]));
 
     // Place a node's annotation block perpendicular to the flow direction.
-    // Centred on the axis whose size is exact, so the connector is straight.
+    // The first, default candidate is centred on the axis whose size is
+    // exact, so the connector is straight. That default has no idea what
+    // else is on the canvas, though, so it can land on top of an unrelated
+    // node or another annotation. This is a bounded local nudge, not a
+    // general packing solver: a short, fixed list of alternates — a bigger
+    // gap, then edge-aligned instead of centred (above/left, then
+    // below/right) — tried in order, keeping the first that's actually
+    // clear. An edge-aligned candidate trades the guaranteed-straight
+    // connector for a small bend, which is the right trade when the
+    // straight option would otherwise sit under another box or line.
     const placeAnnotations = (posX, posY, out) => {
+      const placedAnnoBoxes = [];
       Object.keys(annoOf).forEach(pid => {
         const p = out.find(n => n.id === pid);
         const box = annoBox(pid);
         if (!p || !box) return;
-        let ax, ay;
-        if (direction === 'RL')      { ax = p.x - ANNO_GAP - box.w;      ay = p.y + nodeH(p)/2 - box.h/2; }
-        else if (direction === 'BT') { ax = p.x + nodeW(p)/2 - box.w/2;  ay = p.y - ANNO_GAP - box.h; }
-        else if (isHoriz)            { ax = p.x + nodeW(p) + ANNO_GAP;   ay = p.y + nodeH(p)/2 - box.h/2; }
-        else                         { ax = p.x + nodeW(p)/2 - box.w/2;  ay = p.y + nodeH(p) + ANNO_GAP; }
-        annoOf[pid].forEach(nid => { posX[nid] = ax; posY[nid] = ay; });
+        const candidates = [];
+        const push = (ax,ay) => candidates.push({ax,ay});
+        if (direction === 'RL') {
+          push(p.x - ANNO_GAP - box.w,   p.y + nodeH(p)/2 - box.h/2);
+          push(p.x - ANNO_GAP*2 - box.w, p.y + nodeH(p)/2 - box.h/2);
+          push(p.x - ANNO_GAP - box.w,   p.y);
+          push(p.x - ANNO_GAP - box.w,   p.y + nodeH(p) - box.h);
+        } else if (direction === 'BT') {
+          push(p.x + nodeW(p)/2 - box.w/2, p.y - ANNO_GAP - box.h);
+          push(p.x + nodeW(p)/2 - box.w/2, p.y - ANNO_GAP*2 - box.h);
+          push(p.x,                        p.y - ANNO_GAP - box.h);
+          push(p.x + nodeW(p) - box.w,     p.y - ANNO_GAP - box.h);
+        } else if (isHoriz) {
+          push(p.x + nodeW(p) + ANNO_GAP,   p.y + nodeH(p)/2 - box.h/2);
+          push(p.x + nodeW(p) + ANNO_GAP*2, p.y + nodeH(p)/2 - box.h/2);
+          push(p.x + nodeW(p) + ANNO_GAP,   p.y);
+          push(p.x + nodeW(p) + ANNO_GAP,   p.y + nodeH(p) - box.h);
+        } else {
+          push(p.x + nodeW(p)/2 - box.w/2, p.y + nodeH(p) + ANNO_GAP);
+          push(p.x + nodeW(p)/2 - box.w/2, p.y + nodeH(p) + ANNO_GAP*2);
+          push(p.x,                        p.y + nodeH(p) + ANNO_GAP);
+          push(p.x + nodeW(p) - box.w,     p.y + nodeH(p) + ANNO_GAP);
+        }
+        const obstacles = out
+          .filter(n => n.id !== pid)
+          .map(n => ({ x:n.x, y:n.y, w:nodeW(n), h:nodeH(n) }));
+        const clear = (c) => {
+          const b = { x:c.ax, y:c.ay, w:box.w, h:box.h };
+          return !obstacles.some(o => boxesOverlap(b,o)) && !placedAnnoBoxes.some(o => boxesOverlap(b,o));
+        };
+        const chosen = candidates.find(clear) || candidates[0];
+        placedAnnoBoxes.push({ x:chosen.ax, y:chosen.ay, w:box.w, h:box.h });
+        annoOf[pid].forEach(nid => { posX[nid] = chosen.ax; posY[nid] = chosen.ay; });
       });
     };
 

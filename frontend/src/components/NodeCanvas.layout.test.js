@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { autoLayout } from "../lib/autoLayout.js";
+import { autoLayout, boxesOverlap } from "../lib/autoLayout.js";
 
 // Minimal node builder — mirrors mkNode's shape without going through the
 // full node-type registry, since autoLayout only reads x/y/w/h/type/id.
@@ -118,5 +118,43 @@ describe("autoLayout — note annotations", () => {
     // of the fixed ANNO_GAP offset beside the parent.
     expect(byId.note1.x).not.toBe(byId.srv.x + byId.srv.w + ANNO_GAP);
     expect(byId.note1.x).toBeGreaterThan(byId.srv.x);
+  });
+
+  it("still centers a note beside its parent when nothing else is nearby (regression)", () => {
+    // The default, fully-clear case must keep landing on the first
+    // (centered, dead-straight-connector) candidate — the collision nudge
+    // must not perturb the common case.
+    const nodes = [node("srv"), node("note1", "note", { w: 240, h: 160 })];
+    const edges = [edge("e1", "srv", "note1")];
+    const byId = Object.fromEntries(autoLayout(nodes, edges, "LR").map(n => [n.id, n]));
+    expect(byId.note1.x).toBe(byId.srv.x + byId.srv.w + ANNO_GAP);
+    expect(byId.note1.y + byId.note1.h / 2).toBeCloseTo(byId.srv.y + byId.srv.h / 2);
+  });
+
+  it("does not overlap two independently-annotated branches (regression)", () => {
+    const nodes = [
+      node("a"), node("noteA", "note", { w: 240, h: 160 }),
+      node("b", "server", { y: 300 }), node("noteB", "note", { w: 240, h: 160 }),
+    ];
+    const edges = [edge("e1", "a", "noteA"), edge("e2", "b", "noteB")];
+    const byId = Object.fromEntries(autoLayout(nodes, edges, "LR").map(n => [n.id, n]));
+    expect(boxesOverlap(
+      { x: byId.noteA.x, y: byId.noteA.y, w: byId.noteA.w, h: byId.noteA.h },
+      { x: byId.noteB.x, y: byId.noteB.y, w: byId.noteB.w, h: byId.noteB.h },
+    )).toBe(false);
+  });
+});
+
+describe("boxesOverlap", () => {
+  it("detects overlapping rectangles", () => {
+    expect(boxesOverlap({ x: 0, y: 0, w: 10, h: 10 }, { x: 5, y: 5, w: 10, h: 10 })).toBe(true);
+  });
+
+  it("returns false for rectangles that only touch at an edge", () => {
+    expect(boxesOverlap({ x: 0, y: 0, w: 10, h: 10 }, { x: 10, y: 0, w: 10, h: 10 })).toBe(false);
+  });
+
+  it("returns false for rectangles that are fully apart", () => {
+    expect(boxesOverlap({ x: 0, y: 0, w: 10, h: 10 }, { x: 100, y: 100, w: 10, h: 10 })).toBe(false);
   });
 });

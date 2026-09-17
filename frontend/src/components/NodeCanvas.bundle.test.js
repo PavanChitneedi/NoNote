@@ -66,10 +66,24 @@ describe("buildBundle", () => {
     expect(built).toBeNull();
   });
 
-  it("returns null when an unrelated obstacle blocks a branch's own leg", () => {
+  it("drops just the blocked branch instead of rejecting the whole group", () => {
     // Sits directly on e1's junction(140,40) → entry(300,40) leg, and isn't
-    // any branch's own target — nothing filters it out.
+    // any branch's own target — nothing filters it out. e2/e3 are unaffected
+    // and there are still 2+ survivors, so the group still bundles.
     const obstacles = [{ id: "wall", x: 200, y: 30, w: 50, h: 20 }];
+    const built = buildBundle(trunkPt, "right", branchSpecs, obstacles, null);
+    expect(built).not.toBeNull();
+    expect(built.branchPts.e1).toBeUndefined();
+    expect(Object.keys(built.branchPts).sort()).toEqual(["e2", "e3"]);
+  });
+
+  it("rejects the whole group when fewer than 2 branches survive", () => {
+    // Block both e1's and e2's legs, leaving only e3 — a single surviving
+    // branch isn't worth bundling, so the group falls back to null.
+    const obstacles = [
+      { id: "wall1", x: 200, y: 30, w: 50, h: 20 },
+      { id: "wall2", x: 200, y: 90, w: 50, h: 20 },
+    ];
     const built = buildBundle(trunkPt, "right", branchSpecs, obstacles, null);
     expect(built).toBeNull();
   });
@@ -104,5 +118,77 @@ describe("buildBundle", () => {
     // Spine runs horizontally (constant y) below the trunk.
     expect(built.spinePts[0].y).toEqual(built.spinePts[1].y);
     expect(built.spinePts[0].y).toBeGreaterThan(vTrunkPt.y);
+  });
+
+  describe("minOffset", () => {
+    it("raises the spine floor when minOffset exceeds the natural offset", () => {
+      const built = buildBundle(trunkPt, "right", branchSpecs, [], null, 200);
+      expect(built.spinePts[0].x - trunkPt.x).toBe(200);
+    });
+
+    it("does not lower the spine below its natural offset when minOffset is smaller", () => {
+      const built = buildBundle(trunkPt, "right", branchSpecs, [], null, 10);
+      const natural = buildBundle(trunkPt, "right", branchSpecs, [], null, 0);
+      expect(built.spinePts[0].x).toBe(natural.spinePts[0].x);
+    });
+  });
+});
+
+// Mirrors the retry loop in NodeCanvas.jsx's edgeBundles useMemo — kept here
+// rather than imported since it's inline component logic, not an exported
+// primitive. Regression coverage for a bug found live: two unrelated
+// switches with identically-shaped fan-outs independently computed the same
+// spineOffset and landed their spines on the exact same x, which rendered
+// as one long line appearing to connect unrelated nodes ("it merged
+// different node's connection when creating branching").
+function buildWithRetry(trunkPt, side, specs, obstacles, clearBox, reservedSpines) {
+  const horiz = side === "left" || side === "right";
+  const trunkMain = horiz ? trunkPt.x : trunkPt.y;
+  let minOffset = 0;
+  for (let attempt = 0; attempt <= 6; attempt++) {
+    const built = buildBundle(trunkPt, side, specs, obstacles, clearBox, minOffset);
+    if (!built) return null;
+    const coord = horiz ? built.spinePts[0].x : built.spinePts[0].y;
+    const crossVals = [built.spinePts[0], built.spinePts[1]].map(p => horiz ? p.y : p.x);
+    const lo = Math.min(...crossVals), hi = Math.max(...crossVals);
+    const axis = horiz ? "x" : "y";
+    const collides = reservedSpines.some(r => r.axis===axis && Math.abs(r.coord-coord)<1 && r.lo<hi && r.hi>lo);
+    if (!collides) { reservedSpines.push({ axis, coord, lo, hi }); return built; }
+    minOffset = Math.abs(coord - trunkMain) + 30;
+  }
+  return null;
+}
+
+describe("cross-bundle spine collision avoidance", () => {
+  it("nudges the second of two independent bundles clear when their natural spines coincide", () => {
+    // Two switches at the same x, different y, each with an identically-
+    // shaped 3-way fan-out (same branch gaps) — both naturally compute the
+    // exact same spineOffset (driven purely by branch gap here, no clearBox
+    // needed to reproduce it), and their cross-axis spans overlap.
+    const groupA = {
+      trunkPt: { x: 100, y: 100 },
+      specs: [
+        { id: "a1", entry: { x: 300, y: 40 },  gap: 60 },
+        { id: "a2", entry: { x: 300, y: 100 }, gap: 0  },
+        { id: "a3", entry: { x: 300, y: 160 }, gap: 60 },
+      ],
+    };
+    const groupB = {
+      trunkPt: { x: 100, y: 140 },
+      specs: [
+        { id: "b1", entry: { x: 300, y: 80 },  gap: 60 },
+        { id: "b2", entry: { x: 300, y: 140 }, gap: 0  },
+        { id: "b3", entry: { x: 300, y: 200 }, gap: 60 },
+      ],
+    };
+    const reservedSpines = [];
+    const builtA = buildWithRetry(groupA.trunkPt, "right", groupA.specs, [], null, reservedSpines);
+    const builtB = buildWithRetry(groupB.trunkPt, "right", groupB.specs, [], null, reservedSpines);
+    expect(builtA).not.toBeNull();
+    expect(builtB).not.toBeNull();
+    // Without the fix both would land at x=140 (identical natural offset,
+    // same trunk x) — with it, B gets pushed further out instead.
+    expect(builtA.spinePts[0].x).toBe(140);
+    expect(builtB.spinePts[0].x).not.toBe(builtA.spinePts[0].x);
   });
 });

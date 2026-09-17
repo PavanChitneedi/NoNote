@@ -65,8 +65,6 @@ const SECTIONS = [
         p:"Select a connection and type a label to annotate it. Also set an edge type: Data, Method call, Network, Dependency, Trigger — these appear as small italic labels on the edge." },
       { h:"Custom anchors",
         p:"When in Connect mode, hover near a specific point on a node's border to snap to a custom anchor. This lets you control exactly where arrows enter and exit a node." },
-      { h:"Bezier handles",
-        p:"Select an edge and drag the midpoint diamond handle to bend the curve. This lets you route connections around other nodes or create more readable layouts." },
     ],
   },
   {

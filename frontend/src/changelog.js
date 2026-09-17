@@ -1,6 +1,11 @@
 // Shared changelog — imported by NodeCanvas and Dashboard
 // Pure JS array only — no JSX allowed in this .js file
 export const CHANGELOG = [
+  {v:"v5.64.0",date:"Jul 2026",items:[
+    "Removed: curved (bezier) connector mode. Right-angle routing is now the only mode — it already handled obstacle avoidance, bundling, and lane assignment better than curves ever could, and maintaining two renderers was actively causing bugs (a manually-bent curve could silently bypass the routing/bundling safety checks entirely). The curved/right-angle toggle is gone from the toolbar; every map now renders orthogonal.",
+    "Fix: two unrelated fan-out bundles (e.g. two switches with similar geometry) could independently land their spine on the exact same coordinate and visually merge into one long line spanning both, looking like a single connection between unrelated nodes. Bundles built in the same pass now share a reservation registry and nudge apart when they'd collide.",
+    "Fix: notes' \"beside the parent\" placement now has a bounded collision nudge (bigger gap, then edge-aligned) so a note landing on top of another node or note gets moved clear instead of silently overlapping. (A prior attempt in this same release cycle replaced beside-the-parent placement entirely with generic layered placement, but that let a note drift far from its parent whenever there were several siblings — which in turn broke the bundler's assumption that a node's own note sits right next to it, causing bundling to fail across busy maps. Reverted; the collision-nudge approach keeps the guaranteed adjacency intact.)",
+  ]},
   {v:"v5.63.4",date:"Jul 2026",items:[
     "Internal: split NodeCanvas.jsx's ~15 tail React components (NodeSidebar, PropsPanel, InlineNodeEditor, ExportModal, etc.) into their own files under frontend/src/components/canvas/. Pure refactor, no user-facing behavior change.",
   ]},

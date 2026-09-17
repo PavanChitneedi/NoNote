@@ -5,6 +5,7 @@ import {
   computePortMap,
   roundedPolyPath,
   segHitsRects,
+  effectiveSide,
 } from "../lib/edgeRouting.js";
 import {
   parseNotes,
@@ -56,6 +57,28 @@ describe("pickBestSides", () => {
 
   it("picks top→bottom when the target is further above", () => {
     expect(pickBestSides(0, 500, 100, 100, 10, 0, 100, 100)).toEqual({ from: "top", to: "bottom" });
+  });
+});
+
+describe("effectiveSide", () => {
+  const f = { x: 0, y: 0, w: 100, h: 100 };
+  const t = { x: 500, y: 10, w: 100, h: 100 };   // pickBestSides would say right→left
+
+  it("falls back to pickBestSides when the edge has no explicit anchor", () => {
+    const edge = { fromAnchor: null, toAnchor: null };
+    expect(effectiveSide(edge, "from", f, t, f.w, f.h, t.w, t.h)).toBe("right");
+    expect(effectiveSide(edge, "to", f, t, f.w, f.h, t.w, t.h)).toBe("left");
+  });
+
+  it("falls back to pickBestSides when the anchor side is 'auto'", () => {
+    const edge = { fromAnchor: { side: "auto" }, toAnchor: { side: "auto" } };
+    expect(effectiveSide(edge, "from", f, t, f.w, f.h, t.w, t.h)).toBe("right");
+  });
+
+  it("honors an explicit, non-'auto' anchor over the geometric guess", () => {
+    const edge = { fromAnchor: { side: "bottom", t: 0.5 }, toAnchor: { side: "top", t: 0.5 } };
+    expect(effectiveSide(edge, "from", f, t, f.w, f.h, t.w, t.h)).toBe("bottom");
+    expect(effectiveSide(edge, "to", f, t, f.w, f.h, t.w, t.h)).toBe("top");
   });
 
   it("always returns opposite faces, never same-side pairs", () => {

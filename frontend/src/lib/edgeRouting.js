@@ -72,6 +72,19 @@ export function pickBestSides(fx,fy,fw,fh,tx,ty,tw,th){
   }
 }
 
+// A single source of truth for "which face does this edge actually leave/
+// enter from" — honors an explicit, non-"auto" fromAnchor/toAnchor (set by
+// dragging an endpoint) over the live pickBestSides guess. Bundling/routing
+// code that derives a side straight from pickBestSides without checking this
+// can group or route an edge onto a face different from the one getEdgePath
+// renders it on, which is its own class of bend/mismatch bug.
+export function effectiveSide(edge, role, f, t, fw, fh, tw, th) {
+  const anchor = role === 'from' ? edge?.fromAnchor : edge?.toAnchor;
+  if (anchor?.side && anchor.side !== 'auto') return anchor.side;
+  const sides = pickBestSides(f.x, f.y, fw, fh, t.x, t.y, tw, th);
+  return role === 'from' ? sides.from : sides.to;
+}
+
 // Where an annotation connector attaches across its parent's face. Shared by
 // the layout (which positions the note box) and the router (which picks the
 // port) — they must agree or the connector stops being straight.
@@ -406,9 +419,20 @@ export const TRUNK_MIN = 40, TRUNK_MAX = 110;
 // NodeCanvas for how FAN-OUT (one source, several targets) and FAN-IN
 // (several sources, one target) both funnel through this same geometry by
 // calling the shared endpoint "trunkPt" and the scattered endpoints
-// "branches". Returns null if the trunk, spine, or any branch would be
-// blocked by an obstacle — callers fall back to individual A* routes.
-export function buildBundle(trunkPt, trunkSide, branchSpecs, baseObstacles, clearBox) {
+// "branches". Returns null only if the shared stem/spine itself would be
+// blocked — nothing can be salvaged then. An individual blocked BRANCH is
+// dropped from the result instead of rejecting the whole group: two
+// otherwise-identical fan-outs shouldn't bundle differently just because one
+// has a single sibling with an obstacle in its own corridor. Callers should
+// fall back to individual A* routes for both the whole group (stem/spine
+// blocked) and any edge whose id is missing from the returned branchPts.
+//
+// minOffset lets a caller force the spine further out than the natural
+// gap/clearBox-derived value — used to resolve a collision against another,
+// unrelated bundle that independently landed on the same coordinate (two
+// bundles have no visibility into each other's geometry otherwise; see
+// edgeBundles in NodeCanvas.jsx for the retry loop that supplies this).
+export function buildBundle(trunkPt, trunkSide, branchSpecs, baseObstacles, clearBox, minOffset = 0) {
   const horiz = trunkSide==="left"||trunkSide==="right";
   const fn = nrm(trunkSide);
   const cross = p => horiz ? p.y : p.x;
@@ -426,6 +450,7 @@ export function buildBundle(trunkPt, trunkSide, branchSpecs, baseObstacles, clea
     const neededOffset = Math.abs(farEdge - main(trunkPt)) + 20;
     spineOffset = Math.max(spineOffset, Math.min(neededOffset, TRUNK_MAX*3));
   }
+  if (minOffset > spineOffset) spineOffset = minOffset;
   const spineMain = main(trunkPt) + (horiz?fn.dx:fn.dy)*spineOffset;
   const at = (m,c) => horiz ? {x:m,y:c} : {x:c,y:m};
   const stemPts = [trunkPt, at(spineMain, cross(trunkPt))];
@@ -445,9 +470,10 @@ export function buildBundle(trunkPt, trunkSide, branchSpecs, baseObstacles, clea
     // group-wide instead of only for its own branch.
     const branchObstacles = b.targetId ? baseObstacles.filter(x => x.id !== b.targetId) : baseObstacles;
     const junction = at(spineMain, cross(b.entry));
-    if (blocked(junction, b.entry, branchObstacles)) return null;
+    if (blocked(junction, b.entry, branchObstacles)) continue;   // drop just this branch
     branchPts[b.id] = [junction, b.entry];
   }
+  if (Object.keys(branchPts).length < 2) return null;   // nothing left worth bundling
   return { stemPts, spinePts, branchPts };
 }
 
