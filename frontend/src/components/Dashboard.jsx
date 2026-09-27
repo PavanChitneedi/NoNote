@@ -1,3 +1,5 @@
+import { normalizeNativeGraph } from '../lib/nativeImport.js';
+import { sanitizeNodesForExport, parseExportNotes } from '../lib/exportFormats.js';
 import { useState, useEffect, useCallback, useRef } from "react";
 import LiveDashboard from "./LiveDashboard.jsx";
 import ThemePicker from "./ThemePicker.jsx";
@@ -328,7 +330,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
         node_notes: n.node_notes || '', notes_private: !!n.notes_private,
         properties: typeof n.properties === "string" ? JSON.parse(n.properties||"{}") : (n.properties||{}),
         customProps: typeof n.custom_props === "string" ? JSON.parse(n.custom_props||"{}") : (n.custom_props||n.customProps||{}),
-        notes: (() => { try { return JSON.parse(n.notes||"[]"); } catch { return []; } })(),
+        notes: parseExportNotes(n.notes),
       }));
       const edges = (d.edges || []).map(e => ({
         id: e.id, from: e.from_node || e.from, to: e.to_node || e.to,
@@ -349,45 +351,9 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
   };
 
   // Sanitize imported nodes/edges to ensure correct field names regardless of export source
-  const sanitizeImport = (rawNodes, rawEdges) => {
-    // Always generate fresh IDs — imported nodes/edges have IDs from the source map
-    // which already exist in the DB. Reusing them causes ON CONFLICT to silently
-    // update the original map's nodes instead of inserting into the new map.
-    const idMap = {};
-    const nodes = (rawNodes || []).map(n => {
-      const newId = crypto.randomUUID();
-      idMap[n.id] = newId;
-      return {
-        id:          newId,
-        type:        n.type || n.node_type || "note",
-        x:           n.x || 0,
-        y:           n.y || 0,
-        w:           n.w || 180,
-        h:           n.h || 80,
-        title:       n.title || "Untitled",
-        notes:       Array.isArray(n.notes) ? n.notes : [],
-        properties:  n.properties || {},
-        customProps: n.customProps || n.custom_props || {},
-        collapsed:   n.collapsed || false,
-        z_index:     n.z_index || 0,
-      };
-    });
-    const edges = (rawEdges || []).map(e => ({
-      id:         crypto.randomUUID(),
-      from:       idMap[e.from || e.from_node] || e.from || e.from_node,
-      to:         idMap[e.to   || e.to_node]   || e.to   || e.to_node,
-      label:      e.label || "",
-      style:      e.style || "arrow",
-      color:      e.color || "#58a6ff",
-      fromAnchor: e.fromAnchor || e.from_anchor || null,
-      toAnchor:   e.toAnchor   || e.to_anchor   || null,
-      midOff:     e.midOff     || e.mid_off      || null,
-    }));
-    return { nodes, edges };
-  };
-
-  const doImportSave = async (mapId, nodes, edges, title, isOverwrite = false) => {
-    await saveMap(mapId, { nodes, edges, groupBoxes: [] });
+  const doImportSave = async (mapId, nodes, edges, title, isOverwrite = false, groupBoxes = []) => {
+    if (isOverwrite) await apiFetch(`/maps/${mapId}`);
+    await saveMap(mapId, { nodes, edges, groupBoxes });
     if (isOverwrite) {
       getMaps().then(d => setMaps(d.maps)).catch(() => {});
       showToast(`"${title}" overwritten — ${nodes.length} nodes`);
@@ -406,13 +372,15 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
     try { raw = JSON.parse(await f.text()); } catch { showToast("Invalid file — not valid JSON", "err"); return; }
     if (raw.app !== "NoNote" || !Array.isArray(raw.nodes)) { showToast("Not a valid .nonote file", "err"); return; }
 
-    const { nodes, edges } = sanitizeImport(raw.nodes, raw.edges);
+    let nodes, edges;
+    try { ({nodes,edges}=normalizeNativeGraph(raw.nodes,raw.edges)); } catch(error) { showToast(error.message,'err'); return; }
+    const groupBoxes = Array.isArray(raw.groupBoxes) ? raw.groupBoxes : [];
     const title = raw.title || f.name.replace(/\.nonote$/i, "") || "Imported Map";
     const existing = maps.find(m => m.title.toLowerCase() === title.toLowerCase());
 
     if (existing) {
       // Show inline conflict modal instead of window.confirm
-      setImportConflict({ title, existing, nodes, edges });
+      setImportConflict({ title, existing, nodes, edges, groupBoxes });
       return;
     }
 
@@ -421,7 +389,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
     try {
       const d = await createMap({ title });
       newMapId = d.map.id;
-      await doImportSave(newMapId, nodes, edges, title);
+      await doImportSave(newMapId, nodes, edges, title, false, groupBoxes);
     } catch(err) {
       // Clean up the orphaned empty map if save failed
       if (newMapId) {
@@ -434,12 +402,12 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
 
   const handleImportConflictResolve = async (choice) => {
     if (!importConflict) return;
-    const { title, existing, nodes, edges } = importConflict;
+    const { title, existing, nodes, edges, groupBoxes } = importConflict;
     setImportConflict(null);
 
     if (choice === "overwrite") {
       try {
-        await doImportSave(existing.id, nodes, edges, title, true);
+        await doImportSave(existing.id, nodes, edges, title, true, groupBoxes);
       } catch(err) { showToast("Overwrite failed: " + err.message, "err"); }
     } else if (choice === "copy") {
       const copyTitle = title + " (imported " + new Date().toLocaleTimeString() + ")";
@@ -447,7 +415,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
       try {
         const d = await createMap({ title: copyTitle });
         newMapId = d.map.id;
-        await doImportSave(newMapId, nodes, edges, copyTitle);
+        await doImportSave(newMapId, nodes, edges, copyTitle, false, groupBoxes);
       } catch(err) {
         if (newMapId) {
           try { await deleteMap(newMapId); } catch {}
@@ -1276,4 +1244,3 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
 </>
   );
 }
-import { sanitizeNodesForExport } from '../lib/exportFormats.js';

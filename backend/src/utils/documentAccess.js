@@ -10,6 +10,12 @@ export function stripSecrets(value) {
     .map(([key, item]) => [key, stripSecrets(item)]));
 }
 export function readableNode(node, permission) {
+  // Integration secrets never leave storage, even for editors. Raw legacy
+  // payloads received over WS are reduced to harmless display metadata.
+  if (node.properties?._integration) {
+    const { credentialId, type, url } = node.properties._integration;
+    node = { ...node, properties: { ...node.properties, _integration: { credentialId, type, url } } };
+  }
   if (canReadPrivate(permission)) return node;
   const clean = stripSecrets(node);
   if (node.notes_private) clean.node_notes = '';

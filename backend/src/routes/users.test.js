@@ -130,6 +130,15 @@ describe("PATCH /api/users/me — setting-gated self-update", () => {
 });
 
 describe("POST /api/users — admin create user", () => {
+  it('increments the session version when the owner resets another account password',async()=>{
+    mockAuthUser(owner);
+    query.mockResolvedValueOnce({rows:[{id:viewer.id,role:'viewer'}]});
+    const res=await request(app).patch(`/api/users/${viewer.id}`)
+      .set('Authorization',`Bearer ${tokenFor(owner.id)}`).send({password:'new-password-123'});
+    expect(res.status).toBe(200);
+    expect(query.mock.calls.some(([sql])=>sql.includes('auth_version=auth_version+1'))).toBe(true);
+    expect(query.mock.calls.some(([sql])=>sql.includes('password_hash=$1'))).toBe(true);
+  });
   it("lets an admin create an editor/viewer", async () => {
     mockAuthUser(admin);
     query.mockResolvedValueOnce({

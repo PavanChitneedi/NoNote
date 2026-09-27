@@ -5,6 +5,7 @@ import { query, withTransaction } from "../db/pool.js";
 import { authenticate, mapPermission } from "../middleware/auth.js";
 import { appLog } from "../utils/logger.js";
 import { readableNode, canReadPrivate } from '../utils/documentAccess.js';
+import { protectProperties } from '../utils/integrationVault.js';
 
 const router = Router();
 
@@ -386,6 +387,7 @@ router.post(
         // Upsert all nodes with real UUIDs
         for (const n of nodes || []) {
           const nodeId = idMap[n.id];
+          const properties = await protectProperties(n.properties,req.user.id,mapId,client.query.bind(client));
           await client.query(
             `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, node_notes, notes_private, z_index, description)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
@@ -394,7 +396,7 @@ router.post(
                properties=$9, custom_props=$10, notes=$11, node_notes=$12, notes_private=$13, z_index=$14, description=$15
              WHERE map_nodes.map_id=$2`,
             [nodeId, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
-             JSON.stringify(n.properties || {}),
+             JSON.stringify(properties),
              JSON.stringify(n.customProps || n.custom_props || {}),
              typeof n.notes === 'string' ? n.notes : JSON.stringify(Array.isArray(n.notes) ? n.notes : []),
              n.node_notes || '',

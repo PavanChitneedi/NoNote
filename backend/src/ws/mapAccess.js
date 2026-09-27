@@ -14,13 +14,13 @@ import { query } from "../db/pool.js";
 // DB errors are intentionally left to propagate — the caller (WS JOIN
 // handler) wraps this in its own try/catch for the generic "Access check
 // failed" / 1011 close path.
-export async function checkMapAccess(userId, mapId) {
+export async function checkMapAccess(userId, mapId, authVersion = 0) {
   const userRes = await query(
-    "SELECT role, display_name, is_active FROM users WHERE id=$1",
+    "SELECT role, display_name, is_active, auth_version FROM users WHERE id=$1",
     [userId]
   );
   const u = userRes.rows[0];
-  if (!u || !u.is_active) {
+  if (!u || !u.is_active || authVersion !== (u.auth_version ?? 0)) {
     return {
       ok: false,
       message: "User not found or disabled",

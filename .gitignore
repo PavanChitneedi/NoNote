@@ -1,5 +1,6 @@
 # Environment & secrets
 .nonote-test-credentials*
+.nonote-test-ssh*
 .env
 .env.*
 !.env.example

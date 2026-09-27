@@ -64,6 +64,15 @@ describe("requireRole", () => {
 });
 
 describe("authenticate", () => {
+  it('rejects access tokens issued before a password change',async()=>{
+    redis.get.mockResolvedValue(null);
+    query.mockResolvedValueOnce({rows:[{id:'u1',is_active:true,auth_version:1}]});
+    const token=jwt.sign({sub:'u1',av:0},process.env.JWT_ACCESS_SECRET);
+    const res=mockRes(), next=vi.fn();
+    await authenticate({headers:{authorization:`Bearer ${token}`}},res,next);
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(next).not.toHaveBeenCalled();
+  });
   const signToken = (sub) => jwt.sign({ sub }, process.env.JWT_ACCESS_SECRET);
 
   it("rejects a request with no Authorization header", async () => {

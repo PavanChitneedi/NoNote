@@ -10,6 +10,10 @@ beforeEach(() => {
 });
 
 describe("checkMapAccess", () => {
+  it('rejects a socket session from before a password change',async()=>{
+    query.mockResolvedValueOnce({rows:[{role:'owner',is_active:true,auth_version:1}]});
+    expect((await checkMapAccess('u1','m1',0)).ok).toBe(false);
+  });
   it("rejects a missing or inactive user", async () => {
     query.mockResolvedValueOnce({ rows: [] });
     const result = await checkMapAccess("u1", "m1");

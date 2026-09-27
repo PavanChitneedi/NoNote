@@ -34,14 +34,15 @@ router.post("/:mapId/versions",
   async (req, res, next) => { const fn = await mapPermission("editor"); fn(req, res, next); },
   async (req, res) => {
   try {
-    const { nodes = [], edges = [], label = "" } = req.body;
+    const { nodes = [], edges = [], label = "", groupBoxes = [] } = req.body;
+    if (!Array.isArray(nodes) || !Array.isArray(edges) || !Array.isArray(groupBoxes)) return res.status(400).json({error:'Invalid snapshot'});
     const { rows } = await query(
-      `INSERT INTO map_versions (map_id, user_id, label, nodes_json, edges_json, node_count, edge_count)
-       VALUES ($1, $2, $3, $4, $5, $6, $7)
+      `INSERT INTO map_versions (map_id, user_id, label, nodes_json, edges_json, node_count, edge_count, group_boxes)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
        RETURNING id, label, node_count, edge_count, created_at`,
       [req.params.mapId, req.user.id, label,
-       JSON.stringify(nodes), JSON.stringify(edges),
-       nodes.length, edges.length]
+       JSON.stringify(nodes.map(n=>readableNode(n,'editor'))), JSON.stringify(edges),
+       nodes.length, edges.length, JSON.stringify(groupBoxes)]
     );
 
     // Keep only latest 50 versions per map
@@ -80,6 +81,7 @@ router.get("/:mapId/versions/:versionId",
     res.json({
       version: { ...rows[0], nodes_json: nodes },
       nodes,
+      groupBoxes: rows[0].group_boxes || [],
       edges: rows[0].edges_json,
     });
   } catch {

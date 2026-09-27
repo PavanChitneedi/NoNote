@@ -2782,7 +2782,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
                     ["🤖","AI PDF Export","LLM-interpreted PDF page"]].map(([ic,lbl,desc],i)=>(
                     <div key={i} onClick={()=>{setShowExportMenu(false);
                       if(i===2) exportAsPNG(nodes,edges,mapMeta?.title);
-                      else if(i===3) exportAsNoNote(nodes,edges,mapMeta);
+                      else if(i===3) exportAsNoNote(nodes,edges,mapMeta,groupBoxes);
                       else if(i===4) exportAsHTML(nodes,edges,mapMeta?.title);
                       else if(i===5) exportAsDoc(nodes,mapMeta?.title);
                       else if(i===6) exportAsPDF(nodes,edges,mapMeta?.title);

@@ -3,9 +3,42 @@ import { authenticate } from '../middleware/auth.js';
 import https from 'https';
 import http from 'http';
 import { WebSocket } from 'ws';
+import { query } from '../db/pool.js';
+import { storeConfig, resolveConfig, canUseMap } from '../utils/integrationVault.js';
 
 const router = Router();
 router.use(authenticate);
+
+router.post('/credentials', async (req,res) => {
+  try {
+    const { nodeId, config } = req.body;
+    if (!config || !['proxmox','truenas','unraid','esxi','probe'].includes(config.type) || !isSafeUrl(config.url))
+      return res.status(400).json({error:'Invalid integration configuration'});
+    if (['proxmox','truenas','unraid'].includes(config.type) && !isValidToken(config.token)) return res.status(400).json({error:'Re-enter the API token to save this connection'});
+    if (config.type === 'esxi' && (!config.username || !config.password)) return res.status(400).json({error:'Re-enter the username and password'});
+    if (config.type === 'probe' && config.method && !['GET','HEAD'].includes(config.method)) return res.status(400).json({error:'Probes support GET and HEAD only'});
+    let mapId = null;
+    if (nodeId) {
+      const {rows} = await query('SELECT map_id FROM map_nodes WHERE id=$1',[nodeId]);
+      mapId = rows[0]?.map_id;
+      if (!mapId || !await canUseMap(req.user,mapId)) return res.status(403).json({error:'Save the node first and ensure you can edit its map'});
+    }
+    const saved = await storeConfig(config,req.user.id,mapId);
+    res.status(201).json(saved);
+  } catch (error) { res.status(error.status || 500).json({error:error.status ? error.message : 'Failed to store integration'}); }
+});
+
+// A reference resolves the entire destination+credentials together. Request
+// fields can never redirect stored credentials to a caller-supplied host.
+router.use(async (req,res,next) => {
+  if (!req.body?.credentialId) return next();
+  try {
+    const config = await resolveConfig(req.body.credentialId,req.user);
+    if (req.path !== `/${config.type}`) return res.status(400).json({error:'Integration type mismatch'});
+    req.body = config;
+    next();
+  } catch (error) { res.status(error.status || 500).json({error:error.status ? error.message : 'Integration unavailable'}); }
+});
 
 // ── URL safety check ─────────────────────────────────────────
 // Integration routes are FOR homelab use — private IPs (192.168.x, 10.x, 172.16-31.x)
@@ -17,6 +50,8 @@ export function isSafeUrl(rawUrl) {
   const hostname = parsed.hostname.toLowerCase();
 
   if (!['http:', 'https:'].includes(parsed.protocol)) return false;
+  if (parsed.username || parsed.password) return false;
+  if (/^\[(?:::|::ffff:.*|fe[89ab][0-9a-f]:.*)\]$/i.test(hostname)) return false;
 
   // Block loopback
   // URL.hostname keeps brackets on IPv6 literals (e.g. "[::1]"), so the
@@ -47,8 +82,8 @@ const selfSignedAgent = new https.Agent({ rejectUnauthorized: false });
 // ── HTTP wrapper using https.request — correctly applies 'agent' unlike native fetch ──
 function go(url, opts = {}, timeout = 8000) {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Request timeout')), timeout);
     const parsed = new URL(url);
+    const timer = setTimeout(() => req.destroy(new Error('Request timeout')), timeout);
     const isHttps = parsed.protocol === 'https:';
     const lib = isHttps ? https : http;
     const reqOpts = {
@@ -63,10 +98,16 @@ function go(url, opts = {}, timeout = 8000) {
       reqOpts.headers['Content-Length'] = Buffer.byteLength(opts.body);
     }
     const req = lib.request(reqOpts, (res) => {
-      clearTimeout(timer);
       const chunks = [];
-      res.on('data', c => chunks.push(c));
+      let size = 0;
+      res.on('error', error => { clearTimeout(timer); reject(error); });
+      res.on('data', c => {
+        size += c.length;
+        if (size > 8 * 1024 * 1024) { req.destroy(new Error('Integration response exceeds 8 MB')); return; }
+        chunks.push(c);
+      });
       res.on('end', () => {
+        clearTimeout(timer);
         const body = Buffer.concat(chunks).toString();
         resolve({
           ok: res.statusCode >= 200 && res.statusCode < 300,
@@ -494,6 +535,7 @@ router.post('/esxi', async (req, res) => {
 // ── Generic HTTP probe ────────────────────────────────────────
 router.post('/probe', async (req, res) => {
   const { url, method = 'GET', headers = {} } = req.body;
+  if (!['GET','HEAD'].includes(method)) return res.status(400).json({error:'Probes support GET and HEAD only'});
   if (!url) return res.status(400).json({ error: 'url required' });
   if (!isSafeUrl(url)) return res.status(400).json({ error: 'Invalid or disallowed URL' });
   const t0 = Date.now();

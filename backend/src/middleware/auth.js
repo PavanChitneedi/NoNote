@@ -25,10 +25,10 @@ export async function authenticate(req, res, next) {
     if (blocked) return res.status(401).json({ error: "Token revoked" });
 
     const { rows } = await query(
-      "SELECT id, email, display_name, role, is_active, avatar_color FROM users WHERE id = $1",
+      "SELECT id, email, display_name, role, is_active, avatar_color, auth_version FROM users WHERE id = $1",
       [payload.sub]
     );
-    if (!rows[0] || !rows[0].is_active) {
+    if (!rows[0] || !rows[0].is_active || (payload.av ?? 0) !== (rows[0].auth_version ?? 0)) {
       return res.status(401).json({ error: "User not found or disabled" });
     }
 

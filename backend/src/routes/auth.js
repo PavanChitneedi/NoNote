@@ -12,19 +12,19 @@ import { hashRefreshToken } from '../utils/refreshToken.js';
 const router = Router();
 const ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12");
 
-function makeTokens(userId, role) {
+function makeTokens(userId, role, authVersion = 0) {
   const accessSecret  = process.env.JWT_ACCESS_SECRET;
   const refreshSecret = process.env.JWT_REFRESH_SECRET;
   if (!accessSecret || !refreshSecret) {
     throw new Error("JWT_ACCESS_SECRET / JWT_REFRESH_SECRET not configured");
   }
   const access = jwt.sign(
-    { sub: userId, role },
+    { sub: userId, role, av: authVersion },
     accessSecret,
     { expiresIn: process.env.JWT_ACCESS_EXPIRES || "15m" }
   );
   const refresh = jwt.sign(
-    { sub: userId, jti: uuidv4() },
+    { sub: userId, jti: uuidv4(), av: authVersion },
     refreshSecret,
     { expiresIn: process.env.JWT_REFRESH_EXPIRES || "7d" }
   );
@@ -45,7 +45,7 @@ router.post(
     try {
       const { email, password } = req.body;
       const { rows } = await query(
-        "SELECT id, email, display_name, password_hash, role, is_active, avatar_color FROM users WHERE email = $1",
+        "SELECT id, email, display_name, password_hash, role, is_active, avatar_color, auth_version FROM users WHERE email = $1",
         [email]
       );
 
@@ -58,7 +58,7 @@ router.post(
         return res.status(401).json({ error: "Invalid credentials" });
       }
 
-      const { access, refresh } = makeTokens(user.id, user.role);
+      const { access, refresh } = makeTokens(user.id, user.role, user.auth_version);
       const tokenHash = hashRefreshToken(refresh);
 
       await withTransaction(async (client) => {
@@ -125,7 +125,7 @@ router.post(
       );
 
       const user = rows[0];
-      const { access, refresh } = makeTokens(user.id, user.role);
+      const { access, refresh } = makeTokens(user.id, user.role, user.auth_version);
       const tokenHash = hashRefreshToken(refresh);
       await query(
         `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address)
@@ -156,7 +156,7 @@ router.post("/refresh", async (req, res) => {
     }
 
     const { rows: tokens } = await query(
-      `SELECT rt.id, rt.token_hash, rt.revoked_at, u.id as user_id, u.role, u.is_active
+      `SELECT rt.id, rt.token_hash, rt.revoked_at, u.id as user_id, u.role, u.is_active, u.auth_version
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
        WHERE rt.user_id = $1 AND rt.token_hash=$2 AND rt.expires_at > NOW() AND rt.revoked_at IS NULL`,
@@ -169,12 +169,12 @@ router.post("/refresh", async (req, res) => {
       if (ok) { matched = row; break; }
     }
 
-    if (!matched || !matched.is_active) {
+    if (!matched || !matched.is_active || (payload.av ?? 0) !== (matched.auth_version ?? 0)) {
       return res.status(401).json({ error: "Refresh token not found or revoked" });
     }
 
     // Rotate: revoke old, issue new
-    const { access, refresh: newRefresh } = makeTokens(matched.user_id, matched.role);
+    const { access, refresh: newRefresh } = makeTokens(matched.user_id, matched.role, matched.auth_version);
     const newHash = hashRefreshToken(newRefresh);
 
     await withTransaction(async (client) => {

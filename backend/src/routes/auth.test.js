@@ -147,6 +147,14 @@ describe("POST /api/auth/register", () => {
 });
 
 describe("POST /api/auth/refresh", () => {
+  it('rejects a stored refresh token from before a password change',async()=>{
+    const jwt=(await import('jsonwebtoken')).default;
+    const token=jwt.sign({sub:'u1',av:0,jti:'old'},process.env.JWT_REFRESH_SECRET);
+    query.mockResolvedValueOnce({rows:[{id:'rt1',token_hash:hashRefreshToken(token),user_id:'u1',role:'editor',is_active:true,auth_version:1}]});
+    const res=await request(app).post('/api/auth/refresh').send({refresh_token:token});
+    expect(res.status).toBe(401);
+    expect(mockClient.query).not.toHaveBeenCalled();
+  });
   it('rejects a token consumed concurrently before rotation', async () => {
     const jwt = (await import('jsonwebtoken')).default;
     const token = jwt.sign({sub:'u1',jti:'concurrent'},process.env.JWT_REFRESH_SECRET);

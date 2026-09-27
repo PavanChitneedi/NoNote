@@ -15,7 +15,7 @@ import {
   BorderStyle, ShadingType, Table, TableRow, TableCell,
   WidthType,
 } from "docx";
-import { SECRET_KEY_RE } from "../lib/exportFormats.js";
+import { SECRET_KEY_RE, publicNotes } from "../lib/exportFormats.js";
 
 const NT_LABELS = {
   note:"Note", heading:"Heading", user:"User", process:"Process",
@@ -54,9 +54,7 @@ function buildNormalSections(nodes, edges, title) {
       if (node.description) sections.push({ type:"p", text: node.description });
       sections.push({ type:"label", label:"Type", value: label });
 
-      const notes = Array.isArray(node.notes)
-        ? node.notes.filter(n => !n?.sensitive)
-        : [];
+      const notes = publicNotes(node);
       if (notes.length) {
         notes.forEach(note => {
           const text = typeof note === "string" ? note : (note?.content || "");
@@ -98,8 +96,7 @@ function buildLLMPrompt(nodes, edges, title) {
     ``,
     `NODES (${nodes.length}):`,
     ...nodes.map(n => {
-      const notes = (Array.isArray(n.notes) ? n.notes : [])
-        .filter(x => !x?.sensitive)
+      const notes = publicNotes(n)
         .map(x => typeof x === "string" ? x : x?.content)
         .filter(Boolean);
       return `- [${(NT_LABELS[n.type] || n.type).toUpperCase()}] ${n.title}${n.description ? `: ${n.description}` : ""}${notes.length ? ` | Notes: ${notes.join("; ")}` : ""}`;
@@ -322,8 +319,7 @@ export default function DocExportModal({ nodes, edges, mapTitle, mode, onClose }
   const isAI = mode.startsWith("ai-");
   const isPDF = mode.endsWith("-pdf");
 
-  const noteCount = nodes.reduce((a,n) =>
-    a + (Array.isArray(n.notes) ? n.notes.filter(x => !x?.sensitive).length : 0), 0);
+  const noteCount = nodes.reduce((a,n) => a + publicNotes(n).length, 0);
 
   const doExport = async () => {
     setStatus("generating");

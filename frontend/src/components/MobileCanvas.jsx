@@ -595,9 +595,12 @@ export default function MobileCanvas({ mapId, onBack }) {
               <button onClick={addNote} style={mBtn(true)}>→</button>
             </div>
           }>
+          <Fld label={selNode.notes_private ? "NOTE BODY · PRIVATE" : "NOTE BODY"}
+            val={selNode.node_notes || ""} multi rows={8}
+            set={value=>applyNodes(ns=>ns.map(n=>n.id===selNode.id?{...n,node_notes:value}:n))}/>
           {(!Array.isArray(selNode.notes)||selNode.notes.length===0)
             ?<div style={{color:"var(--text4)",fontSize:13,padding:"20px 0",textAlign:"center"}}>
-               No notes yet — add one below
+               No additional entries — add one below
              </div>
             :(Array.isArray(selNode.notes)?selNode.notes:[]).map((note,i)=>{
               const text=typeof note==="string"?note:(note.content||"");

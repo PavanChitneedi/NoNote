@@ -36,16 +36,32 @@ export function sanitizeProperties(props) {
 export function sanitizeNodesForExport(nodes) {
   return nodes.map(n => ({ ...n, properties: sanitizeProperties(n.properties), customProps: sanitizeProperties(n.customProps), custom_props: sanitizeProperties(n.custom_props) }));
 }
+export function publicNotes(node) {
+  if (typeof node.node_notes === 'string' && node.node_notes.trim()) return node.notes_private ? [] : [{title:'Notes',content:node.node_notes}];
+  return parseExportNotes(node.notes).filter(n=>n && !n.sensitive);
+}
+export function parseExportNotes(value) {
+  let notes = value;
+  if (typeof notes === 'string') { try { notes = JSON.parse(notes); } catch { notes = []; } }
+  return Array.isArray(notes) ? notes : [];
+}
+export function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function layoutNodes(nodes) {
+  return sanitizeNodesForExport(nodes).map(n=>({...n,...Object.fromEntries(['x','y','w','h'].map(k=>[k,Number.isFinite(Number(n[k]))?Number(n[k]):(k==='w'?220:k==='h'?96:0)]))}));
+}
 
 // ── .nonote (JSON) export ────────────────────────────────────────────────
-export function exportAsNoNote(nodes, edges, mapMeta) {
+export function exportAsNoNote(nodes, edges, mapMeta, groupBoxes = []) {
   const bundle = {
     version: 1,
     app: "NoNote",
     title: mapMeta?.title || "Untitled",
     exported: new Date().toISOString(),
-    nodes: sanitizeNodesForExport(nodes).map(n => ({...n, notes: Array.isArray(n.notes) ? n.notes : []})),
+    nodes: sanitizeNodesForExport(nodes).map(n => ({...n, notes: parseExportNotes(n.notes)})),
     edges,
+    groupBoxes,
   };
   const blob = new Blob([JSON.stringify(bundle, null, 2)], {type:"application/json"});
   const a = document.createElement("a");
@@ -65,6 +81,7 @@ export function userColor(userId) {
 }
 
 export function exportAsPDF(nodes, edges, mapTitle) {
+  nodes = layoutNodes(nodes);
   if(!nodes.length){ alert("No nodes to export."); return; }
   // Build same HTML as visual export, open print-optimised version
   const PAD=60;
@@ -86,18 +103,18 @@ export function exportAsPDF(nodes, edges, mapTitle) {
 
   const nodeHtml = nodes.map(n=>{
     const t=NT[n.type]||NT.note;
-    const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
+    const notes=publicNotes(n);
     return `<div class="nn-node" style="left:${n.x-minX}px;top:${n.y-minY}px;width:${n.w||220}px;min-height:${n.h||96}px;border-color:${t.color}65">
       <div class="nn-hdr" style="background:${t.color}15;border-bottom:1px solid ${t.color}28;padding:7px 10px 4px">
-        <b style="font-size:13px">${iconChar(t.icon)} ${n.title||""}</b>
-        ${n.description?`<div style="font-size:10px;color:#666;margin-top:2px">${n.description}</div>`:""}
+        <b style="font-size:13px">${iconChar(t.icon)} ${escapeHTML(n.title)}</b>
+        ${n.description?`<div style="font-size:10px;color:#666;margin-top:2px">${escapeHTML(n.description)}</div>`:""}
         <div style="font-size:8px;text-align:right;color:${t.color};opacity:.7;margin-top:1px">${t.label}</div>
       </div>
-      ${notes.length?`<div style="padding:6px 10px;font-size:10px">${notes.map(nt=>`<div><b style="color:${t.color}">${nt.title||"Note"}</b><div>${(nt.content||"").replace(/<[^>]+>/g," ")}</div></div>`).join("")}</div>`:""}
+      ${notes.length?`<div style="padding:6px 10px;font-size:10px">${notes.map(nt=>`<div><b style="color:${t.color}">${escapeHTML(nt.title||"Note")}</b><div>${escapeHTML((nt.content||"").replace(/<[^>]+>/g," "))}</div></div>`).join("")}</div>`:""}
     </div>`;
   }).join("");
 
-  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${mapTitle||"NoNote"}</title>
+  const html=`<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHTML(mapTitle||"NoNote")}</title>
 <style>
   @page{size:${Math.ceil(W*0.75+40)}px ${Math.ceil(H*0.75+80)}px;margin:20px}
   body{margin:0;background:#fff;font-family:Arial,sans-serif}
@@ -105,7 +122,7 @@ export function exportAsPDF(nodes, edges, mapTitle) {
   .nn-node{position:absolute;background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;overflow:hidden;font-size:12px}
   svg{position:absolute;inset:0;pointer-events:none}
 </style></head><body>
-<h2 style="margin:0 0 10px;font-size:14px;color:#333">${mapTitle||"NoNote Map"} — ${new Date().toLocaleDateString()}</h2>
+<h2 style="margin:0 0 10px;font-size:14px;color:#333">${escapeHTML(mapTitle||"NoNote Map")} — ${new Date().toLocaleDateString()}</h2>
 <div class="canvas">
   <svg width="${W}" height="${H}"><defs><marker id="arr" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0,8 3,0 6" fill="#4d9be6"/></marker></defs>${svgEdges}</svg>
   ${nodeHtml}
@@ -119,6 +136,7 @@ export function exportAsPDF(nodes, edges, mapTitle) {
 }
 
 export function exportAsHTML(nodes, edges, mapTitle) {
+  nodes = layoutNodes(nodes);
   if(!nodes.length){ alert("No nodes to export."); return; }
   const PAD=60;
   const minX=Math.min(...nodes.map(n=>n.x))-PAD;
@@ -129,15 +147,15 @@ export function exportAsHTML(nodes, edges, mapTitle) {
 
   const nodeHtml = nodes.map(n=>{
     const t=NT[n.type]||NT.note;
-    const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
+    const notes=publicNotes(n);
     return `<div class="nn-node" style="left:${n.x-minX}px;top:${n.y-minY}px;width:${n.w||220}px;min-height:${n.h||96}px;border-color:${t.color}65;">
       <div class="nn-header" style="background:${t.color}1a;border-bottom-color:${t.color}28">
         <span class="nn-icon">${iconChar(t.icon)}</span>
-        <span class="nn-title">${n.title||""}</span>
-        ${n.description?`<div class="nn-desc">${n.description}</div>`:""}
+        <span class="nn-title">${escapeHTML(n.title)}</span>
+        ${n.description?`<div class="nn-desc">${escapeHTML(n.description)}</div>`:""}
         <span class="nn-type" style="color:${t.color}80">${t.label}</span>
       </div>
-      ${notes.length?`<div class="nn-notes">${notes.map(nt=>`<div class="nn-note"><div class="nn-note-title">${nt.title||"Note"}</div><div class="nn-note-content">${nt.content||""}</div></div>`).join("")}</div>`:""}
+      ${notes.length?`<div class="nn-notes">${notes.map(nt=>`<div class="nn-note"><div class="nn-note-title">${escapeHTML(nt.title||"Note")}</div><div class="nn-note-content">${escapeHTML(nt.content)}</div></div>`).join("")}</div>`:""}
     </div>`;
   }).join("");
 
@@ -157,7 +175,7 @@ export function exportAsHTML(nodes, edges, mapTitle) {
   }).join("");
 
   const html=`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><title>${mapTitle||"NoNote Map"}</title>
+<html lang="en"><head><meta charset="utf-8"><title>${escapeHTML(mapTitle||"NoNote Map")}</title>
 <style>
   body{margin:0;background:#0d1117;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
   .canvas{position:relative;width:${W}px;height:${H}px;margin:20px auto;}
@@ -170,7 +188,7 @@ export function exportAsHTML(nodes, edges, mapTitle) {
   .nn-notes{padding:6px 10px;border-top:1px solid #21262d;}
   .nn-note{margin-bottom:6px;}
   .nn-note-title{font-size:10px;font-weight:600;color:#58a6ff;}
-  .nn-note-content{font-size:10px;color:#7d8590;margin-top:2px;}
+  .nn-note-content{white-space:pre-wrap;font-size:10px;color:#7d8590;margin-top:2px;}
   svg.edges{position:absolute;inset:0;pointer-events:none;}
 </style></head>
 <body><div class="canvas">
@@ -191,17 +209,17 @@ export function exportAsHTML(nodes, edges, mapTitle) {
 
 export function exportAsDoc(nodes, mapTitle) {
   // Plain-text documentation export (Simple mode — no LLM)
-  const lines=[`# ${mapTitle||"NoNote Map"}`,`*Exported: ${new Date().toLocaleDateString()}*`,""];
+  const lines=[`# ${escapeHTML(mapTitle||"NoNote Map")}`,`*Exported: ${new Date().toLocaleDateString()}*`,""];
   nodes.forEach(n=>{
     const t=NT[n.type]||NT.note;
     lines.push(`## ${iconChar(t.icon)} ${n.title||"Untitled"} (${t.label})`);
-    if(n.description) lines.push(`*${n.description}*`);
-    const notes=(Array.isArray(n.notes)?n.notes:[]).filter(nt=>!nt.sensitive);
+    if(n.description) lines.push(`*${escapeHTML(n.description)}*`);
+    const notes=publicNotes(n);
     if(notes.length){
       lines.push("### Notes");
       notes.forEach(nt=>{
-        lines.push(`**${nt.title||"Note"}**`);
-        lines.push((nt.content||"").replace(/<[^>]+>/g," ").replace(/\s+/g," ").trim());
+        lines.push(`**${escapeHTML(nt.title||"Note")}**`);
+        lines.push(n.node_notes ? nt.content : (nt.content||"").replace(/<[^>]+>/g," ").trim());
       });
     }
     lines.push("");
@@ -215,6 +233,7 @@ export function exportAsDoc(nodes, mapTitle) {
 }
 
 export async function exportAsPNG(nodes, edges, mapTitle) {
+  nodes = sanitizeNodesForExport(nodes);
   if(!nodes.length){alert("No nodes to export.");return;}
   const PAD=60;
   const minX=Math.min(...nodes.map(n=>n.x))-PAD, minY=Math.min(...nodes.map(n=>n.y))-PAD;

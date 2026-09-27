@@ -8,7 +8,7 @@ import compression from "compression";
 import morgan from "morgan";
 import { rateLimit } from "express-rate-limit";
 import bcrypt from "bcryptjs";
-import { query } from "./db/pool.js";
+import { query, withTransaction } from "./db/pool.js";
 import authRouter  from "./routes/auth.js";
 import mapsRouter  from "./routes/maps.js";
 import usersRouter from "./routes/users.js";
@@ -18,6 +18,7 @@ import integrationsRouter from "./routes/integrations.js";
 import { checkMapAccess } from "./ws/mapAccess.js";
 import redis, { PREFIXES } from './db/redis.js';
 import { readableNode, canReadPrivate } from './utils/documentAccess.js';
+import { protectProperties } from './utils/integrationVault.js';
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || "3001");
@@ -169,11 +170,12 @@ wss.on("connection", (ws) => {
     if (msg.type === "join") {
       if (joining || mapId) return;
       joining = true;
-      let joiningUser;
+      let joiningUser, joiningVersion;
       // Verify JWT
       try {
         const payload = jwt.verify(msg.token, process.env.JWT_ACCESS_SECRET);
         joiningUser = payload.sub;
+        joiningVersion = payload.av ?? 0;
         if (await redis.get(`${PREFIXES.userSession}blocked:${msg.token}`)) throw new Error('Revoked token');
       } catch (e) {
         console.warn("[ws] auth rejected:", e.message);
@@ -184,7 +186,7 @@ wss.on("connection", (ws) => {
 
       // ── Check map access (see ws/mapAccess.js — mirrors mapPermission middleware) ──
       try {
-        const access = await checkMapAccess(joiningUser, msg.mapId);
+        const access = await checkMapAccess(joiningUser, msg.mapId, joiningVersion);
         if (!access.ok) {
           ws.send(JSON.stringify({ type: "auth_error", message: access.message }));
           ws.close(access.closeCode, access.closeReason);
@@ -230,9 +232,9 @@ wss.on("connection", (ws) => {
     if (!mapId || !userId) return; // must join first
     if (!['nodes_update', 'edges_update', 'cursor', 'selection'].includes(msg.type)) return;
     try {
-      jwt.verify(accessToken, process.env.JWT_ACCESS_SECRET);
+      const payload = jwt.verify(accessToken, process.env.JWT_ACCESS_SECRET);
       if (await redis.get(`${PREFIXES.userSession}blocked:${accessToken}`)) throw new Error('Revoked token');
-      const access = await checkMapAccess(userId, mapId);
+      const access = await checkMapAccess(userId, mapId, payload.av ?? 0);
       if (!access.ok) throw new Error('Access revoked');
       ws.permission = access.permission;
       if (['nodes_update', 'edges_update'].includes(msg.type) && !canReadPrivate(access.permission)) return;
@@ -306,9 +308,9 @@ function broadcast(mapId, msg, exclude = null) {
   room.forEach(async c => {
     if (c !== exclude && c.readyState === 1) {
       try {
-        jwt.verify(c.accessToken, process.env.JWT_ACCESS_SECRET);
+        const payload = jwt.verify(c.accessToken, process.env.JWT_ACCESS_SECRET);
         if (await redis.get(`${PREFIXES.userSession}blocked:${c.accessToken}`)) throw new Error('Revoked');
-        const access = await checkMapAccess(c.userId, mapId);
+        const access = await checkMapAccess(c.userId, mapId, payload.av ?? 0);
         if (!access.ok) throw new Error('Access revoked');
         c.permission = access.permission;
       } catch { c.close(1008, 'Unauthorized'); return; }
@@ -324,6 +326,11 @@ function broadcast(mapId, msg, exclude = null) {
 // ── DB migrations (run on every startup, all idempotent) ──────
 async function runMigrations() {
   const migrations = [
+    `CREATE TABLE IF NOT EXISTS integration_credentials (
+      id UUID PRIMARY KEY, owner_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      map_id UUID REFERENCES maps(id) ON DELETE CASCADE, config_ciphertext TEXT NOT NULL,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`,
+    "ALTER TABLE users ADD COLUMN IF NOT EXISTS auth_version INTEGER NOT NULL DEFAULT 0",
     // Phase 1: persist the description exposed by both node editors.
     "ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''",
     "ALTER TABLE maps ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0",
@@ -428,15 +435,40 @@ async function runMigrations() {
   ];
   let applied = 0;
   for (const sql of migrations) {
-    try { await query(sql); applied++; } catch { /* already exists */ }
+    await query(sql); applied++;
   }
   console.log(`[migrate] ${applied}/${migrations.length} migrations applied`);
+  await query("ALTER TABLE map_versions ADD COLUMN IF NOT EXISTS group_boxes JSONB NOT NULL DEFAULT '[]'::jsonb");
 }
 
 // appLog moved to utils/logger.js
 
 // ── Start ─────────────────────────────────────────────────────
-httpServer.listen(PORT, "0.0.0.0", async () => {
+async function start() {
+  await runMigrations();
+  // Move legacy map credentials atomically before serving any documents.
+  await withTransaction(async client => {
+    const run = client.query.bind(client);
+    const {rows} = await run(`SELECT n.id,n.map_id,n.properties,m.owner_id FROM map_nodes n
+      JOIN maps m ON m.id=n.map_id WHERE n.properties ? '_integration' FOR UPDATE OF n`);
+    const changedMaps = new Set();
+    for (const node of rows) {
+      const cfg = node.properties._integration;
+      if (!cfg?.url || cfg.credentialId) continue;
+      const properties = await protectProperties(node.properties,node.owner_id,node.map_id,run);
+      await run('UPDATE map_nodes SET properties=$2::jsonb WHERE id=$1',[node.id,JSON.stringify(properties)]);
+      changedMaps.add(node.map_id);
+    }
+    for (const id of changedMaps) await run('UPDATE maps SET revision=revision+1 WHERE id=$1',[id]);
+    const versions = await run('SELECT id,nodes_json FROM map_versions FOR UPDATE');
+    for (const version of versions.rows) {
+      const nodes = version.nodes_json.map(n=>readableNode(n,'editor'));
+      if (JSON.stringify(nodes) !== JSON.stringify(version.nodes_json))
+        await run('UPDATE map_versions SET nodes_json=$2::jsonb WHERE id=$1',[version.id,JSON.stringify(nodes)]);
+    }
+  });
+  await seedAdmin();
+  httpServer.listen(PORT, "0.0.0.0", async () => {
   // Read version from package.json for accurate logging
   let appVersion = "unknown";
   try {
@@ -445,8 +477,6 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
     appVersion = pkg.version || appVersion;
   } catch {}
   console.log(`[server] NodeMap API + WS running on :${PORT}`);
-  await runMigrations().catch(console.error);
-  await seedAdmin().catch(console.error);
   try {
     const { appLog } = await import("./utils/logger.js");
     await appLog("info", "system", `Server started on port ${PORT} — NoNote v${appVersion}`);
@@ -466,4 +496,9 @@ httpServer.listen(PORT, "0.0.0.0", async () => {
   }
   cleanExpiredTokens();
   setInterval(cleanExpiredTokens, 24 * 60 * 60 * 1000);
+});
+}
+if (process.env.NODE_ENV !== 'test') start().catch(error => {
+  console.error('[startup] Initialization failed:',error.message);
+  process.exit(1);
 });

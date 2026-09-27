@@ -176,10 +176,13 @@ async function fetchInt(node){
 function StandaloneAdd({onAdd}){
   const [show,setShow]=useState(false);
   const [form,setForm]=useState({title:'',type:'proxmox',url:'',token:'',username:'',password:''});
-  const save=()=>{
+  const save=async()=>{
     if(!form.url||!form.title) return;
+    let cfg;
+    try { cfg=await apiFetch('/integrations/credentials',{method:'POST',body:JSON.stringify({config:form})}); }
+    catch(error) { window.alert(error.message); return; }
     const node={id:'standalone_'+Date.now(),title:form.title,type:form.type==='truenas'?'truenas':form.type==='unraid'?'unraid':form.type==='esxi'?'esxi':form.type==='probe'?'server':'proxmox',
-      properties:{_integration:{type:form.type,url:form.url.trim(),token:form.token,username:form.username,password:form.password}},
+      properties:{_integration:cfg},
       mapTitle:'Standalone',mapId:null};
     // Persist to localStorage
     const saved=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');
@@ -208,6 +211,7 @@ export default function LiveDashboard({maps}){
   const [nodes,setNodes]=useState([]);
   const [results,setResults]=useState({});
   const [loading,setLoading]=useState(true);
+  const [migrationError,setMigrationError]=useState('');
   const [refreshing,setRefreshing]=useState(false);
   const [lastRefresh,setLastRefresh]=useState(null);
   const [countdown,setCountdown]=useState(0);
@@ -220,7 +224,27 @@ export default function LiveDashboard({maps}){
       // Deduplicate by integration URL — keep first occurrence
       const seen=new Set(); const deduped=raw.filter(n=>{ const url=n.properties._integration?.url; if(seen.has(url)) return false; seen.add(url); return true; });
       // Merge standalone integrations from localStorage
-      const standalone=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');
+      const legacy=JSON.parse(localStorage.getItem('nn_standalone_integrations')||'[]');
+      if (legacy.some(item=>!item.properties?._integration?.credentialId) &&
+          !window.confirm('Move the legacy integration credentials stored in this browser into your signed-in account’s protected server storage?')) {
+        setMigrationError('Legacy connections were left unchanged. Reload when you are ready to move them to your account.');
+        return;
+      }
+      const standalone=[];
+      let migrationFailed=false;
+      for (const item of legacy) {
+        const config=item.properties?._integration;
+        if (!config?.credentialId) {
+          // Preserve the old record on failure so a transient server error
+          // cannot destroy the user's only copy of the connection settings.
+          try {
+            const saved=await apiFetch('/integrations/credentials',{method:'POST',body:JSON.stringify({config})});
+            standalone.push({...item,properties:{_integration:saved}});
+          } catch { migrationFailed=true; }
+        } else standalone.push(item);
+      }
+      if (!migrationFailed) localStorage.setItem('nn_standalone_integrations',JSON.stringify(standalone));
+      setMigrationError(migrationFailed ? 'Some saved connections could not move to protected storage. They remain in this browser; configure server encryption and reload to retry.' : '');
       const allNodes=[...deduped];
       for(const s of standalone){ if(!allNodes.some(n=>n.properties._integration?.url===s.properties._integration?.url)) allNodes.push(s); }
       setNodes(allNodes);
@@ -241,6 +265,7 @@ export default function LiveDashboard({maps}){
   useEffect(()=>{ clearInterval(cdRef.current); if(lastRefresh) cdRef.current=setInterval(()=>setCountdown(c=>Math.max(0,c-1)),1000); return()=>clearInterval(cdRef.current); },[lastRefresh]);
 
   if(loading) return <div data-ui="live-dashboard" data-component="LiveDashboard" data-page="dashboard" data-role="panel" style={{padding:'60px 0',textAlign:'center',color:'var(--text4)'}}><div style={{fontSize:28,marginBottom:8}}>⏳</div>Loading integrations…</div>;
+  if(migrationError) return <div role="alert" style={{padding:24,color:'var(--danger)'}}>{migrationError}</div>;
   if(nodes.length===0) return <div style={{padding:'60px 0',textAlign:'center',color:'var(--text4)'}}>
     <div style={{fontSize:40,marginBottom:12}}>🔌</div>
     <div style={{fontSize:14,fontWeight:700,color:'var(--text)',marginBottom:6}}>No live integrations yet</div>

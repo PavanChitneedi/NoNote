@@ -687,7 +687,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
     try {
       const json = await apiFetch(`/integrations/${f.type}`, {
         method: 'POST',
-        body: JSON.stringify({ ...f }),
+        body: JSON.stringify(f.credentialId ? { credentialId:f.credentialId } : f),
       });
       if (!json.ok) throw new Error(json.error || 'Request failed');
       setData(json);
@@ -702,7 +702,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
   // Auto-connect on mount if credentials are saved (fires fresh data over cached)
   useEffect(() => {
     const savedCfg = node.properties?._integration;
-    if (savedCfg?.url && fields.every(fi => savedCfg[fi.key])) {
+    if (savedCfg?.credentialId) {
       doFetch(true);
     }
   }, [node.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -725,15 +725,20 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
     return () => clearInterval(countdownRef.current);
   }, [data, err, lastTs]);
 
-  const save = () => {
-    onUpdateProp('_integration', form);
-    // Auto-connect immediately after saving credentials
-    setTimeout(() => doFetch(false), 50);
-    setShow(false);
+  const save = async () => {
+    setBusy(true); setErr('');
+    try {
+      const saved = form.credentialId ? form : await apiFetch('/integrations/credentials', {
+        method:'POST',body:JSON.stringify({nodeId:node.id,config:form})
+      });
+      formRef.current = saved; setForm(saved);
+      onUpdateProp('_integration', saved);
+      setShow(false); await doFetch(false);
+    } catch(error) { setErr(error.message); } finally { setBusy(false); }
   };
 
   const Renderer = METRIC_RENDERERS[form.type] || ProbeMetrics;
-  const isConfigured = fields.every(f => form[f.key]);
+  const isConfigured = !!form.credentialId || fields.every(f => form[f.key]);
 
   return (
     <div>
@@ -762,7 +767,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
             <div style={{ marginBottom: 8 }}>
               <label style={{ fontSize: 9, color: 'var(--text4)', display: 'block', marginBottom: 3 }}>INTEGRATION TYPE</label>
               <select value={form.type} disabled={!canEdit}
-                onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                onChange={e => setForm(f => ({ ...f, credentialId:undefined, type: e.target.value }))}
                 style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
                   padding: '5px 8px', color: 'var(--text)', fontSize: 11, fontFamily: 'var(--font-ui)', outline: 'none' }}>
                 <option value="proxmox">Proxmox VE</option>
@@ -779,7 +784,7 @@ export default function IntegrationPanel({ node, canEdit, onUpdateProp }) {
                   {f.help && <span style={{ fontSize: 8, color: 'var(--accent1)', marginLeft: 6 }}>ℹ {f.help}</span>}
                 </label>
                 <input type={f.type} value={form[f.key] || ''} placeholder={f.placeholder} disabled={!canEdit}
-                  onChange={e => setForm(v => ({ ...v, [f.key]: e.target.value }))}
+                  onChange={e => setForm(v => ({ ...v, credentialId:undefined, [f.key]: e.target.value }))}
                   style={{ width: '100%', background: 'var(--bg)', border: '1px solid var(--border)', borderRadius: 4,
                     padding: '5px 8px', color: 'var(--text)', fontSize: 11, outline: 'none', boxSizing: 'border-box', fontFamily: f.type === 'password' ? 'monospace' : 'var(--font-ui)' }}
                 />

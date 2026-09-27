@@ -109,11 +109,12 @@ router.patch("/me", authenticate, async (req, res) => {
       const ok = await bcrypt.compare(current_password, rows[0]?.password_hash || "");
       if (!ok) return res.status(400).json({ error: "Current password is incorrect" });
       if (password.length < 8) return res.status(400).json({ error: "Password must be at least 8 characters" });
-      updates.push(`password_hash=$${updates.length+1}`);
+      updates.push(`password_hash=$${vals.length+1}`);
       vals.push(await bcrypt.hash(password, ROUNDS));
     }
 
     if (!updates.length) return res.status(400).json({ error: "Nothing to update" });
+    if (password !== undefined) updates.push('auth_version=auth_version+1');
     updates.push(`updated_at=NOW()`);
     vals.push(req.user.id);
     const { rows } = await query(
@@ -247,11 +248,12 @@ router.patch("/:id", authenticate, async (req, res) => {
     }
     if (password !== undefined && isAdmin) {
       if (password.length < 8) return res.status(400).json({ error: "Password too short" });
-      updates.push(`password_hash=$${updates.length+1}`);
+      updates.push(`password_hash=$${vals.length+1}`);
       vals.push(await bcrypt.hash(password, ROUNDS));
     }
 
     if (!updates.length) return res.status(400).json({ error: "Nothing to update" });
+    if (password !== undefined || is_active !== undefined) updates.push('auth_version=auth_version+1');
     updates.push("updated_at=NOW()");
     vals.push(req.params.id);
     const { rows } = await query(
