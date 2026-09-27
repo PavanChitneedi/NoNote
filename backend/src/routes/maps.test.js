@@ -41,7 +41,7 @@ function mockAuthUser(user = admin) {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockClient.query.mockResolvedValue({ rows: [] });
+  mockClient.query.mockImplementation(async sql => ({rows: sql.includes('FOR UPDATE') ? [{id:'map1',revision:0}] : []}));
 });
 
 describe("POST /api/maps — max_maps_per_user enforcement", () => {
@@ -168,7 +168,7 @@ describe("POST /api/maps/:mapId/save", () => {
     const res = await request(app)
       .post("/api/maps/map1/save")
       .set("Authorization", `Bearer ${tokenFor(admin.id)}`)
-      .send({ nodes: [{ id: "temp-client-id-1", type: "server", title: "N", x: 0, y: 0, w: 1, h: 1 }], edges: [] });
+      .send({ revision:0, nodes: [{ id: "temp-client-id-1", type: "server", title: "N", x: 0, y: 0, w: 1, h: 1 }], edges: [] });
 
     expect(res.status).toBe(200);
     const nodeUpsert = mockClient.query.mock.calls.find(([sql]) => sql.includes("INSERT INTO map_nodes"));
@@ -184,14 +184,14 @@ describe("POST /api/maps/:mapId/save", () => {
     const res = await request(app)
       .post("/api/maps/map1/save")
       .set("Authorization", `Bearer ${tokenFor(admin.id)}`)
-      .send({ nodes: [{ id: existingId, type: "server", title: "N", x: 0, y: 0, w: 1, h: 1 }], edges: [] });
+      .send({ revision:0, nodes: [{ id: existingId, type: "server", title: "N", x: 0, y: 0, w: 1, h: 1 }], edges: [] });
 
     expect(res.status).toBe(200);
     const nodeUpsert = mockClient.query.mock.calls.find(([sql]) => sql.includes("INSERT INTO map_nodes"));
     expect(nodeUpsert[1][0]).toBe(existingId);
   });
 
-  it("always regenerates edge ids on save, even if the client sent one that looks like a UUID", async () => {
+  it("preserves valid edge ids across saves", async () => {
     mockAuthUser();
     const nodeId = "11111111-2222-3333-4444-555555555555";
     const clientEdgeId = "99999999-8888-7777-6666-555555555555";
@@ -199,14 +199,14 @@ describe("POST /api/maps/:mapId/save", () => {
       .post("/api/maps/map1/save")
       .set("Authorization", `Bearer ${tokenFor(admin.id)}`)
       .send({
-        nodes: [{ id: nodeId, type: "server", title: "N", x: 0, y: 0, w: 1, h: 1 }],
+        revision:0, nodes: [{ id: nodeId, type: "server", title: "N", x: 0, y: 0, w: 1, h: 1 }],
         edges: [{ id: clientEdgeId, from: nodeId, to: nodeId }],
       });
 
     expect(res.status).toBe(200);
     const edgeUpsert = mockClient.query.mock.calls.find(([sql]) => sql.includes("INSERT INTO map_edges"));
     expect(edgeUpsert).toBeTruthy();
-    expect(edgeUpsert[1][0]).not.toBe(clientEdgeId);
+    expect(edgeUpsert[1][0]).toBe(clientEdgeId);
     expect(edgeUpsert[1][0]).toMatch(UUID_RE);
   });
 });

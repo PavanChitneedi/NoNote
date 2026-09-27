@@ -1,0 +1,335 @@
+{
+  "sourceFiles": 65,
+  "sourceLines": 21402,
+  "files": [
+    {
+      "path": "frontend/src/api/client.js",
+      "lines": 135,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/App.jsx",
+      "lines": 315,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/changelog.js",
+      "lines": 1198,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/AdminPanel.jsx",
+      "lines": 697,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/CollapsedNode.jsx",
+      "lines": 78,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/CommentsPanel.jsx",
+      "lines": 98,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/ContextMenu.jsx",
+      "lines": 70,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/CustomKeyInput.jsx",
+      "lines": 55,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/EdgeIcon.jsx",
+      "lines": 64,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/ExportModal.jsx",
+      "lines": 34,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/FormattedContent.jsx",
+      "lines": 58,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/InlineNodeEditor.jsx",
+      "lines": 469,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/NodeIcon.jsx",
+      "lines": 9,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/NodeNotesTab.jsx",
+      "lines": 118,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/NodeSidebar.jsx",
+      "lines": 230,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/NoteCard.jsx",
+      "lines": 92,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/PropsPanel.jsx",
+      "lines": 299,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/RichTextEditor.jsx",
+      "lines": 141,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/canvas/SearchPanel.jsx",
+      "lines": 136,
+      "reachable": false
+    },
+    {
+      "path": "frontend/src/components/canvas/TemplateLibrary.jsx",
+      "lines": 134,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/Dashboard.jsx",
+      "lines": 1277,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/DocExportModal.jsx",
+      "lines": 492,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/HelpGuide.jsx",
+      "lines": 305,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/IntegrationPanel.jsx",
+      "lines": 832,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/LiveDashboard.jsx",
+      "lines": 292,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/LLMChat.jsx",
+      "lines": 690,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/LLMSettings.jsx",
+      "lines": 450,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/LoginPage.jsx",
+      "lines": 77,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/MobileCanvas.jsx",
+      "lines": 706,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/NodeAIChat.jsx",
+      "lines": 300,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/NodeCanvas.jsx",
+      "lines": 4079,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/ThemePicker.jsx",
+      "lines": 156,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/Tutorial.jsx",
+      "lines": 224,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/UserProfile.jsx",
+      "lines": 347,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/VersionHistory.jsx",
+      "lines": 227,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/components/WorkflowAuditPanel.jsx",
+      "lines": 174,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/context/AuthContext.jsx",
+      "lines": 50,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/context/DesignContext.jsx",
+      "lines": 30,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/context/DevModeContext.jsx",
+      "lines": 188,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/context/SkinContext.jsx",
+      "lines": 71,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/context/ThemeContext.jsx",
+      "lines": 218,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/autoLayout.js",
+      "lines": 362,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/edgeRouting.js",
+      "lines": 598,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/elkLayout.js",
+      "lines": 276,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/exportFormats.js",
+      "lines": 303,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/nodeTypes.js",
+      "lines": 308,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/notesFormat.js",
+      "lines": 60,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/styleHelpers.js",
+      "lines": 27,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/lib/textHighlight.jsx",
+      "lines": 16,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/main.jsx",
+      "lines": 8,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/skins.js",
+      "lines": 319,
+      "reachable": true
+    },
+    {
+      "path": "frontend/src/utils/llmExport.js",
+      "lines": 151,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/db/pool.js",
+      "lines": 41,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/db/redis.js",
+      "lines": 33,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/index.js",
+      "lines": 429,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/middleware/auth.js",
+      "lines": 99,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/routes/auth.js",
+      "lines": 221,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/routes/integrations.js",
+      "lines": 507,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/routes/llm.js",
+      "lines": 719,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/routes/maps.js",
+      "lines": 574,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/routes/users.js",
+      "lines": 519,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/routes/versions.js",
+      "lines": 105,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/utils/crypto.js",
+      "lines": 35,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/utils/logger.js",
+      "lines": 11,
+      "reachable": true
+    },
+    {
+      "path": "backend/src/ws/mapAccess.js",
+      "lines": 66,
+      "reachable": true
+    }
+  ],
+  "unreachableCandidates": [
+    "frontend\\src\\components\\canvas\\SearchPanel.jsx"
+  ],
+  "invalidAlphaExpressions": 146
+}

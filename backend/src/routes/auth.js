@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from "uuid";
 import { query, withTransaction } from "../db/pool.js";
 import redis, { PREFIXES } from "../db/redis.js";
 import { authenticate } from "../middleware/auth.js";
+import { hashRefreshToken } from '../utils/refreshToken.js';
 
 const router = Router();
 const ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || "12");
@@ -58,7 +59,7 @@ router.post(
       }
 
       const { access, refresh } = makeTokens(user.id, user.role);
-      const tokenHash = await bcrypt.hash(refresh, 8);
+      const tokenHash = hashRefreshToken(refresh);
 
       await withTransaction(async (client) => {
         // Store refresh token
@@ -125,7 +126,7 @@ router.post(
 
       const user = rows[0];
       const { access, refresh } = makeTokens(user.id, user.role);
-      const tokenHash = await bcrypt.hash(refresh, 8);
+      const tokenHash = hashRefreshToken(refresh);
       await query(
         `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address)
          VALUES ($1, $2, NOW() + INTERVAL '7 days', $3, $4)`,
@@ -158,14 +159,13 @@ router.post("/refresh", async (req, res) => {
       `SELECT rt.id, rt.token_hash, rt.revoked_at, u.id as user_id, u.role, u.is_active
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
-       WHERE rt.user_id = $1 AND rt.expires_at > NOW() AND rt.revoked_at IS NULL
-       ORDER BY rt.created_at DESC LIMIT 10`,
-      [payload.sub]
+       WHERE rt.user_id = $1 AND rt.token_hash=$2 AND rt.expires_at > NOW() AND rt.revoked_at IS NULL`,
+      [payload.sub, hashRefreshToken(refresh_token)]
     );
 
     let matched = null;
     for (const row of tokens) {
-      const ok = await bcrypt.compare(refresh_token, row.token_hash);
+      const ok = row.token_hash === hashRefreshToken(refresh_token);
       if (ok) { matched = row; break; }
     }
 
@@ -175,10 +175,11 @@ router.post("/refresh", async (req, res) => {
 
     // Rotate: revoke old, issue new
     const { access, refresh: newRefresh } = makeTokens(matched.user_id, matched.role);
-    const newHash = await bcrypt.hash(newRefresh, 8);
+    const newHash = hashRefreshToken(newRefresh);
 
     await withTransaction(async (client) => {
-      await client.query("UPDATE refresh_tokens SET revoked_at=NOW() WHERE id=$1", [matched.id]);
+      const consumed = await client.query("UPDATE refresh_tokens SET revoked_at=NOW() WHERE id=$1 AND revoked_at IS NULL AND expires_at>NOW() RETURNING id", [matched.id]);
+      if (!consumed.rows.length) throw Object.assign(new Error('Refresh token already used'), { status: 401 });
       await client.query(
         `INSERT INTO refresh_tokens (user_id, token_hash, expires_at, user_agent, ip_address)
          VALUES ($1, $2, NOW() + INTERVAL '7 days', $3, $4)`,
@@ -189,7 +190,7 @@ router.post("/refresh", async (req, res) => {
     res.json({ access_token: access, refresh_token: newRefresh });
   } catch (err) {
     console.error("[auth] refresh error:", err);
-    res.status(500).json({ error: "Token refresh failed" });
+    res.status(err.status || 500).json({ error: "Token refresh failed" });
   }
 });
 

@@ -1,4 +1,5 @@
 const BASE = import.meta.env.VITE_API_BASE_URL || "/api";
+const mapRevisions = new Map();
 
 // Access token stored in sessionStorage survives page refresh (same tab)
 // but is cleared when the tab closes — safe and avoids needing refresh on every reload.
@@ -20,6 +21,7 @@ export function getAccessToken() {
 }
 
 export function clearTokens() {
+  mapRevisions.clear();
   _accessToken = null;
   _refreshToken = null;
   sessionStorage.removeItem("nm_access");
@@ -78,10 +80,12 @@ export async function apiFetch(path, options = {}) {
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    throw Object.assign(new Error(err.error || `HTTP ${res.status}`), { status: res.status });
   }
 
-  return res.json();
+  const data = await res.json();
+  if (data.map?.id && Number.isInteger(data.map.revision)) mapRevisions.set(data.map.id, data.map.revision);
+  return data;
 }
 
 // Auth
@@ -98,7 +102,11 @@ export const getMap        = (id)         => apiFetch(`/maps/${id}`);
 export const updateMap     = (id, data)   => apiFetch(`/maps/${id}`, { method: "PUT", body: JSON.stringify(data) });
 export const saveMapMeta   = (id, data)   => apiFetch(`/maps/${id}/meta`, { method: "PATCH", body: JSON.stringify(data) });
 export const deleteMap     = (id)         => apiFetch(`/maps/${id}`, { method: "DELETE" });
-export const saveMap       = (id, data)   => apiFetch(`/maps/${id}/save`, { method: "POST", body: JSON.stringify(data) });
+export const saveMap = async (id, data) => {
+  const result = await apiFetch(`/maps/${id}/save`, { method: 'POST', body: JSON.stringify({ ...data, revision: mapRevisions.get(id) }) });
+  mapRevisions.set(id, result.revision);
+  return result;
+};
 export const addCollab     = (id, data)   => apiFetch(`/maps/${id}/collaborators`, { method: "POST", body: JSON.stringify(data) });
 export const removeCollab  = (id, uid)    => apiFetch(`/maps/${id}/collaborators/${uid}`, { method: "DELETE" });
 

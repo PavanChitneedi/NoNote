@@ -62,7 +62,8 @@ const mkNode = (type, x, y) => ({
 // ─────────────────────────────────────────────────────────────
 export default function NodeCanvas({ mapId, onBack, onHome }) {
   const { user, logout }      = useAuth();
-  const canEdit              = ["owner","admin","editor"].includes(user?.role);
+  const [mapPermission, setMapPermission] = useState(null);
+  const canEdit = ['owner','admin','editor'].includes(mapPermission);
 
   // ── State ──────────────────────────────────────────────────
   const [mapMeta,      setMapMeta]      = useState(null);
@@ -240,11 +241,15 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // wsBroadcastTimer: debounced 150ms so rapid drag updates are batched
   const wsBroadcastTimer = useRef(null);
   const pendingBcast     = useRef({ nodes: null, edges: null });
+  const groupBoxesRef = useRef(groupBoxes);
+  groupBoxesRef.current = groupBoxes;
+  const saveSequence = useRef(0);
+  const saveQueue = useRef(Promise.resolve());
+  const loadedMap = useRef(null);
 
   const scheduleSave = useCallback((ns, es) => {
-    if (!canEdit) return;
-    // Don't trigger a save if both nodes and edges are empty (brand-new map, nothing to persist yet)
-    if ((!ns || ns.length === 0) && (!es || es.length === 0)) return;
+    if (!canEdit || loadedMap.current !== mapId) return;
+    const sequence = ++saveSequence.current;
     setSaveState("saving"); setSaveMsg("Saving…");
 
     // ── WS broadcast (150ms debounce — catches drag, resize, all mutations) ──
@@ -263,14 +268,23 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     clearTimeout(saveTimer.current);
     saveTimer.current = setTimeout(async () => {
       try {
-        await saveMap(mapId, { nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})), edges:es, groupBoxes });
+        const groupBoxes = groupBoxesRef.current;
+        const pending = saveQueue.current.catch(()=>{}).then(() => saveMap(mapId, { nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})), edges:es, groupBoxes }));
+        saveQueue.current = pending;
+        await pending;
+        if (sequence !== saveSequence.current) return;
         setSaveState("saved"); setSaveMsg("Saved ✓");
         setTimeout(()=>{setSaveState("idle");setSaveMsg("");},2500);
         clearTimeout(versionTimer.current);
         versionTimer.current = setTimeout(async()=>{
           try{ await saveVersion(mapId,{nodes:ns.map(n=>({...n,notes:serializeNotes(n.notes)})),edges:es,groupBoxes,label:"Auto-save"}); }catch{}
         }, 5*60*1000);
-      } catch {
+      } catch (error) {
+        if (sequence !== saveSequence.current) return;
+        if ([409,428].includes(error.status)) {
+          setSaveState('error'); setSaveMsg(error.message);
+          return;
+        }
         setSaveState("error"); setSaveMsg("Save failed — retry in 10s");
         saveTimer.current = setTimeout(()=>scheduleSave(ns,es),10000);
       }
@@ -390,7 +404,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // ── Load ───────────────────────────────────────────────────
   useEffect(()=>{
     setLoading(true);
+    loadedMap.current = null;
     getMap(mapId).then(data=>{
+      loadedMap.current = mapId;
+      setMapPermission(data.permission || null);
+      setEditMode(['owner','admin','editor'].includes(data.permission));
       setMapMeta(data.map);
 
       const toContent=nt=>(nt.content||"").replace(/<[^>]+>/g,"").trim();
@@ -467,7 +485,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       const finalEs=[...es,...extraEdges];
 
       // Always save migration if notes were converted (role check deferred to saveMap auth)
-      if(extraNodes.length>0){
+      if(extraNodes.length>0 && ['owner','admin','editor'].includes(data.permission)){
         setTimeout(()=>saveMap(mapId,{
           nodes:finalNs.map(n=>({...n,notes:serializeNotes(n.notes)})),
           edges:finalEs,groupBoxes:data.groupBoxes||[]
@@ -1159,7 +1177,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             u.userId, { userName: u.userName || "User", color: userColor(u.userId), selectedIds: new Set(), editingId: null }
           ])));
           // Push our full current state so latecomers sync
-          if ((msg.users || []).length > 0) {
+          if ((msg.users || []).length > 0 && loadedMap.current === mapId && canEdit) {
             ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
             ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
           }
@@ -1170,8 +1188,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           console.log("[collab] user joined:", msg.userName);
           setRemoteSelections(prev => ({ ...prev, [msg.userId]: { userName: msg.userName || "User", color: userColor(msg.userId), selectedIds: new Set(), editingId: null } }));
           // Send them our current canvas state
-          ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
-          ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
+          if (loadedMap.current === mapId && canEdit) {
+            ws.send(JSON.stringify({ type: "nodes_update", nodes: nodesRef.current }));
+            ws.send(JSON.stringify({ type: "edges_update", edges: edgesRef.current }));
+          }
           return;
         }
 
@@ -1230,7 +1250,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       setWsConnected(false);
       setRemoteSelections({});
     };
-  }, [mapId]);
+  }, [mapId, canEdit]);
 
   // ── Broadcast local selection to collaborators ───────────────────
   // Called whenever selected nodes or editing state changes

@@ -4,6 +4,7 @@ import { body, validationResult } from "express-validator";
 import { query, withTransaction } from "../db/pool.js";
 import { authenticate, mapPermission } from "../middleware/auth.js";
 import { appLog } from "../utils/logger.js";
+import { readableNode, canReadPrivate } from '../utils/documentAccess.js';
 
 const router = Router();
 
@@ -169,7 +170,8 @@ router.get(
 
       res.json({
         map:           mapRes.rows[0],
-        nodes,
+        nodes: nodes.map(n => readableNode(n, req.mapPerm)),
+        permission: req.mapPerm,
         edges:         edgesRes.rows,
         collaborators: collabRes.rows,
         groupBoxes: mapRes.rows[0].group_boxes || [],
@@ -249,6 +251,7 @@ router.post(
         query("SELECT * FROM map_nodes WHERE map_id=$1", [req.params.mapId]),
         query("SELECT * FROM map_edges WHERE map_id=$1",  [req.params.mapId]),
       ]);
+      origNodes.rows = origNodes.rows.map(n => readableNode(n, req.mapPerm));
 
       // Build old→new UUID map
       const nodeIdMap = {};
@@ -265,14 +268,14 @@ router.post(
 
         // 2. Batch-insert nodes (single query with multiple value rows)
         if (origNodes.rows.length > 0) {
-          const nodeCols = "(id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,node_notes,notes_private,z_index)";
+          const nodeCols = "(id,map_id,node_type,title,x,y,w,h,properties,custom_props,notes,node_notes,notes_private,z_index,description)";
           const nodeVals = [], nodePlaceholders = [];
           let pi = 1;
           for (const n of origNodes.rows) {
-            nodePlaceholders.push(`($${pi},$${pi+1},$${pi+2},$${pi+3},$${pi+4},$${pi+5},$${pi+6},$${pi+7},$${pi+8},$${pi+9},$${pi+10},$${pi+11},$${pi+12},$${pi+13})`);
+            nodePlaceholders.push(`($${pi},$${pi+1},$${pi+2},$${pi+3},$${pi+4},$${pi+5},$${pi+6},$${pi+7},$${pi+8},$${pi+9},$${pi+10},$${pi+11},$${pi+12},$${pi+13},$${pi+14})`);
             nodeVals.push(nodeIdMap[n.id], newId, n.node_type, n.title, n.x, n.y, n.w, n.h,
-              n.properties, n.custom_props, n.notes, n.node_notes||'', n.notes_private||false, n.z_index);
-            pi += 14;
+              n.properties, n.custom_props, n.notes, n.node_notes||'', n.notes_private||false, n.z_index, n.description||'');
+            pi += 15;
           }
           await client.query(
             `INSERT INTO map_nodes ${nodeCols} VALUES ${nodePlaceholders.join(",")}`,
@@ -347,34 +350,56 @@ router.post(
     try {
       const { nodes, edges, groupBoxes } = req.body;
       const { mapId } = req.params;
+      if (!Number.isInteger(req.body.revision) || req.body.revision < 0) return res.status(428).json({ error: 'Reload this map before saving: document revision required' });
+      if (!Array.isArray(nodes) || !Array.isArray(edges) || (groupBoxes !== undefined && !Array.isArray(groupBoxes))) {
+        return res.status(400).json({ error: 'Expected nodes, edges and optional groupBoxes arrays' });
+      }
+      const ids = [...nodes, ...edges].map(item => item?.id);
+      if (ids.some(id => typeof id !== 'string' || !id) || new Set(ids).size !== ids.length) {
+        return res.status(400).json({ error: 'Node and edge IDs must be unique strings' });
+      }
+      const nodeIds = new Set(nodes.map(n => n.id));
+      if (edges.some(e => !nodeIds.has(e.from) || !nodeIds.has(e.to))) {
+        return res.status(400).json({ error: 'Edges must connect nodes in this document' });
+      }
 
       const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
       // Build id map: frontend-id → real UUID (generate if needed)
-      const idMap = {};
+      const idMap = Object.create(null);
       for (const n of nodes || []) {
         idMap[n.id] = UUID_RE.test(n.id) ? n.id : _uuid();
       }
       for (const e of edges || []) {
-        if (!idMap[e.id]) idMap[e.id] = _uuid(); // always fresh — edges are delete+reinsert each save
+        idMap[e.id] = UUID_RE.test(e.id) ? e.id : _uuid();
       }
 
       await withTransaction(async (client) => {
+        // Serialize saves to this map and reject foreign IDs before any writes.
+        const current = await client.query('SELECT id, revision FROM maps WHERE id=$1 FOR UPDATE', [mapId]);
+        if (!current.rows[0]) throw Object.assign(new Error('Map not found'), { status: 404 });
+        if (current.rows[0].revision !== req.body.revision) throw Object.assign(new Error('This map changed elsewhere. Copy your unsaved changes before reloading.'), { status: 409 });
+        const foreign = await client.query(
+          'SELECT id FROM map_nodes WHERE id=ANY($1::uuid[]) AND map_id<>$2 UNION ALL SELECT id FROM map_edges WHERE id=ANY($1::uuid[]) AND map_id<>$2',
+          [Object.values(idMap), mapId]
+        );
+        if (foreign.rows.length) throw Object.assign(new Error('IDs belong to another map'), { status: 409 });
         // Upsert all nodes with real UUIDs
         for (const n of nodes || []) {
           const nodeId = idMap[n.id];
           await client.query(
-            `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, node_notes, notes_private, z_index)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+            `INSERT INTO map_nodes (id, map_id, node_type, title, x, y, w, h, properties, custom_props, notes, node_notes, notes_private, z_index, description)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
              ON CONFLICT (id) DO UPDATE SET
                node_type=$3, title=$4, x=$5, y=$6, w=$7, h=$8,
-               properties=$9, custom_props=$10, notes=$11, node_notes=$12, notes_private=$13, z_index=$14`,
+               properties=$9, custom_props=$10, notes=$11, node_notes=$12, notes_private=$13, z_index=$14, description=$15
+             WHERE map_nodes.map_id=$2`,
             [nodeId, mapId, n.type, n.title, n.x, n.y, n.w, n.h,
              JSON.stringify(n.properties || {}),
              JSON.stringify(n.customProps || n.custom_props || {}),
              typeof n.notes === 'string' ? n.notes : JSON.stringify(Array.isArray(n.notes) ? n.notes : []),
              n.node_notes || '',
              n.notes_private || false,
-             n.z_index || 0]
+             n.z_index || 0, n.description || '']
           );
         }
 
@@ -400,7 +425,7 @@ router.post(
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
              ON CONFLICT (id) DO UPDATE SET
                from_node=$3, to_node=$4, label=$5, style=$6, color=$7,
-               from_anchor=$8, to_anchor=$9, mid_off=$10`,
+               from_anchor=$8, to_anchor=$9, mid_off=$10 WHERE map_edges.map_id=$2`,
             [edgeId, mapId, fromNode, toNode,
              e.label || "", e.style || "arrow", e.color || "#58a6ff",
              e.fromAnchor ? JSON.stringify(e.fromAnchor) : null,
@@ -410,27 +435,23 @@ router.post(
         }
 
         // Delete removed nodes
-        if (nodes?.length > 0) {
-          const keepIds = Object.values(idMap).filter(id => UUID_RE.test(id));
-          if (keepIds.length > 0) {
-            await client.query(
-              `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
-              [mapId, keepIds]
-            );
-          }
-        }
+        const keepIds = nodes.map(n => idMap[n.id]);
+        await client.query(
+          `DELETE FROM map_nodes WHERE map_id = $1 AND id != ALL($2::uuid[])`,
+          [mapId, keepIds]
+        );
 
         // Save groupBoxes as JSON in maps metadata
         await client.query(
-          "UPDATE maps SET updated_at=NOW(), group_boxes=$2::jsonb WHERE id=$1",
-          [mapId, JSON.stringify(groupBoxes || [])]
+          "UPDATE maps SET updated_at=NOW(), revision=revision+1, group_boxes=COALESCE($2::jsonb,group_boxes) WHERE id=$1",
+          [mapId, groupBoxes === undefined ? null : JSON.stringify(groupBoxes)]
         );
       });
 
-      res.json({ ok: true });
+      res.json({ ok: true, idMap, revision: req.body.revision + 1 });
     } catch (err) {
       console.error("[maps] save error:", err);
-      res.status(500).json({ error: "Failed to save map" });
+      res.status(err.status || 500).json({ error: err.status ? err.message : "Failed to save map" });
     }
   }
 );
@@ -528,7 +549,7 @@ router.get(
     try {
       const { q = "" } = req.query;
       if (!q.trim()) return res.json({ results: [] });
-      const canSeePrivate = ["owner","admin","editor"].includes(req.user.role);
+      const canSeePrivate = canReadPrivate(req.mapPerm);
       const { rows } = await query(
         `SELECT id, node_type, title, node_notes, notes_private, properties, custom_props, x, y
          FROM map_nodes
@@ -551,7 +572,7 @@ router.get(
         const start = Math.max(0, idx - 40);
         return (start > 0 ? "…" : "") + text.slice(start, start + len) + (start + len < text.length ? "…" : "");
       };
-      const results = rows.map(n => {
+      const results = rows.map(n => readableNode(n, req.mapPerm)).map(n => {
         const hits = [];
         if (n.title?.toLowerCase().includes(term)) hits.push({ field: "Title", snippet: n.title });
         if (n.node_notes && n.node_notes.toLowerCase().includes(term) && (canSeePrivate || !n.notes_private))

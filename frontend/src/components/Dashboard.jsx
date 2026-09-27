@@ -325,6 +325,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
         id: n.id, type: n.node_type || n.type, title: n.title,
         x: n.x, y: n.y, w: n.w, h: n.h,
         description: n.description || "",
+        node_notes: n.node_notes || '', notes_private: !!n.notes_private,
         properties: typeof n.properties === "string" ? JSON.parse(n.properties||"{}") : (n.properties||{}),
         customProps: typeof n.custom_props === "string" ? JSON.parse(n.custom_props||"{}") : (n.custom_props||n.customProps||{}),
         notes: (() => { try { return JSON.parse(n.notes||"[]"); } catch { return []; } })(),
@@ -338,7 +339,7 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
         version:1, app:"NoNote",
         title: d.map?.title || map.title,
         exported: new Date().toISOString(),
-        nodes, edges,
+        nodes: sanitizeNodesForExport(nodes), edges, groupBoxes: d.groupBoxes || [],
       };
       const a = document.createElement("a");
       a.href = URL.createObjectURL(new Blob([JSON.stringify(bundle,null,2)],{type:"application/json"}));
@@ -1275,3 +1276,4 @@ export default function Dashboard({ onOpenMap, onOpenAdmin, skinNav="top" }) {
 </>
   );
 }
+import { sanitizeNodesForExport } from '../lib/exportFormats.js';

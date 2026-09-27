@@ -207,8 +207,15 @@ router.patch("/:id", authenticate, async (req, res) => {
   const isSelf = req.params.id === req.user.id;
   const isAdmin = ["admin","owner"].includes(req.user.role);
   if (!isSelf && !isAdmin) return res.status(403).json({ error: "Forbidden" });
+  if (req.body.role === 'owner' && req.user.role !== 'owner')
+    return res.status(403).json({ error: 'Only owner can assign owner role' });
 
   try {
+    if (req.user.role === 'admin') {
+      const target = await query('SELECT role FROM users WHERE id=$1', [req.params.id]);
+      if (!target.rows[0]) return res.status(404).json({ error: 'User not found' });
+      if (target.rows[0].role === 'owner') return res.status(403).json({ error: 'Only an owner can modify an owner account' });
+    }
     const { display_name, email, role, is_active, avatar_color, password } = req.body;
     const updates = [], vals = [];
 
@@ -248,7 +255,7 @@ router.patch("/:id", authenticate, async (req, res) => {
     updates.push("updated_at=NOW()");
     vals.push(req.params.id);
     const { rows } = await query(
-      `UPDATE users SET ${updates.join(",")} WHERE id=$${vals.length}
+      `UPDATE users SET ${updates.join(",")} WHERE id=$${vals.length}${req.user.role === 'admin' ? " AND role <> 'owner'" : ''}
        RETURNING id, email, display_name, role, is_active, avatar_color`,
       vals
     );

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { query } from "../db/pool.js";
 import { authenticate, mapPermission } from "../middleware/auth.js";
+import { readableNode } from '../utils/documentAccess.js';
 
 const router = Router();
 
@@ -75,9 +76,10 @@ router.get("/:mapId/versions/:versionId",
       [req.params.versionId, req.params.mapId]
     );
     if (!rows[0]) return res.status(404).json({ error: "Version not found" });
+    const nodes = rows[0].nodes_json.map(n => readableNode(n, req.mapPerm));
     res.json({
-      version: rows[0],
-      nodes: rows[0].nodes_json,
+      version: { ...rows[0], nodes_json: nodes },
+      nodes,
       edges: rows[0].edges_json,
     });
   } catch {

@@ -16,6 +16,8 @@ import llmRouter      from "./routes/llm.js";
 import versionsRouter from "./routes/versions.js";
 import integrationsRouter from "./routes/integrations.js";
 import { checkMapAccess } from "./ws/mapAccess.js";
+import redis, { PREFIXES } from './db/redis.js';
+import { readableNode, canReadPrivate } from './utils/documentAccess.js';
 
 const app  = express();
 const PORT = parseInt(process.env.PORT || "3001");
@@ -141,6 +143,8 @@ wss.on("connection", (ws) => {
   let mapId   = null;
   let userId  = null;
   let userName = "User";
+  let joining = false;
+  let accessToken;
 
   // ── Per-connection rate limiter: max 120 messages/min ────────
   let msgCount = 0;
@@ -163,10 +167,14 @@ wss.on("connection", (ws) => {
 
     // ── JOIN ──────────────────────────────────────────────────
     if (msg.type === "join") {
+      if (joining || mapId) return;
+      joining = true;
+      let joiningUser;
       // Verify JWT
       try {
         const payload = jwt.verify(msg.token, process.env.JWT_ACCESS_SECRET);
-        userId = payload.sub;
+        joiningUser = payload.sub;
+        if (await redis.get(`${PREFIXES.userSession}blocked:${msg.token}`)) throw new Error('Revoked token');
       } catch (e) {
         console.warn("[ws] auth rejected:", e.message);
         ws.send(JSON.stringify({ type: "auth_error", message: "Invalid token" }));
@@ -174,17 +182,16 @@ wss.on("connection", (ws) => {
         return;
       }
 
-      mapId = msg.mapId;
-
       // ── Check map access (see ws/mapAccess.js — mirrors mapPermission middleware) ──
       try {
-        const access = await checkMapAccess(userId, mapId);
+        const access = await checkMapAccess(joiningUser, msg.mapId);
         if (!access.ok) {
           ws.send(JSON.stringify({ type: "auth_error", message: access.message }));
           ws.close(access.closeCode, access.closeReason);
           return;
         }
         userName = access.userName;
+        ws.permission = access.permission;
       } catch (e) {
         console.error("[ws] access check error:", e.message);
         ws.send(JSON.stringify({ type: "auth_error", message: "Access check failed" }));
@@ -192,6 +199,11 @@ wss.on("connection", (ws) => {
         return;
       }
 
+      if (ws.readyState !== 1) return;
+      userId = joiningUser;
+      mapId = msg.mapId;
+      accessToken = msg.token;
+      ws.accessToken = accessToken;
       ws.userId   = userId;
       ws.mapId    = mapId;
       ws.userName = userName;
@@ -216,6 +228,20 @@ wss.on("connection", (ws) => {
     }
 
     if (!mapId || !userId) return; // must join first
+    if (!['nodes_update', 'edges_update', 'cursor', 'selection'].includes(msg.type)) return;
+    try {
+      jwt.verify(accessToken, process.env.JWT_ACCESS_SECRET);
+      if (await redis.get(`${PREFIXES.userSession}blocked:${accessToken}`)) throw new Error('Revoked token');
+      const access = await checkMapAccess(userId, mapId);
+      if (!access.ok) throw new Error('Access revoked');
+      ws.permission = access.permission;
+      if (['nodes_update', 'edges_update'].includes(msg.type) && !canReadPrivate(access.permission)) return;
+    } catch {
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
+    if (msg.type === 'nodes_update' && (!Array.isArray(msg.nodes) || msg.nodes.some(n => !n || typeof n.id !== 'string'))) return;
+    if (msg.type === 'edges_update' && (!Array.isArray(msg.edges) || msg.edges.some(e => !e || typeof e.id !== 'string'))) return;
 
     // ── LOG significant canvas changes ────────────────────────
     if (msg.type === "nodes_update" && Array.isArray(msg.nodes)) {
@@ -277,15 +303,30 @@ wss.on("connection", (ws) => {
 function broadcast(mapId, msg, exclude = null) {
   const room = rooms.get(mapId);
   if (!room) return;
-  const raw = JSON.stringify(msg);
-  room.forEach(c => {
-    if (c !== exclude && c.readyState === 1) c.send(raw);
+  room.forEach(async c => {
+    if (c !== exclude && c.readyState === 1) {
+      try {
+        jwt.verify(c.accessToken, process.env.JWT_ACCESS_SECRET);
+        if (await redis.get(`${PREFIXES.userSession}blocked:${c.accessToken}`)) throw new Error('Revoked');
+        const access = await checkMapAccess(c.userId, mapId);
+        if (!access.ok) throw new Error('Access revoked');
+        c.permission = access.permission;
+      } catch { c.close(1008, 'Unauthorized'); return; }
+      // Never forward arbitrary fields alongside a node snapshot.
+      const payload = msg.type === 'nodes_update'
+        ? { type: msg.type, userId: msg.userId, userName: msg.userName, nodes: msg.nodes.map(n => readableNode(n, c.permission)) }
+        : msg;
+      if (c.readyState === 1) c.send(JSON.stringify(payload));
+    }
   });
 }
 
 // ── DB migrations (run on every startup, all idempotent) ──────
 async function runMigrations() {
   const migrations = [
+    // Phase 1: persist the description exposed by both node editors.
+    "ALTER TABLE map_nodes ADD COLUMN IF NOT EXISTS description TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE maps ADD COLUMN IF NOT EXISTS revision INTEGER NOT NULL DEFAULT 0",
     "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS from_anchor JSONB",
     "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS to_anchor JSONB",
     "ALTER TABLE map_edges ADD COLUMN IF NOT EXISTS mid_off JSONB",

@@ -59,7 +59,7 @@ const ACCENT = "#58a6ff";
 
 const USER_COLORS = ["#f97316","#06b6d4","#a855f7","#22c55e","#f59e0b","#ef4444","#3b82f6","#ec4899"];
 const userColor = id => { let h=0; for(let i=0;i<(id||"").length;i++) h=(h*31+id.charCodeAt(i))>>>0; return USER_COLORS[h%USER_COLORS.length]; };
-const mkId = () => Math.random().toString(36).slice(2,10);
+const mkId = () => crypto.randomUUID();
 
 function mkNode(type, x, y) {
   const t = NT[type] || NT.note;
@@ -120,8 +120,8 @@ export default function MobileCanvas({ mapId, onBack }) {
     getMap(mapId)
       .then(d=>{
         setMapMeta(d.map||null);
-        setNodes(Array.isArray(d.nodes)?d.nodes:[]);
-        setEdges(Array.isArray(d.edges)?d.edges:[]);
+        setNodes((d.nodes||[]).map(n=>({...n,type:n.node_type||n.type,customProps:n.custom_props||n.customProps||{}})));
+        setEdges((d.edges||[]).map(e=>({...e,from:e.from_node||e.from,to:e.to_node||e.to,fromAnchor:e.from_anchor,toAnchor:e.to_anchor,midOff:e.mid_off})));
       })
       .catch(e=>setError(e?.message||"Failed to load map"))
       .finally(()=>setLoading(false));
@@ -133,13 +133,13 @@ export default function MobileCanvas({ mapId, onBack }) {
     setSaving(true);
     saveTimer.current=setTimeout(async()=>{
       try {
-        await saveMap(mapId,{nodes:ns,edges:es,groupBoxes:[]});
+        await saveMap(mapId,{nodes:ns,edges:es});
         const ws=wsRef.current;
         if(ws?.readyState===1){
           ws.send(JSON.stringify({type:"nodes_update",nodes:ns}));
           ws.send(JSON.stringify({type:"edges_update",edges:es}));
         }
-      } catch {}
+      } catch (error) { setError(error.message || 'Save failed'); }
       setSaving(false);
     },1000);
   },[mapId]);

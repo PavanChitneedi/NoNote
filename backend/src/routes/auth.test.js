@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import express from "express";
 import request from "supertest";
 import bcrypt from "bcryptjs";
+import { hashRefreshToken } from "../utils/refreshToken.js";
 
 process.env.JWT_ACCESS_SECRET = "test-access-secret";
 process.env.JWT_REFRESH_SECRET = "test-refresh-secret";
@@ -146,6 +147,15 @@ describe("POST /api/auth/register", () => {
 });
 
 describe("POST /api/auth/refresh", () => {
+  it('rejects a token consumed concurrently before rotation', async () => {
+    const jwt = (await import('jsonwebtoken')).default;
+    const token = jwt.sign({sub:'u1',jti:'concurrent'},process.env.JWT_REFRESH_SECRET);
+    query.mockResolvedValueOnce({rows:[{id:'rt1',token_hash:hashRefreshToken(token),user_id:'u1',role:'editor',is_active:true}]});
+    mockClient.query.mockResolvedValueOnce({rows:[]});
+    const res = await request(app).post('/api/auth/refresh').send({refresh_token:token});
+    expect(res.status).toBe(401);
+    expect(mockClient.query.mock.calls.some(([sql])=>sql.includes('INSERT INTO refresh_tokens'))).toBe(false);
+  });
   it("rejects a missing refresh token", async () => {
     const res = await request(app).post("/api/auth/refresh").send({});
     expect(res.status).toBe(400);
@@ -165,9 +175,10 @@ describe("POST /api/auth/refresh", () => {
   });
 
   it("rotates the token on a valid refresh (old revoked, new issued)", async () => {
+    mockClient.query.mockResolvedValueOnce({rows:[{id:"rt1"}]});
     const jwt = (await import("jsonwebtoken")).default;
     const token = jwt.sign({ sub: "u1", jti: "x" }, process.env.JWT_REFRESH_SECRET);
-    const storedHash = await bcrypt.hash(token, 4);
+    const storedHash = hashRefreshToken(token);
     query.mockResolvedValueOnce({
       rows: [{ id: "rt1", token_hash: storedHash, revoked_at: null, user_id: "u1", role: "editor", is_active: true }],
     });
@@ -185,7 +196,7 @@ describe("POST /api/auth/refresh", () => {
   it("rejects a refresh token belonging to a deactivated user", async () => {
     const jwt = (await import("jsonwebtoken")).default;
     const token = jwt.sign({ sub: "u1", jti: "x" }, process.env.JWT_REFRESH_SECRET);
-    const storedHash = await bcrypt.hash(token, 4);
+    const storedHash = hashRefreshToken(token);
     query.mockResolvedValueOnce({
       rows: [{ id: "rt1", token_hash: storedHash, revoked_at: null, user_id: "u1", role: "editor", is_active: false }],
     });

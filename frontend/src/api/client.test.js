@@ -7,6 +7,22 @@ async function freshClient() {
   return import("./client.js");
 }
 
+it('sends the loaded revision and advances it only after a successful save', async () => {
+  const client = await freshClient();
+  const fetchMock = vi.fn()
+    .mockResolvedValueOnce({ok:true,json:async()=>({map:{id:'m1',revision:3}})})
+    .mockResolvedValueOnce({ok:true,json:async()=>({ok:true,revision:4})})
+    .mockResolvedValueOnce({ok:false,status:409,json:async()=>({error:'Conflict'})});
+  vi.stubGlobal('fetch',fetchMock);
+  try {
+    await client.getMap('m1');
+    await client.saveMap('m1',{nodes:[],edges:[]});
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body).revision).toBe(3);
+    await expect(client.saveMap('m1',{nodes:[],edges:[]})).rejects.toMatchObject({status:409});
+    expect(JSON.parse(fetchMock.mock.calls[2][1].body).revision).toBe(4);
+  } finally { vi.unstubAllGlobals(); }
+});
+
 describe("token storage helpers", () => {
   beforeEach(() => {
     sessionStorage.clear();

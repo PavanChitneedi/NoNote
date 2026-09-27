@@ -1,4 +1,5 @@
 # Environment & secrets
+.nonote-test-credentials*
 .env
 .env.*
 !.env.example

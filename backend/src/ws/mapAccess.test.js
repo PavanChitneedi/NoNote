@@ -35,7 +35,7 @@ describe("checkMapAccess", () => {
       rows: [{ role: "admin", display_name: "Admin User", is_active: true }],
     });
     const result = await checkMapAccess("u1", "m1");
-    expect(result).toEqual({ ok: true, userName: "Admin User" });
+    expect(result).toEqual({ ok: true, userName: "Admin User", permission: "admin" });
     expect(query).toHaveBeenCalledTimes(1); // no second query for owner/admin
   });
 
@@ -44,7 +44,7 @@ describe("checkMapAccess", () => {
       rows: [{ role: "owner", display_name: null, is_active: true }],
     });
     const result = await checkMapAccess("u1", "m1");
-    expect(result).toEqual({ ok: true, userName: "User" });
+    expect(result).toEqual({ ok: true, userName: "User", permission: "owner" });
   });
 
   it("returns 'Map not found' when the map doesn't exist", async () => {
@@ -65,7 +65,7 @@ describe("checkMapAccess", () => {
       .mockResolvedValueOnce({ rows: [{ role: "editor", display_name: "A", is_active: true }] })
       .mockResolvedValueOnce({ rows: [{ owner_id: "u1", permission: null, is_public: false }] });
     const result = await checkMapAccess("u1", "m1");
-    expect(result).toEqual({ ok: true, userName: "A" });
+    expect(result).toEqual({ ok: true, userName: "A", permission: "owner" });
   });
 
   it("allows a collaborator with an explicit permission row", async () => {
@@ -75,7 +75,7 @@ describe("checkMapAccess", () => {
         rows: [{ owner_id: "someone-else", permission: "viewer", is_public: false }],
       });
     const result = await checkMapAccess("u2", "m1");
-    expect(result).toEqual({ ok: true, userName: "A" });
+    expect(result).toEqual({ ok: true, userName: "A", permission: "viewer" });
   });
 
   it("allows access to a public map with no explicit permission", async () => {
@@ -85,7 +85,7 @@ describe("checkMapAccess", () => {
         rows: [{ owner_id: "someone-else", permission: null, is_public: true }],
       });
     const result = await checkMapAccess("u2", "m1");
-    expect(result).toEqual({ ok: true, userName: "A" });
+    expect(result).toEqual({ ok: true, userName: "A", permission: "viewer" });
   });
 
   it("rejects a non-owner, non-collaborator on a private map", async () => {

@@ -61,7 +61,10 @@ export async function mapPermission(requiredPerm) {
       const userId = req.user.id;
 
       // Admins and owners have global access
-      if (["owner", "admin"].includes(req.user.role)) return next();
+      if (["owner", "admin"].includes(req.user.role)) {
+        req.mapPerm = req.user.role;
+        return next();
+      }
 
       const { rows } = await query(
         `SELECT m.owner_id, mc.permission
@@ -80,11 +83,14 @@ export async function mapPermission(requiredPerm) {
       if (!effectivePerm) {
         // Check if map is public and we only need viewer
         const { rows: pub } = await query("SELECT is_public FROM maps WHERE id=$1", [mapId]);
-        if (pub[0]?.is_public && requiredPerm === "viewer") return next();
+        if (pub[0]?.is_public && requiredPerm === "viewer") {
+          req.mapPerm = 'viewer';
+          return next();
+        }
         return res.status(403).json({ error: "No access to this map" });
       }
 
-      if (ROLE_HIERARCHY[effectivePerm] < ROLE_HIERARCHY[requiredPerm]) {
+      if ((ROLE_HIERARCHY[effectivePerm] ?? 0) < (ROLE_HIERARCHY[requiredPerm] ?? 99)) {
         return res.status(403).json({ error: "Insufficient map permission" });
       }
 

@@ -31,7 +31,7 @@ export async function checkMapAccess(userId, mapId) {
   const userName = u.display_name || "User";
 
   if (["owner", "admin"].includes(u.role)) {
-    return { ok: true, userName };
+    return { ok: true, userName, permission: u.role };
   }
 
   const accessRes = await query(
@@ -51,7 +51,8 @@ export async function checkMapAccess(userId, mapId) {
     };
   }
 
-  const hasAccess = row.owner_id === userId || row.permission || row.is_public;
+  const permission = row.owner_id === userId ? 'owner' : row.permission || (row.is_public ? 'viewer' : null);
+  const hasAccess = ['owner', 'admin', 'editor', 'viewer'].includes(permission);
   if (!hasAccess) {
     return {
       ok: false,
@@ -61,5 +62,5 @@ export async function checkMapAccess(userId, mapId) {
     };
   }
 
-  return { ok: true, userName };
+  return { ok: true, userName, permission };
 }

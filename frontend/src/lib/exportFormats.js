@@ -23,16 +23,18 @@ export function iconChar(icon) {
 // written to close. Both now import it from here instead.
 export const SECRET_KEY_RE = /^_integration|token|password|secret|api[_-]?key/i;
 export function sanitizeProperties(props) {
+  if (Array.isArray(props)) return props.map(sanitizeProperties);
+  if (typeof props !== 'object') return props;
   if (!props) return props;
   const out = {};
   Object.entries(props).forEach(([k, v]) => {
     if (SECRET_KEY_RE.test(k)) return;
-    out[k] = v;
+    out[k] = sanitizeProperties(v);
   });
   return out;
 }
-function sanitizeNodesForExport(nodes) {
-  return nodes.map(n => ({ ...n, properties: sanitizeProperties(n.properties) }));
+export function sanitizeNodesForExport(nodes) {
+  return nodes.map(n => ({ ...n, properties: sanitizeProperties(n.properties), customProps: sanitizeProperties(n.customProps), custom_props: sanitizeProperties(n.custom_props) }));
 }
 
 // ── .nonote (JSON) export ────────────────────────────────────────────────
