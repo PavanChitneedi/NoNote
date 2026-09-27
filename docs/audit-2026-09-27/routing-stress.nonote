@@ -1,0 +1,380 @@
+{
+  "app": "NoNote",
+  "title": "Routing stress - 12 nodes 24 links",
+  "nodes": [
+    {
+      "id": "n0",
+      "type": "idea",
+      "title": "Test 01 - idea",
+      "x": 80,
+      "y": 80,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n1",
+      "type": "note",
+      "title": "Test 02 - note",
+      "x": 380,
+      "y": 80,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n2",
+      "type": "server",
+      "title": "Test 03 - server",
+      "x": 680,
+      "y": 80,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n3",
+      "type": "switch",
+      "title": "Test 04 - switch",
+      "x": 980,
+      "y": 80,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n4",
+      "type": "note",
+      "title": "Test 05 - note",
+      "x": 80,
+      "y": 310,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n5",
+      "type": "task",
+      "title": "Test 06 - task",
+      "x": 380,
+      "y": 310,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n6",
+      "type": "server",
+      "title": "Test 07 - server",
+      "x": 680,
+      "y": 310,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n7",
+      "type": "note",
+      "title": "Test 08 - note",
+      "x": 980,
+      "y": 310,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n8",
+      "type": "idea",
+      "title": "Test 09 - idea",
+      "x": 80,
+      "y": 540,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n9",
+      "type": "server",
+      "title": "Test 10 - server",
+      "x": 380,
+      "y": 540,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n10",
+      "type": "note",
+      "title": "Test 11 - note",
+      "x": 680,
+      "y": 540,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    },
+    {
+      "id": "n11",
+      "type": "task",
+      "title": "Test 12 - task",
+      "x": 980,
+      "y": 540,
+      "w": 220,
+      "h": 120,
+      "notes": [],
+      "node_notes": "Synthetic routing test",
+      "properties": {},
+      "customProps": {
+        "_ungrouped": true
+      }
+    }
+  ],
+  "edges": [
+    {
+      "id": "e0",
+      "from": "n0",
+      "to": "n1",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e1",
+      "from": "n0",
+      "to": "n2",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e2",
+      "from": "n0",
+      "to": "n3",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e3",
+      "from": "n1",
+      "to": "n4",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e4",
+      "from": "n2",
+      "to": "n4",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e5",
+      "from": "n2",
+      "to": "n5",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e6",
+      "from": "n3",
+      "to": "n5",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e7",
+      "from": "n3",
+      "to": "n6",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e8",
+      "from": "n4",
+      "to": "n7",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e9",
+      "from": "n5",
+      "to": "n7",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e10",
+      "from": "n5",
+      "to": "n8",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e11",
+      "from": "n6",
+      "to": "n8",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e12",
+      "from": "n6",
+      "to": "n9",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e13",
+      "from": "n7",
+      "to": "n10",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e14",
+      "from": "n8",
+      "to": "n10",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e15",
+      "from": "n8",
+      "to": "n11",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e16",
+      "from": "n9",
+      "to": "n11",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e17",
+      "from": "n11",
+      "to": "n0",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e18",
+      "from": "n4",
+      "to": "n2",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e19",
+      "from": "n2",
+      "to": "n4",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e20",
+      "from": "n0",
+      "to": "n9",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e21",
+      "from": "n1",
+      "to": "n10",
+      "style": "arrow",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e22",
+      "from": "n3",
+      "to": "n11",
+      "style": "dashed",
+      "color": "#58a6ff",
+      "label": ""
+    },
+    {
+      "id": "e23",
+      "from": "n7",
+      "to": "n6",
+      "style": "dotted",
+      "color": "#58a6ff",
+      "label": ""
+    }
+  ]
+}

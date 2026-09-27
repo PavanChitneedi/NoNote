@@ -1,6 +1,7 @@
 import { DEF_W, DEF_H } from "./nodeTypes.js";
 import { STACK_BOX_H } from "./edgeRouting.js";
 import { boxesOverlap } from "./autoLayout.js";
+import { layoutQuality, betterLayout } from './layoutQuality.js';
 
 // Loaded lazily (not a static import) so elkjs's large bundled UMD build
 // lands in its own chunk instead of being merged and re-minified alongside
@@ -23,7 +24,7 @@ const STACK_W = 240, ANNO_GAP = 60;
 // history / changelog for the note-placement regression that motivated
 // this). Used only for LR/RL/TB/BT — radial has no ELK equivalent and
 // stays on autoLayout.js.
-export async function elkAutoLayout(nodes, edges, direction = "LR") {
+export async function elkAutoLayout(nodes, edges, direction = "LR", options = {}) {
   if (!nodes.length) return nodes;
   try {
     const elk = await getElk();
@@ -113,13 +114,14 @@ export async function elkAutoLayout(nodes, edges, direction = "LR") {
       id: "root",
       layoutOptions: {
         "elk.algorithm": "layered",
+        "elk.randomSeed": String(options.seed ?? 1),
         "elk.direction": DIR_MAP[direction] || "RIGHT",
         "elk.edgeRouting": "ORTHOGONAL",
         "elk.layered.nodePlacement.strategy": "NETWORK_SIMPLEX",
         "elk.spacing.nodeNode": "60",
         "elk.spacing.edgeNode": "50",
         "elk.spacing.edgeEdge": "20",
-        "elk.layered.spacing.nodeNodeBetweenLayers": "160",
+        "elk.layered.spacing.nodeNodeBetweenLayers": String(options.gap ?? 160),
         "elk.layered.spacing.edgeNodeBetweenLayers": "50",
         "elk.layered.spacing.edgeEdgeBetweenLayers": "20",
         "elk.layered.mergeEdges": "false",
@@ -200,6 +202,40 @@ export async function elkAutoLayout(nodes, edges, direction = "LR") {
     console.error("[elkAutoLayout]", err);
     return nodes;
   }
+}
+
+export async function optimizedAutoLayout(nodes, edges, direction = 'LR') {
+  const automatic = edges.map(e=>({...e,fromAnchor:null,toAnchor:null}));
+  let best, score;
+  // Keep the search bounded. Large maps still get a single layered pass.
+  const candidates = nodes.length > 60 ? [{seed:1,gap:120}] : [
+    {seed:1,gap:100}, {seed:7,gap:160}, {seed:19,gap:220},
+  ];
+  for (const options of candidates) {
+    const placed = await elkAutoLayout(nodes,automatic,direction,options);
+    const next = layoutQuality(placed,automatic);
+    if (!score || betterLayout(next,score)) { best=placed; score=next; }
+  }
+  // Layered placement can put a middle card directly in a long connection's
+  // corridor. On small maps, compare side-to-side moves using the real router.
+  // Preserve the selected flow axis and accept only strict quality improvements.
+  if (nodes.length <= 12) {
+    const horizontal = direction === 'LR' || direction === 'RL';
+    for (const node of [...best]) {
+      // Notes sharing a stack position must continue moving as a group.
+      if(best.some(n=>n.id!==node.id && n.x===node.x && n.y===node.y)) continue;
+      for (const sign of [-1,1]) {
+        const candidate = best.map(n=>n.id===node.id?{
+          ...n, [horizontal?'y':'x']: n[horizontal?'y':'x']+sign*((horizontal?n.h:n.w)+60),
+        }:n);
+        const next=layoutQuality(candidate,automatic);
+        if(betterLayout(next,score)) { best=candidate; score=next; }
+      }
+    }
+    const minX=Math.min(...best.map(n=>n.x)), minY=Math.min(...best.map(n=>n.y));
+    best=best.map(n=>({...n,x:n.x-minX+24,y:n.y-minY+24}));
+  }
+  return best || nodes;
 }
 
 // Walk outward from root nodes (no incoming edges); for as long as a column

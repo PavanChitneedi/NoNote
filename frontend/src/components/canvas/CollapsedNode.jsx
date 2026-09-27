@@ -1,15 +1,16 @@
+import ConnectionHandle from "./ConnectionHandle.jsx";
 import { useState } from "react";
 import { COL_W, COL_H } from "../../lib/nodeTypes.js";
 import { stripHtml } from "../../lib/notesFormat.js";
 import NodeIcon from "./NodeIcon.jsx";
 
 // ── Collapsed Node ────────────────────────────────────────────
-export default function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onClick,onContextMenu,onToggleCollapse}){
+export default function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onTouchStart,onClick,onContextMenu,onToggleCollapse,connectionDrag,zoom=1}){
   const [hovered,setHovered]=useState(false);
   const propEntries=Object.entries(node.properties||{}).filter(([,v])=>v).slice(0,4);
   return (
     <div
-      className="nn-node"
+      className="nn-node" data-connection-node={node.id}
       onMouseDown={onMouseDown} onTouchStart={onTouchStart} onClick={onClick} onContextMenu={onContextMenu}
       onMouseEnter={()=>setHovered(true)} onMouseLeave={()=>setHovered(false)}
       style={{
@@ -18,6 +19,7 @@ export default function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onT
         background:"var(--node-bg)",
         border:`var(--node-border-w) solid ${isSel?"var(--accent)":`${t.color}65`}`,
         borderRadius:"var(--radius-node)",
+        outline:connectionDrag?.preview?.targetId===node.id?"3px solid var(--success)":undefined,
         boxShadow:isSel?"var(--shadow-node-sel)":"var(--shadow-node)",
         cursor:mode==="connect"?"crosshair":canEdit?"grab":"default",
         userSelect:"none",touchAction:"none",
@@ -27,6 +29,7 @@ export default function CollapsedNode({node,t,isSel,canEdit,mode,onMouseDown,onT
         zIndex:hovered?20:1,
       }}
     >
+      {canEdit&&connectionDrag&&<ConnectionHandle nodeId={node.id} title={node.title} zoom={zoom} active={isSel||mode==="connect"||!!connectionDrag.preview} onStart={connectionDrag.begin}/>}
       {/* Icon */}
       <NodeIcon icon={t.icon} size={28} color={t.color} />
       {/* Name */}

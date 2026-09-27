@@ -14,16 +14,16 @@ import { HelpCircle,Sparkles,ClipboardList,Layers,Zap,Search,
   Command,Feather,Hammer,GraduationCap } from "lucide-react";
 import ThemePicker    from "./ThemePicker.jsx";
 import VersionHistory from "./VersionHistory.jsx";
-import { NT, DP, SIDEBAR_CATS, DEF_W, DEF_H, GRP_W, GRP_H, COL_W, COL_H } from "../lib/nodeTypes.js";
+import { NT, DP, DEF_W, DEF_H, GRP_W, GRP_H, COL_W, COL_H } from "../lib/nodeTypes.js";
 import { highlightText } from "../lib/textHighlight.jsx";
 import { parseNotes, serializeNotes } from "../lib/notesFormat.js";
 import { autoLayout } from "../lib/autoLayout.js";
-import { elkAutoLayout } from "../lib/elkLayout.js";
+import { coordinatedLayout } from "../lib/coordinatedLayout.js";
 import {
   EDGE_STYLES, EDGE_SECTIONS, rectEdgePoint, pickBestSides, computePortMap,
   STACK_BOX_H, roundedPolyPath, port, nrm, effectiveSide,
   buildBundle, orthoRoute, anchorToPoint, snapToAnchor,
-  buildRoutingGrid, astarRoute,
+  routeConnections,
 } from "../lib/edgeRouting.js";
 import {
   exportAsNoNote, userColor, exportAsPDF, exportAsHTML, exportAsDoc, exportAsPNG,
@@ -33,6 +33,9 @@ import NodeIcon from "./canvas/NodeIcon.jsx";
 import FormattedContent from "./canvas/FormattedContent.jsx";
 import EdgeIcon from "./canvas/EdgeIcon.jsx";
 import CollapsedNode from "./canvas/CollapsedNode.jsx";
+import ConnectionHandle from "./canvas/ConnectionHandle.jsx";
+import ConnectionPreview from "./canvas/ConnectionPreview.jsx";
+import useConnectionDrag from "./canvas/useConnectionDrag.js";
 import NodeSidebar from "./canvas/NodeSidebar.jsx";
 import PropsPanel from "./canvas/PropsPanel.jsx";
 import ContextMenu from "./canvas/ContextMenu.jsx";
@@ -118,7 +121,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // default. Bundling was added to fix same-node parallel edges visually
   // merging into one thick line; unbundled is closer to how the ELK layout
   // spike previewed edges, but loses that guard on dense fan-outs.
-  const [bundleEdges,   setBundleEdges]   = useState(()=>(localStorage.getItem('nn_bundle_edges')??'1')==='1');
+  const [bundleEdges,   setBundleEdges]   = useState(()=>(localStorage.getItem('nn_bundle_edges')??'0')==='1');
   const [showChangelog,    setShowChangelog]    = useState(false);
   const [showDocExport,    setShowDocExport]     = useState(false);
   const [docExportMode,    setDocExportMode]     = useState("normal");
@@ -962,9 +965,19 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     if(!selected.has(id)) setSelected(new Set([id]));
   },[canEdit,editMode,selected]);
 
+  const connectionDrag = useConnectionDrag({ rootRef:canvasRef, enabled:canEdit&&editMode, scope:mapId, edges, nodes, zoom,
+    onConnect:(from,to,fromAnchor,toAnchor)=>{
+      if (!nodesRef.current.some(n=>n.id===from) || !nodesRef.current.some(n=>n.id===to)) return;
+      const isNote = nodesRef.current.some(n=>(n.id===from||n.id===to)&&n.type==='note');
+      applyEdges(es=>[...es,{id:makeId(),from,to,fromAnchor,toAnchor,label:'',
+        style:isNote?'dashed':edgeStyle,color:isNote?'var(--text4)':edgeColor}]);
+      setDrawingEdge(null);
+    }});
+
   const handleNodeClick=useCallback((e,id)=>{
     e.stopPropagation();
     if(mode==="connect"){
+      if(!canEdit||!editMode) return;
       if(drawingEdge){
         if(drawingEdge.fromId!==id){
           const toNode=nodes.find(n=>n.id===id);
@@ -1014,7 +1027,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     setSelected(new Set([id])); setSelEdge(null);
     if(propsMode==='panel') setShowProps(true);
     else if(window.innerWidth<768) setShowProps(true);
-  },[mode,drawingEdge,edgeStyle,nodes,applyEdges]);
+  },[mode,drawingEdge,edgeStyle,edgeColor,nodes,applyEdges,canEdit,editMode,zoom]);
 
   const handleEdgeClick=useCallback((e,eid)=>{
     e.stopPropagation();
@@ -1265,39 +1278,6 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   }, [selected, editingTitle, inlineEditField]);
 
   // ── Auto-layout ────────────────────────────────────────────
-  const handleAutoLayout=useCallback(async (dir)=>{
-    const d=dir||layoutDir;
-    localStorage.setItem('nn_layout_dir',d);
-    applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null})));
-    // Arrange places content at the top-left, so bring the view there too —
-    // otherwise the map appears to have vanished and you have to hunt for it.
-    setTimeout(()=>{
-      const el=canvasRef.current;
-      if(el) el.scrollTo({left:0,top:0,behavior:"smooth"});
-    },60);
-    setArranging(true);
-    try{
-      // ELK has no radial equivalent, so radial stays on the original
-      // hand-rolled layout; every other direction goes through ELK, which
-      // proved more robust on real maps (see elkLayout.js).
-      const laid = d==='radial' ? autoLayout(nodesRef.current,edges,d) : await elkAutoLayout(nodesRef.current,edges,d);
-      // Exit-port staggering for multiple edges on the same node face is
-      // handled live by pickBestSides + computePortMap on every render (see
-      // edgeRouting.js) — it doesn't need (and must not get) a one-time
-      // snapshot written back into fromAnchor/toAnchor here. A previous
-      // version of Arrange did exactly that, using a fourth, independent
-      // side-selection formula; the moment any node was dragged afterward,
-      // those frozen anchors went stale and fought the live layout, which is
-      // what caused mismatched bundling, wrong-looking routes, and bent
-      // connectors that reappeared "even after Arrange".
-      applyNodes(()=>laid);
-    }catch(err){
-      console.error('[handleAutoLayout]',err);
-    }finally{
-      setArranging(false);
-    }
-  },[edges,applyNodes,zoom,layoutDir]);
-
   // ── Restore version ────────────────────────────────────────
   const handleRestore=(ns,es)=>{
     const mappedN=ns.map(n=>({id:n.id,type:n.node_type||n.type,x:n.x,y:n.y,w:n.w,h:n.h,title:n.title,notes:parseNotes(n.notes),collapsed:false,properties:{...(DP[n.node_type||n.type]||{}),...(n.properties||{})},customProps:n.custom_props||n.customProps||{}}));
@@ -1383,6 +1363,27 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     });
     return { boxes, memberToStack, stackByParent };
   }, [measuredNodes, edges]);
+
+  const handleAutoLayout=async (dir)=>{
+    const d=dir||layoutDir;
+    localStorage.setItem('nn_layout_dir',d);
+    setArranging(true);
+    try {
+      const graphEdges=edges.map(e=>({...e,from:renderedBoxes.memberToStack[e.from]||e.from,to:renderedBoxes.memberToStack[e.to]||e.to}));
+      const layout=d==='radial'?{nodes:autoLayout(renderedBoxes.boxes,graphEdges,d),routes:{}}:
+        await coordinatedLayout(renderedBoxes.boxes,graphEdges,d);
+      const positions=Object.fromEntries(layout.nodes.map(n=>[n.id,n]));
+      const originals=Object.fromEntries(renderedBoxes.boxes.map(n=>[n.id,n]));
+      applyNodes(ns=>ns.map(n=>{
+        const id=renderedBoxes.memberToStack[n.id]||n.id, p=positions[id], old=originals[id];
+        return p?{...n,x:n.x+p.x-old.x,y:n.y+p.y-old.y}:n;
+      }));
+      applyEdges(es=>es.map(e=>({...e,fromAnchor:{side:'auto',route:layout.routes[e.id]},toAnchor:null})));
+      setBundleEdges(false); localStorage.setItem('nn_bundle_edges','0');
+      canvasRef.current?.scrollTo({left:0,top:0,behavior:'smooth'});
+    } catch(err) { console.error('[handleAutoLayout]',err); }
+    finally { setArranging(false); }
+  };
 
   // nodeId -> ids of note nodes attached to it (any note, grouped or not)
   const attachedNotes = useMemo(()=>{
@@ -1481,6 +1482,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       // ── FAN-OUT: one source, several targets ─────────────────────────
       const outGroups = {};
       edges.forEach(e => {
+        if (e.fromAnchor?.side && e.fromAnchor.side !== 'auto' || e.toAnchor?.side && e.toAnchor.side !== 'auto') return;
         const f = boxFor(e.from), t = boxFor(e.to);
         if (!f || !t || f.id === t.id) return;
         if (renderedBoxes.memberToStack[e.to] || renderedBoxes.memberToStack[e.from]) return;
@@ -1523,6 +1525,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       // are excluded exactly as for fan-out.
       const inGroups = {};
       edges.forEach(e => {
+        if (e.fromAnchor?.side && e.fromAnchor.side !== 'auto' || e.toAnchor?.side && e.toAnchor.side !== 'auto') return;
         if (claimed.has(e.id)) return;
         const f = boxFor(e.from), t = boxFor(e.to);
         if (!f || !t || f.id === t.id) return;
@@ -1572,67 +1575,10 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
   // route marks the segments it used, so every later edge pays to reuse them
   // and naturally steps aside. Shortest edges go first — they have the least
   // freedom to detour, so they should claim the direct line.
-  const edgeRoutes = useMemo(()=>{
-   try {
-    const boxes = renderedBoxes.boxes;
-    if (!boxes.length || boxes.length > 90) return {};   // keep it responsive
-    const byId = Object.fromEntries(boxes.map(b=>[b.id,b]));
-    const boxFor = id => byId[renderedBoxes.memberToStack[id] || id];
-
-    // Bundled trunks are real geometry other, unrelated edges shouldn't cut
-    // through — represent each stem/spine segment as a thin padded rect and
-    // fold it into the shared obstacle set below.
-    const trunkRects = [];
-    edgeBundles.trunks.forEach(tr => {
-      [tr.stemPts, tr.spinePts].forEach(seg => {
-        const [a,b] = seg;
-        trunkRects.push({
-          id: `__trunk__${trunkRects.length}`,
-          x: Math.min(a.x,b.x)-3, y: Math.min(a.y,b.y)-3,
-          w: Math.abs(a.x-b.x)+6, h: Math.abs(a.y-b.y)+6,
-        });
-      });
-    });
-
-    const items = [];
-    edges.forEach(e => {
-      const f = boxFor(e.from), t = boxFor(e.to);
-      if (!f || !t || f.id === t.id) return;
-      const fs = effectiveSide(e, 'from', f, t, f.w, f.h, t.w, t.h);
-      const ts = effectiveSide(e, 'to',   f, t, f.w, f.h, t.w, t.h);
-      const fp = port(f, fs, edgePortMap[`${e.id}:from`] ?? 0.5);
-      const tp = port(t, ts, edgePortMap[`${e.id}:to`]   ?? 0.5);
-      items.push({ id:e.id, f, t, fp, tp, fn1:nrm(fs), fn2:nrm(ts),
-                   len: Math.abs(fp.x-tp.x)+Math.abs(fp.y-tp.y) });
-    });
-    items.sort((a,b)=>a.len-b.len);
-
-    // One grid for all edges, including every port so each is reachable.
-    const ports = [];
-    items.forEach(it => {
-      ports.push({ x: it.fp.x + it.fn1.dx*24, y: it.fp.y + it.fn1.dy*24 });
-      ports.push({ x: it.tp.x + it.fn2.dx*24, y: it.tp.y + it.fn2.dy*24 });
-    });
-    const grid = buildRoutingGrid([...boxes, ...trunkRects], ports);
-
-    const usage = new Map();
-    const out = {};
-    items.forEach(it => {
-      // A bundled edge's own branch isn't part of this obstacle set (it's
-      // drawn separately), and an edge is never its own obstacle.
-      const skipTrunk = edgeBundles.branchByEdgeId[it.id] ? [] : trunkRects;
-      const obstacles = [...boxes.filter(b => b.id !== it.f.id && b.id !== it.t.id), ...skipTrunk];
-      const pts = astarRoute(it.fp, it.fn1, it.tp, it.fn2, obstacles, usage, grid);
-      if (pts) { out[it.id] = pts; }
-    });
-    return out;
-   } catch (err) {
-    // A routing failure must never take the whole canvas down with it; an
-    // uglier edge is always better than a blank screen.
-    console.error('[edgeRoutes]', err);
-    return {};
-   }
-  }, [edges, nodes, renderedBoxes, edgePortMap, edgeBundles]);
+  const edgeRoutes = useMemo(() => routeConnections(renderedBoxes.boxes, edges.map(e => ({
+    ...e, from:renderedBoxes.memberToStack[e.from] || e.from,
+    to:renderedBoxes.memberToStack[e.to] || e.to,
+  }))), [edges, renderedBoxes]);
 
   const edgeLaneMap = useMemo(()=>{
     const lanes = {};
@@ -1740,17 +1686,17 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       // here, keeping the arrowhead on the segment that actually points at it.
       const branch = edgeBundles.branchByEdgeId[edge.id];
       if (branch && branch.length >= 2) {
-        const path = roundedPolyPath(pullFirst(branch), 10);
+        const path = roundedPolyPath(pullFirst(branch), 0);
         const mi = Math.max(1, Math.floor(branch.length/2));
         const mid = { x:(branch[mi-1].x+branch[mi].x)/2, y:(branch[mi-1].y+branch[mi].y)/2 };
         return { path, fp:branch[0], tp, mid };
       }
       const pre = edgeRoutes[edge.id];
       if (pre && pre.length >= 2) {
-        const path = roundedPolyPath(pullFirst(pre), 12);
+        const path = roundedPolyPath(pullFirst(pre), 0);
         const mi = Math.max(1, Math.floor(pre.length/2));
         const mid = { x:(pre[mi-1].x+pre[mi].x)/2, y:(pre[mi-1].y+pre[mi].y)/2 };
-        return { path, fp, tp, mid };
+        return { path, fp:pre[0], tp:pre[pre.length-1], mid };
       }
       // Fallback for very large maps where the search is skipped.
       const skip = new Set([
@@ -1760,7 +1706,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
       ].filter(Boolean));
       const obstacles = renderedBoxes.boxes.filter(b => !skip.has(b.id));
       const pts = orthoRoute(fp, fn1, tp, fn2, edgeLaneMap[edge.id], obstacles);
-      const path = roundedPolyPath(pullFirst(pts), 14);
+      const path = roundedPolyPath(pullFirst(pts), 0);
       // midpoint = middle vertex of the travel segment, for labels/handles
       const midIdx = Math.max(1, Math.floor(pts.length/2));
       const mid = { x:(pts[midIdx-1].x+pts[midIdx].x)/2, y:(pts[midIdx-1].y+pts[midIdx].y)/2 };
@@ -2127,24 +2073,24 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     <svg className="nn-edges" style={{position:"absolute",inset:0,width:"100%",height:"100%",pointerEvents:"none",overflow:"visible"}}>
       <defs>
         {/* Forward markers (markerEnd) */}
-        <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="strokeWidth">
+        <marker id="nn-arr" markerWidth="10" markerHeight="8" refX="10" refY="4" orient="auto" markerUnits="userSpaceOnUse">
           <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
         </marker>
-        <marker id="nn-tk" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+        <marker id="nn-tk" markerWidth="8" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="userSpaceOnUse">
           <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
         </marker>
-        <marker id="nn-dbl" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto" markerUnits="strokeWidth">
+        <marker id="nn-dbl" markerWidth="12" markerHeight="8" refX="12" refY="4" orient="auto" markerUnits="userSpaceOnUse">
           <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
           <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
         </marker>
         {/* Reverse markers (markerStart) — auto-start-reverse flips direction */}
-        <marker id="nn-arr-r" markerWidth="10" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+        <marker id="nn-arr-r" markerWidth="10" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
           <polygon points="0 0, 10 4, 0 8" fill="var(--accent)"/>
         </marker>
-        <marker id="nn-tk-r" markerWidth="8" markerHeight="7" refX="0" refY="3.5" orient="auto-start-reverse" markerUnits="strokeWidth">
+        <marker id="nn-tk-r" markerWidth="8" markerHeight="7" refX="0" refY="3.5" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
           <polygon points="0 0, 8 3.5, 0 7" fill="var(--accent)"/>
         </marker>
-        <marker id="nn-dbl-r" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="strokeWidth">
+        <marker id="nn-dbl-r" markerWidth="12" markerHeight="8" refX="0" refY="4" orient="auto-start-reverse" markerUnits="userSpaceOnUse">
           <polyline points="0 1, 5 4, 0 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
           <polyline points="4 1, 9 4, 4 7" fill="none" stroke="var(--accent)" strokeWidth="1.5"/>
         </marker>
@@ -2394,7 +2340,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     if(isCollapsed) return(
       <div key={`fc-${node.id}`} style={{opacity:focusMode&&!isFocused?0.08:1,filter:focusMode&&!isFocused?'blur(1.5px)':'none',transition:'opacity .25s,filter .25s'}}>
         <CollapsedNode node={node} t={t} isSel={isSel}
-          canEdit={canEdit&&editMode} mode={mode}
+          canEdit={canEdit&&editMode} mode={mode} connectionDrag={connectionDrag} zoom={zoom}
           onMouseDown={e=>{e.stopPropagation();startDrag(e.clientX,e.clientY,node.id);}}
           onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
           onClick={e=>handleNodeClick(e,node.id)}
@@ -2405,7 +2351,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
     );
 
     return(
-      <div key={node.id} className="nn-node" data-ui={`node-${node.id}`} data-component="NodeCard" data-page="canvas" data-role="node" data-variant={node.type}
+      <div key={node.id} className="nn-node" data-connection-node={node.id} data-ui={`node-${node.id}`} data-component="NodeCard" data-page="canvas" data-role="node" data-variant={node.type}
         ref={el=>{ if(el) reportMeasuredHeight(node.id, el.getBoundingClientRect().height/zoom); }}
         onMouseDown={e=>{e.stopPropagation();if(editingTitle!==node.id)startDrag(e.clientX,e.clientY,node.id);}}
         onTouchStart={e=>{e.stopPropagation();startDrag(e.touches[0].clientX,e.touches[0].clientY,node.id);}}
@@ -2430,10 +2376,11 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           borderRadius:"var(--radius-node)",
           boxShadow:isSel?"var(--shadow-node-sel)":"var(--shadow-node)",
           cursor:mode==="connect"?"crosshair":canEdit&&editMode?"grab":"default",
-          userSelect:"none",overflow:"hidden",touchAction:"none",
-          outline:searchHitIds.has(node.id)&&!isSel?"2px solid var(--success)":selected.size>1&&isSel?"2px solid var(--accent)":"none",
+          userSelect:"none",overflow:"visible",touchAction:"none",
+          outline:connectionDrag.preview?.targetId===node.id?"3px solid var(--success)":searchHitIds.has(node.id)&&!isSel?"2px solid var(--success)":selected.size>1&&isSel?"2px solid var(--accent)":"none",
           outlineOffset:searchHitIds.has(node.id)&&!isSel?"2px":"0",
         }}>
+        <div style={{borderRadius:"inherit",overflow:"hidden"}}>
         {/* Header */}
         <div style={{background:`${t.color}10`,borderBottom:`1px solid ${t.color}18`,padding:"8px 10px 6px"}}>
 
@@ -2636,24 +2583,9 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
             )}
           </div>
         )}
-                {/* Anchor dots in connect mode */}
-        {mode==="connect"&&canEdit&&!isCollapsed&&(()=>{
-          const nw2=collW(node), nh2=collH(node);
-          const hCount=Math.max(3,Math.min(7,Math.floor(nw2/60)));
-          const vCount=Math.max(3,Math.min(7,Math.floor(nh2/50)));
-          const anchors=[];
-          for(let i=0;i<hCount;i++){const t=(i+1)/(hCount+1);anchors.push({side:"top",t},{side:"bottom",t});}
-          for(let i=0;i<vCount;i++){const t=(i+1)/(vCount+1);anchors.push({side:"left",t},{side:"right",t});}
-          return anchors.map((a,i)=>{
-            const ax=a.side==="left"?0:a.side==="right"?nw2:nw2*a.t;
-            const ay=a.side==="top"?0:a.side==="bottom"?nh2:nh2*a.t;
-            return(
-              <div key={i} onMouseDown={e=>{e.stopPropagation();setDrawingEdge({fromId:node.id,mouseX:node.x+ax,mouseY:node.y+ay,fromAnchor:{side:a.side,t:a.t}});}}
-                style={{position:"absolute",left:ax-5,top:ay-5,width:10,height:10,borderRadius:"50%",
-                  background:"var(--accent)",opacity:.7,cursor:"crosshair",zIndex:10,border:"2px solid var(--bg)"}}/>
-            );
-          });
-        })()}
+        </div>
+        {canEdit&&editMode&&<ConnectionHandle nodeId={node.id} title={node.title} zoom={zoom} active={isSel||mode==="connect"||!!connectionDrag.preview}
+          onStart={(event,id,anchor)=>{setDrawingEdge(null);connectionDrag.begin(event,id,anchor);}}/>}
         {/* Resize handle */}
         {canEdit&&editMode&&!isCollapsed&&(
           <div onMouseDown={e=>{e.stopPropagation();setResizing({id:node.id,startX:e.clientX,startY:e.clientY,origW:node.w,origH:node.h});}}
@@ -3346,7 +3278,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
         {/* Left: Node Library Sidebar — hidden in Think mode */}
         {!isMobile&&canvasMode!=="think"&&(
           <NodeSidebar
-            cats={SIDEBAR_CATS} addNode={addNode} canEdit={canEdit&&editMode} recentTypes={recentTypes}
+            addNode={addNode} canEdit={canEdit&&editMode} recentTypes={recentTypes}
             collapsed={sidebarCollapsed} onToggleCollapse={()=>setSidebarCollapsed(v=>!v)}
             iconOnly={sidebarIconOnly} onToggleIconOnly={()=>setSidebarIconOnly(v=>!v)}
             dense={sidebarDense} onToggleDense={()=>setSidebarDense(v=>!v)}
@@ -3961,6 +3893,7 @@ export default function NodeCanvas({ mapId, onBack, onHome }) {
           nodes={nodes} edges={edges} mapTitle={mapMeta?.title||"Map"}
           mode={docExportMode} onClose={()=>setShowDocExport(false)}/>
       )}
+      <ConnectionPreview preview={connectionDrag.preview}/>
       {showHelp     && <HelpGuide onClose={()=>setShowHelp(false)} />}
       {showChangelog&&(
         <div style={{position:"fixed",inset:0,zIndex:900,background:"rgba(0,0,0,.7)",display:"flex",alignItems:"center",justifyContent:"center"}}

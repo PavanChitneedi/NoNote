@@ -142,16 +142,16 @@ export function computePortMap(nodes, edges) {
 
       if (!edge.fromAnchor || edge.fromAnchor.side==="auto") {
         const {from:fSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
-        const k=`${edge.from}:${fSide}:from`;
+        const k=`${edge.from}:${fSide}`;
         // rank = position of the OTHER end along this face's spread axis
         const rank = (fSide==="left"||fSide==="right") ? (t.y+th/2) : (t.x+tw/2);
-        (portGroups[k]=portGroups[k]||[]).push({id:edge.id, rank});
+        (portGroups[k]=portGroups[k]||[]).push({id:edge.id, rank, role:'from'});
       }
       if (!edge.toAnchor || edge.toAnchor.side==="auto") {
         const {to:tSide} = pickBestSides(f.x,f.y,fw,fh,t.x,t.y,tw,th);
-        const k=`${edge.to}:${tSide}:to`;
+        const k=`${edge.to}:${tSide}`;
         const rank = (tSide==="left"||tSide==="right") ? (f.y+fh/2) : (f.x+fw/2);
-        (portGroups[k]=portGroups[k]||[]).push({id:edge.id, rank});
+        (portGroups[k]=portGroups[k]||[]).push({id:edge.id, rank, role:'to'});
       }
     });
 
@@ -174,14 +174,14 @@ export function computePortMap(nodes, edges) {
       annoFaces.add(`${p.id}:${sides.to}`);
     });
     Object.entries(portGroups).forEach(([key, group]) => {
-      const [nodeId, side, role] = key.split(":");
+      const [nodeId, side] = key.split(":");
       group.sort((a,b)=>a.rank-b.rank);
       const n = group.length;
       const keepClear = annoFaces.has(`${nodeId}:${side}`);
       group.forEach((item, i) => {
         let t = n===1 ? 0.5 : 0.2+(i/(n-1))*0.6;
         if (keepClear && Math.abs(t-0.5) < 0.08) t = i < n/2 ? 0.38 : 0.62;
-        tMap[`${item.id}:${role}`] = t;
+        tMap[`${item.id}:${item.role}`] = t;
       });
     });
     Object.assign(tMap, annoT);
@@ -209,7 +209,7 @@ export const STACK_BOX_H = () => 96;
 // zig-zagging, and a congestion cost makes later edges step aside instead of
 // running on top of earlier ones.
 const TURN_COST = 34;      // a bend is worth ~34px of extra length
-const CONGEST_COST = 500;  // reusing another edge's segment: strongly discouraged
+const CONGEST_COST = 18;  // reusing another edge's segment: strongly discouraged
 
 function segKey(x1,y1,x2,y2) {
   return x1<x2||(x1===x2&&y1<=y2) ? `${x1},${y1},${x2},${y2}` : `${x2},${y2},${x1},${y1}`;
@@ -277,14 +277,14 @@ function astarRoute(fp, fn1, tp, fn2, obstacles, usage, grid, opts = {}) {
     return sx1 < b.x+b.w && sx2 > b.x && sy1 < b.y+b.h && sy2 > b.y;
   });
 
-  const idx = (i,j) => j*W + i;
-  const g = new Float64Array(W*H).fill(Infinity);
-  const cameFrom = new Int32Array(W*H).fill(-1);
-  const dirOf = new Int8Array(W*H).fill(-1);
-  const closed = new Uint8Array(W*H);
-  const si = idx(xi.get(start.x), yi.get(start.y));
+  const idx = (i,j,dir) => (j*W + i)*2 + dir;
+  const g = new Float64Array(W*H*2).fill(Infinity);
+  const cameFrom = new Int32Array(W*H*2).fill(-1);
+  const dirOf = new Int8Array(W*H*2).fill(-1);
+  const closed = new Uint8Array(W*H*2);
+  const si = idx(xi.get(start.x), yi.get(start.y), Math.abs(fn1.dx) > 0.5 ? 0 : 1);
   const gxi = xi.get(goal.x), gyi = yi.get(goal.y);
-  const gi = idx(gxi, gyi);
+  let gi = -1;
   const h = (i,j) => Math.abs(xs[i]-xs[gxi]) + Math.abs(ys[j]-ys[gyi]);
 
   g[si] = 0;
@@ -294,19 +294,24 @@ function astarRoute(fp, fn1, tp, fn2, obstacles, usage, grid, opts = {}) {
 
   while (open.length) {
     const [, cur] = heapPop(open);
-    if (cur === gi) break;
+    if (Math.floor(cur/2) === gyi*W+gxi) { gi = cur; break; }
     if (closed[cur]) continue;
     closed[cur] = 1;
-    const ci = cur % W, cj = (cur - ci) / W;
+    const cell = Math.floor(cur/2);
+    const ci = cell % W, cj = (cell - ci) / W;
     const cx = xs[ci], cy = ys[cj];
     for (const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1]]) {
       const ni = ci+di, nj = cj+dj;
       if (ni < 0 || nj < 0 || ni >= W || nj >= H) continue;
-      const n = idx(ni,nj);
+      const dir = di !== 0 ? 0 : 1;
+      const n = idx(ni,nj,dir);
       if (closed[n]) continue;
       const nx = xs[ni], ny = ys[nj];
+      // Preserve the direction of the port stubs at both ends.
+      if (cur === si && (nx-cx)*fn1.dx + (ny-cy)*fn1.dy < 0) continue;
+      if (ni === gxi && nj === gyi && (nx-cx)*fn2.dx + (ny-cy)*fn2.dy > 0) continue;
       if (blocked(cx,cy,nx,ny)) continue;
-      const dir = di !== 0 ? 0 : 1;
+      if (opts.segments?.some(([a,b]) => segmentsShareLane({x:cx,y:cy},{x:nx,y:ny},a,b))) continue;
       const len = Math.abs(nx-cx) + Math.abs(ny-cy);
       const turn = (dirOf[cur] !== -1 && dirOf[cur] !== dir) ? TURN_COST : 0;
       const used = usage ? (usage.get(segKey(cx,cy,nx,ny))||0) : 0;
@@ -317,11 +322,12 @@ function astarRoute(fp, fn1, tp, fn2, obstacles, usage, grid, opts = {}) {
       }
     }
   }
-  if (!isFinite(g[gi])) return null;
+  if (gi < 0 || !isFinite(g[gi])) return null;
 
   const pts = [];
   for (let c = gi; c !== -1; c = cameFrom[c]) {
-    const i = c % W, j = (c - i) / W;
+    const cell = Math.floor(c/2);
+    const i = cell % W, j = (cell - i) / W;
     pts.push({ x: xs[i], y: ys[j] });
     if (c === si) break;
   }
@@ -345,7 +351,8 @@ function astarRoute(fp, fn1, tp, fn2, obstacles, usage, grid, opts = {}) {
       const a = simp[n-2], b = simp[n-1];
       const collinear = (Math.abs(a.x-b.x)<0.5 && Math.abs(b.x-p.x)<0.5)
                      || (Math.abs(a.y-b.y)<0.5 && Math.abs(b.y-p.y)<0.5);
-      if (collinear) { simp[n-1] = p; return; }
+      const forward = (b.x-a.x)*(p.x-b.x) + (b.y-a.y)*(p.y-b.y) >= 0;
+      if (collinear && forward) { simp[n-1] = p; return; }
     }
     simp.push(p);
   });
@@ -376,6 +383,7 @@ export function roundedPolyPath(pts, r = 14) {
     if (!last || Math.abs(last.x-p.x) > 0.5 || Math.abs(last.y-p.y) > 0.5) P.push(p);
   });
   if (P.length < 2) return '';
+  if (r === 0) return P.map((p,i)=>`${i?'L':'M'} ${p.x} ${p.y}`).join(' ');
   let d = `M ${P[0].x} ${P[0].y}`;
   for (let i = 1; i < P.length-1; i++) {
     const p = P[i], prev = P[i-1], next = P[i+1];
@@ -595,3 +603,178 @@ export function snapToAnchor(node, nw, nh, cx, cy) {
 // Internal A* pathfinding pieces exported for potential reuse/testing by
 // higher-level routing code in NodeCanvas.jsx.
 export { segKey, buildRoutingGrid, heapPush, heapPop, astarRoute, markUsage };
+
+// A crossing is a point; an overlap is a positive-length shared stretch.
+export function segmentsOverlap(a,b,c,d) {
+  const eps = 0.01;
+  if (Math.abs(a.y-b.y)<eps && Math.abs(c.y-d.y)<eps && Math.abs(a.y-c.y)<eps)
+    return Math.min(Math.max(a.x,b.x),Math.max(c.x,d.x))-Math.max(Math.min(a.x,b.x),Math.min(c.x,d.x))>eps;
+  if (Math.abs(a.x-b.x)<eps && Math.abs(c.x-d.x)<eps && Math.abs(a.x-c.x)<eps)
+    return Math.min(Math.max(a.y,b.y),Math.max(c.y,d.y))-Math.max(Math.min(a.y,b.y),Math.min(c.y,d.y))>eps;
+  return false;
+}
+
+// Styles don't affect occupancy: reserve the whole stroke corridor, including
+// the empty gaps in dashed/dotted strokes. Perpendicular crossings remain legal.
+export function segmentsShareLane(a,b,c,d,clearance=8) {
+  if(Math.abs(a.y-b.y)<.01 && Math.abs(c.y-d.y)<.01 && Math.abs(a.y-c.y)<clearance)
+    return Math.min(Math.max(a.x,b.x),Math.max(c.x,d.x))-Math.max(Math.min(a.x,b.x),Math.min(c.x,d.x))>.01;
+  if(Math.abs(a.x-b.x)<.01 && Math.abs(c.x-d.x)<.01 && Math.abs(a.x-c.x)<clearance)
+    return Math.min(Math.max(a.y,b.y),Math.max(c.y,d.y))-Math.max(Math.min(a.y,b.y),Math.min(c.y,d.y))>.01;
+  return false;
+}
+
+// Shared by desktop, compact canvas and live connection previews.
+export function geometrySignature(boxes,edges) {
+  const value=JSON.stringify([
+    boxes.map(b=>[b.id,...[b.x,b.y,b.w,b.h].map(v=>Math.round(v*10)/10)]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),
+    edges.map(e=>[e.id,e.from,e.to]).sort((a,b)=>String(a[0]).localeCompare(String(b[0]))),
+  ]);
+  return value;
+}
+
+export function routeConnections(boxes, edges) {
+  const signature=geometrySignature(boxes,edges);
+  if(edges.length && edges.every(e=>e.fromAnchor?.route?.signature===signature &&
+    Array.isArray(e.fromAnchor.route.points) && e.fromAnchor.route.points.length>=2 &&
+    e.fromAnchor.route.points.every(p=>Number.isFinite(p.x)&&Number.isFinite(p.y)))) {
+    return Object.fromEntries(edges.map(e=>[e.id,e.fromAnchor.route.points]));
+  }
+  // Stored anchors are legacy hints, not constraints. Connections retain their
+  // node identities while the router owns both border attachments.
+  edges = edges.map(e=>({...e,fromAnchor:null,toAnchor:null}));
+  const byId = Object.fromEntries(boxes.map(b => [b.id, b]));
+  const ports = computePortMap(boxes, edges);
+  const items = edges.flatMap(e => {
+    const f = byId[e.from], t = byId[e.to];
+    if (!f || !t || f.id === t.id) return [];
+    const endpoint = role => {
+      const side = effectiveSide(e, role, f, t, f.w, f.h, t.w, t.h);
+      const anchor = e[role + 'Anchor'];
+      const fraction = anchor?.side && anchor.side !== 'auto' ? anchor.t ?? .5 : ports[e.id + ':' + role] ?? .5;
+      return { point: port(role === 'from' ? f : t, side, fraction), normal: nrm(side) };
+    };
+    const a = endpoint('from'), b = endpoint('to');
+    return [{ e, fp:a.point, tp:b.point, fn:a.normal, tn:b.normal }];
+  });
+  // Slightly different port spacing on two facing cards needn't introduce
+  // a two-bend jog. Align free automatic ports if both borders have room.
+  items.forEach(item=>{
+    const {e,fp,tp,fn,tn}=item;
+    if ([e.fromAnchor,e.toAnchor].some(a=>a?.side && a.side!=='auto')) return;
+    const horizontal=fn.dx && fn.dx===-tn.dx;
+    const vertical=fn.dy && fn.dy===-tn.dy;
+    if(!horizontal && !vertical) return;
+    const axis=horizontal?'y':'x', size=horizontal?'h':'w';
+    if(Math.abs(fp[axis]-tp[axis])>16) return;
+    const value=(fp[axis]+tp[axis])/2;
+    if([e.from,e.to].some(id=>value<byId[id][axis]+12 || value>byId[id][axis]+byId[id][size]-12)) return;
+    if(items.some(other=>other!==item && ['from','to'].some(role=>{
+      const id=other.e[role], p=role==='from'?other.fp:other.tp;
+      return (id===e.from || id===e.to) && Math.abs(p[axis]-value)<10;
+    }))) return;
+    const a={...fp,[axis]:value}, b={...tp,[axis]:value};
+    if(segHitsRects(a.x,a.y,b.x,b.y,boxes,0)) return;
+    fp[axis]=value; tp[axis]=value;
+  });
+  const grid = buildRoutingGrid(boxes, items.flatMap(({fp,tp,fn,tn}) => [
+    {x:fp.x+fn.dx*24,y:fp.y+fn.dy*24}, {x:tp.x+tn.dx*24,y:tp.y+tn.dy*24},
+  ]));
+  const result = {};
+  const lanes = new Map();
+  const segments = [];
+  // Stable ordering means a preview appended last follows the same rules as a saved edge.
+  items.forEach(({e,fp,tp,fn,tn}) => {
+    // Prefer a balanced two-bend connector in an open corridor. A* ties
+    // otherwise put the turn against one of the cards, which looks cramped.
+    let simple;
+    const horizontal = fn.dx !== 0 && fn.dx === -tn.dx && (tp.x-fp.x)*fn.dx > 60;
+    const vertical = fn.dy !== 0 && fn.dy === -tn.dy && (tp.y-fp.y)*fn.dy > 60;
+    if (horizontal || vertical) {
+      const key = [e.from,e.to].sort().join(':');
+      const ordinal = lanes.get(key) || 0;
+      lanes.set(key,ordinal+1);
+      const offset = Math.ceil(ordinal/2)*14*(ordinal%2 ? 1 : -1);
+      const span = horizontal ? Math.abs(tp.x-fp.x) : Math.abs(tp.y-fp.y);
+      const shift = Math.max(-span/2+24,Math.min(span/2-24,offset));
+      const mid = horizontal ? (fp.x+tp.x)/2+shift : (fp.y+tp.y)/2+shift;
+      simple = horizontal ? [fp,{x:mid,y:fp.y},{x:mid,y:tp.y},tp]
+        : [fp,{x:fp.x,y:mid},{x:tp.x,y:mid},tp];
+      if (simple.some((p,i)=>i && segHitsRects(simple[i-1].x,simple[i-1].y,p.x,p.y,boxes,0))) simple = null;
+      if (simple && (horizontal ? fp.y===tp.y : fp.x===tp.x)) simple = [fp,tp];
+    }
+    const clear = pts => pts && !pts.some((p,i)=>i && (
+      segHitsRects(pts[i-1].x,pts[i-1].y,p.x,p.y,boxes,0)
+      || segments.some(([a,b])=>segmentsShareLane(pts[i-1],p,a,b))));
+    if(!clear(simple)) simple=null;
+    let pts=simple || astarRoute(fp,fn,tp,tn,boxes,null,grid,{segments});
+    // A* searches between port stubs. Validate the entire path, including
+    // both stubs; previously an overlapping stub bypassed the occupancy test.
+    if(!clear(pts)) pts=null;
+    for(const stub of [12,36,8,48]) {
+      if(pts) break;
+      const extra=segments.flatMap(([a,b])=>[a,b].flatMap(p=>[
+        {x:p.x-12,y:p.y-12},{x:p.x+12,y:p.y+12},
+      ]));
+      const retryGrid=buildRoutingGrid(boxes,[...extra,
+        {x:fp.x+fn.dx*stub,y:fp.y+fn.dy*stub},
+        {x:tp.x+tn.dx*stub,y:tp.y+tn.dy*stub},
+      ]);
+      const candidate=astarRoute(fp,fn,tp,tn,boxes,null,retryGrid,{segments,stub});
+      if(clear(candidate)) pts=candidate;
+    }
+    // An automatic port may itself be trapped on an occupied stub. Try nearby
+    // points on the same borders before falling back; never move locked ports.
+    if(!pts && ![e.fromAnchor,e.toAnchor].some(a=>a?.side && a.side!=='auto')) {
+      for(const offset of [12,-12,24,-24]) {
+        const movePort=(p,normal,box)=>{
+          const axis=normal.dx?'y':'x', size=normal.dx?'h':'w';
+          return {...p,[axis]:Math.max(box[axis]+8,Math.min(box[axis]+box[size]-8,p[axis]+offset))};
+        };
+        const a=movePort(fp,fn,byId[e.from]), b=movePort(tp,tn,byId[e.to]);
+        const retryGrid=buildRoutingGrid(boxes,[
+          ...segments.flatMap(([c,d])=>[c,d].flatMap(p=>[{x:p.x-12,y:p.y-12},{x:p.x+12,y:p.y+12}])),
+          {x:a.x+fn.dx*12,y:a.y+fn.dy*12},{x:b.x+tn.dx*12,y:b.y+tn.dy*12},
+        ]);
+        const candidate=astarRoute(a,fn,b,tn,boxes,null,retryGrid,{segments,stub:12});
+        if(clear(candidate)) { pts=candidate; break; }
+      }
+    }
+    // Search every face of the same source and destination before accepting a
+    // fallback. Never change which nodes the connection belongs to.
+    if(!pts) {
+      const sides=['left','right','top','bottom'];
+      const options=[];
+      sides.forEach(fromSide=>sides.forEach(toSide=>{
+        for(const t of [.5,.2,.8]) {
+          const a=port(byId[e.from],fromSide,t), b=port(byId[e.to],toSide,t);
+          const an=nrm(fromSide), bn=nrm(toSide);
+          const sa={x:a.x+an.dx*12,y:a.y+an.dy*12}, sb={x:b.x+bn.dx*12,y:b.y+bn.dy*12};
+          if(!clear([a,sa]) || !clear([sb,b])) continue;
+          options.push({a,b,an,bn,sa,sb,cost:Math.abs(a.x-b.x)+Math.abs(a.y-b.y)});
+        }
+      }));
+      options.sort((a,b)=>a.cost-b.cost);
+      let bestCost=Infinity;
+      const extra=segments.flatMap(([a,b])=>[a,b].flatMap(p=>[
+        {x:p.x-12,y:p.y-12},{x:p.x+12,y:p.y+12},
+      ]));
+      for(const option of options) {
+        if(option.cost>=bestCost) continue;
+        const {a,b,an,bn,sa,sb}=option;
+        const retryGrid=buildRoutingGrid(boxes,[...extra,sa,sb]);
+        const candidate=astarRoute(a,an,b,bn,boxes,null,retryGrid,{segments,stub:12});
+        if(!clear(candidate)) continue;
+        const cost=candidate.slice(1).reduce((sum,p,i)=>sum+Math.abs(p.x-candidate[i].x)+Math.abs(p.y-candidate[i].y),0)
+          + Math.max(0,candidate.length-2)*TURN_COST;
+        if(cost<bestCost) { pts=candidate; bestCost=cost; }
+      }
+    }
+    // Preserve connectivity if overlapping nodes or search limits leave no
+    // valid route. Ordinary paths pass the complete style-blind check above.
+    if(!pts) pts=orthoRoute(fp,fn,tp,tn,undefined,boxes.filter(b=>b.id!==e.from && b.id!==e.to));
+    result[e.id] = pts;
+    pts.forEach((p,i)=>{if(i) segments.push([pts[i-1],p]);});
+  });
+  return result;
+}

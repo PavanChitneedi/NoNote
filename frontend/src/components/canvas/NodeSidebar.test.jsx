@@ -1,8 +1,9 @@
-import { describe, it, expect, vi } from "vitest";
+import { beforeEach, describe, it, expect, vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import NodeSidebar from "./NodeSidebar.jsx";
 
 describe("NodeSidebar", () => {
+  beforeEach(() => localStorage.clear());
   it("renders a minimal collapsed bar and expands on click", () => {
     const onToggleCollapse = vi.fn();
     render(<NodeSidebar cats={{}} addNode={() => {}} canEdit={true} collapsed={true} onToggleCollapse={onToggleCollapse} />);

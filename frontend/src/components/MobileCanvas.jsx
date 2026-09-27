@@ -12,49 +12,18 @@
  *  • Full collab sync (presence, live updates)
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { getMap, saveMap, getAccessToken } from "../api/client.js";
 
-// ── Node type map ─────────────────────────────────────────────────
-const NT = {
-  note:       { label:"Note",          color:"#FFD93D", icon:"📝", cat:"General" },
-  heading:    { label:"Heading",       color:"#6C63FF", icon:"📌", cat:"General" },
-  user:       { label:"User",          color:"#E91E63", icon:"👤", cat:"General" },
-  process:    { label:"Process",       color:"#9C27B0", icon:"🔄", cat:"General" },
-  decision:   { label:"Decision",      color:"#FF9800", icon:"◆",  cat:"General" },
-  annotation: { label:"Comment",       color:"#78909C", icon:"💬", cat:"General" },
-  router:     { label:"Router",        color:"#00BCD4", icon:"📡", cat:"Network" },
-  switch:     { label:"Switch",        color:"#03A9F4", icon:"🔀", cat:"Network" },
-  firewall:   { label:"Firewall",      color:"#FF5722", icon:"🔥", cat:"Network" },
-  loadbal:    { label:"Load Balancer", color:"#26C6DA", icon:"⚖️", cat:"Network" },
-  vpn:        { label:"VPN",           color:"#42A5F5", icon:"🔐", cat:"Network" },
-  server:     { label:"Server",        color:"#EF5350", icon:"🗄️", cat:"Servers" },
-  webserver:  { label:"Web Server",    color:"#E53935", icon:"🌍", cat:"Servers" },
-  dbserver:   { label:"DB Server",     color:"#C62828", icon:"🗃️", cat:"Servers" },
-  appserver:  { label:"App Server",    color:"#F44336", icon:"⚙️", cat:"Servers" },
-  database:   { label:"Database",      color:"#3F51B5", icon:"🗃️", cat:"Software" },
-  api:        { label:"API",           color:"#009688", icon:"🔌", cat:"Software" },
-  service:    { label:"Service",       color:"#8BC34A", icon:"⚡", cat:"Software" },
-  microservice:{label:"Microservice",  color:"#66BB6A", icon:"🧩", cat:"Software" },
-  cache:      { label:"Cache",         color:"#FF7043", icon:"⚡", cat:"Software" },
-  cloud:      { label:"Cloud",         color:"#29B6F6", icon:"☁️", cat:"Cloud" },
-  container:  { label:"Container",     color:"#2496ED", icon:"📦", cat:"Cloud" },
-  k8s:        { label:"Kubernetes",    color:"#326CE5", icon:"⎈",  cat:"Cloud" },
-  lambda:     { label:"Function",      color:"#FF9100", icon:"λ",  cat:"Cloud" },
-  s3:         { label:"Object Store",  color:"#FF6D00", icon:"🪣", cat:"Cloud" },
-  mobile:     { label:"Mobile",        color:"#66BB6A", icon:"📱", cat:"Devices" },
-  laptop:     { label:"Laptop",        color:"#A1887F", icon:"💻", cat:"Devices" },
-  desktop:    { label:"Desktop",       color:"#8D6E63", icon:"🖥️", cat:"Devices" },
-  storage:    { label:"Storage",       color:"#607D8B", icon:"💾", cat:"Storage" },
-  nas:        { label:"NAS",           color:"#546E7A", icon:"🗄️", cat:"Storage" },
-  ids:        { label:"IDS/IPS",       color:"#F44336", icon:"🛡️", cat:"Security" },
-  waf:        { label:"WAF",           color:"#E53935", icon:"🧱", cat:"Security" },
-  vault:      { label:"Vault",         color:"#B00020", icon:"🔒", cat:"Security" },
-  siem:       { label:"SIEM",          color:"#C62828", icon:"🔍", cat:"Security" },
-};
+import { NT, DP, DEF_W, DEF_H, GRP_W, GRP_H } from "../lib/nodeTypes.js";
+import ConnectionHandle from "./canvas/ConnectionHandle.jsx";
+import ConnectionPreview from "./canvas/ConnectionPreview.jsx";
+import useConnectionDrag from "./canvas/useConnectionDrag.js";
+import NodeLibrary from "./canvas/NodeLibrary.jsx";
+import { coordinatedLayout } from '../lib/coordinatedLayout.js';
 
-const CATS = ["General","Network","Servers","Software","Cloud","Devices","Storage","Security"];
-const DEF_W = 220, DEF_H = 96;
+import { routeConnections, roundedPolyPath } from "../lib/edgeRouting.js";
+
 const ACCENT = "#58a6ff";
 
 const USER_COLORS = ["#f97316","#06b6d4","#a855f7","#22c55e","#f59e0b","#ef4444","#3b82f6","#ec4899"];
@@ -63,17 +32,10 @@ const mkId = () => crypto.randomUUID();
 
 function mkNode(type, x, y) {
   const t = NT[type] || NT.note;
-  return { id:mkId(), type, title:t.label, description:"", x, y, w:DEF_W, h:DEF_H, notes:[], properties:{}, collapsed:false };
-}
-
-// Point on node border towards target
-function edgePt(node, tx, ty) {
-  const cx=node.x+(node.w||DEF_W)/2, cy=node.y+(node.h||DEF_H)/2;
-  const dx=tx-cx, dy=ty-cy;
-  if (Math.abs(dx)<0.01&&Math.abs(dy)<0.01) return {x:cx,y:cy};
-  const hw=(node.w||DEF_W)/2, hh=(node.h||DEF_H)/2;
-  const s=Math.min(Math.abs(dx)>0.01?hw/Math.abs(dx):Infinity, Math.abs(dy)>0.01?hh/Math.abs(dy):Infinity);
-  return {x:cx+dx*s, y:cy+dy*s};
+  return { id:mkId(), type, title:t.label, description:"", x, y,
+    w:type==="group"?GRP_W:type==="note"?240:DEF_W,
+    h:type==="group"?GRP_H:type==="note"?160:DEF_H,
+    notes:[], node_notes:"", notes_private:false, properties:{...(DP[type]||{})}, customProps:{}, collapsed:false };
 }
 
 function NodeIcon({ icon, size=18, color="currentColor" }) {
@@ -87,6 +49,8 @@ export default function MobileCanvas({ mapId, onBack }) {
   const [nodes,   setNodes]   = useState([]);
   const [edges,   setEdges]   = useState([]);
   const [mapMeta, setMapMeta] = useState(null);
+  const [permission,setPermission]=useState(null);
+  const canEdit=["owner","admin","editor"].includes(permission);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
   const [zoom,    setZoom]    = useState(0.55);
@@ -95,8 +59,8 @@ export default function MobileCanvas({ mapId, onBack }) {
   const [selected,setSelected]= useState(null);
   const [connecting,setConnecting]=useState(null);
   const [sheet,   setSheet]   = useState(null);
-  const [addCat,  setAddCat]  = useState("General");
   const [saving,  setSaving]  = useState(false);
+  const [arranging, setArranging] = useState(false);
   const [editTitle,setEditTitle]=useState("");
   const [editDesc, setEditDesc]=useState("");
   const [newNote,  setNewNote] =useState("");
@@ -113,6 +77,26 @@ export default function MobileCanvas({ mapId, onBack }) {
 
   useEffect(()=>{ nodesRef.current=nodes; },[nodes]);
 
+  const [nodeSizes, setNodeSizes] = useState({});
+  useEffect(() => {
+    const elements = canvasRef.current?.querySelectorAll('[data-connection-node]');
+    if (!elements?.length) return;
+    const measure = () => {
+      const next = {};
+      elements.forEach(el => { next[el.dataset.connectionNode] = { w: el.offsetWidth, h: el.offsetHeight }; });
+      setNodeSizes(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    elements.forEach(el => observer.observe(el));
+    return () => observer.disconnect();
+  }, [nodes, loading]);
+  const routedEdges = useMemo(() => {
+    const boxes = nodes.map(n => ({ ...n, w: nodeSizes[n.id]?.w || n.w || DEF_W, h: nodeSizes[n.id]?.h || n.h || DEF_H }));
+    return Object.fromEntries(Object.entries(routeConnections(boxes, edges)).map(([id, pts]) =>
+      [id, { fp:pts[0], tp:pts.at(-1), path:roundedPolyPath(pts, 0) }]));
+  }, [nodes, edges, nodeSizes]);
+
   // Load
   useEffect(()=>{
     if(!mapId) return;
@@ -120,6 +104,7 @@ export default function MobileCanvas({ mapId, onBack }) {
     getMap(mapId)
       .then(d=>{
         setMapMeta(d.map||null);
+        setPermission(d.permission||null);
         setNodes((d.nodes||[]).map(n=>({...n,type:n.node_type||n.type,customProps:n.custom_props||n.customProps||{}})));
         setEdges((d.edges||[]).map(e=>({...e,from:e.from_node||e.from,to:e.to_node||e.to,fromAnchor:e.from_anchor,toAnchor:e.to_anchor,midOff:e.mid_off})));
       })
@@ -159,6 +144,13 @@ export default function MobileCanvas({ mapId, onBack }) {
       return next;
     });
   },[scheduleSave]);
+
+  const connectionDrag=useConnectionDrag({rootRef:canvasRef,enabled:canEdit,scope:mapId,edges,nodes,zoom,
+    onConnect:(from,to,fromAnchor,toAnchor)=>{
+      if(!nodesRef.current.some(n=>n.id===from)||!nodesRef.current.some(n=>n.id===to)) return;
+      applyEdges(es=>[...es,{id:mkId(),from,to,fromAnchor,toAnchor,style:'arrow',color:ACCENT}]);
+      setConnecting(null);setMode('select');
+    }});
 
   // WebSocket
   useEffect(()=>{
@@ -204,6 +196,7 @@ export default function MobileCanvas({ mapId, onBack }) {
   },[mode,broadcastSel]);
 
   const onCvMove=useCallback(e=>{
+    if(!ptrs.current.has(e.pointerId)) return;
     ptrs.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
     const pts=[...ptrs.current.values()];
     if(pts.length===2){
@@ -241,19 +234,22 @@ export default function MobileCanvas({ mapId, onBack }) {
   // Node touch handlers
   const onNodeDown=useCallback((e,nodeId)=>{
     e.stopPropagation();
+    if(!canEdit) return;
     ptrs.current.set(e.pointerId,{x:e.clientX,y:e.clientY});
     e.currentTarget.setPointerCapture(e.pointerId);
     lastPan.current=null;
     const node=nodesRef.current.find(n=>n.id===nodeId);
     if(node) drag.current={id:nodeId,sx:e.clientX,sy:e.clientY,nx:node.x,ny:node.y,moved:false};
-  },[]);
+  },[canEdit]);
 
   const onNodeUp=useCallback((e,nodeId)=>{
     e.stopPropagation();
     ptrs.current.delete(e.pointerId);
     const d=drag.current;
+    if(e.type==="pointercancel"){drag.current=null;return;}
     if(!d||!d.moved){
       // Tap
+      if(mode==="connect"&&!canEdit) return;
       if(mode==="connect"&&connecting&&connecting!==nodeId){
         applyEdges(es=>[...es,{id:mkId(),from:connecting,to:nodeId,style:"arrow",color:ACCENT}]);
         setConnecting(null); setMode("select");
@@ -270,7 +266,7 @@ export default function MobileCanvas({ mapId, onBack }) {
       setEdges(es=>{scheduleSave(ns,es);return es;});
     }
     drag.current=null;
-  },[mode,connecting,applyEdges,broadcastSel,scheduleSave]);
+  },[mode,connecting,applyEdges,broadcastSel,scheduleSave,canEdit]);
 
   const addNode=useCallback((type)=>{
     const el=canvasRef.current;
@@ -315,7 +311,8 @@ export default function MobileCanvas({ mapId, onBack }) {
   const remoteColor=id=>{ for(const rs of Object.values(remoteSelections)) if(rs.selectedIds?.has(id)) return rs.color; return null; };
 
   // Fit to screen
-  const fitView=()=>{
+  const fitView=(layoutNodes)=>{
+    const nodes=Array.isArray(layoutNodes)?layoutNodes:nodesRef.current;
     if(!nodes.length) return;
     const minX=Math.min(...nodes.map(n=>n.x))-20;
     const minY=Math.min(...nodes.map(n=>n.y))-20;
@@ -340,7 +337,7 @@ export default function MobileCanvas({ mapId, onBack }) {
   );
 
   return(
-    <div style={{display:"flex",flexDirection:"column",height:"100vh",overflow:"hidden",background:"var(--bg)",touchAction:"none"}}>
+    <div style={{display:"flex",flexDirection:"column",height:"100dvh",overflow:"hidden",background:"var(--bg)"}}>
 
       {/* ─── TOP BAR ───────────────────────────────────────── */}
       <div style={{height:52,background:"var(--bg2)",borderBottom:"1px solid var(--border2)",
@@ -377,7 +374,7 @@ export default function MobileCanvas({ mapId, onBack }) {
 
       {/* ─── CANVAS ────────────────────────────────────────── */}
       <div ref={canvasRef}
-        style={{flex:1,position:"relative",overflow:"hidden",
+        style={{flex:1,position:"relative",overflow:"hidden",touchAction:"none",
           background:"radial-gradient(circle,var(--canvas-dot) 1px,transparent 1px) center/28px 28px var(--bg)"}}
         onPointerDown={onCvDown} onPointerMove={onCvMove}
         onPointerUp={onCvUp} onPointerCancel={onCvUp}>
@@ -390,29 +387,14 @@ export default function MobileCanvas({ mapId, onBack }) {
           <svg style={{position:"absolute",left:0,top:0,width:4000,height:3000,
             pointerEvents:"none",overflow:"visible"}}>
             <defs>
-              <marker id="ma" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto">
-                <polygon points="0 0,10 4,0 8" fill={ACCENT}/>
+              <marker id="ma" markerWidth="7" markerHeight="6" refX="6" refY="3" markerUnits="userSpaceOnUse" orient="auto">
+                <polygon points="0 0,7 3,0 6" fill={ACCENT}/>
               </marker>
             </defs>
             {edges.map(edge=>{
-              const f=nodes.find(n=>n.id===edge.from),t=nodes.find(n=>n.id===edge.to);
-              if(!f||!t) return null;
-              const fcx=f.x+(f.w||DEF_W)/2,fcy=f.y+(f.h||DEF_H)/2;
-              const tcx=t.x+(t.w||DEF_W)/2,tcy=t.y+(t.h||DEF_H)/2;
-              const fp=edgePt(f,tcx,tcy),tp=edgePt(t,fcx,fcy);
-              const dx=tp.x-fp.x,dy=tp.y-fp.y;
-              const dist=Math.hypot(dx,dy)||1;
-              const ctrl=Math.max(60,dist*0.42);
-              // Exit normal from the face the point is on
-              const fNx=Math.abs(fp.x-f.x)<3?-1:Math.abs(fp.x-(f.x+(f.w||DEF_W)))<3?1:0;
-              const fNy=fNx!==0?0:(Math.abs(fp.y-f.y)<3?-1:1);
-              const tNx=Math.abs(tp.x-t.x)<3?-1:Math.abs(tp.x-(t.x+(t.w||DEF_W)))<3?1:0;
-              const tNy=tNx!==0?0:(Math.abs(tp.y-t.y)<3?-1:1);
-              const c1x=fp.x+(fNx!==0?fNx:Math.sign(dx)||1)*ctrl;
-              const c1y=fp.y+(fNx!==0?0:fNy)*ctrl;
-              const c2x=tp.x+(tNx!==0?tNx:Math.sign(-dx)||1)*ctrl;
-              const c2y=tp.y+(tNx!==0?0:tNy)*ctrl;
-              const path=`M ${fp.x} ${fp.y} C ${c1x} ${c1y},${c2x} ${c2y},${tp.x} ${tp.y}`;
+              const route = routedEdges[edge.id];
+              if (!route) return null;
+              const { fp, tp, path } = route;
               const da=edge.style==="dashed"?"8,5":edge.style==="dotted"?"2,5":"none";
               const ec=edge.color||ACCENT;
               return(
@@ -421,7 +403,7 @@ export default function MobileCanvas({ mapId, onBack }) {
                   {/* Wide invisible hit area */}
                   <path d={path} stroke="transparent" strokeWidth={20} fill="none" style={{cursor:"pointer"}}/>
                   {/* Visible edge */}
-                  <path d={path} stroke={ec} strokeWidth={2.5} fill="none"
+                  <path d={path} stroke={ec} strokeWidth={1.8} fill="none"
                     strokeDasharray={da} markerEnd="url(#ma)" opacity={0.9}/>
                   {edge.label&&<text x={(fp.x+tp.x)/2} y={(fp.y+tp.y)/2-9}
                     fill="var(--text3)" fontSize={11} textAnchor="middle"
@@ -440,16 +422,18 @@ export default function MobileCanvas({ mapId, onBack }) {
             const border=isConn?"#22c55e":rColor||(isSel?ACCENT:`${t.color}55`);
             const noteCount=(Array.isArray(node.notes)?node.notes:[]).filter(n=>!n.sensitive).length;
             return(
-              <div key={node.id} className="mob-node"
+              <div key={node.id} className="mob-node" data-connection-node={node.id}
                 onPointerDown={e=>onNodeDown(e,node.id)}
                 onPointerUp={e=>onNodeUp(e,node.id)}
                 onPointerCancel={e=>onNodeUp(e,node.id)}
                 style={{position:"absolute",left:node.x,top:node.y,
                   width:node.w||DEF_W,minHeight:node.h||DEF_H,zIndex:2,
                   background:"var(--bg2)",border:`2px solid ${border}`,
+                  outline:connectionDrag.preview?.targetId===node.id?"3px solid var(--success)":undefined,
                   borderRadius:10,touchAction:"none",cursor:"grab",
                   boxShadow:isSel?`var(--nEl,9px 9px 22px var(--neu-shadow),-7px -7px 16px var(--neu-hilight)),0 0 0 2px ${ACCENT}55`:"var(--nEs,4px 4px 9px var(--neu-shadow),-3px -3px 6px var(--neu-hilight))",
                   transition:"border-color .12s,box-shadow .12s"}}>
+                {canEdit&&<ConnectionHandle nodeId={node.id} title={node.title} zoom={zoom} mobile active={isSel||mode==="connect"||!!connectionDrag.preview} onStart={connectionDrag.begin}/>}
                 {/* Header */}
                 <div style={{padding:"10px 12px 6px",background:`${t.color}18`,
                   borderRadius:"8px 8px 0 0",display:"flex",alignItems:"center",gap:8}}>
@@ -503,7 +487,7 @@ export default function MobileCanvas({ mapId, onBack }) {
         flexShrink:0,zIndex:20,paddingBottom:"env(safe-area-inset-bottom,4px)"}}>
         <TBtn icon="↖" label="Select" active={mode==="select"} onTap={()=>{setMode("select");setConnecting(null);setSheet(null);}}/>
         <TBtn icon="⤳" label="Connect" active={mode==="connect"} ac="#6C63FF"
-          onTap={()=>{setMode(m=>m==="connect"?"select":"connect");setConnecting(null);setSheet(null);}}/>
+          onTap={()=>{if(!canEdit)return;setMode(m=>m==="connect"?"select":"connect");setConnecting(null);setSheet(null);}}/>
         {/* FAB */}
         <button onPointerDown={e=>e.stopPropagation()}
           onClick={()=>{setSheet(s=>s==="add"?null:"add");setMode("select");setConnecting(null);}}
@@ -514,12 +498,25 @@ export default function MobileCanvas({ mapId, onBack }) {
             display:"flex",alignItems:"center",justifyContent:"center",
             transform:sheet==="add"?"rotate(45deg)":"none",transition:"all .2s",
             marginTop:-20}}>+</button>
-        <TBtn icon="⊞" label="Layout" active={false}
-          onTap={()=>{alert("Auto-layout: open on desktop for full layout options.");}}/>
+        <TBtn icon="⊞" label={arranging?"Arranging…":"Layout"} active={arranging}
+          onTap={async()=>{
+            if(!canEdit || arranging) return;
+            setArranging(true);
+            try {
+              const measured=nodes.map(n=>({...n,w:nodeSizes[n.id]?.w||n.w||DEF_W,h:nodeSizes[n.id]?.h||n.h||DEF_H}));
+              const layout=await coordinatedLayout(measured,edges,'TB');
+              const laid=layout.nodes;
+              const positions=Object.fromEntries(laid.map(n=>[n.id,n]));
+              applyNodes(ns=>ns.map(n=>positions[n.id]?{...n,x:positions[n.id].x,y:positions[n.id].y}:n));
+              applyEdges(es=>es.map(e=>({...e,fromAnchor:{side:'auto',route:layout.routes[e.id]},toAnchor:null})));
+              fitView(laid);
+            } finally { setArranging(false); }
+          }}/>
         <TBtn icon="···" label="More" active={sheet==="more"}
           onTap={()=>setSheet(s=>s==="more"?null:"more")}/>
       </div>
 
+      <ConnectionPreview preview={connectionDrag.preview}/>
       {/* ─── SHEET BACKDROP ────────────────────────────────── */}
       {sheet&&<div onClick={()=>{if(sheet==="node")saveEdit();else setSheet(null);}}
         style={{position:"fixed",inset:0,background:"rgba(0,0,0,.45)",zIndex:29}}/>}
@@ -527,31 +524,7 @@ export default function MobileCanvas({ mapId, onBack }) {
       {/* ADD SHEET */}
       {sheet==="add"&&(
         <Sht title="Add Node" onClose={()=>setSheet(null)} h="68vh">
-          <div style={{display:"flex",gap:6,overflowX:"auto",paddingBottom:10,marginBottom:10,
-            borderBottom:"1px solid var(--border2)"}}>
-            {CATS.filter(c=>Object.values(NT).some(t=>t.cat===c)).map(c=>(
-              <button key={c} onClick={()=>setAddCat(c)}
-                style={{padding:"5px 13px",borderRadius:20,border:"none",cursor:"pointer",
-                  fontSize:11,fontWeight:700,whiteSpace:"nowrap",flexShrink:0,
-                  background:addCat===c?"var(--accent2)":"var(--bg3)",
-                  color:addCat===c?"#fff":"var(--text3)"}}>
-                {c}
-              </button>
-            ))}
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:10,overflowY:"auto",paddingBottom:16}}>
-            {Object.entries(NT).filter(([,t])=>t.cat===addCat).map(([type,t])=>(
-              <button key={type} onClick={()=>addNode(type)}
-                style={{display:"flex",flexDirection:"column",alignItems:"center",gap:6,
-                  padding:"14px 6px",border:`1.5px solid ${t.color}40`,borderRadius:10,
-                  background:`${t.color}12`,cursor:"pointer"}}>
-                <NodeIcon icon={t.icon} size={28} color={t.color} />
-                <span style={{fontSize:10,fontWeight:700,color:"var(--text2)",textAlign:"center",lineHeight:1.2}}>
-                  {t.label}
-                </span>
-              </button>
-            ))}
-          </div>
+          <NodeLibrary addNode={addNode}/>
         </Sht>
       )}
 
@@ -623,6 +596,10 @@ export default function MobileCanvas({ mapId, onBack }) {
       {/* MORE SHEET */}
       {sheet==="more"&&(
         <Sht title="Options" onClose={()=>setSheet(null)} h="auto">
+          {canEdit&&<button style={mBtn(false)} onClick={()=>{
+            applyEdges(es=>es.map(e=>({...e,fromAnchor:null,toAnchor:null})));
+            setSheet(null);
+          }}>Reset all connection routing</button>}
           {[
             ["🔍 FIT","Zoom to fit all nodes",fitView],
             ["⬡ HOME","Back to dashboard",onBack],
@@ -677,10 +654,10 @@ function Sht({title,onClose,children,foot,h="60vh"}){
 
 function TBtn({icon,label,active,ac=ACCENT,onTap}){
   return(
-    <button onPointerDown={e=>e.stopPropagation()} onClick={onTap}
+    <button type="button" aria-pressed={active} onPointerDown={e=>e.stopPropagation()} onClick={onTap}
       style={{display:"flex",flexDirection:"column",alignItems:"center",gap:2,
         background:"none",border:"none",cursor:"pointer",padding:"6px 14px",
-        color:active?ac:"var(--text4)",transition:"color .15s"}}>
+        color:active?ac:"var(--text2)",transition:"color .15s"}}>
       <span style={{fontSize:22,lineHeight:1}}>{icon}</span>
       <span style={{fontSize:9,fontWeight:700,letterSpacing:.5}}>{label}</span>
     </button>

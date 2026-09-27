@@ -1,0 +1,11 @@
+.connection-points { position:absolute; inset:0; pointer-events:none; z-index:3; }
+.connection-point { position:absolute; transform:translate(-50%,-50%) !important; padding:0; border:0; background:transparent !important; box-shadow:none !important; display:flex; align-items:center; justify-content:center; touch-action:none; cursor:crosshair; opacity:0; pointer-events:none; transition:opacity .12s ease; }
+.connection-point span { width:var(--point-size); height:var(--point-size); border-radius:50%; background:var(--bg2); border:2px solid var(--accent); box-sizing:border-box; }
+.connection-points-active .connection-point,
+.connection-points:focus-within .connection-point { opacity:1; pointer-events:auto; }
+@media (hover:hover) {
+  .nn-node:hover > .connection-points:not(.connection-points-mobile) .connection-point { opacity:1; pointer-events:auto; }
+}
+.connection-point:hover span, .connection-point:focus-visible span { background:var(--accent); }
+.connection-point:focus-visible { outline:2px solid var(--accent); outline-offset:-4px; border-radius:50%; }
+@media (prefers-reduced-motion:reduce) { .connection-point { transition:none; } }
